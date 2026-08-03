@@ -130,6 +130,15 @@
             android:exported="true"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
+        <!-- Ajan→telefon kanalı: telefon sunucuya giden kalıcı bir WebSocket
+             açıyor, böylece cron/Telegram/CLI'dan çalışan ajan da telefon
+             araçlarını çağırabiliyor. Varsayılan kapalı; açıkken kalıcı
+             bildirim gösteriliyor — gizli bir uzaktan erişim kanalı olmamalı. -->
+        <service
+            android:name=".data.PhoneBridgeService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Bildirim okuma: "bugün ne kaçırdım?".
              Normal izinle olmuyor, kullanıcı Ayarlar → Bildirim erişimi'nden
              elle vermek zorunda. Servis hiçbir şey saklamıyor; sorulduğu anda

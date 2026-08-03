@@ -187,6 +187,19 @@ data class AppSettings(
      */
     val demoMask: Boolean = false,
 
+    // ── Ajanın telefona erişimi ──────────────────────────────────
+    /**
+     * Ajan telefonu KENDILIGINDEN kullanabilsin mi.
+     *
+     * Varsayilan kapali. Acikken telefon sunucuya giden bir baglanti
+     * kuruyor ve cron/Telegram/CLI'dan calisan ajan da telefon
+     * araclarini cagirabiliyor. Yazarak/konusarak verdigin komutlar bu
+     * ayardan bagimsiz calisiyor -- onlar zaten acik istek.
+     */
+    val agentMayUsePhone: Boolean = false,
+    /** Ajan telefonu gorebilsin ama degistirmesin. */
+    val agentReadOnly: Boolean = true,
+
     /**
      * Denenip başarısız olan modeller — "sağlayıcı/model" biçiminde.
      *
