@@ -1,0 +1,312 @@
+package com.hermes.mobile.data
+
+import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import com.hermes.mobile.ui.theme.HermesPalette
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+/**
+ * Canlı ses için hazır kişilikler.
+ *
+ * Bunlar Gemini'ye giden sistem yönergesi. Sunucudaki `agent.personalities`
+ * (Hermes'in kendi karakterleri) ayrı bir şey — bu yalnız sesli/görüntülü
+ * oturumun tonunu belirliyor.
+ */
+@Serializable
+data class VoicePersona(
+    val id: String,
+    val label: String,
+    val instruction: String,
+)
+
+val BUILTIN_PERSONAS: List<VoicePersona> = listOf(
+    VoicePersona(
+        "asistan", "Genel asistan",
+        "Sen Hermes'sin — kişisel yapay zekâ asistanı. Türkçe konuş. Sesli sohbette " +
+            "kısa ve doğal cümleler kur; uzun listeler okuma. Emin olmadığını söyle.",
+    ),
+    VoicePersona(
+        "domain-expert", "Domain expert",
+        "You are a domain expert assistant. Keep a measured, formal tone. " +
+            "When you give a figure or a fact, say where it came from. Never " +
+            "invent data you are unsure of — say 'I need to verify that' " +
+            "instead. For anything specific to the user's domain, answer only " +
+            "through the hermes_ask tool.",
+    ),
+    VoicePersona(
+        "doktor", "Sağlık danışmanı",
+        "Sağlık konularında bilgili, sakin ve anlaşılır konuşan bir danışmansın. " +
+            "Türkçe konuş, tıbbi terimleri günlük dile çevir. Genel bilgi verirsin; " +
+            "teşhis koymaz, ilaç dozu önermezsin. Acil ya da ciddi belirtilerde " +
+            "(göğüs ağrısı, nefes darlığı, bilinç bulanıklığı, şiddetli kanama gibi) " +
+            "hemen hekime ya da 112'ye yönlendirirsin.",
+    ),
+    VoicePersona(
+        "hukukcu", "Hukuk danışmanı",
+        "Türk hukuku konusunda bilgili bir danışmansın. Türkçe konuş, madde ve " +
+            "kanun adı verirken kesin ol, emin değilsen söyle. Somut hukuki tavsiye " +
+            "yerine genel çerçeve çizersin ve avukata danışılmasını önerirsin.",
+    ),
+    VoicePersona(
+        "ogretmen", "Öğretici",
+        "Karmaşık konuları sabırla, adım adım anlatan bir öğretmensin. Türkçe konuş. " +
+            "Önce basit bir benzetme kur, sonra ayrıntıya in. Soru sorup anladığını " +
+            "kontrol et.",
+    ),
+    VoicePersona(
+        "samimi", "Sıcak ve esprili",
+        "Samimi, sıcak ve esprili bir arkadaş gibi konuşuyorsun. Türkçe, gündelik " +
+            "bir dil kullan. Şakayı seversin ama işe geldiğinde ciddileşirsin. " +
+            "Kaba olmadan takılırsın.",
+    ),
+    VoicePersona(
+        "kisa", "Kısa ve net",
+        "Çok kısa konuşuyorsun. Tek cümlelik cevaplar ver. Gereksiz nezaket kalıbı, " +
+            "giriş cümlesi ve özet yapma. Türkçe.",
+    ),
+)
+
+/** Gemini Live'ın hazır ses karakterleri. */
+val LIVE_VOICES = listOf("Puck", "Charon", "Kore", "Fenrir", "Aoede", "Leda", "Orus", "Zephyr")
+
+@Serializable
+data class AppSettings(
+    // ── Görünüm ──────────────────────────────────────────────────────
+    val themeId: String = "hermes",
+    /** Sunucu skin değişince tema da değişsin mi (`skin.changed`). */
+    val followServerSkin: Boolean = true,
+    val fontScale: Float = 1.0f,
+    val compact: Boolean = false,
+
+    // ── Canlı ses ────────────────────────────────────────────────────
+    val liveProvider: String = "gemini",
+    /**
+     * Canlı ses modeli.
+     *
+     * `-latest` takma adı kullanılıyor: Google önizleme modellerini tarihe
+     * göre yayınlıyor (09-2025, 12-2025 …) ve bir tarihe sabitlenmek modeli
+     * zamanla eskitiyordu. Takma ad her zaman güncel kararlı sürümü veriyor.
+     */
+    val liveModel: String = "gemini-2.5-flash-native-audio-latest",
+    val liveVoice: String = "Puck",
+    val personaId: String = "asistan",
+    /** Hazır kişilik yerine kendi yazdığın yönerge. */
+    val customPersona: String = "",
+    val liveLanguage: String = "tr-TR",
+
+    // ── Sohbet ───────────────────────────────────────────────────────
+    val expandThinking: Boolean = false,
+    val expandTools: Boolean = false,
+    val renderMarkdown: Boolean = true,
+    val historyLimit: Int = 150,
+
+    // ── Telefon denetimi ─────────────────────────────────────────────
+    /**
+     * Canlı sesli asistan telefonu kullanabilsin mi (uygulama açma, çevirici,
+     * SMS taslağı, yol tarifi, alarm, takvim, Tasker/MacroDroid).
+     *
+     * Varsayılan **açık**: telefonu asistan gibi kullanabilmek uygulamanın asıl
+     * amacı. Güvenlik, kapatmakla değil eylemin kendisiyle sağlanıyor — arama
+     * başlatılmaz (çevirici açılır), SMS gönderilmez (taslak açılır), yani geri
+     * alınamaz her adımda son dokunuş kullanıcıya ait.
+     */
+    val phoneTools: Boolean = true,
+
+    /**
+     * Shizuku üzerinden derin telefon denetimi.
+     *
+     * Varsayılan **kapalı**: Shizuku'nun kurulu olması ve her yeniden
+     * başlatmada elle başlatılması gerekiyor. Kapalıyken uygulama tamamen
+     * normal çalışır — bu katman yalnız ek araçlar açıyor.
+     */
+    val shizukuEnabled: Boolean = false,
+
+    // ── Genel ────────────────────────────────────────────────────────
+    /**
+     * Arayüz dili: "" = cihaz dili, "tr", "en".
+     *
+     * Sabitlenebilir olması gerekiyor: cihaz Türkçe olsa da İngilizce arayüz
+     * isteyen (ya da tersi) kullanıcı var.
+     */
+    val uiLang: String = "",
+
+    /** Geri tuşuyla çıkarken onay sorulsun mu. */
+    val confirmExit: Boolean = true,
+
+    /**
+     * Son etkin sohbet oturumu — "profilId|oturumId".
+     *
+     * Uygulama kapanıp açıldığında oturum kimliği bellekteydi ve kayboluyordu;
+     * her açılış yeni oturum demekti. Şimdi açılışta bu oturuma yeniden
+     * bağlanıp geçmiş yükleniyor — Telegram'daki gibi konuşma kaldığı yerden
+     * sürüyor.
+     */
+    val lastSession: String = "",
+
+    // ── sparkDash ────────────────────────────────────────────────────
+    /**
+     * DGX Spark izleme panelini göster.
+     *
+     * Kapalıysa Pano'da bölüm hiç görünmez ve hiçbir istek atılmaz —
+     * sparkDash kurulu değilse boşuna zaman aşımı beklenmesin diye.
+     */
+    val sparkEnabled: Boolean = true,
+
+    /**
+     * sparkDash adresi. Boşsa Hermes sunucusunun adresinden 5555 portuyla
+     * türetilir. Ayrı tutuluyor çünkü sparkDash'in API'sinde kimlik doğrulama
+     * yok — internete açmak bilinçli bir karar olmalı.
+     */
+    val sparkUrl: String = "",
+
+    // ── Gizlilik ─────────────────────────────────────────────────────
+    val biometricLock: Boolean = false,
+    val maskToken: Boolean = true,
+
+    // ── Bağlantı ─────────────────────────────────────────────────────
+    val pollSeconds: Int = 15,
+    val livePollSeconds: Int = 6,
+
+    // ── Bildirimler ──────────────────────────────────────────────────
+    val notifyCron: Boolean = true,
+    val notifyErrors: Boolean = true,
+    val notifyApprovals: Boolean = true,
+
+    // ── Geliştirici ──────────────────────────────────────────────────
+    val showRawEvents: Boolean = false,
+    /**
+     * Tanitim kipi: sunucudan gelen adlari goruntude maskele.
+     * Varsayilan kapali -- kullanici kendi telefonunda kendi verisini gormek
+     * istiyor; bu yalnizca ekran goruntusu/video paylasirken aciliyor.
+     */
+    val demoMask: Boolean = false,
+
+    /**
+     * Denenip başarısız olan modeller — "sağlayıcı/model" biçiminde.
+     *
+     * Sunucunun `unavailable_models` listesi yalnız kredi sorununu biliyor;
+     * erişilemeyen yerel sunucular (LM Studio kapalıysa) ya da bozuk
+     * yapılandırmalar orada görünmüyor. Bir model seçildiğinde denenip
+     * yanıt vermezse buraya yazılıyor ve listede gizleniyor.
+     */
+    /**
+     * Son seçilen sohbet modeli — "sağlayıcı|model".
+     *
+     * `/model` oturum kapsamlı çalışıyor; uygulama yeniden açıldığında yeni
+     * oturum sunucunun varsayılanına (Agnes) dönüyordu ve seçim kaybolmuş
+     * görünüyordu. Burada saklanıp her yeni oturumda geri uygulanıyor.
+     */
+    val lastModel: String = "",
+
+    val brokenModels: Set<String> = emptySet(),
+    val showBrokenModels: Boolean = false,
+
+    /**
+     * Elle sabitlenen modeller — "sağlayıcı/model". Listenin en üstünde,
+     * kullanım sıklığından bağımsız olarak dururlar.
+     */
+    val pinnedModels: List<String> = emptyList(),
+
+    /**
+     * Model başına seçilme sayısı — "sağlayıcı/model" → kaç kez.
+     *
+     * "Sık kullanılanlar" bölümü buradan üretiliyor. Ölçülmüş öneri listesi
+     * (RECOMMENDED_MODELS) herkes için aynı; bu ise kullanıcının kendi
+     * alışkanlığı, o yüzden ondan da üstte gösteriliyor.
+     */
+    val modelUsage: Map<String, Int> = emptyMap(),
+
+    /**
+     * Kullanıcının elle gizlediği modeller.
+     *
+     * [brokenModels] otomatik (denendi-çalışmadı); bu ise bilinçli tercih —
+     * "bu modeli hiç görmek istemiyorum". Ayrı tutuluyor ki otomatik liste
+     * temizlendiğinde kullanıcının seçimi silinmesin.
+     */
+    val hiddenModels: Set<String> = emptySet(),
+) {
+    /** Röleye gidecek sistem yönergesi. */
+    fun resolveInstruction(): String =
+        customPersona.takeIf { it.isNotBlank() }
+            ?: BUILTIN_PERSONAS.firstOrNull { it.id == personaId }?.instruction
+            ?: BUILTIN_PERSONAS.first().instruction
+}
+
+private const val PREFS = "hermes_settings"
+private const val KEY_SETTINGS = "settings"
+private const val KEY_CUSTOM_THEMES = "custom_themes"
+
+/**
+ * Ayar deposu.
+ *
+ * Şifreli saklanıyor çünkü kişilik metni ve gelecekte eklenecek anahtarlar
+ * kişisel olabilir; ayrıca profil deposuyla aynı güvenlik seviyesinde kalması
+ * tutarlı oluyor.
+ */
+class SettingsStore(context: Context) {
+
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+    private val prefs = run {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context, PREFS, masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    }
+
+    private val _settings = MutableStateFlow(load())
+    val settings: StateFlow<AppSettings> = _settings.asStateFlow()
+
+    private val _customThemes = MutableStateFlow(loadThemes())
+    val customThemes: StateFlow<List<HermesPalette>> = _customThemes.asStateFlow()
+
+    private fun load(): AppSettings {
+        val raw = prefs.getString(KEY_SETTINGS, null) ?: return AppSettings()
+        return runCatching { json.decodeFromString<AppSettings>(raw) }.getOrDefault(AppSettings())
+    }
+
+    private fun loadThemes(): List<HermesPalette> {
+        val raw = prefs.getString(KEY_CUSTOM_THEMES, null) ?: return emptyList()
+        return runCatching { json.decodeFromString<List<HermesPalette>>(raw) }
+            .getOrDefault(emptyList())
+    }
+
+    fun update(transform: (AppSettings) -> AppSettings) {
+        val next = transform(_settings.value)
+        _settings.value = next
+        prefs.edit().putString(KEY_SETTINGS, json.encodeToString(next)).apply()
+    }
+
+    fun saveTheme(palette: HermesPalette) {
+        val list = _customThemes.value.filterNot { it.id == palette.id } + palette
+        _customThemes.value = list
+        prefs.edit().putString(KEY_CUSTOM_THEMES, json.encodeToString(list)).apply()
+    }
+
+    fun deleteTheme(id: String) {
+        val list = _customThemes.value.filterNot { it.id == id }
+        _customThemes.value = list
+        prefs.edit().putString(KEY_CUSTOM_THEMES, json.encodeToString(list)).apply()
+        if (_settings.value.themeId == id) update { it.copy(themeId = "hermes") }
+    }
+
+    /** JSON metninden tema içe aktarır; geçersizse hata mesajı döner. */
+    fun importTheme(text: String): String? = runCatching {
+        val palette = json.decodeFromString<HermesPalette>(text)
+        if (palette.id.isBlank()) return "Temada 'id' alanı yok"
+        saveTheme(palette)
+        null
+    }.getOrElse { "Tema okunamadı: ${it.message}" }
+
+    fun exportTheme(palette: HermesPalette): String = json.encodeToString(palette)
+}
