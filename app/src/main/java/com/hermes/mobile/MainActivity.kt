@@ -260,6 +260,15 @@ class MainActivity : ComponentActivity() {
             // Ayni sekilde Compose disi bir global: goruntu katmanindaki
             // maskeleme PanelScreen/HomeScreen icinden dogrudan okunuyor.
             com.hermes.mobile.data.DemoMask.enabled = settings.demoMask
+            // Ajan kanalı ayara bağlı: açıksa servis ayakta, kapalıysa
+            // bağlantı kapanıyor. Kullanıcı anahtarı kapattığında kanalın
+            // gerçekten kapanması gerekiyor, yalnız araç listesinin boşalması
+            // yetmez.
+            if (settings.agentMayUsePhone) {
+                com.hermes.mobile.data.PhoneBridgeService.start(this)
+            } else {
+                com.hermes.mobile.data.PhoneBridgeService.stop(this)
+            }
 
             HermesTheme(
                 palette = themeById(settings.themeId, customThemes),

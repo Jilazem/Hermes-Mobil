@@ -113,6 +113,38 @@ is required. Anything you don't grant just disables that one capability.
 Deeper control (Wi-Fi, Bluetooth, DND, shell) is available through
 [Shizuku](https://shizuku.rikka.app/) and is off by default.
 
+### The agent can reach the phone, too
+
+The commands above run when **you** type or speak them. That left half the
+problem unsolved: an agent started by cron, Telegram or the CLI could never
+touch the phone, so "read me my notifications at 8am" was not expressible.
+
+The fix is to reverse the direction. The phone opens an **outbound**
+WebSocket to a small bridge on your server, and the agent reaches it through
+an MCP tool server:
+
+```
+Phone ──WS(outbound)──> phone_bridge.py :9180 <──HTTP──> phone MCP ──> agent
+```
+
+Because the phone dials out, NAT, CGNAT and mobile data stop mattering — no
+port forwarding, no VPN, no USB. Remote access reuses the same reverse-proxy
+path trick as live voice (`/phone-bridge/*`).
+
+Off by default, and read-only when first enabled. The rules are deliberate:
+
+- **The phone decides what runs, not the bridge.** The bridge only forwards.
+  The user's current consent lives on the phone, so an allowlist on the
+  server would be a security feeling that nothing enforces.
+- **Nothing irreversible is exposed.** Dialling opens the dialer, SMS stays a
+  draft. `phone_shell` and the Shizuku tools are not on this channel at all.
+- **A persistent notification stays up while the channel is open.** A remote
+  access path into your phone should never be invisible.
+- Every call is written to the diagnostics log.
+
+Two tools exist only for this direction: `phone_notify` and `phone_speak` —
+the agent reaching *you*, rather than only answering when asked.
+
 ### Server dashboard
 
 Status, terminal, files, logs, scheduled jobs (pause/resume/reschedule/run),
@@ -239,7 +271,8 @@ one panel fail without taking the app down.
   — Compose screens; `Strings.kt` holds the bilingual layer.
 - [`app/src/test/`](app/src/test/) — unit tests for intent parsing, relay URL
   derivation, and log redaction.
-- [`relay/`](relay/) — Gemini Live relay.
+- [`relay/`](relay/) — Gemini Live relay, plus the agent→phone bridge and
+  its MCP tool server.
 - [`UPSTREAM_TESTED.md`](UPSTREAM_TESTED.md) — pinned server build and
   decoding rules.
 

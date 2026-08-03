@@ -325,6 +325,45 @@ fun SettingsScreen(
                 ) { v -> onUpdate { it.copy(phoneTools = v) } }
             }
 
+            item {
+                SwitchRow(
+                    S.t2("Ajan telefonu kullanabilsin", "Let the agent use the phone"),
+                    S.t2(
+                        "Telefon sunucuya giden bir bağlantı açar; cron'dan, " +
+                            "Telegram'dan ya da terminalden çalışan ajan da telefon " +
+                            "araçlarını çağırabilir. \"Sabah 8'de bildirimlerimi oku\" " +
+                            "gibi şeyler ancak bununla olur. Açıkken kalıcı bir " +
+                            "bildirim durur — bu kanal gizli çalışmamalı.",
+                        "The phone opens an outbound connection, so an agent running " +
+                            "from cron, Telegram or the terminal can call phone tools " +
+                            "too. \"Read me my notifications at 8am\" only works with " +
+                            "this on. A persistent notification stays up while it is — " +
+                            "this channel should never run hidden.",
+                    ),
+                    settings.agentMayUsePhone,
+                ) { v -> onUpdate { it.copy(agentMayUsePhone = v) } }
+            }
+            if (settings.agentMayUsePhone) {
+                item {
+                    SwitchRow(
+                        S.t2("Yalnız okuma", "Read-only"),
+                        S.t2(
+                            "Ajan telefonu görebilir ama değiştiremez — bildirimler, " +
+                                "takvim, konum, rehber, pil. Kapatırsan uygulama açma, " +
+                                "yol tarifi, sayaç, bildirim gösterme gibi eylemler de " +
+                                "açılır. Geri alınamaz hiçbir eylem yok: arama " +
+                                "çeviriciyi açar, SMS taslak kalır.",
+                            "The agent can see the phone but not change it — " +
+                                "notifications, calendar, location, contacts, battery. " +
+                                "Turn it off to also allow opening apps, navigation, " +
+                                "timers and notifications. Nothing irreversible is " +
+                                "included: dialling opens the dialer, SMS stays a draft.",
+                        ),
+                        settings.agentReadOnly,
+                    ) { v -> onUpdate { it.copy(agentReadOnly = v) } }
+                }
+            }
+
             item { Spacer(Modifier.height(10.dp)) }
             item { ReadAccessRows() }
             item { Spacer(Modifier.height(10.dp)) }

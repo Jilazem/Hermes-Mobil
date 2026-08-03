@@ -21,6 +21,9 @@ import androidx.core.content.ContextCompat
  */
 object Notifier {
 
+    /** Ajanın kendi haberleri — yanıt bildiriminden ayrı kimlik. */
+    private const val AGENT_MSG_ID = 4814
+
     private const val CHANNEL_REPLIES = "hermes_replies"
     private var nextId = 1000
 
@@ -41,6 +44,39 @@ object Notifier {
             ).apply { description = "Uygulama kapalıyken gelen Hermes yanıtları" }
         )
         return nm
+    }
+
+    /**
+     * Ajanın kendiliğinden gönderdiği bildirim.
+     *
+     * [agentReply]'den ayrı: o, kullanıcının sorduğu bir şeyin cevabı ve
+     * uygulama önplandayken gizleniyor. Bu ise ajanın kendi başlattığı bir
+     * haber ("yedekleme bitti", "toplantıya 10 dakika") — kullanıcı
+     * uygulamaya bakıyor olsa bile görünmesi gerekiyor, çünkü sohbette
+     * karşılığı olan bir mesaj yok.
+     */
+    fun agentMessage(context: Context, title: String, text: String) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
+        val open = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, com.hermes.mobile.MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        channel(context).notify(
+            AGENT_MSG_ID,
+            NotificationCompat.Builder(context, CHANNEL_REPLIES)
+                .setSmallIcon(com.hermes.mobile.R.drawable.ic_stat_hermes)
+                .setContentTitle(title)
+                .setContentText(text.take(240))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text.take(1_500)))
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .build(),
+        )
     }
 
     /**

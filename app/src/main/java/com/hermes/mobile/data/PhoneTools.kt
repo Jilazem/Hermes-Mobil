@@ -101,6 +101,20 @@ class PhoneTools(
 
         fun isReadTool(name: String) = name in READ_TOOL_NAMES
 
+        /**
+         * Ajanin KENDILIGINDEN cagirabilecegi yazma araclari.
+         *
+         * Bilerek dar: hicbiri geri alinamaz degil. Arama ceviriciyi
+         * aciyor, SMS taslak kaliyor -- yani son dokunus hep kullanicida.
+         * `phone_shell` ve Shizuku araclari burada YOK; onlar ancak
+         * kullanici dogrudan isteyince calisir.
+         */
+        val AGENT_WRITE_TOOLS = setOf(
+            "phone_notify", "phone_speak", "phone_open_app", "phone_navigate",
+            "phone_clipboard_write", "phone_dial", "phone_sms_draft",
+            "phone_timer", "phone_flashlight", "phone_media",
+        )
+
         fun isPhoneTool(name: String) = name in TOOL_NAMES || name in SHIZUKU_TOOL_NAMES
 
         /**
@@ -141,6 +155,8 @@ class PhoneTools(
                 "phone_location" -> read.whereAmI()
                 "phone_clipboard_read" -> read.clipboardRead()
                 "phone_clipboard_write" -> read.clipboardWrite(arg("text"))
+                "phone_notify" -> notifyUser(arg("title"), arg("text"))
+                "phone_speak" -> speak(arg("text"))
                 "phone_flashlight" -> flashlight(arg("state"))
                 "phone_volume" -> volume(arg("action"))
                 "phone_media" -> media(arg("action"))
@@ -394,6 +410,25 @@ class PhoneTools(
      *
      * Sunucudaki ajan bu bilgilere ulaşamıyor; telefonun kendisi anlatıyor.
      */
+    /**
+     * Kullaniciya bildirim gosterir.
+     *
+     * Ajanin kullaniciya ULASMASININ en dogrudan yolu: sohbeti acmasini
+     * beklemek gerekmiyor. "Yedekleme bitti", "toplantiya 10 dakika" gibi.
+     */
+    private fun notifyUser(title: String, text: String): String {
+        if (text.isBlank()) return tr("Bildirim metni bos.", "Notification text is empty.")
+        Notifier.agentMessage(context, title.ifBlank { "Hermes" }, text)
+        return tr("Bildirim gosterildi.", "Notification shown.")
+    }
+
+    /** Metni sesli okur -- kullanici telefona bakamiyorken. */
+    private fun speak(text: String): String {
+        if (text.isBlank()) return tr("Okunacak metin bos.", "Nothing to read out.")
+        VoiceController.speakOnce(context, text)
+        return tr("Sesli okundu.", "Read out loud.")
+    }
+
     private fun status(what: String): String {
         val parts = mutableListOf<String>()
         val w = what.lowercase()

@@ -28,6 +28,35 @@ import java.util.Locale
  */
 class VoiceController(private val context: Context) {
 
+    companion object {
+        /**
+         * Tek seferlik seslendirme -- ajan `phone_speak` cagirdiginda.
+         *
+         * Sinifin kendi TTS ornegi sohbet ekranina bagli ve o ekran acik
+         * olmayabilir; ajan istegi arka planda gelebiliyor. Bu yuzden kisa
+         * omurlu bir motor kuruluyor, konusma bitince kapatiliyor.
+         */
+        fun speakOnce(context: Context, text: String) {
+            val clean = text.take(3_000)
+            var engine: TextToSpeech? = null
+            engine = TextToSpeech(context.applicationContext) { status ->
+                if (status != TextToSpeech.SUCCESS) {
+                    engine?.shutdown()
+                    return@TextToSpeech
+                }
+                engine?.setOnUtteranceProgressListener(
+                    object : android.speech.tts.UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) = Unit
+                        override fun onDone(utteranceId: String?) { engine?.shutdown() }
+                        @Deprecated("deprecated in API 21")
+                        override fun onError(utteranceId: String?) { engine?.shutdown() }
+                    }
+                )
+                engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "hermes-agent-speak")
+            }
+        }
+    }
+
     enum class Mode { Off, Listening, Speaking, Thinking }
 
     private val _mode = MutableStateFlow(Mode.Off)
