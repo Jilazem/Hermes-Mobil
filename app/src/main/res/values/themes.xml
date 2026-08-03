@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.HermesMobile" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/hermes_background</item>
+        <item name="android:statusBarColor">@color/hermes_background</item>
+        <item name="android:navigationBarColor">@color/hermes_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

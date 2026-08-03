@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uygulama simgesine uzun basınca çıkan kısayollar. Hedef her zaman
+     MainActivity; hangi ekranın açılacağını `hermes_action` ekstrası söyler. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="voice"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_voice">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hermes.mobile.debug"
+            android:targetClass="com.hermes.mobile.MainActivity">
+            <extra android:name="hermes_action" android:value="voice" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="driving"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_driving">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hermes.mobile.debug"
+            android:targetClass="com.hermes.mobile.MainActivity">
+            <extra android:name="hermes_action" android:value="driving" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="camera"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_camera">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hermes.mobile.debug"
+            android:targetClass="com.hermes.mobile.MainActivity">
+            <extra android:name="hermes_action" android:value="camera" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_chat"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_new">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hermes.mobile.debug"
+            android:targetClass="com.hermes.mobile.MainActivity">
+            <extra android:name="hermes_action" android:value="new" />
+        </intent>
+    </shortcut>
+</shortcuts>

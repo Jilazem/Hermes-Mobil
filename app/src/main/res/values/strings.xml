@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hermes</string>
+    <string name="shortcut_voice">Sesli konuşma</string>
+    <string name="shortcut_driving">Sürüş kipi</string>
+    <string name="shortcut_camera">Kamera</string>
+    <string name="shortcut_new">Yeni sohbet</string>
+</resources>
