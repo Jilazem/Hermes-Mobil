@@ -12,23 +12,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.RecordVoiceOver
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -41,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -97,7 +101,16 @@ fun ChatScreen(
 
         Box(Modifier.weight(1f)) {
             if (state.items.isEmpty()) {
-                EmptyChatHint(Modifier.align(Alignment.Center), state.connection, onSuggestion)
+                EmptyChatHint(
+                    Modifier.align(Alignment.Center),
+                    state.connection,
+                    onSuggestion,
+                    // Chip'ler mesaj GÖNDERMEZ, taslağa yazar — promptlar uzun,
+                    // model seçimi önemli; gönderimi kullanıcı/IME yapar.
+                    onUsePrompt = { prompt ->
+                        draft = if (draft.isBlank()) prompt else draft + "\n" + prompt
+                    },
+                )
             } else {
                 // Ardışık araç çağrıları tek satıra katlanır; ham liste
                 // bozulmadan yalnız görüntüleme katmanında gruplanır.
@@ -188,7 +201,8 @@ private fun ChatHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 6.dp, top = 12.dp, bottom = 6.dp),
+            .heightIn(min = 56.dp)
+            .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatusDot(dot)
@@ -196,56 +210,47 @@ private fun ChatHeader(
         Column(
             Modifier
                 .weight(1f)
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onOpenModelPicker)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     state.currentModel?.let { DemoMask.model(it) } ?: S.chatTitle,
                     color = HermesColors.TextPrimary,
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 210.dp),
+                    modifier = Modifier.widthIn(max = 200.dp),
                 )
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = S.t2("Model seç", "Pick a model"),
                     tint = HermesColors.TextMuted,
-                    modifier = Modifier.size(17.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(label, color = HermesColors.TextMuted, fontSize = 11.sp)
                 if (activeProfileName.isNotBlank() && activeProfileName != "default") {
                     Text(" · ", color = HermesColors.TextFaint, fontSize = 11.sp)
+                    // Profil düğmesi kaldırıldı (C-1): işlev burada, tıklanabilir
+                    // alt bilgide yaşıyor — Ekran sadeliği için başlıkta ikon yok.
                     Text(
                         activeProfileName,
                         color = HermesColors.Midground,
                         fontSize = 11.sp,
-                        modifier = Modifier.clickable(onClick = onOpenProfiles),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable(onClick = onOpenProfiles),
                     )
                 }
             }
         }
 
-        IconButton(onClick = onOpenProfiles) {
-            Icon(
-                Icons.Default.AccountCircle,
-                contentDescription = S.t2("Profil", "Profile"),
-                tint = HermesColors.TextMuted,
-            )
-        }
-
-        // Telegram'daki slash komutlarının paleti.
-        IconButton(onClick = onOpenCommands) {
-            Icon(
-                Icons.Default.Terminal,
-                contentDescription = S.t2("Komutlar", "Commands"),
-                tint = HermesColors.TextMuted,
-            )
-        }
-
+        // Başlıkta yalnız iki ikon: ses + yeni oturum. Komut paleti composer'ın
+        // "Ek" menüsünde (onOpenSnippets = onOpenCommands), profil alt bilgide.
         // Eller-serbest sesli sohbet anahtarı.
         IconButton(onClick = onToggleHandsFree) {
             Icon(
@@ -255,14 +260,12 @@ private fun ChatHeader(
             )
         }
 
-        if (state.items.isNotEmpty()) {
-            IconButton(onClick = onNewSession) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Yeni sohbet",
-                    tint = HermesColors.Midground,
-                )
-            }
+        IconButton(onClick = onNewSession) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Yeni sohbet",
+                tint = HermesColors.Midground,
+            )
         }
     }
 
@@ -318,10 +321,12 @@ private fun phoneExamples(): List<String> =
     ) else PhoneIntent.EXAMPLES
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun EmptyChatHint(
     modifier: Modifier,
     connection: ConnectionState,
     onSuggestion: (String) -> Unit,
+    onUsePrompt: (String) -> Unit,
 ) {
     Column(
         modifier.padding(horizontal = 24.dp),
@@ -340,18 +345,34 @@ private fun EmptyChatHint(
         )
         if (connection is ConnectionState.Open) {
             Spacer(Modifier.height(18.dp))
-            suggestions().forEach { s ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .background(HermesColors.Surface, RoundedCornerShape(10.dp))
-                        .border(1.dp, HermesColors.Border, RoundedCornerShape(10.dp))
-                        .clickable { onSuggestion(s) }
-                        .padding(horizontal = 12.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(s, color = HermesColors.TextSecondary, fontSize = 13.sp)
+            // Öneri çipleri: dokunma taslağı doldurur, mesaj göndermez (draft
+            // doluysa üstüne yazmaz, sonuna ekler — sharedText kuralıyla aynı).
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                suggestions().forEach { prompt ->
+                    AssistChip(
+                        onClick = { onUsePrompt(prompt) },
+                        label = {
+                            Text(
+                                prompt,
+                                color = HermesColors.TextSecondary,
+                                fontSize = 12.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Bolt,
+                                null,
+                                tint = HermesColors.Midground,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        },
+                    )
                 }
             }
 

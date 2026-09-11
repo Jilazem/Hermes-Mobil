@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug/V2 yapılandırması: yüklü Hermes'ten ayırt edilebilir ad. -->
+    <string name="app_name">Hermes V2</string>
+</resources>

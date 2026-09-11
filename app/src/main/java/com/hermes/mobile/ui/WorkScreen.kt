@@ -51,6 +51,11 @@ fun WorkScreen(
     onSubmitIntervention: (LiveSession, InterventionKind, String) -> Unit,
     onOpenPast: (HermesSession) -> Unit,
     onContinuePast: (HermesSession) -> Unit,
+    onRefreshSessions: () -> Unit = {},
+    onTogglePin: (String) -> Unit = {},
+    onSetArchived: (String, Boolean) -> Unit = { _, _ -> },
+    onRenamePast: (String, String) -> Unit = { _, _ -> },
+    onDeletePast: (String) -> Unit = {},
 ) {
     var showLive by remember { mutableStateOf(true) }
     val runningCount = live.sessions.size
@@ -101,6 +106,11 @@ fun WorkScreen(
                     state = state,
                     onOpen = onOpenPast,
                     onContinue = onContinuePast,
+                    onTogglePin = onTogglePin,
+                    onSetArchived = onSetArchived,
+                    onRename = onRenamePast,
+                    onDelete = onDeletePast,
+                    onRefreshSessions = onRefreshSessions,
                 )
             }
         }

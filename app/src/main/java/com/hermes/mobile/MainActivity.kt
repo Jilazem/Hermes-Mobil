@@ -20,6 +20,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -63,6 +64,7 @@ import com.hermes.mobile.ui.ProfileSheet
 import com.hermes.mobile.ui.TerminalScreen
 import com.hermes.mobile.ui.SessionDetailScreen
 import com.hermes.mobile.ui.SessionsScreen
+import com.hermes.mobile.ui.SessionRail
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
 import com.hermes.mobile.ui.theme.themeById
@@ -441,6 +443,9 @@ private fun HermesApp(
     var voiceSheet by remember { mutableStateOf(false) }
     var cameraFullScreen by remember { mutableStateOf(false) }
     var exitDialog by remember { mutableStateOf(false) }
+    /** Sohbet bir oturum listesinden mi açıldı? Geri tuşu o zaman çıkış
+     *  yerine listeye döndürmeli (kullanıcı isteği, 2026-09-11). */
+    var backToSessions by remember { mutableStateOf(false) }
 
     // Kısayol / asistan hareketi: hangi ekranda olursak olalım isteneni aç.
     val pendingAction by chatViewModel.pendingAction.collectAsStateWithLifecycle()
@@ -451,7 +456,7 @@ private fun HermesApp(
                 onNeedNotification()
                 voiceViewModel.startDriving()
             }
-            "new" -> { tab = Tab.Chat; chatViewModel.newSession() }
+            "new" -> { tab = Tab.Chat; backToSessions = false; chatViewModel.newSession() }
             "camera" -> { tab = Tab.Chat; if (onNeedCamera()) cameraFullScreen = true }
         }
         if (pendingAction != null) chatViewModel.pendingAction.value = null
@@ -469,12 +474,23 @@ private fun HermesApp(
     val modelsLoading by chatViewModel.modelsLoading.collectAsStateWithLifecycle()
 
     // Oturum detayı açıkken donanım geri tuşu listeye döner.
+    // (Sıra önemli: Compose'da son kayıtlı BackHandler kazanır — bu blok
+    // kök-çıkış handler'ından ÖNCE kayıtlı kalmalı. 2026-09-11)
+    BackHandler(enabled = cameraFullScreen) { cameraFullScreen = false }
+    BackHandler(enabled = panel.section != null) { panelViewModel.close() }
     BackHandler(enabled = detail != null) { viewModel.closeSession() }
+    // Bir listeden açılmış sohbet: geri, listeye dönsün — uygulamadan çıkmasın.
+    // (Kök-çıkış handler'ından SONRA kayıtlı olmalı: Compose'ta son kaydedilen
+    // enabled handler kazanır.)
+    BackHandler(enabled = backToSessions && detail == null && !cameraFullScreen && panel.section == null) {
+        backToSessions = false
+        tab = Tab.Work
+    }
     // Kök ekranda geri = çıkış; yanlışlıkla basınca sohbet kaybolmasın diye
     // (ayarlardan kapatılabilir) önce sorulur.
     BackHandler(
         enabled = settings.confirmExit && detail == null && !cameraFullScreen &&
-            panel.section == null && !voice.driving
+            panel.section == null && !voice.driving && !backToSessions
     ) { exitDialog = true }
 
     if (exitDialog) {
@@ -501,8 +517,8 @@ private fun HermesApp(
         )
     }
     // Tam ekran kipler geri tuşuyla kapansın — sistem davranışı bu.
-    BackHandler(enabled = cameraFullScreen) { cameraFullScreen = false }
-    BackHandler(enabled = panel.section != null) { panelViewModel.close() }
+    // (camera/panel handler'ları yukarıda kök-çıkıştan önce kayıtlı; burada
+    // tekrar kaydedilmemeli — son kaydeden kazanır kuralı çıkışı öne alırdı.)
 
     Scaffold(
         containerColor = HermesColors.Background,
@@ -573,7 +589,21 @@ private fun HermesApp(
                 SessionDetailScreen(detail, onBack = viewModel::closeSession)
             } else {
                 when (tab) {
-                    Tab.Chat -> ChatScreen(
+                    Tab.Chat -> Row(Modifier.fillMaxSize()) {
+                        // Oturum rayı: panel açmadan oturum değişimi (C-4).
+                        SessionRail(
+                            currentSessionId = chat.sessionId,
+                            live = live,
+                            onNewChat = { backToSessions = false; chatViewModel.newSession() },
+                            onSelect = { s ->
+                                chatViewModel.continueSession(
+                                    liveId = s.id,
+                                    dbId = s.dbId,
+                                    title = s.title.ifBlank { s.dbId },
+                                )
+                            },
+                        )
+                        ChatScreen(
                         sharedText = sharedText,
                         onSharedTextConsumed = chatViewModel::consumeSharedText,
                         state = chat,
@@ -602,7 +632,8 @@ private fun HermesApp(
                         },
                         activeProfileName = activeHermesProfile,
                         onOpenFile = onOpenFile,
-                    )
+                        )
+                    }
                     Tab.Work -> WorkScreen(
                         state = state,
                         live = live,
@@ -620,6 +651,7 @@ private fun HermesApp(
                                 dbId = session.dbId,
                                 title = session.title.ifBlank { session.dbId },
                             )
+                            backToSessions = true
                             tab = Tab.Chat
                         },
                         onCloseIntervention = liveViewModel::closeIntervention,
@@ -631,8 +663,14 @@ private fun HermesApp(
                                 dbId = s.id,
                                 title = s.title,
                             )
+                            backToSessions = true
                             tab = Tab.Chat
                         },
+                        onRefreshSessions = viewModel::refreshSessions,
+                        onTogglePin = viewModel::togglePin,
+                        onSetArchived = viewModel::setArchived,
+                        onRenamePast = viewModel::renameSession,
+                        onDeletePast = viewModel::deleteSession,
                     )
                     Tab.Panel -> PanelScreen(
                         state = panel,
