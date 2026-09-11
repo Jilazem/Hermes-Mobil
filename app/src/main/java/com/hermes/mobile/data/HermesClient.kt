@@ -3,6 +3,10 @@ package com.hermes.mobile.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.JsonElement
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -224,7 +228,28 @@ class HermesClient(private val profile: ServerProfile) {
     suspend fun logs(file: String = "agent", lines: Int = 200): LogResponse =
         json.decodeFromString(getRaw("/api/logs?file=$file&lines=$lines"))
 
-    suspend fun cronJobs(): List<CronJob> = json.decodeFromString(getRaw("/api/cron/jobs"))
+    /** Panel'in tam cron listesi (prompt, durum, zamanlama alanlarıyla). */
+    suspend fun cronJobsFull(): List<CronJob> = json.decodeFromString(getRaw("/api/cron/jobs"))
+
+    /**
+     * Cron işlerinin kimlik+isim özü — oturum isimlendirmesi için. Sunucu
+     * bu ucu ya düz dizi ya da `{"jobs":[...]}` nesnesi olarak döndürüyor;
+     * iki shape de tolere edilir, tek bozuk kayıt listenin tamamını düşürmez.
+     */
+    suspend fun cronJobs(): List<CronJobInfo> {
+        val element: JsonElement = Json.parseToJsonElement(getRaw("/api/cron/jobs"))
+        val arr = when (element) {
+            is JsonArray -> element
+            // Sarmalı nesne: "jobs" anahtarı esas, yedek anahtarlara da bakılır.
+            is JsonObject -> element["jobs"] as? JsonArray
+                ?: element["data"] as? JsonArray
+                ?: return emptyList()
+            else -> return emptyList()
+        }
+        return arr.mapNotNull {
+            runCatching { json.decodeFromJsonElement<CronJobInfo>(it) }.getOrNull()
+        }.filter { it.id.isNotBlank() }
+    }
 
     /**
      * Zamanlanmış işi duraklat / devam ettir.
