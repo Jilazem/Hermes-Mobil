@@ -18,7 +18,10 @@ import com.hermes.mobile.data.SessionFlagsStore
 import com.hermes.mobile.data.SettingsStore
 import com.hermes.mobile.data.SessionMessage
 import com.hermes.mobile.data.SystemStats
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +59,11 @@ data class AppState(
      * (detay: SessionFlagsStore).
      */
     val flags: SessionFlags = SessionFlags(),
+    /**
+     * Cron iş id → iş adı. `cron_<hash>_<tarih>` oturumlarını okunabilir
+     * isimlendirmek için; çekilemezse boş harita — liste yine çalışır.
+     */
+    val cronNames: Map<String, String> = emptyMap(),
     /** Pull-to-refresh spinner'ı — polling'in `loading`'ından ayrı bayrak. */
     val pullRefreshing: Boolean = false,
 ) {
@@ -307,15 +315,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (profile.token.isBlank()) return
         val client = HermesClient(profile)
         runCatching {
-            val status = client.status()
-            val stats = client.systemStats()
-            val sessions = client.sessions()
-            sessionCache.save(profile.id, sessions)
-            _state.update {
-                it.copy(
-                    status = status, stats = stats, sessions = sessions,
-                    error = null, sessionsCachedAt = null,
-                )
+            coroutineScope {
+                // Cron iş adları oturumlarla PARALEL çekilir; isimlendirme bir
+                // süs, veri değil — hata boş haritaya iner, liste yine çalışır.
+                val cronNamesDeferred: Deferred<Map<String, String>> = async {
+                    runCatching { client.cronJobs() }
+                        .getOrDefault(emptyList())
+                        .associate { it.id to it.name }
+                        .filterValues { it.isNotBlank() }
+                }
+                val status = client.status()
+                val stats = client.systemStats()
+                val sessions = client.sessions()
+                sessionCache.save(profile.id, sessions)
+                _state.update {
+                    it.copy(
+                        status = status, stats = stats, sessions = sessions,
+                        error = null, sessionsCachedAt = null,
+                        cronNames = cronNamesDeferred.await(),
+                    )
+                }
             }
         }.onFailure { e ->
             // Sunucuya ulasilamiyor: elde ne varsa goster. Onceden liste

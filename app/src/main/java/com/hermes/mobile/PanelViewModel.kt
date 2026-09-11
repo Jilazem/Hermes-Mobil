@@ -112,7 +112,7 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                         _state.update { it.copy(logLines = res.lines) }
                     }
                     PanelSection.Cron -> {
-                        val jobs = client.cronJobs()
+                        val jobs = client.cronJobsFull()
                         _state.update { it.copy(cron = jobs) }
                     }
                     PanelSection.Skills -> {
@@ -252,7 +252,7 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
             val client = HermesClient(p)
             runCatching {
                 if (job.enabled) client.cronPause(job.id) else client.cronResume(job.id)
-                _state.update { it.copy(cron = client.cronJobs()) }
+                _state.update { it.copy(cron = client.cronJobsFull()) }
             }.onFailure { e ->
                 _state.update { it.copy(error = e.message ?: "Cron güncellenemedi") }
             }
@@ -274,7 +274,7 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
             val client = HermesClient(p)
             runCatching {
                 client.cronSetSchedule(job.id, expr)
-                _state.update { it.copy(cron = client.cronJobs()) }
+                _state.update { it.copy(cron = client.cronJobsFull()) }
             }.onFailure { e ->
                 _state.update { it.copy(error = e.message ?: "Zamanlama değiştirilemedi") }
             }
