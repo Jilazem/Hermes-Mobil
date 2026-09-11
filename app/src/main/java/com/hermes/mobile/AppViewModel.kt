@@ -9,6 +9,8 @@ import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.HermesStatus
 import com.hermes.mobile.data.ProbeResult
+import com.hermes.mobile.data.SavedPrompt
+import com.hermes.mobile.data.SavedPromptsStore
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.ServerProfileStore
 import com.hermes.mobile.data.SessionFlags
@@ -69,6 +71,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Sabitle/arşivle/gizle/yeniden adlandır bayrakları — SessionCache kalıbı. */
     private val flagsStore = SessionFlagsStore(app)
+
+    /** Kayıtlı promptlar — SavedPromptsStore (SessionFlagsStore kalıbı, cihazda). */
+    private val promptsStore = SavedPromptsStore(app)
+
+    private val _savedPrompts = MutableStateFlow<List<SavedPrompt>>(emptyList())
+    val savedPrompts: StateFlow<List<SavedPrompt>> = _savedPrompts.asStateFlow()
+
+    init {
+        // Depo küçük; açılışta bir kez diskten okunur, sonrası mutasyonlarla gelir.
+        _savedPrompts.value = promptsStore.yukle()
+    }
+
+    fun kaydetPrompt(etiket: String, metin: String): SavedPrompt {
+        val p = promptsStore.kaydet(etiket, metin)
+        _savedPrompts.value = promptsStore.yukle()
+        return p
+    }
+
+    fun guncellePrompt(id: String, etiket: String, metin: String) {
+        promptsStore.guncelle(id, etiket, metin)
+        _savedPrompts.value = promptsStore.yukle()
+    }
+
+    fun silPrompt(id: String) {
+        promptsStore.sil(id)
+        _savedPrompts.value = promptsStore.yukle()
+    }
 
     private val store = ServerProfileStore(app)
 
