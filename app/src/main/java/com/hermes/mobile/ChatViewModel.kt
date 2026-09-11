@@ -16,6 +16,7 @@ import com.hermes.mobile.data.ModelProvider
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.VoiceController
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -256,7 +257,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         eventJob = viewModelScope.launch {
-            gw.events.collect { event -> handleEvent(event.type, event.text, event.toolName) }
+            gw.events.collect { event ->
+                handleEvent(event.type, event.text, event.toolName, event.sessionId)
+            }
         }
         gw.connect()
     }
@@ -439,6 +442,65 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         )
                     }
                 }
+        }
+    }
+
+    /**
+     * Bir promptu AI ile iyileştirir — **aktif sohbete düşmeyen** görünmez
+     * tek kullanımlık oturumda.
+     *
+     * Akış: `session.create` (kendi sid'miz) → tek `prompt.submit` →
+     * `message.complete` bekle (30 sn) → kimliği görünmez listeden çıkar.
+     *
+     * Aktif sohbetin akışından iki yönde yalıtılır:
+     *  · `invisibleSessions` — o oturumun olayları `handleEvent`'e giremez;
+     *  · `_state.sessionId`/`onSessionChanged` hiçe dokunmaz, UI listesi
+     *    (canlı oturumlar) açılan oturumu aktif saymaz.
+     *
+     * Hata/zaman aşımında exception fırlatır; çağıran sheet "AI şu anda
+     * kullanılamıyor" gösterir — akış kilitlenmez, metin olduğu gibi
+     * kaydedilebilir.
+     */
+    suspend fun improvePrompt(metin: String): String {
+        val gw = client ?: throw IllegalStateException(tr("Bağlantı yok", "No connection"))
+        val istek = tr(
+            "Şu komutu net, eksiksiz ve tekrar kullanılabilir hale getir. " +
+                "Sadece düzeltilmiş metni dön, açıklama yazma:",
+            "Rewrite the following prompt to be clear, complete and reusable. " +
+                "Return only the corrected text, no explanation:",
+        ) + "\n\n" + metin
+
+        val sid = gw.createSession(activeProfile)
+        invisibleSessions += sid
+
+        val birikim = StringBuilder()
+        val tamam = CompletableDeferred<String>()
+        val job = viewModelScope.launch {
+            gw.events.collect { e ->
+                if (e.sessionId != sid) return@collect
+                when (e.type) {
+                    "message.delta" -> birikim.append(e.text.orEmpty())
+                    "message.complete" ->
+                        tamam.complete(birikim.toString().ifBlank { e.text.orEmpty() })
+                    "error" ->
+                        tamam.completeExceptionally(
+                            IllegalStateException(e.text ?: tr("AI hatası", "AI error")),
+                        )
+                }
+            }
+        }
+        try {
+            gw.submitPrompt(sid, istek)
+            val cevap = withTimeoutOrNull(30_000) { tamam.await() }
+                ?: run {
+                    // Üretimi sunucuda boşuna sürmesin; sonra hata metniyle dön.
+                    runCatching { gw.interrupt(sid) }
+                    throw IllegalStateException(tr("AI yanıt vermedi", "AI did not reply"))
+                }
+            return cevap.trim()
+        } finally {
+            job.cancel()
+            invisibleSessions -= sid
         }
     }
 
@@ -1016,7 +1078,22 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun handleEvent(type: String, text: String?, toolName: String?) {
+    /**
+     * Bir olayın **görünmez** oturuma ait olup olmadığını söyler.
+     *
+     * [improvePrompt] kendi session_id'siyle çalışır; o oturumun
+     * message.delta / message.complete olayları aktif sohbetin akışına
+     * DÜŞMEMELİ — yoksa kullanıcı kendi mesajının altında AI iyileştirme
+     * metnini görürdü. [invisibleSessions] görünmez oturumların kimliklerini
+     * tutar; bu kümedeki bir oturumdan gelen olay atlanır.
+     */
+    private val invisibleSessions = mutableSetOf<String>()
+
+    private fun isFromInvisibleSession(sessionId: String?): Boolean =
+        sessionId != null && sessionId in invisibleSessions
+
+    private fun handleEvent(type: String, text: String?, toolName: String?, sessionId: String? = null) {
+        if (isFromInvisibleSession(sessionId)) return
         when (type) {
             "message.start" -> {
                 streamingKey = nextKey("a")

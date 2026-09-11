@@ -472,6 +472,7 @@ private fun HermesApp(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val providers by chatViewModel.modelProviders.collectAsStateWithLifecycle()
     val modelsLoading by chatViewModel.modelsLoading.collectAsStateWithLifecycle()
+    val savedPrompts by viewModel.savedPrompts.collectAsStateWithLifecycle()
 
     // Oturum detayı açıkken donanım geri tuşu listeye döner.
     // (Sıra önemli: Compose'da son kayıtlı BackHandler kazanır — bu blok
@@ -632,6 +633,11 @@ private fun HermesApp(
                         },
                         activeProfileName = activeHermesProfile,
                         onOpenFile = onOpenFile,
+                        savedPrompts = savedPrompts,
+                        onSavePrompt = viewModel::kaydetPrompt,
+                        onUpdatePrompt = viewModel::guncellePrompt,
+                        onDeletePrompt = viewModel::silPrompt,
+                        onImprovePrompt = chatViewModel::improvePrompt,
                         )
                     }
                     Tab.Work -> WorkScreen(

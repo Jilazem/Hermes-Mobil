@@ -54,6 +54,7 @@ import com.hermes.mobile.ChatState
 import com.hermes.mobile.ToolState
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.PhoneIntent
+import com.hermes.mobile.data.SavedPrompt
 import com.hermes.mobile.data.VoiceController
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
@@ -80,7 +81,18 @@ fun ChatScreen(
     /** Başka uygulamadan paylaşılan metin; geldiğinde taslağa eklenir. */
     sharedText: String? = null,
     onSharedTextConsumed: () -> Unit = {},
+    /** Kayıtlı promptlar — boşsa boş-ekranda sabit öneriler gösterilir. */
+    savedPrompts: List<SavedPrompt> = emptyList(),
+    /** Sheet'e bağlanan CRUD + AI iyileştirme (AppViewModel / ChatViewModel). */
+    onSavePrompt: (etiket: String, metin: String) -> Unit = { _, _ -> },
+    onUpdatePrompt: (id: String, etiket: String, metin: String) -> Unit = { _, _, _ -> },
+    onDeletePrompt: (id: String) -> Unit = {},
+    onImprovePrompt: suspend (metin: String) -> String = { it },
 ) {
+    // Sheet burada açılıyor: taslak `draft` bu kompozablda, "satıra dokun →
+    // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
+    var promptsSheet by remember { mutableStateOf(false) }
+
     var draft by remember { mutableStateOf("") }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
 
@@ -110,6 +122,8 @@ fun ChatScreen(
                     onUsePrompt = { prompt ->
                         draft = if (draft.isBlank()) prompt else draft + "\n" + prompt
                     },
+                    savedPrompts = savedPrompts,
+                    onOpenPrompts = { promptsSheet = true },
                 )
             } else {
                 // Ardışık araç çağrıları tek satıra katlanır; ham liste
@@ -176,6 +190,21 @@ fun ChatScreen(
             onOpenSnippets = onOpenCommands,
             onDictate = onDictate,
             onRemoveAttachment = onRemoveAttachment,
+        )
+    }
+
+    if (promptsSheet) {
+        PromptsSheet(
+            prompts = savedPrompts,
+            onSave = onSavePrompt,
+            onUpdate = onUpdatePrompt,
+            onDelete = onDeletePrompt,
+            // Chip akışıyla aynı kural: draft doluysa sonuna eklenir.
+            onUsePrompt = { prompt ->
+                draft = if (draft.isBlank()) prompt else draft + "\n" + prompt
+            },
+            onImprove = onImprovePrompt,
+            onDismiss = { promptsSheet = false },
         )
     }
 }
@@ -327,6 +356,8 @@ private fun EmptyChatHint(
     connection: ConnectionState,
     onSuggestion: (String) -> Unit,
     onUsePrompt: (String) -> Unit,
+    savedPrompts: List<SavedPrompt>,
+    onOpenPrompts: () -> Unit,
 ) {
     Column(
         modifier.padding(horizontal = 24.dp),
@@ -347,17 +378,22 @@ private fun EmptyChatHint(
             Spacer(Modifier.height(18.dp))
             // Öneri çipleri: dokunma taslağı doldurur, mesaj göndermez (draft
             // doluysa üstüne yazmaz, sonuna ekler — sharedText kuralıyla aynı).
+            // Kayıtlı promptlar varsa onlar gösterilir; liste boşsa sabit
+            // öneriler kalır. Sondaki "+", prompt sheet'ini açar.
+            val chips: List<Pair<String, String>> =
+                if (savedPrompts.isNotEmpty()) savedPrompts.map { it.label to it.text }
+                else suggestions().map { it to it }
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                suggestions().forEach { prompt ->
+                chips.forEach { (label, body) ->
                     AssistChip(
-                        onClick = { onUsePrompt(prompt) },
+                        onClick = { onUsePrompt(body) },
                         label = {
                             Text(
-                                prompt,
+                                label,
                                 color = HermesColors.TextSecondary,
                                 fontSize = 12.sp,
                                 maxLines = 2,
@@ -374,6 +410,24 @@ private fun EmptyChatHint(
                         },
                     )
                 }
+                AssistChip(
+                    onClick = onOpenPrompts,
+                    label = {
+                        Text(
+                            S.t2("Promptlar", "Prompts"),
+                            color = HermesColors.Midground,
+                            fontSize = 12.sp,
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Add,
+                            null,
+                            tint = HermesColors.Midground,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    },
+                )
             }
 
             // Telefon eylemleri cihazda çalışıyor, sunucuya hiç gitmiyor —
