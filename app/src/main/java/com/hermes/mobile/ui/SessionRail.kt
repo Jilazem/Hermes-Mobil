@@ -55,7 +55,14 @@ fun SessionRail(
     onSelect: (LiveSession) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val working = live.sessions.filter { it.isWorking || it.isWaiting || it.isStarting }.take(6)
+    // Ray ÇALIŞAN oturumları gösterir; bitmişleri listelemez. Tek istisna:
+    // kullanıcı şu an bir idle oturuma bağlıysa (ChatViewModel'in tuttuğu
+    // süreç içi id ya da dbId eşleşmesi) o hücre rayda kalmalı — yoksa aktif
+    // konuşmanın kabarcığı bir anda kayboluyor.
+    val shown = live.sessions.filter { s ->
+        s.isWorking || s.isWaiting || s.isStarting ||
+            (currentSessionId != null && (currentSessionId == s.id || currentSessionId == s.dbId))
+    }.take(6)
     Column(
         modifier = modifier
             .width(48.dp)
@@ -72,24 +79,38 @@ fun SessionRail(
             contentDescription = null,
             onClick = onNewChat,
         )
-        if (working.isNotEmpty()) {
+        if (shown.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .padding(vertical = 2.dp)
                     .size(width = 20.dp, height = 1.dp)
                     .background(MaterialTheme.colorScheme.outline),
             )
-            working.forEach { s ->
+            shown.forEach { s ->
                 RailItem(
-                    selected = currentSessionId == s.dbId,
+                    // ChatViewModel sessionId olarak gateway'in SÜREÇ İÇİ id'sini
+                    // tutuyor; dbId (session key) ayrı. İkisine göre de kıyasla —
+                    // tek kıyas yanıltıcı seçime yol açıyordu.
+                    selected = currentSessionId != null &&
+                        (currentSessionId == s.id || currentSessionId == s.dbId),
                     working = s.isWorking,
-                    label = s.title.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                    label = railLabel(s.title),
                     contentDescription = s.title,
                     onClick = { onSelect(s) },
                 )
             }
         }
     }
+}
+
+/** Ray etiketi: başlığın ilk İKİ karakteri, büyük harf. Boş başlık → "?".
+ *  `String.uppercase()` cihazın yerel ayarından etkilenip Türkçe 'i' tuzağına
+ *  düşebiliyor; karakter bazlı `Char.uppercaseChar()` (Character.uppercaseChar)
+ *  yerel ayardan bağımsız tek anlamlı eşlemeyi verir. */
+internal fun railLabel(title: String): String {
+    val trimmed = title.trim()
+    if (trimmed.isEmpty()) return "?"
+    return trimmed.take(2).map { it.uppercaseChar() }.joinToString("")
 }
 
 /** Ray hücresi: 48dp dokunma alanı (spec erişilebilirlik asgari), 40dp görsel
