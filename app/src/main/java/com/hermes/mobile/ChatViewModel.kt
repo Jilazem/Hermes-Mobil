@@ -220,7 +220,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             )
             return
         }
-        if (profile.id == profileId && client != null) return
+        // Yalnız id karşılaştırmak yetmiyordu: kullanıcı tokeni/adresi
+        // sonradan düzelttiğinde id aynı kalır ve bu ViewModel eski tokenli
+        // eski soketle kalırdı — "Pano bağlı, Sohbet Token reddedildi" işte
+        // böyle üretiliyordu. LiveVoiceViewModel'de aynı tuzak zaten düzeltildi.
+        val sameProfile = profile.id == profileId && client != null &&
+            profile.token == this.profile?.token &&
+            profile.baseUrl == this.profile?.baseUrl &&
+            profile.remoteUrl == this.profile?.remoteUrl &&
+            profile.name == this.profile?.name
+        if (sameProfile) return
 
         teardown()
         profileId = profile.id
