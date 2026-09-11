@@ -608,6 +608,7 @@ private fun HermesApp(
                         sharedText = sharedText,
                         onSharedTextConsumed = chatViewModel::consumeSharedText,
                         state = chat,
+                        speed = chatViewModel.speed,
                         onSend = chatViewModel::send,
                         onNewSession = chatViewModel::newSession,
                         onStop = chatViewModel::stopGeneration,

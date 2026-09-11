@@ -1,6 +1,14 @@
 package com.hermes.mobile.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,12 +54,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hermes.mobile.ChatItem
 import com.hermes.mobile.ChatState
+import com.hermes.mobile.SpeedFormat
+import com.hermes.mobile.StreamMeter
 import com.hermes.mobile.ToolState
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.PhoneIntent
@@ -58,6 +72,8 @@ import com.hermes.mobile.data.SavedPrompt
 import com.hermes.mobile.data.VoiceController
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import com.hermes.mobile.data.DemoMask
 
 @Composable
@@ -88,6 +104,8 @@ fun ChatScreen(
     onUpdatePrompt: (id: String, etiket: String, metin: String) -> Unit = { _, _, _ -> },
     onDeletePrompt: (id: String) -> Unit = {},
     onImprovePrompt: suspend (metin: String) -> String = { it },
+    /** Yazma hızı göstergesi — ayrı StateFlow; ana `state` recomposition'ını tetiklemez. */
+    speed: StateFlow<StreamMeter.Snapshot?> = MutableStateFlow(null),
 ) {
     // Sheet burada açılıyor: taslak `draft` bu kompozablda, "satıra dokun →
     // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
@@ -163,6 +181,11 @@ fun ChatScreen(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 3.dp),
             )
         }
+
+        // Yazma hızı: tek satır + akan shimmer. message.complete'te değerler
+        // donar; satır 600 ms sönüşle kalkar. Akış AYNI sayfada toplanıyor ama
+        // collect SpeedRow içinde: her pencere yalnız bu satırı yeniden derler.
+        SpeedRow(speed)
 
         ChatComposer(
             draft = draft,
@@ -684,6 +707,89 @@ private fun ApprovalCard(item: ChatItem.Approval, onApproval: (String, Boolean) 
                     Text("Reddet", color = HermesColors.Danger, fontSize = 13.sp)
                 }
             }
+        }
+    }
+}
+
+/**
+ * Yazma hızı satırı: giriş alanının üstünde tek satır —
+ * `≈24 t/s · 1,2k token · 0:14` — altında 2dp akan shimmer çizgi.
+ *
+ * Ucuz tutuldu: StateFlow yalnız bu kompozablda toplanıyor, yani her 500 ms
+ * pencere yalnız bu satırı yeniden derler; sohbet listesi etkilenmez. Metin
+ * `Text` olarak tek defada yazılıyor (anlamsız parçalı recomposition yok).
+ * Shimmer: `rememberInfiniteTransition` + `drawWithContent` yatay gradyan —
+ * tek draw op, gradient brush `remember`'lanıyor.
+ */
+@Composable
+private fun SpeedRow(speed: StateFlow<StreamMeter.Snapshot?>) {
+    val snap by speed.collectAsState()
+    val shown = snap?.takeIf { it.active }
+    val tr = S.lang == Lang.TR
+    val sep = if (tr) ',' else '.'
+    val line = shown?.let {
+        val rate = SpeedFormat.rate(it.tokensPerSecond, sep)
+        val tokens = SpeedFormat.compactTokens(it.tokens, sep)
+        val clock = SpeedFormat.clock(it.elapsedMs)
+        S.t2("≈$rate t/s · $tokens token · $clock", "≈$rate t/s · $tokens tokens · $clock")
+    }.orEmpty()
+
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(shown?.finished) {
+        // finished=false iken akıyor; true olduğu an satır kalkmaya başlar —
+        // 600 ms'lik fadeOut (exit animasyonu) sönüşü kendisi yapar.
+        visible = shown != null && shown.active && !shown.finished
+    }
+
+    AnimatedVisibility(
+        visible = visible && line.isNotBlank(),
+        enter = fadeIn(tween(120)),
+        exit = fadeOut(tween(600)),
+    ) {
+        // Donmuş (finished) anda shimmer dursun: çizgi tek tona döner.
+        val frozen = snap?.finished == true
+        val base = HermesColors.BorderStrong
+        val hot = HermesColors.Midground
+        val transition = rememberInfiniteTransition(label = "speed-shimmer")
+        val shift by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = if (frozen) 0f else 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1100, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "speed-shimmer-shift",
+        )
+        Column {
+            Text(
+                line,
+                color = HermesColors.TextFaint,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+            Spacer(Modifier.height(3.dp))
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .drawWithContent {
+                        // Ucuz: tek yatay gradyan, kayan parlak bant.
+                        val mid = (0.3f + shift * 0.4f).coerceIn(0.05f, 0.95f)
+                        drawRect(
+                            brush = Brush.linearGradient(
+                                0f to base,
+                                mid to hot,
+                                1f to base,
+                                start = Offset(shift * size.width - size.width * 0.25f, 0f),
+                                end = Offset(shift * size.width + size.width * 0.75f, 0f),
+                            ),
+                        )
+                    }
+            )
         }
     }
 }
