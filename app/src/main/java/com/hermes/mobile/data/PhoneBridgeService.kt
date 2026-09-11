@@ -45,6 +45,9 @@ import java.util.concurrent.TimeUnit
 class PhoneBridgeService : Service() {
 
     private var socket: WebSocket? = null
+    /** Bağlı canlı soketin kim olduğu. Ölü/zombi soketlerin yeniden bağlanma
+     *  savaşını önlemek için her kapanışta bu alanla karşılaştırılıyor. */
+    private var live = false
     private var closedByUser = false
     private var attempt = 0
 
@@ -106,11 +109,18 @@ class PhoneBridgeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             closedByUser = true
+            live = false
             socket?.close(1000, "stopped")
+            socket = null
             stopSelf()
             return START_NOT_STICKY
         }
-        connect()
+        // Idempotent olmalı: MainActivity her recomposition'da start() çağırıyor
+        // (ayar state'i her değiştiğinde). Koşulsuz connect() ikinci bir WebSocket
+        // açar, sunucu tek bağlantı politikasıyla eskisini düşürür, ölü soketin
+        // onClosed'u da ayrı bir yeniden bağlanma döngüsü başlatırdı — telefon
+        // 2026-09-08'de 30 dakikada 533 kez böyle kendini yeniden bağladı.
+        if (!live && socket == null) connect()
         // Süreç öldürülürse yeniden başlasın: kanalın açık kalması bu
         // özelliğin tamamı.
         return START_STICKY
@@ -133,6 +143,7 @@ class PhoneBridgeService : Service() {
             return
         }
         DiagLog.i("bridge", "connecting to ${DiagLog.redact(url)}")
+        live = false
         socket = http.newWebSocket(Request.Builder().url(url).build(), Listener())
     }
 
@@ -172,6 +183,15 @@ class PhoneBridgeService : Service() {
     private inner class Listener : WebSocketListener() {
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            // Yarışan bir connect() bu soketi bizden sonra açtıysa bu "zombi"dir:
+            // hello göndermek sunucuda ikinci bağlantı savaşı başlatır. Sessizce
+            // kapat, sahibi olan soket yoluna devam etsin.
+            if (webSocket !== socket) {
+                DiagLog.d("bridge", "superseded socket opened, closing quietly")
+                webSocket.cancel()
+                return
+            }
+            live = true
             attempt = 0
             val list = advertised()
             DiagLog.i("bridge", "connected, advertising ${list.size} tools")
@@ -218,11 +238,20 @@ class PhoneBridgeService : Service() {
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             DiagLog.w("bridge", "closed code=$code reason=${reason.ifBlank { "-" }}")
+            // Yalnızca CANLI soket kapanırsa yeniden bağlan: sunucunun "replaced"
+            // ile düşürdüğü eski soketin kapanışı yeni bir döngü başlatırsa iki
+            // zombi sonsuza dek savaşıyor (2026-09-08 fırtınasının kök nedeni).
+            if (webSocket !== socket) return
+            live = false
+            socket = null
             scheduleReconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             DiagLog.e("bridge", "failed http=${response?.code ?: "-"}", t)
+            if (webSocket !== socket) return
+            live = false
+            socket = null
             scheduleReconnect()
         }
     }

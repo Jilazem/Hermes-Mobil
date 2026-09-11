@@ -11,6 +11,8 @@ import com.hermes.mobile.data.HermesStatus
 import com.hermes.mobile.data.ProbeResult
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.ServerProfileStore
+import com.hermes.mobile.data.SessionFlags
+import com.hermes.mobile.data.SessionFlagsStore
 import com.hermes.mobile.data.SettingsStore
 import com.hermes.mobile.data.SessionMessage
 import com.hermes.mobile.data.SystemStats
@@ -46,6 +48,14 @@ data class AppState(
     val sessionsCachedAt: Long? = null,
     val loading: Boolean = false,
     val error: String? = null,
+    /**
+     * Sabitle / arşivle / sil / yeniden adlandır bayrakları. Sunucuda mutation
+     * ucu olmadığı için istemci-taraflı; polling listeyi ezse de bunlar kalır
+     * (detay: SessionFlagsStore).
+     */
+    val flags: SessionFlags = SessionFlags(),
+    /** Pull-to-refresh spinner'ı — polling'in `loading`'ından ayrı bayrak. */
+    val pullRefreshing: Boolean = false,
 ) {
     val active: ServerProfile? get() = profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
     val activeProbe: ProbeResult? get() = active?.let { probes[it.id] }
@@ -56,6 +66,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Cevrimdisi oturum listesi -- ayrintisi SessionCache'te. */
     private val sessionCache = SessionCache(app)
+
+    /** Sabitle/arşivle/gizle/yeniden adlandır bayrakları — SessionCache kalıbı. */
+    private val flagsStore = SessionFlagsStore(app)
 
     private val store = ServerProfileStore(app)
 
@@ -172,7 +185,42 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun reloadProfiles() {
         _state.update { it.copy(profiles = store.list(), activeId = store.activeId()) }
+        loadFlags()
     }
+
+    /** Aktif profilin bayraklarını diskten geri yükler (profil değişince sıfırlanmaz). */
+    private fun loadFlags() {
+        val id = _state.value.active?.id ?: return
+        _state.update { it.copy(flags = flagsStore.load(id)) }
+    }
+
+    /** Bir bayrak mutasyonunu diske yazar + state'e işler. */
+    private fun mutateFlags(transform: (SessionFlags) -> SessionFlags) {
+        val profileId = _state.value.active?.id ?: return
+        val yeni = transform(_state.value.flags)
+        flagsStore.save(profileId, yeni)
+        _state.update { it.copy(flags = yeni) }
+    }
+
+    fun togglePin(id: String) = mutateFlags { f ->
+        f.copy(pinned = if (id in f.pinned) f.pinned - id else f.pinned + id)
+    }
+
+    fun setArchived(id: String, archived: Boolean) = mutateFlags { f ->
+        f.copy(archived = if (archived) f.archived + id else f.archived - id)
+    }
+
+    fun renameSession(id: String, title: String) {
+        val temiz = title.trim().take(60)
+        if (temiz.isEmpty()) return
+        mutateFlags { f -> f.copy(renames = f.renames + (id to temiz)) }
+    }
+
+    /** Silme = yerel gizleme (sunucu DELETE ucu yok); bkz. SessionFlagsStore. */
+    fun deleteSession(id: String) = mutateFlags { f ->
+        f.copy(hidden = f.hidden + id, pinned = f.pinned - id, archived = f.archived - id)
+    }
+
 
     fun selectProfile(id: String) {
         store.setActiveId(id)
@@ -207,6 +255,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             _state.value.profiles.forEach { probe(it) }
             loadActiveDetails()
             _state.update { it.copy(loading = false) }
+        }
+    }
+
+    /**
+     * Pull-to-refresh: hafif yenileme. refreshAll tüm profilleri probe eder ve
+     * `loading`'i yakar; çekiştirme yalnız aktif profilin detayını çeker.
+     * Spinner bayrağı polling'den ayrı (`pullRefreshing`) — yoksa 15 sn'lik
+     * polling her turda spinner tetikler gibi karışır.
+     */
+    fun refreshSessions() {
+        if (_state.value.pullRefreshing) return
+        viewModelScope.launch {
+            _state.update { it.copy(pullRefreshing = true) }
+            loadActiveDetails()
+            _state.update { it.copy(pullRefreshing = false) }
         }
     }
 
