@@ -147,6 +147,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _gateway = MutableStateFlow<GatewayWsClient?>(null)
     val gateway: StateFlow<GatewayWsClient?> = _gateway.asStateFlow()
 
+    /**
+     * Yazma hızı göstergesi — ana `state`'ten AYRI yayın: her delta penceresi
+     * tüm sohbet listesini yeniden derlemesin diye sürat StateFlow'u ayrı akıyor;
+     * sadece hız satırı onu topluyor.
+     */
+    private val _speed = MutableStateFlow<StreamMeter.Snapshot?>(null)
+    val speed: StateFlow<StreamMeter.Snapshot?> = _speed.asStateFlow()
+    private val streamMeter = StreamMeter()
+
     private var profile: ServerProfile? = null
     private var profileId: String? = null
     private var eventJob: Job? = null
@@ -282,6 +291,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         profileId = null
         streamingKey = null
         thinkingKey = null
+        streamMeter.reset()
+        _speed.value = null
     }
 
     private fun nextKey(prefix: String) = "$prefix-${seq++}"
@@ -629,6 +640,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { gw.interrupt(sid) }
             streamingKey = null
+            streamMeter.reset()
+            _speed.value = null
             _state.update { st ->
                 st.copy(
                     agentBusy = false,
@@ -970,6 +983,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { ChatState(connection = it.connection) }
         streamingKey = null
         thinkingKey = null
+        streamMeter.reset()
+        _speed.value = null
         onSessionChanged?.invoke("")
     }
 
@@ -989,6 +1004,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         streamingKey = null
         thinkingKey = null
+        streamMeter.reset()
+        _speed.value = null
         _state.update {
             ChatState(
                 connection = it.connection,
@@ -1105,6 +1122,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         if (isFromInvisibleSession(sessionId)) return
         when (type) {
             "message.start" -> {
+                // Yeni yanıt: saat sıfırdan başlar, göstergenin donmuş hali düşer.
+                streamMeter.reset()
+                _speed.value = null
                 streamingKey = nextKey("a")
                 _state.update {
                     it.copy(
@@ -1117,6 +1137,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             "message.delta" -> appendToStream(text.orEmpty())
 
             "message.complete" -> {
+                // Hız göstergesi burada DONAR: son anlık değer ekranda kalır,
+                // UI 600 ms sönüşle kaldırır (ChatScreen tarafında).
+                val frozenSpeed = streamMeter.finish(System.nanoTime())
+                if (frozenSpeed.active) _speed.value = frozenSpeed
                 val key = streamingKey
                 streamingKey = null
                 thinkingKey = null
@@ -1167,6 +1191,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
             "error" -> {
                 streamingKey = null
+                // Akış hatayla kesildi: ölçer donsun, UI sönüşle kaldırsın.
+                streamMeter.reset()
+                _speed.value = null
                 _state.update {
                     it.copy(
                         items = it.items + ChatItem.Notice(
@@ -1206,6 +1233,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun appendToStream(chunk: String) {
         if (chunk.isEmpty()) return
+        streamMeter.delta(chunk, System.nanoTime())?.let { _speed.value = it }
+
         val key = streamingKey ?: nextKey("a").also { newKey ->
             streamingKey = newKey
             _state.update {
