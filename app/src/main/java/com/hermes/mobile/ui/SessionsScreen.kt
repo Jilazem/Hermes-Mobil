@@ -66,6 +66,54 @@ const val GROUPING_MIN = 3
 fun displayTitle(session: HermesSession, flags: SessionFlags): String =
     flags.renames[session.id] ?: session.title
 
+/** `cron_<12 hanelik hex iş id>_<tarih>_<saat>` oturum kalıbı. */
+private val CRON_SESSION_ID = Regex("""^cron_([0-9a-f]{12})_""")
+
+/**
+ * `cron_2e4ea303c123_20260911_221601` → "11.09 22:16" gibi okunabilir bir
+ * zaman damgası tabanı; kalıp tanınmazsa null. Kullanıcı `cron_...` ham
+ * id'sini değil, işin adıyla birlikte kısa tarih/saat görsün diye.
+ */
+private fun cronStampBase(id: String): String? {
+    val parts = id.split("_")
+    // cron + hash + yyyyMMdd + HHmmss beklenir.
+    if (parts.size < 4) return null
+    val date = parts.getOrNull(2) ?: return null
+    val time = parts.getOrNull(3) ?: return null
+    if (date.length != 8 || time.length != 6) return null
+    if (!date.all { it.isDigit() } || !time.all { it.isDigit() }) return null
+    return "${date.takeLast(2)}.${date.substring(4, 6)} ${time.take(2)}:${time.substring(2, 4)}"
+}
+
+/**
+ * Okunabilir oturum başlığı — öncelik sırası:
+ * 1. kullanıcının yerel yeniden adlandırması (`flags.renames`),
+ * 2. sunucudan gelen başlık (Telegram `display_name` zaten `title`a akar),
+ * 3. `cron_<hash>_<zaman>` id'si + bilinen cron iş adı → "İş Adı · gg.AA ss:dd",
+ * 4. kaynak etiketi: cron → "Zamanlanmış görev", desktop → "Masaüstü",
+ * 5. hiçbir şey yoksa mevcut `title` (eski davranış, gerileme yok).
+ * Saf fonksiyon — Compose'suz test edilebilir.
+ */
+fun readableTitle(
+    session: HermesSession,
+    flags: SessionFlags,
+    cronNames: Map<String, String>,
+): String {
+    flags.renames[session.id]?.takeIf { it.isNotBlank() }?.let { return it }
+    session.title.takeIf { it.isNotBlank() && it != session.id }?.let { return it }
+    CRON_SESSION_ID.find(session.id)?.groupValues?.get(1)
+        ?.let { hash -> cronNames[hash]?.takeIf { it.isNotBlank() } }
+        ?.let { jobName ->
+            val stamp = cronStampBase(session.id)
+            return if (stamp != null) "$jobName · $stamp" else jobName
+        }
+    return when (session.source) {
+        "cron" -> "Zamanlanmış görev"
+        "desktop" -> "Masaüstü"
+        else -> session.title
+    }
+}
+
 /**
  * Görünecek oturumlar: gizlenenler (silinenler) çıkar, arşiv gösterim tercihi
  * uygulanır; sabitlenenler en üste, sonra başlangıç zamanına göre eskiler.
@@ -157,6 +205,7 @@ fun SessionsScreen(
     onRefreshSessions: () -> Unit = {},
 ) {
     val flags = state.flags
+    val cronNames = state.cronNames
     var query by rememberSaveable { mutableStateOf("") }
     var showArchived by remember { mutableStateOf(false) }
     var menuSession by remember { mutableStateOf<HermesSession?>(null) }
@@ -169,10 +218,10 @@ fun SessionsScreen(
     val base = remember(state.sessions, flags, showArchived) {
         visibleSessions(state.sessions, flags, showArchived)
     }
-    val shown = remember(base, query) {
+    val shown = remember(base, query, cronNames) {
         val q = query.trim()
         if (q.isBlank()) base else base.filter {
-            displayTitle(it, flags).contains(q, true) ||
+            readableTitle(it, flags, cronNames).contains(q, true) ||
                 (it.model ?: "").contains(q, true) ||
                 (it.source ?: "").contains(q, true)
         }
@@ -270,7 +319,7 @@ fun SessionsScreen(
                             val session = entry.session
                             SessionRow(
                                 session = session,
-                                title = displayTitle(session, flags),
+                                title = readableTitle(session, flags, cronNames),
                                 pinned = session.id in flags.pinned,
                                 archived = session.id in flags.archived,
                                 menuOpen = menuSession?.id == session.id,
@@ -322,7 +371,7 @@ fun SessionsScreen(
 
     // Yeniden adlandırma — kayıt flags.renames'e gider, sunucuya yazılmaz.
     renameTarget?.let { target ->
-        var text by remember(target) { mutableStateOf(displayTitle(target, flags)) }
+        var text by remember(target) { mutableStateOf(readableTitle(target, flags, cronNames)) }
         AlertDialog(
             onDismissRequest = { renameTarget = null },
             containerColor = HermesColors.Surface,
@@ -370,7 +419,7 @@ fun SessionsScreen(
             onDismissRequest = { deleteTarget = null },
             containerColor = HermesColors.Surface,
             title = {
-                Text(displayTitle(target, flags), style = MonoTextStyle, color = HermesColors.TextPrimary, fontSize = 13.sp)
+                Text(readableTitle(target, flags, cronNames), style = MonoTextStyle, color = HermesColors.TextPrimary, fontSize = 13.sp)
             },
             text = {
                 Text(

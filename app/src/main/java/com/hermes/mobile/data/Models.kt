@@ -366,6 +366,17 @@ data class CronJob(
     val model: String? = null,
 )
 
+/**
+ * Cron işlerinin YALNIZ kimlik+isim özü. Oturumları okunabilir
+ * isimlendirmek için tam [CronJob] çekmeye gerek yok; `HermesClient.cronJobs`
+ * sunucunun iki yanıt shape'ini (dizi ya da `{"jobs":[...]}`) tolere eder.
+ */
+@Serializable
+data class CronJobInfo(
+    val id: String = "",
+    val name: String = "",
+)
+
 @Serializable
 data class SkillEntry(
     val name: String = "",
