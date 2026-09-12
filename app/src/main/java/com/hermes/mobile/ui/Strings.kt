@@ -33,6 +33,7 @@ object S {
     val tabChat: String @Composable get() = t("Sohbet", "Chat")
     val tabSessions: String @Composable get() = t("Oturumlar", "Sessions")
     val tabPanel: String @Composable get() = t("Pano", "Dashboard")
+    val tabArena: String @Composable get() = t("Arena", "Arena")
     val tabSettings: String @Composable get() = t("Ayarlar", "Settings")
 
     // ── Sohbet ───────────────────────────────────────────────────────

@@ -12,17 +12,24 @@ import com.hermes.mobile.data.PhoneTools
 import com.hermes.mobile.data.ShizukuBridge
 import com.hermes.mobile.data.Notifier
 import com.hermes.mobile.data.HermesClient
+import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.ModelProvider
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.VoiceController
+import com.hermes.mobile.data.resolveShareTarget
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import com.hermes.mobile.ui.createSessionProfileArg
+import com.hermes.mobile.ui.ROUTER_CHIP
 import com.hermes.mobile.ui.tr
 
 /** Sohbet akışındaki tek bir görsel öğe. */
@@ -37,7 +44,15 @@ sealed interface ChatItem {
         val streaming: Boolean = false,
     ) : ChatItem
 
-    data class Thinking(override val key: String, val text: String) : ChatItem
+    /**
+     * Modelin düşünme metni.
+     *
+     * [live] = hâlâ akıyor: ekran bu bloğu katlanmadan gösterir ve metin
+     * uzadıkça son satırları izler. Yanıtın ilk parçası, bir araç başlangıcı
+     * ya da akışın bitişi bloğu kapatır ([live] = false) — katlanır hâle gelir.
+     */
+    data class Thinking(override val key: String, val text: String, val live: Boolean = false) :
+        ChatItem
 
     data class Tool(
         override val key: String,
@@ -59,6 +74,54 @@ sealed interface ChatItem {
 }
 
 enum class ToolState { Running, Done, Failed }
+
+/** Düşünce bloğu canlı görünümünde gösterilecek son dolu satır sayısı. */
+const val LIVE_THINKING_TAIL_LINES = 4
+
+/** Canlı görünümde uzun satırlar sondan en fazla bu kadar karakterle kırpılır. */
+const val LIVE_THINKING_LINE_CLIP = 200
+
+/**
+ * Canlı düşünce metninden ekranda gösterilecek kuyruğu üretir.
+ *
+ * Kurallar: satırlara böl, boş satırları at, son [LIVE_THINKING_TAIL_LINES]
+ * dolu satırı al; tek satır [LIVE_THINKING_LINE_CLIP] karakteri aşarsa
+ * SONDAN kırp. Sonuç boşsa boş string döner (çağıran '…' önekini ekler).
+ */
+fun liveThinkingTail(text: String, maxLines: Int = LIVE_THINKING_TAIL_LINES): String {
+    val filled = text.split('\n').map { it.trimEnd() }.filter { it.isNotBlank() }
+    if (filled.isEmpty()) return ""
+    return filled.takeLast(maxLines)
+        .joinToString("\n") { line ->
+            if (line.length > LIVE_THINKING_LINE_CLIP) line.takeLast(LIVE_THINKING_LINE_CLIP) else line
+        }
+}
+
+/**
+ * Gateway'in argümansız `/reasoning` çıktısını ayrıştırır.
+ *
+ * Beklenen satırlar: `Reasoning effort:  medium` ve `Reasoning display: on`.
+ * Bilinmeyen/bozuk çıktıda effort `null` döner — çağıran paneli boş bırakır.
+ */
+data class ReasoningStatus(val effort: String?, val displayOn: Boolean?)
+
+fun parseReasoningOutput(output: String): ReasoningStatus {
+    var effort: String? = null
+    var display: Boolean? = null
+    for (rawLine in output.lineSequence()) {
+        val line = rawLine.trim()
+        if (line.startsWith("Reasoning effort:", ignoreCase = true)) {
+            effort = line.substringAfter(':').trim().takeIf { it.isNotEmpty() }
+        } else if (line.startsWith("Reasoning display:", ignoreCase = true)) {
+            display = when (line.substringAfter(':').trim().lowercase()) {
+                "on" -> true
+                "off" -> false
+                else -> null
+            }
+        }
+    }
+    return ReasoningStatus(effort, display)
+}
 
 /** Terminal ekranındaki tek satır. */
 data class TerminalLine(
@@ -129,6 +192,61 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val _sharedText = MutableStateFlow<String?>(null)
     val sharedText: StateFlow<String?> = _sharedText.asStateFlow()
+
+    /**
+     * Paylaşım hedefi geçici durumu — [pickShareTarget] tarafından doldurulur,
+     * [consumePendingShare] ile temizlenir. Üç ayrı StateFlow: oturum, dosya adı,
+     * metin. Hedef kararını [resolveShareTarget] saf fonksiyonu verir.
+     */
+    private val _pendingShareSession = MutableStateFlow<String?>(null)
+    val pendingShareSession: StateFlow<String?> = _pendingShareSession.asStateFlow()
+
+    private val _pendingShareFile = MutableStateFlow<String?>(null)
+    val pendingShareFile: StateFlow<String?> = _pendingShareFile.asStateFlow()
+
+    private val _pendingShareText = MutableStateFlow<String?>(null)
+    val pendingShareText: StateFlow<String?> = _pendingShareText.asStateFlow()
+
+    /**
+     * Ekran "Hermes'e ilet" hedefi için hedef seçim sayfasını gösterir mi?
+     * Yalnız [pickShareTarget] çağrıldıktan, [consumePendingShare] bitmeden evet.
+     */
+    private val _shareTargetVisible = MutableStateFlow(false)
+    val shareTargetVisible: StateFlow<Boolean> = _shareTargetVisible.asStateFlow()
+
+    /**
+     * Paylaşım niyeti sonucunda hedef seçim ekranını açar.
+     *
+     * [sessionId] == null ise "Yeni konu" seçildi; oturum kimliği verilirse o
+     * oturuma bağlanılır ve metin/dosya oraya düşürülür. Ekstra metin,
+     * ShareTargetScreen gösterimi bittikten sonra taslağa gönderilir.
+     */
+    fun pickShareTarget(sessionId: String?, sharedText: String?, sharedFile: String?) {
+        _pendingShareSession.value = sessionId
+        // Dosya adı yalnız gerçekten varsa tutulur; yüklemesi gerçek uca
+        // POST edilir (HermesClient.uploadFile). Hedef kararını [resolveShareTarget]
+        // saf fonksiyonu verir — buradan UI'ye yalnız taşıma bilgisi gidiyor.
+        val target = resolveShareTarget(sharedText, sharedFile, sessionId)
+        if (target.hasFile && !sharedFile.isNullOrBlank()) {
+            _pendingShareFile.value = sharedFile
+        } else {
+            _pendingShareFile.value = null
+        }
+        _pendingShareText.value = sharedText
+        // Hedef seçim ekranı yalnız gerçek bir paylaşım varsa açılır.
+        _shareTargetVisible.value = target.wantsTargetPicker ||
+            !sharedText.isNullOrBlank() || !sharedFile.isNullOrBlank()
+    }
+
+    /** Hedef seçim ekranı kapanınca metni taslağa yerleştirir. */
+    fun consumePendingShare() {
+        val text = _pendingShareText.value
+        if (!text.isNullOrBlank()) shareText(text)
+        _pendingShareText.value = null
+        _pendingShareFile.value = null
+        _pendingShareSession.value = null
+        _shareTargetVisible.value = false
+    }
 
     fun shareText(text: String) {
         if (text.isBlank()) return
@@ -372,7 +490,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                     onSessionChanged?.invoke(id)
                     applyPreferredModel(gw, id)
@@ -418,7 +536,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                     onSessionChanged?.invoke(id)
                 }
@@ -769,8 +887,55 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _modelCheck = MutableStateFlow<String?>(null)
     val modelCheck: StateFlow<String?> = _modelCheck.asStateFlow()
 
+    /**
+     * Bot (profil) ataması: YENİ sohbet başlatırken `createSession(profile)`
+     * argümanını belirler — Composer üstündeki çipten seçilen profil.
+     *
+     * - `selectedProfile == null` (varsayılan "Yönlendirici") → profil
+     *   gönderilmez, sunucunun aktif yönlendirmesi (activeProfile) işler.
+     * - Profil adı seçilirse → o profilin SOUL.md'si + beceri seti açılır.
+     */
+    private suspend fun createSessionWithProfile(gw: GatewayWsClient): String {
+        val profileArg = createSessionProfileArg(selectedProfileValue ?: ROUTER_CHIP)
+            ?: activeProfile.takeIf { it.isNotBlank() }
+            ?: null
+        return gw.createSession(profileArg).also { id ->
+            _sessionProfile.value = profileArg
+            onSessionChanged?.invoke(id)
+        }
+    }
+
     /** Bir model başarısız olduğunda çağrılır; ayarlara "bozuk" diye yazılır. */
     var onModelBroken: ((String) -> Unit)? = null
+
+    /**
+     * Bot (profil) ataması — Composer üstündeki yatay çiplerden seçilen
+     * profil. `null` = varsayılan "Yönlendirici" (profil gönderilmez,
+     * sunucunun aktif yönlendirmesi). YENİ sohbetlerde createSession
+     * argümanı olur; mevcut oturumda çipler salt-okunur kalır.
+     *
+     * Kalıcılık: `onProfileChipSelected` (settings deposu) yazdırır.
+     */
+    private val _selectedProfile = MutableStateFlow<String?>(null)
+    /**
+     * Bot (profil) ataması — Composer üstündeki yatay çiplerden seçilen
+     * profil. `null` = varsayılan "Yönlendirici" (profil gönderilmez,
+     * sunucunun aktif yönlendirmesi). YENİ sohbetlerde createSession
+     * argümanı olur; mevcut oturumda çipler salt-okunur kalır.
+     *
+     * Kalıcılık: [onProfileChipSelected] (settings deposu) yazdırır;
+     * [selectedProfileValue] muter üzerinden değişir.
+     */
+    val selectedProfile: StateFlow<String?> = _selectedProfile.asStateFlow()
+    var selectedProfileValue: String?
+        get() = _selectedProfile.value
+        set(value) {
+            _selectedProfile.value = value
+            onProfileChipSelected?.invoke(value)
+        }
+
+    /** Kalıcı yazım — ayarlar deposu (settings). */
+    var onProfileChipSelected: ((String?) -> Unit)? = null
 
     /** Doğrulanmış model seçimini kalıcı yapmak için (ayarlar deposuna yazar). */
     var onModelChosen: ((provider: String, model: String) -> Unit)? = null
@@ -780,6 +945,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Yeni oturumların açılacağı Hermes profili; boşsa varsayılan. */
     var activeProfile: String = ""
+
+    /**
+     * Mevcut oturumun profili (session.create'de gönderilen; sunucudan
+     * dönmiyorsa ayarlanan). `null` = oturum yok / profil bilinmiyor.
+     * Composer üstündeki çipler bu değerle kilitlenir: mevcut oturumda
+     * salt-okunur ve bu profil (bilinmiyorsa "—") gösterilir.
+     */
+    private val _sessionProfile = MutableStateFlow<String?>(null)
+    val sessionProfile: StateFlow<String?> = _sessionProfile.asStateFlow()
 
     private val _terminal = MutableStateFlow<List<TerminalLine>>(emptyList())
     val terminal: StateFlow<List<TerminalLine>> = _terminal.asStateFlow()
@@ -805,7 +979,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                 }
                 if (cmd.startsWith("/")) {
@@ -836,7 +1010,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val previous = _state.value.currentModel
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                 }
                 val cmd = buildString {
@@ -886,6 +1060,41 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     fun clearNotice() = _state.update { it.copy(notice = null) }
 
     /**
+     * Argümansız `/reasoning` çalıştırıp çıktıyı ayrıştırır — "Düşünce panosu".
+     *
+     * Sonuç ekrana düz metin değil yapı olarak düşer: [reasoningStatus] akışı
+     * güncellenir, panel çiplerini buna göre seçili gösterir. `/reasoning`
+     * argümanla da (`/reasoning high`) aynı yoldan geçer; argümanlı çağrıda
+     * sunucu yeni çabayı onaylar, ayrıştırıcı satırı okuyamazsa `null` kalır
+     * ve panel seçimi boşa düşürür (SAF: asla varsayılanı uydurmaz).
+     */
+    private val _reasoningStatus = MutableStateFlow(ReasoningStatus(null, null))
+    val reasoningStatus: StateFlow<ReasoningStatus> = _reasoningStatus.asStateFlow()
+
+    fun refreshReasoning() {
+        val gw = client ?: return
+        viewModelScope.launch {
+            runCatching {
+                val sid = _state.value.sessionId ?: gw.createSession(activeProfile)
+                val out = gw.slashExec(sid, "/reasoning")
+                _reasoningStatus.value = parseReasoningOutput(out)
+            }.onFailure { e ->
+                // Bağlantı düşerse paneli boşaltma — son bilineni göster;
+                // yalnız gerçek parse boşluğunda null döner.
+                DiagLog.w("chat", "refreshReasoning failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Düşünce çabasını yer, panelin çipleri argümansız komutu çağıran
+     * [refreshReasoning] ile okunur; buradan yalnız "yazma" yarı yolu.
+     */
+    fun setReasoningEffort(level: String) {
+        runSlash("/reasoning $level")
+    }
+
+    /**
      * Yeniden bağlandıktan sonra oturumu toparlar.
      *
      * Sıra önemli: önce oturumu gateway'e bağla (yoksa `prompt.submit` boşa
@@ -916,7 +1125,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         outbox.clear()
         for (body in queued) {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                     onSessionChanged?.invoke(id)
                     applyPreferredModel(gw, id)
@@ -985,6 +1194,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         thinkingKey = null
         streamMeter.reset()
         _speed.value = null
+        _sessionProfile.value = null
         onSessionChanged?.invoke("")
     }
 
@@ -1006,6 +1216,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         thinkingKey = null
         streamMeter.reset()
         _speed.value = null
+        // Mevcut oturuma bağlanıldı → çipler kilitlenir; profil sunucudan
+        // bilinmiyor (canlı oturumlarda profili öğrenmek yok), bu yüzden
+        // null ("—"). Oturum düşerse sessizce yeni oturum açılır ve profil
+        // seçimi yeniden serbestleşir.
+        _sessionProfile.value = null
         _state.update {
             ChatState(
                 connection = it.connection,
@@ -1134,7 +1349,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
-            "message.delta" -> appendToStream(text.orEmpty())
+            "message.delta" -> {
+                // Yanıtın ilk parçası: canlı düşünce bloğu kapanır (katlanır),
+                // hız aynı StreamMeter'da kesintisiz sürer.
+                sealLiveThinking()
+                appendToStream(text.orEmpty())
+            }
 
             "message.complete" -> {
                 // Hız göstergesi burada DONAR: son anlık değer ekranda kalır,
@@ -1153,6 +1373,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                                     if (item.text.isBlank()) text.orEmpty() else item.text
                                 spoken = finalText
                                 item.copy(text = finalText, streaming = false)
+                            } else if (item is ChatItem.Thinking && item.live) {
+                                // Akış bitti: kalan canlı düşünce bloğu katlanır.
+                                item.copy(live = false)
                             } else item
                         },
                         agentBusy = false,
@@ -1177,6 +1400,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             "status.update" -> _state.update { it.copy(statusLine = text) }
 
             "tool.start" -> _state.update {
+                // Araç çalışmaya başladı: canlı düşünce bloğu kapanır.
+                sealLiveThinking()
                 it.copy(
                     items = it.items + ChatItem.Tool(
                         nextKey("t"),
@@ -1194,6 +1419,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 // Akış hatayla kesildi: ölçer donsun, UI sönüşle kaldırsın.
                 streamMeter.reset()
                 _speed.value = null
+                sealLiveThinking()
                 _state.update {
                     it.copy(
                         items = it.items + ChatItem.Notice(
@@ -1233,7 +1459,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun appendToStream(chunk: String) {
         if (chunk.isEmpty()) return
-        streamMeter.delta(chunk, System.nanoTime())?.let { _speed.value = it }
+        streamMeter.delta(chunk, System.nanoTime(), StreamMeter.PHASE_WRITING)
+            ?.let { _speed.value = it }
 
         val key = streamingKey ?: nextKey("a").also { newKey ->
             streamingKey = newKey
@@ -1254,15 +1481,45 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun appendToThinking(chunk: String) {
         if (chunk.isEmpty()) return
+        // Düşünme fazı da aynı StreamMeter'ı besler: kaynak farksız, tek hız
+        // sayacı hem thinking.delta hem message.delta ile akar; faz geçişinde
+        // reset yok, meter akışı kendinden devam ettirir. Faz etiketi bu
+        // çağrıların hangi fazda olduğunu bildiklerinden ViewModel'dedir.
+        streamMeter.delta(chunk, System.nanoTime(), StreamMeter.PHASE_THINKING)
+            ?.let { _speed.value = it }
         val key = thinkingKey ?: nextKey("th").also { newKey ->
             thinkingKey = newKey
-            _state.update { it.copy(items = it.items + ChatItem.Thinking(newKey, "")) }
+            _state.update {
+                it.copy(items = it.items + ChatItem.Thinking(newKey, "", live = true))
+            }
         }
         _state.update { st ->
             st.copy(
                 items = st.items.map { item ->
                     if (item is ChatItem.Thinking && item.key == key) {
-                        item.copy(text = item.text + chunk)
+                        // Mevcut canlı öğeye ekleniyor — live=true kalır.
+                        item.copy(text = item.text + chunk, live = true)
+                    } else item
+                }
+            )
+        }
+    }
+
+    /**
+     * Canlı düşünce bloğunu kapatır: [live] = false + thinkingKey sıfırlanır.
+     *
+     * Çağrı noktaları: ilk `message.delta` (yanıt başladı), `tool.start`
+     * (araç çalıştı) ve `message.complete`/hata (akış bitti). Kapatılan blok
+     * katlanır; sonraki `thinking.delta` yeni bir canlı öğe açar.
+     */
+    private fun sealLiveThinking() {
+        val key = thinkingKey ?: return
+        thinkingKey = null
+        _state.update { st ->
+            st.copy(
+                items = st.items.map { item ->
+                    if (item is ChatItem.Thinking && item.key == key) {
+                        item.copy(live = false)
                     } else item
                 }
             )

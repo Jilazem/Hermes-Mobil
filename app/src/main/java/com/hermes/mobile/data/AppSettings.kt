@@ -102,6 +102,16 @@ data class AppSettings(
 
     // ── Sohbet ───────────────────────────────────────────────────────
     val expandThinking: Boolean = false,
+    /** Son seçilen /reasoning çabası — "Düşünce panosu" başlangıç durumu. */
+    val reasoningLevel: String? = null,
+    /**
+     * Düşünürken metni ekranda canlı çiz — son satırları izleyen açık blok.
+     *
+     * Kapalıyken düşünce bloğu hâlâ toplanır ama ekran yalnız "Düşünüyor…"
+     * başlığını gösterir; yanıt başlar ya da araç çalışmaya başlayınca blok
+     * katlanır hâle gelir (mevcut davranış).
+     */
+    val showLiveThinking: Boolean = true,
     val expandTools: Boolean = false,
     val renderMarkdown: Boolean = true,
     val historyLimit: Int = 150,
@@ -235,14 +245,22 @@ data class AppSettings(
      */
     val modelUsage: Map<String, Int> = emptyMap(),
 
-    /**
-     * Kullanıcının elle gizlediği modeller.
+    /** Kullanıcının elle gizlediği modeller.
      *
      * [brokenModels] otomatik (denendi-çalışmadı); bu ise bilinçli tercih —
      * "bu modeli hiç görmek istemiyorum". Ayrı tutuluyor ki otomatik liste
      * temizlendiğinde kullanıcının seçimi silinmesin.
      */
     val hiddenModels: Set<String> = emptySet(),
+
+    /**
+     * Son kullanılan prompt çipi (bot/profil ataması).
+     *
+     * Composer üstündeki yatay çiplerden seçilen profil. Yalnız YENİ
+     * sohbetlerde `createSession(profile)` argümanı olur; mevcut oturumda
+     * çipler salt-okunur, mevcut profil gösterilir.
+     */
+    val selectedProfile: String = "",
 ) {
     /** Röleye gidecek sistem yönergesi. */
     fun resolveInstruction(): String =

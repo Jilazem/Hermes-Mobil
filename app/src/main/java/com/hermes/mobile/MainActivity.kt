@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.mobile.ui.CameraScreen
 import com.hermes.mobile.ui.ChatScreen
+import com.hermes.mobile.ui.ArenaScreen
 import com.hermes.mobile.ui.CommandPalette
 import com.hermes.mobile.ui.ConnectScreen
 import com.hermes.mobile.ui.FileRef
@@ -67,6 +68,7 @@ import com.hermes.mobile.ui.SessionsScreen
 import com.hermes.mobile.ui.SessionRail
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
+import com.hermes.mobile.ui.ShareTargetScreen
 import com.hermes.mobile.ui.theme.themeById
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.HermesTheme
@@ -82,6 +84,7 @@ class MainActivity : ComponentActivity() {
     private val liveViewModel: LiveSessionsViewModel by viewModels()
     private val voiceViewModel: LiveVoiceViewModel by viewModels()
     private val panelViewModel: PanelViewModel by viewModels()
+    private val arenaViewModel: ArenaViewModel by viewModels()
 
     /** Sistem foto seçici — Android 13+ izin istemez. */
     private val pickImage = registerForActivityResult(
@@ -191,6 +194,11 @@ class MainActivity : ComponentActivity() {
      */
     private fun handleShareIntent(intent: Intent?) {
         val i = intent ?: return
+        // ShareProxyActivity'den gelen ekstraplar: hedef seçim ekranı açılır.
+        if (i.getBooleanExtra(ShareProxyActivity.EXTRA_IS_SHARE, false)) {
+            handleShareHandoff(i)
+            return
+        }
         when (i.action) {
             Intent.ACTION_SEND -> {
                 i.getStringExtra(Intent.EXTRA_TEXT)?.let(chatViewModel::shareText)
@@ -205,6 +213,27 @@ class MainActivity : ComponentActivity() {
                 uris.forEach { ingestShared(it, i.type) }
             }
         }
+    }
+
+    /**
+     * ShareProxyActivity'den gelen paylaşım niyetini hedef seçim ekranıyla
+     * karşılar. Kullanıcı oturum seçim sayfasında "Yeni konu" ya da son 10
+     * oturumdan birini seçtikten sonra metin/dosya oraya düşer.
+     */
+    private fun handleShareHandoff(intent: Intent) {
+        val sharedText = intent.getStringExtra(ShareProxyActivity.EXTRA_SHARED_TEXT)
+        val sharedFile = intent.getStringExtra(ShareProxyActivity.EXTRA_SHARED_FILE)
+        // Varsayılan hedef: yeni konu. Kullanıcı ShareTargetScreen'de
+        // değiştirebilir. Varsayılan hedefi belirle; UI oturum listesini
+        // gösterir.
+        chatViewModel.pickShareTarget(
+            sessionId = null,
+            sharedText = sharedText,
+            sharedFile = sharedFile,
+        )
+        // Dosya adı+boyutu ekleme bilgisi [HermesClient.uploadFile]
+        // gerçekte çalıştığında paylaşım hedefinin bir parçasıdır; burada
+        // yalnız taşınır, yüklemesi ChatViewModel tarafında yapılır.
     }
 
     /**
@@ -302,6 +331,10 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(settings) {
                     voiceViewModel.settings = settings
                     chatViewModel.preferredModel = settings.lastModel
+                    // Bot (profil) ataması kalıcı — son kullanılan çip
+                    // açılışta geri yüklenir.
+                    chatViewModel.selectedProfileValue = settings.selectedProfile
+                        .ifBlank { null }
                     panelViewModel.sparkUrl = settings.sparkUrl
                 }
 
@@ -324,11 +357,21 @@ class MainActivity : ComponentActivity() {
                     chatViewModel.onModelChosen = { prov, model ->
                         viewModel.settingsStore.update { it.copy(lastModel = "$prov|$model") }
                     }
+                    // Bot (profil) ataması kalıcı — çipten seçilen profil
+                    // ayarlara yazılır; sonraki açılışta geri yüklenir.
+                    chatViewModel.onProfileChipSelected = { name ->
+                        viewModel.settingsStore.update {
+                            it.copy(selectedProfile = name.orEmpty())
+                        }
+                    }
                 }
 
                 LaunchedEffect(gateway) {
                     liveViewModel.bind(gateway)
                     viewModel.bindGateway(gateway)
+                    // Bot (profil) ataması: profilleri sohbet açılır açılmaz
+                    // çek — yalnız ProfilSheet açıldığında çekilmesin.
+                    viewModel.loadProfiles()
                 }
 
                 HermesApp(
@@ -342,6 +385,7 @@ class MainActivity : ComponentActivity() {
                     liveViewModel = liveViewModel,
                     voiceViewModel = voiceViewModel,
                     panelViewModel = panelViewModel,
+                    arenaViewModel = arenaViewModel,
                     onPickImage = { pickImage.launch("image/*") },
                     onPickFile = { pickFile.launch(arrayOf("*/*")) },
                     onNeedMic = ::ensureMicPermission,
@@ -395,6 +439,7 @@ private enum class Tab(val icon: ImageVector) {
     Chat(Icons.AutoMirrored.Filled.Message),
     Work(Icons.AutoMirrored.Filled.List),
     Panel(Icons.Default.GridView),
+    Arena(Icons.Default.Bolt),
     Settings(Icons.Default.Tune),
 }
 
@@ -404,6 +449,7 @@ private fun Tab.label(): String = when (this) {
     Tab.Chat -> S.tabChat
     Tab.Work -> S.tabSessions
     Tab.Panel -> S.tabPanel
+    Tab.Arena -> S.tabArena
     Tab.Settings -> S.tabSettings
 }
 
@@ -419,6 +465,7 @@ private fun HermesApp(
     liveViewModel: LiveSessionsViewModel,
     voiceViewModel: LiveVoiceViewModel,
     panelViewModel: PanelViewModel,
+    arenaViewModel: ArenaViewModel,
     onPickImage: () -> Unit,
     onPickFile: () -> Unit,
     onNeedMic: () -> Boolean,
@@ -432,6 +479,10 @@ private fun HermesApp(
     val panel by panelViewModel.state.collectAsStateWithLifecycle()
     val shizukuState by chatViewModel.shizuku.state.collectAsStateWithLifecycle()
     val sharedText by chatViewModel.sharedText.collectAsStateWithLifecycle()
+    // Paylaşım hedefi seçim ekranı (ShareProxyActivity'den gelir).
+    val shareTargetVisible by chatViewModel.shareTargetVisible.collectAsStateWithLifecycle()
+    val shareTextSnippet by chatViewModel.pendingShareText.collectAsStateWithLifecycle()
+    val shareFileNote by chatViewModel.pendingShareFile.collectAsStateWithLifecycle()
 
     // Paylaşım geldiğinde hangi sekmede olursak olalım sohbete geç.
     LaunchedEffect(sharedText) {
@@ -440,6 +491,8 @@ private fun HermesApp(
 
     var modelSheet by remember { mutableStateOf(false) }
     var commandSheet by remember { mutableStateOf(false) }
+    var reasoningSheet by remember { mutableStateOf(false) }
+    val reasoningStatus by chatViewModel.reasoningStatus.collectAsStateWithLifecycle()
     var voiceSheet by remember { mutableStateOf(false) }
     var cameraFullScreen by remember { mutableStateOf(false) }
     var exitDialog by remember { mutableStateOf(false) }
@@ -467,6 +520,8 @@ private fun HermesApp(
     val profilesLoading by viewModel.profilesLoading.collectAsStateWithLifecycle()
     val terminalLines by chatViewModel.terminal.collectAsStateWithLifecycle()
     val terminalBusy by chatViewModel.terminalBusy.collectAsStateWithLifecycle()
+    val selectedProfile by chatViewModel.selectedProfile.collectAsStateWithLifecycle()
+    val sessionProfile by chatViewModel.sessionProfile.collectAsStateWithLifecycle()
     val voice by voiceViewModel.state.collectAsStateWithLifecycle()
     val camera by voiceViewModel.cameraState.collectAsStateWithLifecycle()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -588,6 +643,34 @@ private fun HermesApp(
         ) {
             if (detail != null) {
                 SessionDetailScreen(detail, onBack = viewModel::closeSession)
+            } else if (shareTargetVisible) {
+                ShareTargetScreen(
+                    textSnippet = shareTextSnippet,
+                    fileNote = shareFileNote,
+                    recentSessions = state.sessions.take(10),
+                    onNewTopic = {
+                        chatViewModel.pickShareTarget(
+                            sessionId = null,
+                            sharedText = shareTextSnippet,
+                            sharedFile = shareFileNote,
+                        )
+                        chatViewModel.consumePendingShare()
+                    },
+                    onPickSession = { s ->
+                        chatViewModel.pickShareTarget(
+                            sessionId = s.id,
+                            sharedText = shareTextSnippet,
+                            sharedFile = shareFileNote,
+                        )
+                        chatViewModel.consumePendingShare()
+                        chatViewModel.continueSession(
+                            liveId = s.id,
+                            dbId = s.id,
+                            title = s.title.ifBlank { s.id },
+                        )
+                    },
+                    onCancel = chatViewModel::consumePendingShare,
+                )
             } else {
                 when (tab) {
                     Tab.Chat -> Row(Modifier.fillMaxSize()) {
@@ -632,6 +715,21 @@ private fun HermesApp(
                             viewModel.loadProfiles()
                             profileSheet = true
                         },
+                        onOpenReasoning = {
+                            reasoningSheet = true
+                            // Sunucunun bildirdiği aktif çabayı öne al — panel
+                            // yerel tahmin UYGULAMAZ (SAF), sunucu okuma belirler.
+                            chatViewModel.refreshReasoning()
+                        },
+                        onReasoningLevel = { lvl ->
+                            viewModel.settingsStore.update { st -> st.copy(reasoningLevel = lvl) }
+                            chatViewModel.setReasoningEffort(lvl)
+                        },
+                        reasoningLevel = reasoningStatus.effort ?: settings.reasoningLevel,
+                        showLiveThinking = settings.showLiveThinking,
+                        onShowLiveThinking = { on ->
+                            viewModel.settingsStore.update { st -> st.copy(showLiveThinking = on) }
+                        },
                         activeProfileName = activeHermesProfile,
                         onOpenFile = onOpenFile,
                         savedPrompts = savedPrompts,
@@ -639,6 +737,13 @@ private fun HermesApp(
                         onUpdatePrompt = viewModel::guncellePrompt,
                         onDeletePrompt = viewModel::silPrompt,
                         onImprovePrompt = chatViewModel::improvePrompt,
+                        profiles = hermesProfiles,
+                        selectedProfile = selectedProfile.orEmpty(),
+                        currentProfile = sessionProfile,
+                        onProfileChipClick = { name ->
+                            chatViewModel.selectedProfileValue =
+                                name.takeIf { it != com.hermes.mobile.ui.ROUTER_CHIP }
+                        },
                         )
                     }
                     Tab.Work -> WorkScreen(
@@ -678,6 +783,8 @@ private fun HermesApp(
                         onSetArchived = viewModel::setArchived,
                         onRenamePast = viewModel::renameSession,
                         onDeletePast = viewModel::deleteSession,
+                        onStopPast = { s -> viewModel.stopSession(s.id) },
+                        onBudaPast = { s -> viewModel.compressSession(s.id) },
                     )
                     Tab.Panel -> PanelScreen(
                         state = panel,
@@ -711,6 +818,10 @@ private fun HermesApp(
                             )
                         },
                     )
+                    Tab.Arena -> ArenaScreen(
+                        arenaViewModel = arenaViewModel,
+                        gateway = chatViewModel.gateway.value,
+                    )
                     Tab.Settings -> SettingsScreen(
                         shizukuState = shizukuState,
                         onRequestShizuku = chatViewModel.shizuku::requestPermission,
@@ -721,6 +832,7 @@ private fun HermesApp(
                         onDeleteTheme = viewModel.settingsStore::deleteTheme,
                         onImportTheme = viewModel.settingsStore::importTheme,
                         onExportTheme = viewModel.settingsStore::exportTheme,
+                        activeProfile = state.active,
                     )
                 }
             }
