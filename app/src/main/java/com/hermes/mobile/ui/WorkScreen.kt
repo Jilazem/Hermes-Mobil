@@ -61,7 +61,9 @@ fun WorkScreen(
     /** Oturum eylem menüsü: '/compress' slashExec. */
     onBudaPast: (HermesSession) -> Unit = {},
 ) {
-    var showLive by remember { mutableStateOf(true) }
+    // Sekme: 0 = Çalışan (yalnız bellekte ajanı olanlar), 1 = Tümü (Telegram
+    // gibi: her oturum + hangi bot ne yapıyor), 2 = Geçmiş (klasik liste).
+    var tab by remember { mutableStateOf(0) }
     val runningCount = live.sessions.size
 
     Column(Modifier.fillMaxSize()) {
@@ -83,19 +85,24 @@ fun WorkScreen(
             Tab(
                 label = if (runningCount > 0) S.t2("Çalışan ($runningCount)", "Working ($runningCount)")
                     else S.t2("Çalışan", "Working"),
-                selected = showLive,
+                selected = tab == 0,
                 modifier = Modifier.weight(1f),
-            ) { showLive = true }
+            ) { tab = 0 }
+            Tab(
+                label = S.t2("Tümü", "All"),
+                selected = tab == 1,
+                modifier = Modifier.weight(1f),
+            ) { tab = 1 }
             Tab(
                 label = S.t2("Geçmiş", "History"),
-                selected = !showLive,
+                selected = tab == 2,
                 modifier = Modifier.weight(1f),
-            ) { showLive = false }
+            ) { tab = 2 }
         }
 
         Box(Modifier.weight(1f)) {
-            if (showLive) {
-                LiveSessionsScreen(
+            when (tab) {
+                0 -> LiveSessionsScreen(
                     state = live,
                     onRefresh = onRefreshLive,
                     onIntervene = onIntervene,
@@ -105,8 +112,23 @@ fun WorkScreen(
                     onCloseIntervention = onCloseIntervention,
                     onSubmitIntervention = onSubmitIntervention,
                 )
-            } else {
-                SessionsScreen(
+                1 -> LiveFeedScreen(
+                    entries = liveFeed(live.sessions, state.sessions),
+                    flags = state.flags,
+                    cronNames = state.cronNames,
+                    onRefresh = { onRefreshLive(); onRefreshSessions() },
+                    onIntervene = { e -> e.liveSession?.let(onIntervene) },
+                    onInterrupt = { e -> e.liveSession?.let(onInterrupt) },
+                    onOpen = { e ->
+                        e.liveSession?.let(onOpenLive)
+                            ?: e.pastSession?.let(onOpenPast)
+                    },
+                    onContinue = { e ->
+                        e.liveSession?.let(onContinueLive)
+                            ?: e.pastSession?.let(onContinuePast)
+                    },
+                )
+                else -> SessionsScreen(
                     state = state,
                     onOpen = onOpenPast,
                     onContinue = onContinuePast,
