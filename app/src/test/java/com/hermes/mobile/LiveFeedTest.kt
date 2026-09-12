@@ -86,6 +86,24 @@ class LiveFeedTest {
     }
 
     @Test
+    fun `ayni_dbId_iki_canli_kayit_tek_satir_olur`() {
+        // Yeniden bağlanmada gateway aynı oturum için iki süreç içi kayıt
+        // bırakabilir; LazyColumn key çakışması çökme verir — en hareketli
+        // kayıt kalmalı, mükerrer atılmalı.
+        val entries = liveFeed(
+            live = listOf(
+                live("E1", key = "P", last = 5.0, preview = "eski"),
+                live("E2", key = "P", last = 90.0, preview = "yen"),
+            ),
+            sessions = listOf(past("P", 1.0, source = "cli")),
+        )
+        assertEquals(1, entries.size)
+        assertEquals("en hareketli kazanmalı", "E2", entries[0].liveId)
+        assertEquals("yen", entries[0].preview)
+        assertTrue(entries[0].live)
+    }
+
+    @Test
     fun `bos_girdi_bos_liste`() {
         assertTrue(liveFeed(emptyList(), emptyList()).isEmpty())
     }

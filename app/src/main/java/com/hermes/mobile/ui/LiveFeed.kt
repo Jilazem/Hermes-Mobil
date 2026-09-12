@@ -40,9 +40,16 @@ fun liveFeed(
     val byId = sessions.associateBy { it.id }
     val liveIds = live.map { it.dbId }.toSet()
 
+    // Aynı dbId'yi paylaşan birden çok canlı kayıt olursa (yeniden bağlanmada
+    // gateway iki süreç içi kayıt bırakabilir) LazyColumn key çakışması çökme
+    // verir: en hareketli olan kalır, mükerrer satır atılır.
+    val distinctLive = live
+        .sortedByDescending { it.lastActive }
+        .distinctBy { it.dbId }
+
     // Canlı satırlar en son etkinlik sırasıyla: Telegram'daki gibi en
     // hareketli en üstte.
-    val liveRows = live.sortedByDescending { it.lastActive }.map { l ->
+    val liveRows = distinctLive.map { l ->
         val rest = byId[l.dbId]
         LiveFeedEntry(
             dbId = l.dbId,
