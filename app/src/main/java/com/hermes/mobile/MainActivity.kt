@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.mobile.ui.CameraScreen
 import com.hermes.mobile.ui.ChatScreen
+import com.hermes.mobile.ui.ArenaScreen
 import com.hermes.mobile.ui.CommandPalette
 import com.hermes.mobile.ui.ConnectScreen
 import com.hermes.mobile.ui.FileRef
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
     private val liveViewModel: LiveSessionsViewModel by viewModels()
     private val voiceViewModel: LiveVoiceViewModel by viewModels()
     private val panelViewModel: PanelViewModel by viewModels()
+    private val arenaViewModel: ArenaViewModel by viewModels()
 
     /** Sistem foto seçici — Android 13+ izin istemez. */
     private val pickImage = registerForActivityResult(
@@ -342,6 +344,7 @@ class MainActivity : ComponentActivity() {
                     liveViewModel = liveViewModel,
                     voiceViewModel = voiceViewModel,
                     panelViewModel = panelViewModel,
+                    arenaViewModel = arenaViewModel,
                     onPickImage = { pickImage.launch("image/*") },
                     onPickFile = { pickFile.launch(arrayOf("*/*")) },
                     onNeedMic = ::ensureMicPermission,
@@ -395,6 +398,7 @@ private enum class Tab(val icon: ImageVector) {
     Chat(Icons.AutoMirrored.Filled.Message),
     Work(Icons.AutoMirrored.Filled.List),
     Panel(Icons.Default.GridView),
+    Arena(Icons.Default.Bolt),
     Settings(Icons.Default.Tune),
 }
 
@@ -404,6 +408,7 @@ private fun Tab.label(): String = when (this) {
     Tab.Chat -> S.tabChat
     Tab.Work -> S.tabSessions
     Tab.Panel -> S.tabPanel
+    Tab.Arena -> S.tabArena
     Tab.Settings -> S.tabSettings
 }
 
@@ -419,6 +424,7 @@ private fun HermesApp(
     liveViewModel: LiveSessionsViewModel,
     voiceViewModel: LiveVoiceViewModel,
     panelViewModel: PanelViewModel,
+    arenaViewModel: ArenaViewModel,
     onPickImage: () -> Unit,
     onPickFile: () -> Unit,
     onNeedMic: () -> Boolean,
@@ -710,6 +716,10 @@ private fun HermesApp(
                                 onClear = chatViewModel::clearTerminal,
                             )
                         },
+                    )
+                    Tab.Arena -> ArenaScreen(
+                        arenaViewModel = arenaViewModel,
+                        gateway = chatViewModel.gateway.value,
                     )
                     Tab.Settings -> SettingsScreen(
                         shizukuState = shizukuState,
