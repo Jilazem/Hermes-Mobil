@@ -37,7 +37,15 @@ sealed interface ChatItem {
         val streaming: Boolean = false,
     ) : ChatItem
 
-    data class Thinking(override val key: String, val text: String) : ChatItem
+    /**
+     * Modelin düşünme metni.
+     *
+     * [live] = hâlâ akıyor: ekran bu bloğu katlanmadan gösterir ve metin
+     * uzadıkça son satırları izler. Yanıtın ilk parçası, bir araç başlangıcı
+     * ya da akışın bitişi bloğu kapatır ([live] = false) — katlanır hâle gelir.
+     */
+    data class Thinking(override val key: String, val text: String, val live: Boolean = false) :
+        ChatItem
 
     data class Tool(
         override val key: String,
@@ -59,6 +67,54 @@ sealed interface ChatItem {
 }
 
 enum class ToolState { Running, Done, Failed }
+
+/** Düşünce bloğu canlı görünümünde gösterilecek son dolu satır sayısı. */
+const val LIVE_THINKING_TAIL_LINES = 4
+
+/** Canlı görünümde uzun satırlar sondan en fazla bu kadar karakterle kırpılır. */
+const val LIVE_THINKING_LINE_CLIP = 200
+
+/**
+ * Canlı düşünce metninden ekranda gösterilecek kuyruğu üretir.
+ *
+ * Kurallar: satırlara böl, boş satırları at, son [LIVE_THINKING_TAIL_LINES]
+ * dolu satırı al; tek satır [LIVE_THINKING_LINE_CLIP] karakteri aşarsa
+ * SONDAN kırp. Sonuç boşsa boş string döner (çağıran '…' önekini ekler).
+ */
+fun liveThinkingTail(text: String, maxLines: Int = LIVE_THINKING_TAIL_LINES): String {
+    val filled = text.split('\n').map { it.trimEnd() }.filter { it.isNotBlank() }
+    if (filled.isEmpty()) return ""
+    return filled.takeLast(maxLines)
+        .joinToString("\n") { line ->
+            if (line.length > LIVE_THINKING_LINE_CLIP) line.takeLast(LIVE_THINKING_LINE_CLIP) else line
+        }
+}
+
+/**
+ * Gateway'in argümansız `/reasoning` çıktısını ayrıştırır.
+ *
+ * Beklenen satırlar: `Reasoning effort:  medium` ve `Reasoning display: on`.
+ * Bilinmeyen/bozuk çıktıda effort `null` döner — çağıran paneli boş bırakır.
+ */
+data class ReasoningStatus(val effort: String?, val displayOn: Boolean?)
+
+fun parseReasoningOutput(output: String): ReasoningStatus {
+    var effort: String? = null
+    var display: Boolean? = null
+    for (rawLine in output.lineSequence()) {
+        val line = rawLine.trim()
+        if (line.startsWith("Reasoning effort:", ignoreCase = true)) {
+            effort = line.substringAfter(':').trim().takeIf { it.isNotEmpty() }
+        } else if (line.startsWith("Reasoning display:", ignoreCase = true)) {
+            display = when (line.substringAfter(':').trim().lowercase()) {
+                "on" -> true
+                "off" -> false
+                else -> null
+            }
+        }
+    }
+    return ReasoningStatus(effort, display)
+}
 
 /** Terminal ekranındaki tek satır. */
 data class TerminalLine(
@@ -1134,7 +1190,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
-            "message.delta" -> appendToStream(text.orEmpty())
+            "message.delta" -> {
+                // Yanıtın ilk parçası: canlı düşünce bloğu kapanır (katlanır),
+                // hız aynı StreamMeter'da kesintisiz sürer.
+                sealLiveThinking()
+                appendToStream(text.orEmpty())
+            }
 
             "message.complete" -> {
                 // Hız göstergesi burada DONAR: son anlık değer ekranda kalır,
@@ -1153,6 +1214,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                                     if (item.text.isBlank()) text.orEmpty() else item.text
                                 spoken = finalText
                                 item.copy(text = finalText, streaming = false)
+                            } else if (item is ChatItem.Thinking && item.live) {
+                                // Akış bitti: kalan canlı düşünce bloğu katlanır.
+                                item.copy(live = false)
                             } else item
                         },
                         agentBusy = false,
@@ -1177,6 +1241,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             "status.update" -> _state.update { it.copy(statusLine = text) }
 
             "tool.start" -> _state.update {
+                // Araç çalışmaya başladı: canlı düşünce bloğu kapanır.
+                sealLiveThinking()
                 it.copy(
                     items = it.items + ChatItem.Tool(
                         nextKey("t"),
@@ -1194,6 +1260,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 // Akış hatayla kesildi: ölçer donsun, UI sönüşle kaldırsın.
                 streamMeter.reset()
                 _speed.value = null
+                sealLiveThinking()
                 _state.update {
                     it.copy(
                         items = it.items + ChatItem.Notice(
@@ -1254,15 +1321,43 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun appendToThinking(chunk: String) {
         if (chunk.isEmpty()) return
+        // Düşünme fazı da aynı StreamMeter'ı besler: kaynak farksız, tek hız
+        // sayacı hem thinking.delta hem message.delta ile akar; faz geçişinde
+        // reset yok, meter akışı kendinden devam ettirir.
+        streamMeter.delta(chunk, System.nanoTime())?.let { _speed.value = it }
         val key = thinkingKey ?: nextKey("th").also { newKey ->
             thinkingKey = newKey
-            _state.update { it.copy(items = it.items + ChatItem.Thinking(newKey, "")) }
+            _state.update {
+                it.copy(items = it.items + ChatItem.Thinking(newKey, "", live = true))
+            }
         }
         _state.update { st ->
             st.copy(
                 items = st.items.map { item ->
                     if (item is ChatItem.Thinking && item.key == key) {
-                        item.copy(text = item.text + chunk)
+                        // Mevcut canlı öğeye ekleniyor — live=true kalır.
+                        item.copy(text = item.text + chunk, live = true)
+                    } else item
+                }
+            )
+        }
+    }
+
+    /**
+     * Canlı düşünce bloğunu kapatır: [live] = false + thinkingKey sıfırlanır.
+     *
+     * Çağrı noktaları: ilk `message.delta` (yanıt başladı), `tool.start`
+     * (araç çalıştı) ve `message.complete`/hata (akış bitti). Kapatılan blok
+     * katlanır; sonraki `thinking.delta` yeni bir canlı öğe açar.
+     */
+    private fun sealLiveThinking() {
+        val key = thinkingKey ?: return
+        thinkingKey = null
+        _state.update { st ->
+            st.copy(
+                items = st.items.map { item ->
+                    if (item is ChatItem.Thinking && item.key == key) {
+                        item.copy(live = false)
                     } else item
                 }
             )
