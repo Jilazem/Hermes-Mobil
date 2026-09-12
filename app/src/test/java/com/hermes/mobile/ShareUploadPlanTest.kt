@@ -4,8 +4,10 @@ import com.hermes.mobile.data.ShareHandoff
 import com.hermes.mobile.data.ShareUploadPlan
 import com.hermes.mobile.data.cleanupPaths
 import com.hermes.mobile.data.planShareUpload
+import com.hermes.mobile.data.settleShare
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -93,5 +95,60 @@ class ShareUploadPlanTest {
             ),
             ShareHandoff.contractKeys,
         )
+    }
+
+    // ---- YENI-1 (denetmen2): consume/cancel SAF kapanış sözleşmesi ----
+
+    @Test
+    fun `iptal plan-upload iken yukleme URETMEZ taslak BOS kopya silinir`() {
+        // Sözleşme: Vazgeç/Geri = kullanıcı onayı YOK. Upload planı bile olsa
+        // attach YOK, taslak metni YOK, staging silinecekler listesinde.
+        val plan = ShareUploadPlan.Upload("/tmp/share_inbox/x.txt", "x.txt", 10L)
+        val out = settleShare(
+            plan = plan, text = "gizli metin",
+            applyUpload = false, profilePresent = true,
+        )
+        assertNull("iptal ASLA yükleme üretmez", out.attachName)
+        assertNull("iptal taslağa metin DÜŞÜRMEZ", out.draftText)
+        assertEquals("iptal staged kopyayı siler", listOf("/tmp/share_inbox/x.txt"), out.cleanupPaths)
+        assertNull("iptal uyarı da üretmez (kullanıcı zaten vazgeçti)", out.warnCase)
+    }
+
+    @Test
+    fun `onay plan-upload iken yukleme URETIR temizlik VM de (yaris korumasi)`() {
+        val plan = ShareUploadPlan.Upload("/tmp/share_inbox/x.txt", "x.txt", 10L)
+        val out = settleShare(plan, "not", applyUpload = true, profilePresent = true)
+        assertEquals("x.txt", out.attachName)
+        assertEquals("not", out.draftText)
+        // Upload'ın temizliği attachShareFile yükledikten sonra yapılır —
+        // settle çift silme yapmaz (okuma yarışı regression koruması).
+        assertTrue(out.cleanupPaths.isEmpty())
+        assertNull(out.warnCase)
+    }
+
+    @Test
+    fun `onay profil yoksa upload yerine gorunur uyari + temizlik`() {
+        val plan = ShareUploadPlan.Upload("/tmp/share_inbox/x.txt", "x.txt", 10L)
+        val out = settleShare(plan, null, applyUpload = true, profilePresent = false)
+        assertNull(out.attachName)
+        assertEquals("not_connected", out.warnCase) // kullanıcıya görünür (YENI-2)
+        assertEquals(listOf("/tmp/share_inbox/x.txt"), out.cleanupPaths)
+    }
+
+    @Test
+    fun `iptal unreadable planinda bile sessiz temizlik`() {
+        val plan = ShareUploadPlan.Unreadable("a.bin", stagedPaths = listOf("/tmp/a.bin"))
+        val out = settleShare(plan, "metin", applyUpload = false, profilePresent = true)
+        assertNull(out.attachName); assertNull(out.warnCase); assertNull(out.draftText)
+        assertEquals(listOf("/tmp/a.bin"), out.cleanupPaths)
+    }
+
+    @Test
+    fun `onay unreadable gorunur uyari uretir metin dusmez`() {
+        val plan = ShareUploadPlan.Unreadable("a.bin", stagedPaths = emptyList())
+        val out = settleShare(plan, "mesaj", applyUpload = true, profilePresent = true)
+        assertNull(out.attachName)
+        assertEquals("unreadable", out.warnCase)
+        assertEquals("mesaj", out.draftText)
     }
 }

@@ -34,6 +34,10 @@ class ShareProxyActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val source = intent
 
+        // Paylaşım gelen kutusu girişte süpürülür (denetmen ONERI-1): süreç
+        // günlerce ayakta kalabilir; HermesApp.onCreate tek başına yetmez.
+        ShareStaging.purgeStale(ShareStaging.inboxDir(cacheDir), olderThanMs = 3_600_000L)
+
         val isSend = source?.action == Intent.ACTION_SEND
         val sharedText = source?.getStringExtra(Intent.EXTRA_TEXT)
         var sharedFileUri: Uri? = null

@@ -73,6 +73,58 @@ fun planShareUpload(
     return ShareUploadPlan.Unreadable(name, stagedPaths = listOfNotNull(stagedPath))
 }
 
+/**
+ * consume/cancel PAYLASIM KAPANIŞ ADIMININ SAF SONUCU (denetmen YENI-1 test
+ * borcu kapanışı): VM yalnız bu sonucu UYGULAR; kararın tamamı burada, JVM
+ * testinde kanıtlanır.
+ *
+ * İKİ çağrı yolu vardır ve SEMANTİKLERİ FARKLIDIR:
+ *  - consumePendingShare: kullanıcı hedefi ONAYLADI → applyUpload=true;
+ *    Upload planı gerçek yükleme üretir.
+ *  - cancelPendingShare: kullanıcı İPTAL ETTİ (Vazgeç / Geri tuşu) →
+ *    applyUpload=false; Upload planı ASLA yükleme üretmez, yalnız kopya
+ *    silinir ve taslağa hiçbir şey yazılmaz.
+ *
+ * Eski hata buydu: iptal yolu consume'u çağırıyordu da "Vazgeç" dosyayı
+ * sunucuya yüklüyordu (kullanıcı onayı ihlali — denetmen YENI-1).
+ */
+data class SettleOutcome(
+    /** Yüklenmesi gereken dosya (yalnız hedef-onayı + Upload planı). */
+    val attachName: String?,
+    /** Görünür uyarı vakası: "unreadable" | "not_connected" | null. */
+    val warnCase: String?,
+    /** Silinecek staging yolları (her vakada). */
+    val cleanupPaths: List<String>,
+    /** Taslağa düşecek metin — YALNIZ onay yolunda, iptalde null. */
+    val draftText: String?,
+)
+
+/**
+ * Paylaşım kapanışı saf kararı. İki yol:
+ *  - applyUpload=true (consume): onay → Upload planı yüklenir, metin düşer;
+ *    Unreadable → "unreadable" uyarısı + temizlik.
+ *  - applyUpload=false (cancel/Vazgeç/Geri): YÜKLEME YOK, metin DÜŞMEZ;
+ *    Unreadable olsa bile sessizce temizlenir (kullanıcı zaten vazgeçti),
+ *    yalnız staging dosyaları silinir.
+ */
+fun settleShare(
+    plan: ShareUploadPlan,
+    text: String?,
+    applyUpload: Boolean,
+    profilePresent: Boolean,
+): SettleOutcome = when {
+    // İptal: hiçbir şey yüklenmez/yazılmaz; yalnız kopyalar silinir.
+    !applyUpload -> SettleOutcome(null, null, plan.cleanupPaths(), null)
+    plan is ShareUploadPlan.Unreadable ->
+        SettleOutcome(null, "unreadable", plan.cleanupPaths(), text)
+    // Profil yok: yüklenemez — görünür uyarı + kopya silinir, metin düşer.
+    plan is ShareUploadPlan.Upload && !profilePresent ->
+        SettleOutcome(null, "not_connected", plan.cleanupPaths(), text)
+    plan is ShareUploadPlan.Upload ->
+        SettleOutcome(plan.name, null, emptyList(), text)
+    else -> SettleOutcome(null, null, plan.cleanupPaths(), text)
+}
+
 /** Vekil → MainActivity niyet el sıkışması: ekstrap anahtarlarının TEK kaynağı. */
 object ShareHandoff {
     const val EXTRA_IS_SHARE = "hermes_is_share"

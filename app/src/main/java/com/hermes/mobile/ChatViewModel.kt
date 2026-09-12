@@ -19,6 +19,7 @@ import com.hermes.mobile.data.ShareUploadPlan
 import com.hermes.mobile.data.VoiceController
 import com.hermes.mobile.data.cleanupPaths
 import com.hermes.mobile.data.planShareUpload
+import com.hermes.mobile.data.settleShare
 import com.hermes.mobile.data.resolveShareTarget
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CompletableDeferred
@@ -220,6 +221,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private var pendingStagedPath: String? = null
 
     /**
+     * Paylaşım akışının kullanıcıya GÖRÜNÜR uyarısı (denetmen YENI-2):
+     * okunamayan dosya / staging hatası / profil yok — sessiz DiagLog değil.
+     * Chat ekranının üstünde sarı şerit çizilir; [clearShareWarning] susturur.
+     */
+    private val _shareWarning = MutableStateFlow<String?>(null)
+    val shareWarning: StateFlow<String?> = _shareWarning.asStateFlow()
+    fun clearShareWarning() { _shareWarning.value = null }
+
+    /**
      * Ekran "Hermes'e ilet" hedefi için hedef seçim sayfasını gösterir mi?
      * Yalnız [pickShareTarget] çağrıldıktan, [consumePendingShare] bitmeden evet.
      */
@@ -259,22 +269,49 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             !sharedText.isNullOrBlank() || !sharedFile.isNullOrBlank()
     }
 
-    /** Hedef seçim ekranı kapanınca metni taslağa, dosyaya yüklemeye geçirir. */
-    fun consumePendingShare() {
-        val text = _pendingShareText.value
-        if (!text.isNullOrBlank()) shareText(text)
+    /** Hedef seçim ekranı kapanınca metni taslağa, dosyaya yüklemeye geçirir.
+     * YALNIZ hedef-onayı yolları (Yeni konu / oturum seçimi) bunu çağırır. */
+    fun consumePendingShare() = settleShareIntent(applyUpload = true)
+
+    /**
+     * Vazgeç / Geri tuşu yolu (denetmen YENİ-1): plan ASLA uygulanmaz —
+     * yüklenmez, metin taslağa DÜŞMEZ; yalnız staging kopyaları silinir ve
+     * ekran kapanır. İptal, yüklemenin tersi bir niyettir.
+     */
+    fun cancelPendingShare() = settleShareIntent(applyUpload = false)
+
+    private fun settleShareIntent(applyUpload: Boolean) {
         val plan = _pendingSharePlan.value
-        when (plan) {
-            // Upload: dosyayı attachShareFile yükledikten SONRA siler —
+        // Kararın TAMAMI saf settleShare'de (ShareUpload.kt — sözleşme testi
+        // ShareUploadPlanTest); VM yalnız sonucu uygular.
+        val out = settleShare(
+            plan = plan,
+            text = _pendingShareText.value,
+            applyUpload = applyUpload,
+            profilePresent = profile != null,
+        )
+        out.attachName?.let { name ->
+            // attachShareFile staging dosyasını yükledikten SONRA siler —
             // burada silmek coroutine okumasıyla yarışa girerdi.
-            is ShareUploadPlan.Upload -> attachShareFile(plan)
-            is ShareUploadPlan.Unreadable -> {
-                // Sessiz kayıp yok: kullanıcı Vazgeç dese bile uyarı loglanır.
-                DiagLog.w("ShareUpload", "dosya okunamadı, yüklenemedi: ${plan.name}")
-                plan.cleanupPaths().forEach { p -> runCatching { java.io.File(p).delete() } }
-            }
-            ShareUploadPlan.None -> Unit
+            if (plan is ShareUploadPlan.Upload) attachShareFile(plan)
+            else DiagLog.w("ShareUpload", "tutarsız plan: attach istendi ama plan Upload değil: $name")
         }
+        when (out.warnCase) {
+            "unreadable" -> {
+                DiagLog.w("ShareUpload", "dosya okunamadı, yüklenemedi: ${plan.unreadableName()}")
+                _shareWarning.value = tr(
+                    "Dosya okunamadı ve yüklenemedi: ", "Could not read file, not uploaded: ",
+                ) + plan.unreadableName()
+            }
+            "not_connected" ->
+                _shareWarning.value = tr(
+                    "Sunucuya bağlı değil — dosya yüklenemedi: ",
+                    "Not connected to server, file not uploaded: ",
+                ) + (plan as? ShareUploadPlan.Upload)?.name.orEmpty()
+        }
+        out.cleanupPaths.forEach { p -> runCatching { java.io.File(p).delete() } }
+        // Metin yalnız ONAY yolunda taslağa düşer; iptalde atılır.
+        out.draftText?.takeIf { it.isNotBlank() }?.let { shareText(it) }
         _pendingSharePlan.value = ShareUploadPlan.None
         pendingStagedPath = null
         _pendingShareText.value = null
@@ -282,6 +319,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         _pendingShareSession.value = null
         _shareTargetVisible.value = false
     }
+
+    /** Unreadable planının adı (uyarı mesajı için); diğer planlarda boş. */
+    private fun ShareUploadPlan.unreadableName(): String =
+        (this as? ShareUploadPlan.Unreadable)?.name.orEmpty()
 
     /**
      * Staging kopyasını SEÇİLEN HEDEF'in profilinde gerçekten yükler:
@@ -292,12 +333,19 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     fun attachShareFile(plan: ShareUploadPlan.Upload) {
         val file = java.io.File(plan.stagedPath)
         val p = profile ?: run {
+            // Kullanıcıya görünür (YENI-2): sunucu bağlantısı yoksa dosya
+            // yüklenemez — sessiz DiagLog değil, uyarı şeridi.
             DiagLog.w("ShareUpload", "profil yok — ${plan.name} yüklenemedi")
+            _shareWarning.value = tr(
+                "Sunucuya bağlı değil — dosya yüklenemedi: ",
+                "Not connected to server, file not uploaded: ",
+            ) + plan.name
             runCatching { file.delete() }
             return
         }
         if (!file.isFile) {
             DiagLog.w("ShareUpload", "staging kopyası yok: ${plan.stagedPath}")
+            _shareWarning.value = tr("Dosya kopyası okunamadı: ", "File copy unreadable: ") + plan.name
             return
         }
         val placeholder = PendingAttachment(plan.name, AttachmentKind.File)

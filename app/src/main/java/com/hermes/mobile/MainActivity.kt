@@ -187,39 +187,34 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Başka uygulamadan gelen paylaşımı karşılar (WhatsApp, Telegram, galeri,
-     * tarayıcı…).
+     * Dış paylaşım girişi YALNIZ ShareProxyActivity + nonce el sıkışmasıdır
+     * (denetmen YENİ-3 / öneri #3 kapanışı).
      *
-     * Metin taslağa düşer; görsel/dosya doğrudan yüklenmeye başlar — kullanıcı
-     * uygulamaya geldiğinde ek hazır olur, yalnız ne isteyeceğini yazar.
+     * Eski `when (i.action) ACTION_SEND` dalı TAMAMEN kaldırıldı: MainActivity
+     * exported=true olduğundan explicit component intent (`am start -n
+     * .../MainActivity -a SEND`) o dalı nonce'suz çalıştırabiliyordu — taslağa
+     * metin enjeksiyonu + hedef seçimi olmadan EXTRA_STREAM'dan anında
+     * readBytes yükleme (onaysız yükleme + OOM yüzeyi). Artık nonce'suz hiçbir
+     * niyet işlem görmez; her dosya/metin paylaşımı vekil → staging → hedef
+     * seçimi akışından geçer.
      */
     private fun handleShareIntent(intent: Intent?) {
         val i = intent ?: return
-        // ShareProxyActivity'den gelen ekstraplar: hedef seçim ekranı açılır.
         // Kabul koşulu sözleşme gereği: is-share + vekilin rastgele nonce
-        // token'ı (ShareHandoff.accepted) — dış uygulamadan taslak enjeksiyonu
-        // kapalı (denetmen önerisi #3).
+        // token'ı (ShareHandoff.accepted). Vekil her seferinde token basar;
+        // dış uygulama bilemez → enjeksiyon kapalı.
         if (ShareHandoff.accepted(
                 isShare = i.getBooleanExtra(ShareHandoff.EXTRA_IS_SHARE, false),
                 token = i.getStringExtra(ShareHandoff.EXTRA_SHARE_TOKEN),
             )
         ) {
             handleShareHandoff(i)
-            return
         }
-        when (i.action) {
-            Intent.ACTION_SEND -> {
-                i.getStringExtra(Intent.EXTRA_TEXT)?.let(chatViewModel::shareText)
-                @Suppress("DEPRECATION")
-                val uri = i.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-                uri?.let { ingestShared(it, i.type) }
-            }
-            // SEND_MULTIPLE bilinçli olarak YOK (denetmen önerisi #4):
-            // MainActivity'nin MULTIPLE filtresi kaldırıldı, vektörde de
-            // açılmadı — çoklu galeri paylaşımı menüde görünmez. Çoklu
-            // destek istenirse vekile SEND_MULTIPLE + her URI için staging
-            // eklenir; tek akış bilinçli tercih.
-        }
+        // SEND_MULTIPLE bilinçli olarak YOK (denetmen önerisi #4):
+        // MainActivity'nin MULTIPLE filtresi kaldırıldı, vektörde de
+        // açılmadı — çoklu galeri paylaşımı menüde görünmez. Çoklu
+        // destek istenirse vekile SEND_MULTIPLE + her URI için staging
+        // eklenir; tek akış bilinçli tercih.
     }
 
     /**
@@ -262,12 +257,6 @@ class MainActivity : ComponentActivity() {
         } ?: return
         i.removeExtra("hermes_action")
         chatViewModel.pendingAction.value = action
-    }
-
-    private fun ingestShared(uri: Uri, type: String?) {
-        val mime = type ?: contentResolver.getType(uri)
-        if (mime?.startsWith("image/") == true) attachImageFromUri(uri)
-        else attachFileFromUri(uri)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -498,6 +487,16 @@ private fun HermesApp(
         if (sharedText != null) tab = Tab.Chat
     }
 
+    // Paylaşım hatası uyarısı (YENI-2): sessiz DiagLog değil, her sekmede
+    // görünen Toast. Kullanıcı gördükten sonra tüketilir.
+    val toastContext = androidx.compose.ui.platform.LocalContext.current
+    val shareWarning by chatViewModel.shareWarning.collectAsStateWithLifecycle()
+    LaunchedEffect(shareWarning) {
+        val w = shareWarning ?: return@LaunchedEffect
+        android.widget.Toast.makeText(toastContext, w, android.widget.Toast.LENGTH_LONG).show()
+        chatViewModel.clearShareWarning()
+    }
+
     var modelSheet by remember { mutableStateOf(false) }
     var commandSheet by remember { mutableStateOf(false) }
     var reasoningSheet by remember { mutableStateOf(false) }
@@ -681,7 +680,7 @@ private fun HermesApp(
                         )
                         chatViewModel.consumePendingShare()
                     },
-                    onCancel = chatViewModel::consumePendingShare,
+                    onCancel = chatViewModel::cancelPendingShare,
                 )
             } else {
                 when (tab) {
