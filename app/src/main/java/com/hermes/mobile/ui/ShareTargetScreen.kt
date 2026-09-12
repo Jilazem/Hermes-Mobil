@@ -16,6 +16,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -36,9 +37,11 @@ import java.util.Locale
  * altında son 10 oturum (AppState.sessions → listSessions). Dokununca
  * [onPickSession] hedef oturumu döner; [onNewTopic] yeni konu açar.
  *
- * Dosya paylaşımında [fileNote] "ad (boyut)" biçiminde gösterilir — gerçek
- * yükleme HermesClient.uploadManagedFile ile seçilen hedefte yapılır
- * (POST /api/files/upload-stream; SAHTE upload yok).
+ * Dosya paylaşımında [fileNote] "ad (boyut)" biçiminde gösterilir. Gerçek
+ * yükleme HENÜZ burada değil: hedef seçilince consumePendingShare, vekilin
+ * cache'e aldığı staging kopyasını ChatViewModel.attachShareFile üzerinden
+ * HermesClient.uploadManagedFile(File) ile POST /api/files/upload-stream'e
+ * akıtır (SAHTE upload yok — HIGH-1 teli; denetmen düzeltmesi).
  */
 @Composable
 fun ShareTargetScreen(
@@ -50,6 +53,10 @@ fun ShareTargetScreen(
     onCancel: () -> Unit,
 ) {
     val recent = recentSessions.filter { it.isActive }.take(10)
+
+    // Geri tuşu Vazgeç ile aynı şeyi yapmalı: overlay durumu temizlenir
+    // (consumePendingShare staging planını uygular/siler — denetmen #7).
+    BackHandler(onBack = onCancel)
 
     Column(
         Modifier

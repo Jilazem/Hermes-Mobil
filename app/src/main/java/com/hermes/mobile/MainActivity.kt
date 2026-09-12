@@ -68,6 +68,7 @@ import com.hermes.mobile.ui.SessionsScreen
 import com.hermes.mobile.ui.SessionRail
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
+import com.hermes.mobile.data.ShareHandoff
 import com.hermes.mobile.ui.ShareTargetScreen
 import com.hermes.mobile.ui.theme.themeById
 import com.hermes.mobile.ui.theme.HermesColors
@@ -195,7 +196,14 @@ class MainActivity : ComponentActivity() {
     private fun handleShareIntent(intent: Intent?) {
         val i = intent ?: return
         // ShareProxyActivity'den gelen ekstraplar: hedef seçim ekranı açılır.
-        if (i.getBooleanExtra(ShareProxyActivity.EXTRA_IS_SHARE, false)) {
+        // Kabul koşulu sözleşme gereği: is-share + vekilin rastgele nonce
+        // token'ı (ShareHandoff.accepted) — dış uygulamadan taslak enjeksiyonu
+        // kapalı (denetmen önerisi #3).
+        if (ShareHandoff.accepted(
+                isShare = i.getBooleanExtra(ShareHandoff.EXTRA_IS_SHARE, false),
+                token = i.getStringExtra(ShareHandoff.EXTRA_SHARE_TOKEN),
+            )
+        ) {
             handleShareHandoff(i)
             return
         }
@@ -206,12 +214,11 @@ class MainActivity : ComponentActivity() {
                 val uri = i.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 uri?.let { ingestShared(it, i.type) }
             }
-            Intent.ACTION_SEND_MULTIPLE -> {
-                @Suppress("DEPRECATION")
-                val uris = i.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM).orEmpty()
-                // Her ek ayrı ayrı yüklendiği için sıra korunuyor.
-                uris.forEach { ingestShared(it, i.type) }
-            }
+            // SEND_MULTIPLE bilinçli olarak YOK (denetmen önerisi #4):
+            // MainActivity'nin MULTIPLE filtresi kaldırıldı, vektörde de
+            // açılmadı — çoklu galeri paylaşımı menüde görünmez. Çoklu
+            // destek istenirse vekile SEND_MULTIPLE + her URI için staging
+            // eklenir; tek akış bilinçli tercih.
         }
     }
 
@@ -219,21 +226,23 @@ class MainActivity : ComponentActivity() {
      * ShareProxyActivity'den gelen paylaşım niyetini hedef seçim ekranıyla
      * karşılar. Kullanıcı oturum seçim sayfasında "Yeni konu" ya da son 10
      * oturumdan birini seçtikten sonra metin/dosya oraya düşer.
+     *
+     * [ShareHandoff.EXTRA_STAGED_FILE] vekilin cache'e aldığı kopyanın yoludur;
+     * hedef seçilince [ChatViewModel.attachShareFile] ile GERÇEKTEN yüklenir
+     * (HIGH-1 teli — yalnız etiket taşınmıyor).
      */
     private fun handleShareHandoff(intent: Intent) {
-        val sharedText = intent.getStringExtra(ShareProxyActivity.EXTRA_SHARED_TEXT)
-        val sharedFile = intent.getStringExtra(ShareProxyActivity.EXTRA_SHARED_FILE)
+        val sharedText = intent.getStringExtra(ShareHandoff.EXTRA_SHARED_TEXT)
+        val sharedFile = intent.getStringExtra(ShareHandoff.EXTRA_SHARED_FILE)
+        val stagedPath = intent.getStringExtra(ShareHandoff.EXTRA_STAGED_FILE)
         // Varsayılan hedef: yeni konu. Kullanıcı ShareTargetScreen'de
-        // değiştirebilir. Varsayılan hedefi belirle; UI oturum listesini
-        // gösterir.
+        // değiştirebilir.
         chatViewModel.pickShareTarget(
             sessionId = null,
             sharedText = sharedText,
             sharedFile = sharedFile,
+            stagedPath = stagedPath,
         )
-        // Dosya adı+boyutu ekleme bilgisi [HermesClient.uploadFile]
-        // gerçekte çalıştığında paylaşım hedefinin bir parçasıdır; burada
-        // yalnız taşınır, yüklemesi ChatViewModel tarafında yapılır.
     }
 
     /**
@@ -657,17 +666,20 @@ private fun HermesApp(
                         chatViewModel.consumePendingShare()
                     },
                     onPickSession = { s ->
+                        // Sıra kritik (HIGH-1): continueSession ChatState'i
+                        // sıfırlıyor (attachments dahil) — önce bağlan, sonra
+                        // paylaşımı tüket ki yük çipi silinmesin.
+                        chatViewModel.continueSession(
+                            liveId = s.id,
+                            dbId = s.id,
+                            title = s.title.ifBlank { s.id },
+                        )
                         chatViewModel.pickShareTarget(
                             sessionId = s.id,
                             sharedText = shareTextSnippet,
                             sharedFile = shareFileNote,
                         )
                         chatViewModel.consumePendingShare()
-                        chatViewModel.continueSession(
-                            liveId = s.id,
-                            dbId = s.id,
-                            title = s.title.ifBlank { s.id },
-                        )
                     },
                     onCancel = chatViewModel::consumePendingShare,
                 )

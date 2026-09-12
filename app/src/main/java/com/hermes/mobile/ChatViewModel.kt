@@ -15,7 +15,10 @@ import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.ModelProvider
 import com.hermes.mobile.data.ServerProfile
+import com.hermes.mobile.data.ShareUploadPlan
 import com.hermes.mobile.data.VoiceController
+import com.hermes.mobile.data.cleanupPaths
+import com.hermes.mobile.data.planShareUpload
 import com.hermes.mobile.data.resolveShareTarget
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CompletableDeferred
@@ -208,6 +211,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     val pendingShareText: StateFlow<String?> = _pendingShareText.asStateFlow()
 
     /**
+     * Vekilin staging kopyasından türeyen YÜKLEME PLANI (HIGH-1 teli).
+     * [pickShareTarget] her çağrıldığında (hedef seçimi dahil) güncellenir;
+     * [consumePendingShare] planı UYGULAR: Upload → gerçek yükleme,
+     * Unreadable → DiagLog uyarısı; her halde staging kopyası silinir.
+     */
+    private val _pendingSharePlan = MutableStateFlow<ShareUploadPlan>(ShareUploadPlan.None)
+    private var pendingStagedPath: String? = null
+
+    /**
      * Ekran "Hermes'e ilet" hedefi için hedef seçim sayfasını gösterir mi?
      * Yalnız [pickShareTarget] çağrıldıktan, [consumePendingShare] bitmeden evet.
      */
@@ -221,31 +233,86 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      * oturuma bağlanılır ve metin/dosya oraya düşürülür. Ekstra metin,
      * ShareTargetScreen gösterimi bittikten sonra taslağa gönderilir.
      */
-    fun pickShareTarget(sessionId: String?, sharedText: String?, sharedFile: String?) {
+    fun pickShareTarget(
+        sessionId: String?,
+        sharedText: String?,
+        sharedFile: String?,
+        stagedPath: String? = null,
+    ) {
         _pendingShareSession.value = sessionId
-        // Dosya adı yalnız gerçekten varsa tutulur; yüklemesi gerçek uca
-        // POST edilir (HermesClient.uploadFile). Hedef kararını [resolveShareTarget]
-        // saf fonksiyonu verir — buradan UI'ye yalnız taşıma bilgisi gidiyor.
+        // Dosya adı yalnız gerçekten varsa tutulur; gerçek yükleme staging
+        // kopyasından yapılır — hedef kararını [resolveShareTarget] saf
+        // fonksiyonu, yükleme kararını [planShareUpload] saf fonksiyonu verir.
         val target = resolveShareTarget(sharedText, sharedFile, sessionId)
         if (target.hasFile && !sharedFile.isNullOrBlank()) {
             _pendingShareFile.value = sharedFile
         } else {
             _pendingShareFile.value = null
         }
+        // stagedPath hedef seçimi sonrası tekrar gelen çağrıda null olur;
+        // ilk el sıkışmada tutulan kopya yolu geçerliliğini korur.
+        if (stagedPath != null) pendingStagedPath = stagedPath
+        _pendingSharePlan.value = planShareUpload(pendingStagedPath, _pendingShareFile.value)
         _pendingShareText.value = sharedText
         // Hedef seçim ekranı yalnız gerçek bir paylaşım varsa açılır.
         _shareTargetVisible.value = target.wantsTargetPicker ||
             !sharedText.isNullOrBlank() || !sharedFile.isNullOrBlank()
     }
 
-    /** Hedef seçim ekranı kapanınca metni taslağa yerleştirir. */
+    /** Hedef seçim ekranı kapanınca metni taslağa, dosyaya yüklemeye geçirir. */
     fun consumePendingShare() {
         val text = _pendingShareText.value
         if (!text.isNullOrBlank()) shareText(text)
+        val plan = _pendingSharePlan.value
+        when (plan) {
+            is ShareUploadPlan.Upload -> attachShareFile(plan)
+            is ShareUploadPlan.Unreadable ->
+                // Sessiz kayıp yok: kullanıcı Vazgeç dese bile uyarı loglanır.
+                DiagLog.w("ShareUpload", "dosya okunamadı, yüklenemedi: ${plan.name}")
+            ShareUploadPlan.None -> Unit
+        }
+        plan.cleanupPaths().forEach { p ->
+            runCatching { java.io.File(p).delete() }
+        }
+        _pendingSharePlan.value = ShareUploadPlan.None
+        pendingStagedPath = null
         _pendingShareText.value = null
         _pendingShareFile.value = null
         _pendingShareSession.value = null
         _shareTargetVisible.value = false
+    }
+
+    /**
+     * Staging kopyasını SEÇİLEN HEDEF'in profilinde gerçekten yükler:
+     * [HermesClient.uploadManagedFile] (File) → POST /api/files/upload-stream.
+     * Yük ek olarak sohbet girdisinde görünür; gönderim kullanıcı onaylıdır.
+     * Yükleme sonrası kopya silinir (cache birikmez — denetmen #1).
+     */
+    fun attachShareFile(plan: ShareUploadPlan.Upload) {
+        val p = profile ?: run {
+            DiagLog.w("ShareUpload", "profil yok — ${plan.name} yüklenemedi")
+            return
+        }
+        val file = java.io.File(plan.stagedPath)
+        if (!file.isFile) {
+            DiagLog.w("ShareUpload", "staging kopyası yok: ${plan.stagedPath}")
+            return
+        }
+        val placeholder = PendingAttachment(plan.name, AttachmentKind.File)
+        _state.update { it.copy(attachments = it.attachments + placeholder) }
+        viewModelScope.launch {
+            runCatching { HermesClient(p).uploadManagedFile(file, plan.name) }
+                .onSuccess { path ->
+                    DiagLog.i("ShareUpload", "yüklendi: ${plan.name} -> $path (${file.length()} B)")
+                    markAttachment(plan.name, path, null)
+                }
+                .onFailure { e ->
+                    DiagLog.e("ShareUpload", "yükleme başarısız: ${plan.name}", e)
+                    markAttachment(plan.name, null, e.message ?: "Yüklenemedi")
+                }
+            // Gönderim sonrası staging temizliği (yüklemesiz de silinir).
+            runCatching { file.delete() }
+        }
     }
 
     fun shareText(text: String) {
