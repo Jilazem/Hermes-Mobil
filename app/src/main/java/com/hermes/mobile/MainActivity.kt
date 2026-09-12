@@ -302,6 +302,10 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(settings) {
                     voiceViewModel.settings = settings
                     chatViewModel.preferredModel = settings.lastModel
+                    // Bot (profil) ataması kalıcı — son kullanılan çip
+                    // açılışta geri yüklenir.
+                    chatViewModel.selectedProfileValue = settings.selectedProfile
+                        .ifBlank { null }
                     panelViewModel.sparkUrl = settings.sparkUrl
                 }
 
@@ -324,11 +328,21 @@ class MainActivity : ComponentActivity() {
                     chatViewModel.onModelChosen = { prov, model ->
                         viewModel.settingsStore.update { it.copy(lastModel = "$prov|$model") }
                     }
+                    // Bot (profil) ataması kalıcı — çipten seçilen profil
+                    // ayarlara yazılır; sonraki açılışta geri yüklenir.
+                    chatViewModel.onProfileChipSelected = { name ->
+                        viewModel.settingsStore.update {
+                            it.copy(selectedProfile = name.orEmpty())
+                        }
+                    }
                 }
 
                 LaunchedEffect(gateway) {
                     liveViewModel.bind(gateway)
                     viewModel.bindGateway(gateway)
+                    // Bot (profil) ataması: profilleri sohbet açılır açılmaz
+                    // çek — yalnız ProfilSheet açıldığında çekilmesin.
+                    viewModel.loadProfiles()
                 }
 
                 HermesApp(
@@ -467,6 +481,8 @@ private fun HermesApp(
     val profilesLoading by viewModel.profilesLoading.collectAsStateWithLifecycle()
     val terminalLines by chatViewModel.terminal.collectAsStateWithLifecycle()
     val terminalBusy by chatViewModel.terminalBusy.collectAsStateWithLifecycle()
+    val selectedProfile by chatViewModel.selectedProfile.collectAsStateWithLifecycle()
+    val sessionProfile by chatViewModel.sessionProfile.collectAsStateWithLifecycle()
     val voice by voiceViewModel.state.collectAsStateWithLifecycle()
     val camera by voiceViewModel.cameraState.collectAsStateWithLifecycle()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -639,6 +655,13 @@ private fun HermesApp(
                         onUpdatePrompt = viewModel::guncellePrompt,
                         onDeletePrompt = viewModel::silPrompt,
                         onImprovePrompt = chatViewModel::improvePrompt,
+                        profiles = hermesProfiles,
+                        selectedProfile = selectedProfile.orEmpty(),
+                        currentProfile = sessionProfile,
+                        onProfileChipClick = { name ->
+                            chatViewModel.selectedProfileValue =
+                                name.takeIf { it != com.hermes.mobile.ui.ROUTER_CHIP }
+                        },
                         )
                     }
                     Tab.Work -> WorkScreen(

@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import com.hermes.mobile.ui.createSessionProfileArg
+import com.hermes.mobile.ui.ROUTER_CHIP
 import com.hermes.mobile.ui.tr
 
 /** Sohbet akışındaki tek bir görsel öğe. */
@@ -372,7 +374,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                     onSessionChanged?.invoke(id)
                     applyPreferredModel(gw, id)
@@ -418,7 +420,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                     onSessionChanged?.invoke(id)
                 }
@@ -769,8 +771,55 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _modelCheck = MutableStateFlow<String?>(null)
     val modelCheck: StateFlow<String?> = _modelCheck.asStateFlow()
 
+    /**
+     * Bot (profil) ataması: YENİ sohbet başlatırken `createSession(profile)`
+     * argümanını belirler — Composer üstündeki çipten seçilen profil.
+     *
+     * - `selectedProfile == null` (varsayılan "Yönlendirici") → profil
+     *   gönderilmez, sunucunun aktif yönlendirmesi (activeProfile) işler.
+     * - Profil adı seçilirse → o profilin SOUL.md'si + beceri seti açılır.
+     */
+    private suspend fun createSessionWithProfile(gw: GatewayWsClient): String {
+        val profileArg = createSessionProfileArg(selectedProfileValue ?: ROUTER_CHIP)
+            ?: activeProfile.takeIf { it.isNotBlank() }
+            ?: null
+        return gw.createSession(profileArg).also { id ->
+            _sessionProfile.value = profileArg
+            onSessionChanged?.invoke(id)
+        }
+    }
+
     /** Bir model başarısız olduğunda çağrılır; ayarlara "bozuk" diye yazılır. */
     var onModelBroken: ((String) -> Unit)? = null
+
+    /**
+     * Bot (profil) ataması — Composer üstündeki yatay çiplerden seçilen
+     * profil. `null` = varsayılan "Yönlendirici" (profil gönderilmez,
+     * sunucunun aktif yönlendirmesi). YENİ sohbetlerde createSession
+     * argümanı olur; mevcut oturumda çipler salt-okunur kalır.
+     *
+     * Kalıcılık: `onProfileChipSelected` (settings deposu) yazdırır.
+     */
+    private val _selectedProfile = MutableStateFlow<String?>(null)
+    /**
+     * Bot (profil) ataması — Composer üstündeki yatay çiplerden seçilen
+     * profil. `null` = varsayılan "Yönlendirici" (profil gönderilmez,
+     * sunucunun aktif yönlendirmesi). YENİ sohbetlerde createSession
+     * argümanı olur; mevcut oturumda çipler salt-okunur kalır.
+     *
+     * Kalıcılık: [onProfileChipSelected] (settings deposu) yazdırır;
+     * [selectedProfileValue] muter üzerinden değişir.
+     */
+    val selectedProfile: StateFlow<String?> = _selectedProfile.asStateFlow()
+    var selectedProfileValue: String?
+        get() = _selectedProfile.value
+        set(value) {
+            _selectedProfile.value = value
+            onProfileChipSelected?.invoke(value)
+        }
+
+    /** Kalıcı yazım — ayarlar deposu (settings). */
+    var onProfileChipSelected: ((String?) -> Unit)? = null
 
     /** Doğrulanmış model seçimini kalıcı yapmak için (ayarlar deposuna yazar). */
     var onModelChosen: ((provider: String, model: String) -> Unit)? = null
@@ -780,6 +829,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Yeni oturumların açılacağı Hermes profili; boşsa varsayılan. */
     var activeProfile: String = ""
+
+    /**
+     * Mevcut oturumun profili (session.create'de gönderilen; sunucudan
+     * dönmiyorsa ayarlanan). `null` = oturum yok / profil bilinmiyor.
+     * Composer üstündeki çipler bu değerle kilitlenir: mevcut oturumda
+     * salt-okunur ve bu profil (bilinmiyorsa "—") gösterilir.
+     */
+    private val _sessionProfile = MutableStateFlow<String?>(null)
+    val sessionProfile: StateFlow<String?> = _sessionProfile.asStateFlow()
 
     private val _terminal = MutableStateFlow<List<TerminalLine>>(emptyList())
     val terminal: StateFlow<List<TerminalLine>> = _terminal.asStateFlow()
@@ -805,7 +863,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                 }
                 if (cmd.startsWith("/")) {
@@ -836,7 +894,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val previous = _state.value.currentModel
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                 }
                 val cmd = buildString {
@@ -916,7 +974,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         outbox.clear()
         for (body in queued) {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile).also { id ->
+                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                     onSessionChanged?.invoke(id)
                     applyPreferredModel(gw, id)
@@ -985,6 +1043,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         thinkingKey = null
         streamMeter.reset()
         _speed.value = null
+        _sessionProfile.value = null
         onSessionChanged?.invoke("")
     }
 
@@ -1006,6 +1065,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         thinkingKey = null
         streamMeter.reset()
         _speed.value = null
+        // Mevcut oturuma bağlanıldı → çipler kilitlenir; profil sunucudan
+        // bilinmiyor (canlı oturumlarda profili öğrenmek yok), bu yüzden
+        // null ("—"). Oturum düşerse sessizce yeni oturum açılır ve profil
+        // seçimi yeniden serbestleşir.
+        _sessionProfile.value = null
         _state.update {
             ChatState(
                 connection = it.connection,
