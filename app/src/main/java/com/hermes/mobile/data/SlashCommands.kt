@@ -60,7 +60,7 @@ val SLASH_COMMANDS: List<SlashCommand> = listOf(
     // ── Model ve görünüm ─────────────────────────────────────────────
     SlashCommand("model", "Model değiştir", SlashCategory.Model, true, "model adı"),
     SlashCommand("personality", "Karakter seç", SlashCategory.Model, true, "karakter adı"),
-    SlashCommand("reasoning", "Akıl yürütme çabası", SlashCategory.Model, true, "low | medium | high"),
+    SlashCommand("reasoning", "Akıl yürütme çabası", SlashCategory.Model, true, "none | low | medium | high | xhigh | max"),
     SlashCommand("skin", "Tema değiştir", SlashCategory.Model, true, "tema adı"),
     SlashCommand("verbose", "Araç ilerleme ayrıntısı", SlashCategory.Model),
 

@@ -102,6 +102,14 @@ data class AppSettings(
 
     // ── Sohbet ───────────────────────────────────────────────────────
     val expandThinking: Boolean = false,
+    /**
+     * Düşünürken metni ekranda canlı çiz — son satırları izleyen açık blok.
+     *
+     * Kapalıyken düşünce bloğu hâlâ toplanır ama ekran yalnız "Düşünüyor…"
+     * başlığını gösterir; yanıt başlar ya da araç çalışmaya başlayınca blok
+     * katlanır hâle gelir (mevcut davranış).
+     */
+    val showLiveThinking: Boolean = true,
     val expandTools: Boolean = false,
     val renderMarkdown: Boolean = true,
     val historyLimit: Int = 150,

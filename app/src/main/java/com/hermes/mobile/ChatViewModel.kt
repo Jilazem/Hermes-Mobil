@@ -942,6 +942,41 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     fun clearNotice() = _state.update { it.copy(notice = null) }
 
     /**
+     * Argümansız `/reasoning` çalıştırıp çıktıyı ayrıştırır — "Düşünce panosu".
+     *
+     * Sonuç ekrana düz metin değil yapı olarak düşer: [reasoningStatus] akışı
+     * güncellenir, panel çiplerini buna göre seçili gösterir. `/reasoning`
+     * argümanla da (`/reasoning high`) aynı yoldan geçer; argümanlı çağrıda
+     * sunucu yeni çabayı onaylar, ayrıştırıcı satırı okuyamazsa `null` kalır
+     * ve panel seçimi boşa düşürür (SAF: asla varsayılanı uydurmaz).
+     */
+    private val _reasoningStatus = MutableStateFlow(ReasoningStatus(null, null))
+    val reasoningStatus: StateFlow<ReasoningStatus> = _reasoningStatus.asStateFlow()
+
+    fun refreshReasoning() {
+        val gw = client ?: return
+        viewModelScope.launch {
+            runCatching {
+                val sid = _state.value.sessionId ?: gw.createSession(activeProfile)
+                val out = gw.slashExec(sid, "/reasoning")
+                _reasoningStatus.value = parseReasoningOutput(out)
+            }.onFailure { e ->
+                // Bağlantı düşerse paneli boşaltma — son bilineni göster;
+                // yalnız gerçek parse boşluğunda null döner.
+                DiagLog.w("chat", "refreshReasoning failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Düşünce çabasını yer, panelin çipleri argümansız komutu çağıran
+     * [refreshReasoning] ile okunur; buradan yalnız "yazma" yarı yolu.
+     */
+    fun setReasoningEffort(level: String) {
+        runSlash("/reasoning $level")
+    }
+
+    /**
      * Yeniden bağlandıktan sonra oturumu toparlar.
      *
      * Sıra önemli: önce oturumu gateway'e bağla (yoksa `prompt.submit` boşa
