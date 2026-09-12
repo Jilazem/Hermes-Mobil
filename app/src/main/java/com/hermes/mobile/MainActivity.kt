@@ -441,6 +441,7 @@ private fun HermesApp(
     var modelSheet by remember { mutableStateOf(false) }
     var commandSheet by remember { mutableStateOf(false) }
     var reasoningSheet by remember { mutableStateOf(false) }
+    val reasoningStatus by chatViewModel.reasoningStatus.collectAsStateWithLifecycle()
     var voiceSheet by remember { mutableStateOf(false) }
     var cameraFullScreen by remember { mutableStateOf(false) }
     var exitDialog by remember { mutableStateOf(false) }
@@ -633,12 +634,17 @@ private fun HermesApp(
                             viewModel.loadProfiles()
                             profileSheet = true
                         },
-                        onOpenReasoning = { reasoningSheet = true },
+                        onOpenReasoning = {
+                            reasoningSheet = true
+                            // Sunucunun bildirdiği aktif çabayı öne al — panel
+                            // yerel tahmin UYGULAMAZ (SAF), sunucu okuma belirler.
+                            chatViewModel.refreshReasoning()
+                        },
                         onReasoningLevel = { lvl ->
                             viewModel.settingsStore.update { st -> st.copy(reasoningLevel = lvl) }
-                            chatViewModel.runSlash("/reasoning $lvl")
+                            chatViewModel.setReasoningEffort(lvl)
                         },
-                        reasoningLevel = settings.reasoningLevel,
+                        reasoningLevel = reasoningStatus.effort ?: settings.reasoningLevel,
                         showLiveThinking = settings.showLiveThinking,
                         onShowLiveThinking = { on ->
                             viewModel.settingsStore.update { st -> st.copy(showLiveThinking = on) }
