@@ -1335,7 +1335,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun appendToStream(chunk: String) {
         if (chunk.isEmpty()) return
-        streamMeter.delta(chunk, System.nanoTime())?.let { _speed.value = it }
+        streamMeter.delta(chunk, System.nanoTime(), StreamMeter.PHASE_WRITING)
+            ?.let { _speed.value = it }
 
         val key = streamingKey ?: nextKey("a").also { newKey ->
             streamingKey = newKey
@@ -1358,8 +1359,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         if (chunk.isEmpty()) return
         // Düşünme fazı da aynı StreamMeter'ı besler: kaynak farksız, tek hız
         // sayacı hem thinking.delta hem message.delta ile akar; faz geçişinde
-        // reset yok, meter akışı kendinden devam ettirir.
-        streamMeter.delta(chunk, System.nanoTime())?.let { _speed.value = it }
+        // reset yok, meter akışı kendinden devam ettirir. Faz etiketi bu
+        // çağrıların hangi fazda olduğunu bildiklerinden ViewModel'dedir.
+        streamMeter.delta(chunk, System.nanoTime(), StreamMeter.PHASE_THINKING)
+            ?.let { _speed.value = it }
         val key = thinkingKey ?: nextKey("th").also { newKey ->
             thinkingKey = newKey
             _state.update {

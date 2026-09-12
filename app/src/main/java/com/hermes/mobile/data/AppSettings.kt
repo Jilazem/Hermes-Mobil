@@ -102,6 +102,8 @@ data class AppSettings(
 
     // ── Sohbet ───────────────────────────────────────────────────────
     val expandThinking: Boolean = false,
+    /** Son seçilen /reasoning çabası — "Düşünce panosu" başlangıç durumu. */
+    val reasoningLevel: String? = null,
     /**
      * Düşünürken metni ekranda canlı çiz — son satırları izleyen açık blok.
      *

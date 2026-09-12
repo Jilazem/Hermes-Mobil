@@ -25,6 +25,10 @@ class StreamMeter {
 
         /** EMA düzleştirme katsayısı — küçükse hız daha az hoplar. */
         const val EMA_ALPHA = 0.25
+
+        /** Faz etiketleri — hız satırı hangi fazda akıyorunu gösterir. */
+        const val PHASE_THINKING = "thinking"
+        const val PHASE_WRITING = "writing"
     }
 
     /** Donmuş okuma anı. UI yalnız bunu görür; iç durum dışarı sızmaz. */
@@ -37,6 +41,15 @@ class StreamMeter {
         val elapsedMs: Long,
         /** message.complete geldi mi — true ise değerler donmuştur. */
         val finished: Boolean = false,
+        /**
+         * Hâlihazırda akan faz — [PHASE_THINKING] ya da [PHASE_WRITING].
+         *
+         * [StreamMeter] fazı hatırlamaz; ViewModel her pencerede aktif fazı
+         * buraya geçiyor (canlı düşünce delta'ları düşünce fazını, yanıt
+         * delta'ları yazma fazını temsil eder). Faz geçişinde sayaç SIFIRLANMAZ —
+         * tek akış, iki faz.
+         */
+        val phase: String = PHASE_WRITING,
     ) {
         /** Gösterilmeye değer bir akış var mı? */
         val active: Boolean get() = tokens > 0
@@ -50,6 +63,7 @@ class StreamMeter {
     private var ema = 0.0
     private var frozen = false
     private var frozenElapsedMs = 0L
+    private var lastPhase = PHASE_WRITING
 
     /** Akışı sıfırlar — yeni yanıt, yeni saat. */
     fun reset() {
@@ -67,9 +81,14 @@ class StreamMeter {
      * Bir delta parçası besler. İlk çağrı saati ve pencereyi başlatır.
      * Donmuş ölçerde (finish sonrası geç gelen delta) sessizce yok sayılır.
      * Yalnız bir pencere kapanıp EMA güncellendiğinde snapshot döner.
+     *
+     * [phase] hangi fazda akıyoruz: düşünce delta'ları [PHASE_THINKING] ile,
+     * yanıt delta'ları [PHASE_WRITING] ile gelir; sayaç iki fazı da tek
+     * akış olarak ölçer, etiket faz geçişinde değişir.
      */
-    fun delta(text: String, nowNanos: Long): Snapshot? {
+    fun delta(text: String, nowNanos: Long, phase: String = PHASE_WRITING): Snapshot? {
         if (frozen || text.isEmpty()) return null
+        lastPhase = phase
         if (!started) {
             started = true
             startNanos = nowNanos
@@ -121,6 +140,7 @@ class StreamMeter {
             else -> (nowNanos - startNanos) / 1_000_000L
         },
         finished = frozen,
+        phase = if (started) lastPhase else PHASE_WRITING,
     )
 }
 

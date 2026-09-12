@@ -440,6 +440,7 @@ private fun HermesApp(
 
     var modelSheet by remember { mutableStateOf(false) }
     var commandSheet by remember { mutableStateOf(false) }
+    var reasoningSheet by remember { mutableStateOf(false) }
     var voiceSheet by remember { mutableStateOf(false) }
     var cameraFullScreen by remember { mutableStateOf(false) }
     var exitDialog by remember { mutableStateOf(false) }
@@ -631,6 +632,16 @@ private fun HermesApp(
                         onOpenProfiles = {
                             viewModel.loadProfiles()
                             profileSheet = true
+                        },
+                        onOpenReasoning = { reasoningSheet = true },
+                        onReasoningLevel = { lvl ->
+                            viewModel.settingsStore.update { st -> st.copy(reasoningLevel = lvl) }
+                            chatViewModel.runSlash("/reasoning $lvl")
+                        },
+                        reasoningLevel = settings.reasoningLevel,
+                        showLiveThinking = settings.showLiveThinking,
+                        onShowLiveThinking = { on ->
+                            viewModel.settingsStore.update { st -> st.copy(showLiveThinking = on) }
                         },
                         activeProfileName = activeHermesProfile,
                         onOpenFile = onOpenFile,
