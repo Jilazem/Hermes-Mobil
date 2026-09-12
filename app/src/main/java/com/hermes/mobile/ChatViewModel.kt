@@ -12,14 +12,19 @@ import com.hermes.mobile.data.PhoneTools
 import com.hermes.mobile.data.ShizukuBridge
 import com.hermes.mobile.data.Notifier
 import com.hermes.mobile.data.HermesClient
+import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.ModelProvider
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.VoiceController
+import com.hermes.mobile.data.resolveShareTarget
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -129,6 +134,61 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val _sharedText = MutableStateFlow<String?>(null)
     val sharedText: StateFlow<String?> = _sharedText.asStateFlow()
+
+    /**
+     * Paylaşım hedefi geçici durumu — [pickShareTarget] tarafından doldurulur,
+     * [consumePendingShare] ile temizlenir. Üç ayrı StateFlow: oturum, dosya adı,
+     * metin. Hedef kararını [resolveShareTarget] saf fonksiyonu verir.
+     */
+    private val _pendingShareSession = MutableStateFlow<String?>(null)
+    val pendingShareSession: StateFlow<String?> = _pendingShareSession.asStateFlow()
+
+    private val _pendingShareFile = MutableStateFlow<String?>(null)
+    val pendingShareFile: StateFlow<String?> = _pendingShareFile.asStateFlow()
+
+    private val _pendingShareText = MutableStateFlow<String?>(null)
+    val pendingShareText: StateFlow<String?> = _pendingShareText.asStateFlow()
+
+    /**
+     * Ekran "Hermes'e ilet" hedefi için hedef seçim sayfasını gösterir mi?
+     * Yalnız [pickShareTarget] çağrıldıktan, [consumePendingShare] bitmeden evet.
+     */
+    private val _shareTargetVisible = MutableStateFlow(false)
+    val shareTargetVisible: StateFlow<Boolean> = _shareTargetVisible.asStateFlow()
+
+    /**
+     * Paylaşım niyeti sonucunda hedef seçim ekranını açar.
+     *
+     * [sessionId] == null ise "Yeni konu" seçildi; oturum kimliği verilirse o
+     * oturuma bağlanılır ve metin/dosya oraya düşürülür. Ekstra metin,
+     * ShareTargetScreen gösterimi bittikten sonra taslağa gönderilir.
+     */
+    fun pickShareTarget(sessionId: String?, sharedText: String?, sharedFile: String?) {
+        _pendingShareSession.value = sessionId
+        // Dosya adı yalnız gerçekten varsa tutulur; yüklemesi gerçek uca
+        // POST edilir (HermesClient.uploadFile). Hedef kararını [resolveShareTarget]
+        // saf fonksiyonu verir — buradan UI'ye yalnız taşıma bilgisi gidiyor.
+        val target = resolveShareTarget(sharedText, sharedFile, sessionId)
+        if (target.hasFile && !sharedFile.isNullOrBlank()) {
+            _pendingShareFile.value = sharedFile
+        } else {
+            _pendingShareFile.value = null
+        }
+        _pendingShareText.value = sharedText
+        // Hedef seçim ekranı yalnız gerçek bir paylaşım varsa açılır.
+        _shareTargetVisible.value = target.wantsTargetPicker ||
+            !sharedText.isNullOrBlank() || !sharedFile.isNullOrBlank()
+    }
+
+    /** Hedef seçim ekranı kapanınca metni taslağa yerleştirir. */
+    fun consumePendingShare() {
+        val text = _pendingShareText.value
+        if (!text.isNullOrBlank()) shareText(text)
+        _pendingShareText.value = null
+        _pendingShareFile.value = null
+        _pendingShareSession.value = null
+        _shareTargetVisible.value = false
+    }
 
     fun shareText(text: String) {
         if (text.isBlank()) return

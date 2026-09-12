@@ -190,6 +190,26 @@
             </intent-filter>
         </service>
 
+        <!-- Share vekili: WhatsApp/Telegram/galeri "Paylaş" menüsünden gelen
+             ACTION_SEND niyetini şeffaf proxy'de yakalar; hedef (oturum seçim
+             sayfası) belirlenir, MainActivity'e iletilir. -->
+        <activity
+            android:name=".ShareProxyActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>
