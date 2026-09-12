@@ -18,19 +18,23 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -56,8 +60,42 @@ import com.hermes.mobile.data.SessionFlags
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
+import java.time.LocalDate
+
+/**
+ * Oturum eylem menüsü öğeleri — long-press menüsü ModalBottomSheet'e taşıyınca
+ * menü içeriğini UI'dan bağımsız test edilebilir kılmak için saf fonksiyon.
+ *
+ * `actionsEnabled`: bitmiş oturumda (isActive=false) arşivle/sil/durdur/buda
+ * açık; çalışan oturumda yalnızca yeniden adlandır ve sabitle kullanılabilir.
+ * (Eski DropdownMenuItem davranışının aynısı.)
+ */
+data class SessionMenuActions(
+    val rename: Boolean = true,
+    val stop: Boolean = false,
+    val compress: Boolean = false,
+    val archive: Boolean = false,
+    val delete: Boolean = false,
+    /** Menüden arşive geçildiğinde etiket değişir: Arşivle ↔ Arşivden çıkar. */
+    val isArchived: Boolean = false,
+)
+
+fun sessionMenuActions(
+    session: HermesSession,
+    flags: SessionFlags,
+): SessionMenuActions {
+    val actionsEnabled = !session.isActive
+    return SessionMenuActions(
+        rename = true,
+        stop = actionsEnabled,
+        compress = actionsEnabled,
+        archive = actionsEnabled,
+        delete = actionsEnabled,
+        isArchived = session.id in flags.archived,
+    )
+}
+
 
 /** Gruplama başlıkları bu eşiğin altında kalkar — kısa listede gürültü olur. */
 const val GROUPING_MIN = 3
@@ -203,6 +241,10 @@ fun SessionsScreen(
     onRename: (String, String) -> Unit = { _, _ -> },
     onDelete: (String) -> Unit = {},
     onRefreshSessions: () -> Unit = {},
+    /** '/stop' slashExec ile oturumu durdurur (AlertDialog onayı ekran tarafında). */
+    onStop: (HermesSession) -> Unit = {},
+    /** '/compress' ile bağlamı sıkıştırır — sohbet kalır. */
+    onBuda: (HermesSession) -> Unit = {},
 ) {
     val flags = state.flags
     val cronNames = state.cronNames
@@ -211,6 +253,7 @@ fun SessionsScreen(
     var menuSession by remember { mutableStateOf<HermesSession?>(null) }
     var renameTarget by remember { mutableStateOf<HermesSession?>(null) }
     var deleteTarget by remember { mutableStateOf<HermesSession?>(null) }
+    var stopTarget by remember { mutableStateOf<HermesSession?>(null) }
     // Bildirim metni composable tarafında çözülüyor (S.t2); burada yalnız bayrak.
     var removedNotice by remember { mutableStateOf(false) }
 
@@ -252,6 +295,29 @@ fun SessionsScreen(
             query = query,
             onChange = { query = it; removedNotice = false },
         )
+
+        if (archivedCount > 0) {
+            Spacer(Modifier.height(8.dp))
+            AssistChip(
+                onClick = { showArchived = !showArchived },
+                label = {
+                    Text(
+                        if (showArchived) S.t2("Arşiv gizleniyor", "Archive hidden")
+                        else S.t2("Arşiv göster (${archivedCount})", "Show archive (${archivedCount})"),
+                        color = if (showArchived) HermesColors.TextPrimary else HermesColors.TextMuted,
+                        fontSize = 12.sp,
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Archive,
+                        null,
+                        tint = if (showArchived) HermesColors.Midground else HermesColors.TextMuted,
+                        modifier = Modifier.size(14.dp),
+                    )
+                },
+            )
+        }
 
         if (removedNotice) {
             Text(
@@ -319,6 +385,7 @@ fun SessionsScreen(
                             val session = entry.session
                             SessionRow(
                                 session = session,
+                                actions = sessionMenuActions(session, flags),
                                 title = readableTitle(session, flags, cronNames),
                                 pinned = session.id in flags.pinned,
                                 archived = session.id in flags.archived,
@@ -342,6 +409,14 @@ fun SessionsScreen(
                                 onDelete = {
                                     menuSession = null
                                     deleteTarget = session
+                                },
+                                onStop = {
+                                    menuSession = null
+                                    stopTarget = session
+                                },
+                                onBuda = {
+                                    menuSession = null
+                                    onBuda(session)
                                 },
                             )
                         }
@@ -446,6 +521,39 @@ fun SessionsScreen(
             },
         )
     }
+
+    // Durdurma onayı — onaylanınca ekranda '/stop' slashExec çalışır.
+    stopTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { stopTarget = null },
+            containerColor = HermesColors.Surface,
+            title = {
+                Text(readableTitle(target, flags, cronNames), style = MonoTextStyle, color = HermesColors.TextPrimary, fontSize = 13.sp)
+            },
+            text = {
+                Text(
+                    S.t2("Durdurmak istediğine emin misin?", "Are you sure you want to stop?"),
+                    color = HermesColors.TextSecondary,
+                    fontSize = 13.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onStop(target)
+                        stopTarget = null
+                    },
+                ) {
+                    Text(S.t2("Durdur", "Stop"), color = HermesColors.Danger, fontSize = 13.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { stopTarget = null }) {
+                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextMuted, fontSize = 13.sp)
+                }
+            },
+        )
+    }
 }
 
 /** Arama alanı — malzeme3 SearchBar değil (overlay Yerleşimi kırar); Composer kalıbı. */
@@ -500,6 +608,7 @@ private fun SessionRow(
     pinned: Boolean,
     archived: Boolean,
     menuOpen: Boolean,
+    actions: SessionMenuActions,
     onClick: () -> Unit,
     onContinue: () -> Unit,
     onLongPress: () -> Unit,
@@ -508,6 +617,8 @@ private fun SessionRow(
     onRename: () -> Unit,
     onToggleArchived: () -> Unit,
     onDelete: () -> Unit,
+    onStop: () -> Unit,
+    onBuda: () -> Unit,
 ) {
     val actionsEnabled = !session.isActive
     HermesCard(
@@ -538,74 +649,21 @@ private fun SessionRow(
             Spacer(Modifier.width(8.dp))
             Text(formatRelative(session.startedAt), color = HermesColors.TextMuted, fontSize = 11.sp)
 
-            // Uzun-bas menüsünün çapası — satır sonunda sıfır boyutlu kutu.
-            Box {
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = onDismissMenu,
-                    containerColor = HermesColors.Surface,
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                if (pinned) S.t2("Sabiti kaldır", "Unpin") else S.t2("Sabitle", "Pin"),
-                                color = HermesColors.TextPrimary,
-                                fontSize = 13.sp,
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.PushPin, null, tint = HermesColors.Midground, modifier = Modifier.size(16.dp))
-                        },
-                        onClick = onTogglePin,
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(S.t2("Yeniden adlandır", "Rename"), color = HermesColors.TextPrimary, fontSize = 13.sp)
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Edit, null, tint = HermesColors.Midground, modifier = Modifier.size(16.dp))
-                        },
-                        onClick = onRename,
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                if (archived) S.t2("Arşivden çıkar", "Unarchive") else S.t2("Arşivle", "Archive"),
-                                color = if (actionsEnabled) HermesColors.TextPrimary else HermesColors.TextFaint,
-                                fontSize = 13.sp,
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Archive,
-                                null,
-                                tint = if (actionsEnabled) HermesColors.Midground else HermesColors.TextFaint,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        },
-                        enabled = actionsEnabled,
-                        onClick = onToggleArchived,
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                S.t2("Sil", "Delete"),
-                                color = if (actionsEnabled) HermesColors.Danger else HermesColors.TextFaint,
-                                fontSize = 13.sp,
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Delete,
-                                null,
-                                tint = if (actionsEnabled) HermesColors.Danger else HermesColors.TextFaint,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        },
-                        enabled = actionsEnabled,
-                        onClick = onDelete,
-                    )
-                }
+            // Uzun basınca eylem menüsü ModalBottomSheet olarak açılır —
+            // satırda çapa gerekmez; menü ekranın altında yükselir.
+            if (menuOpen) {
+                SessionActionSheet(
+                    session = session,
+                    pinned = pinned,
+                    actions = actions,
+                    onDismiss = onDismissMenu,
+                    onTogglePin = onTogglePin,
+                    onRename = onRename,
+                    onStop = onStop,
+                    onBuda = onBuda,
+                    onToggleArchived = onToggleArchived,
+                    onDelete = onDelete,
+                )
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -637,6 +695,135 @@ private fun SessionRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(S.t2("Konuşmaya devam et", "Continue the conversation"), color = HermesColors.Background, fontSize = 12.sp)
+        }
+    }
+}
+
+
+/**
+ * Uzun basınca açılan eylem menüsü — ModalBottomSheet olarak ModalBottomSheet
+ * (DropdownMenu'nun aksine) her satırda çapa gerektirmez ve açıklamalı
+ * eylemler (Buda) için daha çok yer verir.
+ *
+ * Durdur → AlertDialog onayı; Buda → açıklama metni gösterilir.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SessionActionSheet(
+    session: HermesSession,
+    pinned: Boolean,
+    actions: SessionMenuActions,
+    onDismiss: () -> Unit,
+    onTogglePin: () -> Unit,
+    onRename: () -> Unit,
+    onStop: () -> Unit,
+    onBuda: () -> Unit,
+    onToggleArchived: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = HermesColors.Background,
+        modifier = Modifier.heightIn(max = 480.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                S.t2("Oturum eylemleri", "Session actions"),
+                color = HermesColors.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Spacer(Modifier.height(10.dp))
+
+            ActionSheetRow(
+                icon = Icons.Default.PushPin,
+                label = if (pinned) S.t2("Sabiti kaldır", "Unpin") else S.t2("Sabitle", "Pin"),
+                enabled = true,
+                onClick = onTogglePin,
+            )
+            if (actions.rename) {
+                ActionSheetRow(
+                    icon = Icons.Default.Edit,
+                    label = S.t2("Yeniden adlandır", "Rename"),
+                    enabled = true,
+                    onClick = onRename,
+                )
+            }
+            if (actions.stop) {
+                ActionSheetRow(
+                    icon = Icons.Default.Stop,
+                    label = S.t2("Durdur", "Stop"),
+                    enabled = true,
+                    onClick = onStop,
+                )
+            }
+            if (actions.compress) {
+                ActionSheetRow(
+                    icon = Icons.Default.Compress,
+                    label = S.t2("Buda (bağlamı sıkıştır)", "Buda (compress context)"),
+                    enabled = true,
+                    onClick = onBuda,
+                    subtitle = S.t2("Bağlamı sıkıştırır, sohbet kalır", "Compresses context; conversation is kept"),
+                )
+            }
+            if (actions.archive) {
+                ActionSheetRow(
+                    icon = Icons.Default.Archive,
+                    label = if (actions.isArchived) S.t2("Arşivden çıkar", "Unarchive")
+                    else S.t2("Arşivle", "Archive"),
+                    enabled = true,
+                    onClick = onToggleArchived,
+                )
+            }
+            if (actions.delete) {
+                ActionSheetRow(
+                    icon = Icons.Default.Delete,
+                    label = S.t2("Sil", "Delete"),
+                    enabled = true,
+                    onClick = onDelete,
+                    danger = true,
+                )
+            }
+            ActionSheetRow(
+                icon = Icons.Default.Close,
+                label = S.t2("İptal", "Cancel"),
+                enabled = true,
+                onClick = onDismiss,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActionSheetRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    subtitle: String? = null,
+    danger: Boolean = false,
+) {
+    val tint = when {
+        !enabled -> HermesColors.TextFaint
+        danger -> HermesColors.Danger
+        else -> HermesColors.TextPrimary
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = tint, fontSize = 14.sp)
+            if (subtitle != null) {
+                Text(subtitle, color = HermesColors.TextMuted, fontSize = 11.sp)
+            }
         }
     }
 }

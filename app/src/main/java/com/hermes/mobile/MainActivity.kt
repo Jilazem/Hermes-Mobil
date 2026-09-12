@@ -678,6 +678,8 @@ private fun HermesApp(
                         onSetArchived = viewModel::setArchived,
                         onRenamePast = viewModel::renameSession,
                         onDeletePast = viewModel::deleteSession,
+                        onStopPast = { s -> viewModel.stopSession(s.id) },
+                        onBudaPast = { s -> viewModel.compressSession(s.id) },
                     )
                     Tab.Panel -> PanelScreen(
                         state = panel,

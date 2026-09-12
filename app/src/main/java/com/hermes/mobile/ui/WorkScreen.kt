@@ -56,6 +56,10 @@ fun WorkScreen(
     onSetArchived: (String, Boolean) -> Unit = { _, _ -> },
     onRenamePast: (String, String) -> Unit = { _, _ -> },
     onDeletePast: (String) -> Unit = {},
+    /** Oturum eylem menüsü: '/stop' slashExec. */
+    onStopPast: (HermesSession) -> Unit = {},
+    /** Oturum eylem menüsü: '/compress' slashExec. */
+    onBudaPast: (HermesSession) -> Unit = {},
 ) {
     var showLive by remember { mutableStateOf(true) }
     val runningCount = live.sessions.size
@@ -111,6 +115,8 @@ fun WorkScreen(
                     onRename = onRenamePast,
                     onDelete = onDeletePast,
                     onRefreshSessions = onRefreshSessions,
+                    onStop = onStopPast,
+                    onBuda = onBudaPast,
                 )
             }
         }
