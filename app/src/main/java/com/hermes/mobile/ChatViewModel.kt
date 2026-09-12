@@ -265,14 +265,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         if (!text.isNullOrBlank()) shareText(text)
         val plan = _pendingSharePlan.value
         when (plan) {
+            // Upload: dosyayı attachShareFile yükledikten SONRA siler —
+            // burada silmek coroutine okumasıyla yarışa girerdi.
             is ShareUploadPlan.Upload -> attachShareFile(plan)
-            is ShareUploadPlan.Unreadable ->
+            is ShareUploadPlan.Unreadable -> {
                 // Sessiz kayıp yok: kullanıcı Vazgeç dese bile uyarı loglanır.
                 DiagLog.w("ShareUpload", "dosya okunamadı, yüklenemedi: ${plan.name}")
+                plan.cleanupPaths().forEach { p -> runCatching { java.io.File(p).delete() } }
+            }
             ShareUploadPlan.None -> Unit
-        }
-        plan.cleanupPaths().forEach { p ->
-            runCatching { java.io.File(p).delete() }
         }
         _pendingSharePlan.value = ShareUploadPlan.None
         pendingStagedPath = null
@@ -289,11 +290,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      * Yükleme sonrası kopya silinir (cache birikmez — denetmen #1).
      */
     fun attachShareFile(plan: ShareUploadPlan.Upload) {
+        val file = java.io.File(plan.stagedPath)
         val p = profile ?: run {
             DiagLog.w("ShareUpload", "profil yok — ${plan.name} yüklenemedi")
+            runCatching { file.delete() }
             return
         }
-        val file = java.io.File(plan.stagedPath)
         if (!file.isFile) {
             DiagLog.w("ShareUpload", "staging kopyası yok: ${plan.stagedPath}")
             return
