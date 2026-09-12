@@ -69,6 +69,7 @@ import com.hermes.mobile.StreamMeter
 import com.hermes.mobile.ToolState
 import com.hermes.mobile.liveThinkingTail
 import com.hermes.mobile.data.ConnectionState
+import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.data.PhoneIntent
 import com.hermes.mobile.data.SavedPrompt
 import com.hermes.mobile.data.VoiceController
@@ -105,6 +106,20 @@ fun ChatScreen(
     showLiveThinking: Boolean = true,
     onShowLiveThinking: (Boolean) -> Unit = {},
     activeProfileName: String = "",
+    /**
+     * Bot (profil) ataması — Composer üstündeki yatay çipler.
+     *
+     * `profiles` = `GET /api/profiles` listesi (hata/boşsa yalnız varsayılan
+     * "Yönlendirici" çipi kalır). `selectedProfile` = kalıcı seçim
+     * (settings); YENİ sohbette seçilen profil `createSession(profile)`
+     * argümanı olur. `currentProfile` = mevcut oturumun profili; `null`
+     * olmayan oturumda çipler salt-okunur (kilit) ve mevcut profil
+     * (bilinmiyorsa "—") gösterilir.
+     */
+    profiles: List<com.hermes.mobile.data.HermesProfile> = emptyList(),
+    selectedProfile: String = "",
+    currentProfile: String? = null,
+    onProfileChipClick: (String) -> Unit = {},
     /** Başka uygulamadan paylaşılan metin; geldiğinde taslağa eklenir. */
     sharedText: String? = null,
     onSharedTextConsumed: () -> Unit = {},
@@ -213,6 +228,15 @@ fun ChatScreen(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 3.dp),
             )
         }
+
+        // Bot (profil) ataması: SpeedLine'ın ÜSTÜNDE yatay çipler —
+        // "Yönlendirici" (varsayılan) + profiller. Mevcut oturumda kilitli.
+        ProfileChipsRow(
+            profiles = profiles,
+            selectedProfile = selectedProfile,
+            currentProfile = currentProfile,
+            onChipClick = onProfileChipClick,
+        )
 
         // Yazma hızı: tek satır + akan shimmer. message.complete'te değerler
         // donar; satır 600 ms sönüşle kalkar. Akış AYNI sayfada toplanıyor ama
@@ -871,6 +895,88 @@ private fun SpeedRow(speed: StateFlow<StreamMeter.Snapshot?>) {
                             ),
                         )
                     }
+            )
+        }
+    }
+}
+
+/**
+ * Prompt sırasındaki bot (profil) ataması — SpeedLine'ın ÜSTÜNDE yatay çipler.
+ *
+ * Çipler: "Yönlendirici" (varsayılan, profile boş) + her profil bir çip
+ * (`GET /api/profiles`). Liste boş/hatalıysa yalnız varsayılan çip kalır.
+ *
+ * Kilit: mevcut oturumda (`currentProfile != null`) çipler salt-okunur;
+ * yalnız mevcut profil gösterilir (bilinmiyorsa "—"). YENİ sohbette
+ * (`currentProfile == null`) çipler tıklanabilir; seçilen profil
+ * `createSession(profile)` argümanı olur (varsayılan → null).
+ */
+@Composable
+private fun ProfileChipsRow(
+    profiles: List<HermesProfile>,
+    selectedProfile: String,
+    currentProfile: String?,
+    onChipClick: (String) -> Unit,
+) {
+    val tr = S.lang == Lang.TR
+    val locked = chipsLocked(currentProfile)
+    val labels = profiles.map { it.name.ifBlank { it.path } }
+
+    if (locked) {
+        // Kilitli (mevcut oturum): tek salt-okunur çip — mevcut profil,
+        // bilinmiyorsa "—". Tıklanamaz, tıklanmaz.
+        val label = lockedChipLabel(currentProfile)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AssistChip(
+                onClick = {},
+                label = {
+                    Text(
+                        label ?: "—",
+                        color = HermesColors.TextMuted,
+                        fontSize = 11.sp,
+                    )
+                },
+            )
+        }
+        return
+    }
+
+    // Yeni sohbet: serbest seçim — varsayılan "Yönlendirici" + profiller.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val routerSelected = selectedProfile.isEmpty() || selectedProfile == ROUTER_CHIP
+        AssistChip(
+            onClick = { onChipClick(ROUTER_CHIP) },
+            label = {
+                Text(
+                    if (tr) ROUTER_LABEL_TR else ROUTER_LABEL_EN,
+                    color = if (routerSelected) HermesColors.TextPrimary else HermesColors.TextMuted,
+                    fontSize = 11.sp,
+                    fontWeight = if (routerSelected) FontWeight.Medium else FontWeight.Normal,
+                )
+            },
+        )
+        labels.forEach { label ->
+            val sel = selectedProfile == label
+            AssistChip(
+                onClick = { onChipClick(label) },
+                label = {
+                    Text(
+                        label,
+                        color = if (sel) HermesColors.TextPrimary else HermesColors.TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal,
+                    )
+                },
             )
         }
     }
