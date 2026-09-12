@@ -33,9 +33,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +58,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.lazy.items
 import com.hermes.mobile.data.ShizukuBridge
+import com.hermes.mobile.data.HermesClient
+import com.hermes.mobile.data.LogResponse
+import com.hermes.mobile.data.MaintenanceStatusResponse
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Ayarlar — görünüm, canlı ses, sohbet, gizlilik, bağlantı, bildirim, geliştirici.
@@ -76,6 +83,11 @@ fun SettingsScreen(
     /** Shizuku durumu ve izin isteği — derin telefon denetimi için. */
     shizukuState: ShizukuBridge.State = ShizukuBridge.State.Unavailable,
     onRequestShizuku: () -> Unit = {},
+    /**
+     * Bakım ekranı için: aktif sunucu profili. Bakım kartı bu profil üzerinden
+     * `hermes doctor` / `hermes update` çalıştırır; profil yoksa kart gizli kalır.
+     */
+    activeProfile: com.hermes.mobile.data.ServerProfile? = null,
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
@@ -282,7 +294,26 @@ fun SettingsScreen(
                 ) { v -> onUpdate { it.copy(confirmExit = v) } }
             }
 
-            // ── sparkDash ────────────────────────────────────────────────
+            // ── Bakım ──────────────────────────────────────────────────
+        }
+
+        if (open == SettingsCategory.General) {
+    item { Header(S.t2("Bakım", "Maintenance")) }
+            if (activeProfile != null) {
+                item {
+                    MaintenanceCard(activeProfile)
+                }
+            } else {
+                item {
+                    HermesCard(Modifier.fillMaxWidth()) {
+                        Text(
+                            S.t2("Bağlı sunucu profili yok", "No connected server profile"),
+                            color = HermesColors.TextMuted,
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+            }
         }
 
         if (open == SettingsCategory.Server) {
@@ -470,7 +501,7 @@ fun SettingsScreen(
             item { Spacer(Modifier.height(28.dp)) }
         }
 
-        
+
     }
 
     themeEditor?.let { palette ->
@@ -915,11 +946,204 @@ private fun LiveModelRow(current: String, onPick: (String) -> Unit) {
 
 
 /**
- * Shizuku satırı — durum + aç/kapa + izin.
+ * Bakım kartı — `hermes doctor` / `hermes update` detached olarak başlatılır.
  *
- * Durumu göstermek şart: Shizuku her yeniden başlatmada elle başlatılmak
- * zorunda ve kullanıcı neden çalışmadığını bilmeli.
+ * Eylemler sonuca kadar beklemez; "Çalışıyor" rozeti ve durum yoklaması
+ * (3 sn × 20, toplam ~1 dk) bitiş kodunu getirir. "Çıktıyı gör" son 200
+ * satırlık log ekranını açar.
  */
+@Composable
+private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
+    val client = remember(profile) { HermesClient(profile) }
+    val scope = rememberCoroutineScope()
+    var fixOn by remember { mutableStateOf(false) }
+    var runningLabel by remember { mutableStateOf<String?>(null) }
+    var lastStatus by remember { mutableStateOf<MaintenanceStatusResponse?>(null) }
+    var logLines by remember { mutableStateOf<List<String>>(emptyList()) }
+    var logOpen by remember { mutableStateOf(false) }
+    var updatingConfirmation by remember { mutableStateOf(false) }
+
+    fun probeStatus() {
+        scope.launch {
+            repeat(20) {
+                if (runningLabel == null) return@launch
+                try {
+                    val st = client.maintenanceStatus()
+                    lastStatus = st
+                    if (!st.running) {
+                        runningLabel = null
+                    }
+                } catch (e: Exception) {
+                    // Ulaşılamıyorsa sessizce dene; kart durumu yine gösterir.
+                }
+                delay(3000)
+            }
+        }
+    }
+
+    fun openLog() {
+        scope.launch {
+            val resp = runCatching { client.maintenanceLog(lines = 200) }
+                .getOrElse {
+                    LogResponse(file = "maintenance", lines = listOf("Log okunamadı: ${it.message}"))
+                }
+            logLines = resp.lines
+            logOpen = true
+        }
+    }
+
+    fun startDoctor() {
+        scope.launch {
+            val fix = fixOn
+            val r = runCatching { client.maintenanceDoctor(fix = fix) }.getOrElse { e ->
+                runningLabel = tr("başlatılamadı: ${e.message}", "failed to start: ${e.message}")
+                return@launch
+            }
+            runningLabel = if (r.alreadyRunning) {
+                tr("zaten çalışıyor", "already running")
+            } else {
+                tr("çalışıyor…", "running…")
+            }
+            probeStatus()
+        }
+    }
+
+    fun startUpdate() {
+        scope.launch {
+            val r = runCatching { client.maintenanceUpdate() }.getOrElse { e ->
+                runningLabel = tr("başlatılamadı: ${e.message}", "failed to start: ${e.message}")
+                return@launch
+            }
+            runningLabel = if (r.alreadyRunning) {
+                tr("zaten çalışıyor", "already running")
+            } else {
+                tr("çalışıyor…", "running…")
+            }
+            probeStatus()
+        }
+    }
+
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text(S.t2("Bakım", "Maintenance"), color = HermesColors.TextPrimary, fontSize = 14.sp)
+        Text(
+            S.t2(
+                "Hermes'i teşhis et veya güncelle — sunucuda ayrılmış süreç olarak koşar",
+                "Diagnose or update Hermes — runs as a detached process on the server",
+            ),
+            color = HermesColors.TextMuted,
+            fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SmallButton(
+                if (fixOn) S.t2("Doktor + Onar", "Doctor + fix") else S.t2("Doktor çalıştır", "Run doctor"),
+            ) { startDoctor() }
+            SmallButton(S.t2("Hermes'i güncelle", "Update Hermes")) { updatingConfirmation = true }
+            SmallButton(S.t2("Çıktıyı gör", "View output")) { openLog() }
+        }
+
+        Spacer(Modifier.height(7.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(S.t2("Onar (--fix)", "Repair (--fix)"), color = HermesColors.TextSecondary, fontSize = 12.sp)
+            Spacer(Modifier.weight(1f))
+            Switch(checked = fixOn, onCheckedChange = { fixOn = it })
+        }
+
+        val status = lastStatus
+        if (runningLabel != null || (status != null && status.running)) {
+            Spacer(Modifier.height(7.dp))
+            Text(
+                runningLabel ?: S.t2("çalışıyor…", "running…"),
+                color = HermesColors.Busy,
+                fontSize = 12.sp,
+            )
+        } else if (status != null) {
+            Spacer(Modifier.height(7.dp))
+            Text(
+                S.t2(
+                    "Son: ${status.lastKind ?: "?"} · bitiş ${status.exitCode ?: "?"}",
+                    "Last: ${status.lastKind ?: "?"} · exit ${status.exitCode ?: "?"}",
+                ),
+                color = if ((status.exitCode ?: 1) == 0) HermesColors.Online else HermesColors.Danger,
+                fontSize = 12.sp,
+            )
+        }
+    }
+
+    if (updatingConfirmation) {
+        AlertDialog(
+            onDismissRequest = { updatingConfirmation = false },
+            containerColor = HermesColors.Surface,
+            titleContentColor = HermesColors.TextPrimary,
+            textContentColor = HermesColors.TextSecondary,
+            title = { Text(S.t2("Hermes güncellensin mi?", "Update Hermes?")) },
+            text = {
+                Text(
+                    S.t2(
+                        "Gateway yeniden başlayacak ve güncelleme sırasında " +
+                            "aktif seanslar kesilebilir.",
+                        "The gateway will restart and active sessions may be interrupted " +
+                            "during the update.",
+                    ),
+                    color = HermesColors.TextSecondary,
+                    fontSize = 13.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { updatingConfirmation = false; startUpdate() }) {
+                    Text(S.t2("Güncelle", "Update"), color = HermesColors.Midground)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { updatingConfirmation = false }) {
+                    Text(S.t2("Vazgeç", "Cancel"), color = HermesColors.TextMuted)
+                }
+            },
+        )
+    }
+
+    if (logOpen) {
+        AlertDialog(
+            onDismissRequest = { logOpen = false },
+            containerColor = HermesColors.Surface,
+            titleContentColor = HermesColors.TextPrimary,
+            textContentColor = HermesColors.TextSecondary,
+            title = { Text(S.t2("Bakım çıktısı", "Maintenance output")) },
+            text = {
+                Column(
+                    Modifier
+                        .height(260.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (logLines.isEmpty()) {
+                        Text(
+                            S.t2("Henüz çıktı yok.", "No output yet."),
+                            color = HermesColors.TextMuted,
+                            fontSize = 12.sp,
+                        )
+                    } else {
+                        logLines.forEach { line ->
+                            Text(
+                                line,
+                                style = MonoTextStyle,
+                                color = HermesColors.TextSecondary,
+                                fontSize = 10.sp,
+                                lineHeight = 13.sp,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { logOpen = false }) {
+                    Text(S.t2("Kapat", "Close"), color = HermesColors.Midground)
+                }
+            },
+        )
+    }
+}
+
 @Composable
 private fun ShizukuRow(
     enabled: Boolean,

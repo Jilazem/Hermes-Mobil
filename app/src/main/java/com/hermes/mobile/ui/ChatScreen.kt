@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Warning
@@ -66,7 +67,9 @@ import com.hermes.mobile.ChatState
 import com.hermes.mobile.SpeedFormat
 import com.hermes.mobile.StreamMeter
 import com.hermes.mobile.ToolState
+import com.hermes.mobile.liveThinkingTail
 import com.hermes.mobile.data.ConnectionState
+import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.data.PhoneIntent
 import com.hermes.mobile.data.SavedPrompt
 import com.hermes.mobile.data.VoiceController
@@ -93,7 +96,30 @@ fun ChatScreen(
     onOpenCommands: () -> Unit = {},
     onOpenFile: (FileRef) -> Unit = {},
     onOpenProfiles: () -> Unit = {},
+    /** Üst çubuk Psychology ikonu: düşünce panosu alt sayfasını açar. */
+    onOpenReasoning: () -> Unit = {},
+    /** Düşünce panosundaki çaba seçimi — `/reasoning <seviye>` slash komutu. */
+    onReasoningLevel: (String) -> Unit = {},
+    /** Gateway'in rapor ettiği aktif /reasoning seviyesi (null = bilinmiyor). */
+    reasoningLevel: String? = null,
+    /** "Düşünürken canlı göster" — canlı çizimi buna bağlı (aynı sayfa). */
+    showLiveThinking: Boolean = true,
+    onShowLiveThinking: (Boolean) -> Unit = {},
     activeProfileName: String = "",
+    /**
+     * Bot (profil) ataması — Composer üstündeki yatay çipler.
+     *
+     * `profiles` = `GET /api/profiles` listesi (hata/boşsa yalnız varsayılan
+     * "Yönlendirici" çipi kalır). `selectedProfile` = kalıcı seçim
+     * (settings); YENİ sohbette seçilen profil `createSession(profile)`
+     * argümanı olur. `currentProfile` = mevcut oturumun profili; `null`
+     * olmayan oturumda çipler salt-okunur (kilit) ve mevcut profil
+     * (bilinmiyorsa "—") gösterilir.
+     */
+    profiles: List<com.hermes.mobile.data.HermesProfile> = emptyList(),
+    selectedProfile: String = "",
+    currentProfile: String? = null,
+    onProfileChipClick: (String) -> Unit = {},
     /** Başka uygulamadan paylaşılan metin; geldiğinde taslağa eklenir. */
     sharedText: String? = null,
     onSharedTextConsumed: () -> Unit = {},
@@ -110,6 +136,7 @@ fun ChatScreen(
     // Sheet burada açılıyor: taslak `draft` bu kompozablda, "satıra dokun →
     // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
     var promptsSheet by remember { mutableStateOf(false) }
+    var reasoningSheet by remember { mutableStateOf(false) }
 
     var draft by remember { mutableStateOf("") }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
@@ -121,13 +148,33 @@ fun ChatScreen(
         onSharedTextConsumed()
     }
     val listState = rememberLazyListState()
-
-    LaunchedEffect(state.items.size, (state.items.lastOrNull() as? ChatItem.Assistant)?.text?.length) {
-        if (state.items.isNotEmpty()) listState.animateScrollToItem(state.items.lastIndex)
+    var followBottom by remember { mutableStateOf(true) }
+    LaunchedEffect(state.items.size, state.items.lastOrNull()?.let { (it as? ChatItem.Thinking)?.text?.length }) {
+        // Kullanıcı en alttayken yeni satırlar düşse de görüş alanı kendiliğinden
+        // izler (canlı düşünce satırları kaydırma gerektirmez); kullanıcı
+        // yukarı kaydırıp araştırmak isterse izleme durur.
+        val info = listState.layoutInfo
+        val total = info.totalItemsCount.coerceAtLeast(1)
+        val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+        if (lastVisible >= total - 2) {
+            followBottom = true
+            if (state.items.isNotEmpty()) listState.scrollToItem(state.items.lastIndex)
+        } else if (!state.items.isNotEmpty()) {
+            followBottom = true
+        }
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
-        ChatHeader(state, onNewSession, onToggleHandsFree, onOpenModelPicker, onOpenCommands, onOpenProfiles, activeProfileName)
+        ChatHeader(
+            state,
+            onNewSession,
+            onToggleHandsFree,
+            onOpenModelPicker,
+            onOpenCommands,
+            onOpenProfiles,
+            onOpenReasoning = { reasoningSheet = true },
+            activeProfileName,
+        )
 
         Box(Modifier.weight(1f)) {
             if (state.items.isEmpty()) {
@@ -182,6 +229,15 @@ fun ChatScreen(
             )
         }
 
+        // Bot (profil) ataması: SpeedLine'ın ÜSTÜNDE yatay çipler —
+        // "Yönlendirici" (varsayılan) + profiller. Mevcut oturumda kilitli.
+        ProfileChipsRow(
+            profiles = profiles,
+            selectedProfile = selectedProfile,
+            currentProfile = currentProfile,
+            onChipClick = onProfileChipClick,
+        )
+
         // Yazma hızı: tek satır + akan shimmer. message.complete'te değerler
         // donar; satır 600 ms sönüşle kalkar. Akış AYNI sayfada toplanıyor ama
         // collect SpeedRow içinde: her pencere yalnız bu satırı yeniden derler.
@@ -230,6 +286,16 @@ fun ChatScreen(
             onDismiss = { promptsSheet = false },
         )
     }
+
+    if (reasoningSheet) {
+        ReasoningSheet(
+            selected = reasoningLevel,
+            onLevel = { lvl -> onReasoningLevel(lvl); reasoningSheet = false },
+            showLiveThinking = showLiveThinking,
+            onShowLiveThinking = onShowLiveThinking,
+            onDismiss = { reasoningSheet = false },
+        )
+    }
 }
 
 @Composable
@@ -240,6 +306,7 @@ private fun ChatHeader(
     onOpenModelPicker: () -> Unit,
     onOpenCommands: () -> Unit,
     onOpenProfiles: () -> Unit,
+    onOpenReasoning: () -> Unit,
     activeProfileName: String,
 ) {
     val (dot, label) = when (val c = state.connection) {
@@ -582,7 +649,15 @@ private fun ChatItemView(
         }
 
         is ChatItem.Thinking -> {
-            var expanded by remember { mutableStateOf(false) }
+            var expanded by remember(item.key) {
+                // Canlı (hâlâ akan) blok varsayılanı AÇIK: son satırları
+                // izlemek için; biten blok kapanır (katlanır davranış).
+                mutableStateOf(item.live)
+            }
+            // Canlı kuyruk: metin uzadıkça her yeniden çizimde son dolu
+            // satırlar yeniden hesaplanır — LazyColumn kaydırması değil,
+            // içerik kendini günceller (4 satır, ucu ' ▌' ile işaretli).
+            val liveTail = liveThinkingTail(item.text)
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -600,14 +675,34 @@ private fun ChatItemView(
                         modifier = Modifier.width(16.dp),
                     )
                 }
-                AnimatedVisibility(expanded) {
+                if (item.live) {
+                    // Canlı görünüm: açık blok + son 3-4 dolu satır + sonda imleç.
+                    // Kullanıcı en alttayken LazyColumn kendiliğinden izler.
+                    val shown = liveTail.ifEmpty { "…" }
                     Text(
-                        item.text,
+                        buildString {
+                            if (item.text.length > liveTail.length) {
+                                append("…\n")
+                            }
+                            append(shown)
+                            append(" ▌")
+                        },
                         color = HermesColors.TextMuted,
                         fontSize = 12.sp,
                         lineHeight = 18.sp,
                         modifier = Modifier.padding(top = 6.dp),
                     )
+                } else {
+                    // Katlanabilir tarih: mevcut davranış aynen.
+                    AnimatedVisibility(expanded) {
+                        Text(
+                            item.text,
+                            color = HermesColors.TextMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                 }
             }
         }
@@ -731,7 +826,18 @@ private fun SpeedRow(speed: StateFlow<StreamMeter.Snapshot?>) {
         val rate = SpeedFormat.rate(it.tokensPerSecond, sep)
         val tokens = SpeedFormat.compactTokens(it.tokens, sep)
         val clock = SpeedFormat.clock(it.elapsedMs)
-        S.t2("≈$rate t/s · $tokens token · $clock", "≈$rate t/s · $tokens tokens · $clock")
+        // Faz etiketi: düşünce fazı "düşünüyor", yanıt fazı "yazıyor".
+        // Aynı sayaç iki fazi de ölçüyor — sayı kesintisiz akıyor,
+        // yalnız etiket geçişte değişiyor.
+        val phaseLabel = when (it.phase) {
+            StreamMeter.PHASE_THINKING ->
+                if (tr) " · düşünüyor" else " · thinking"
+            else -> if (tr) " · yazıyor" else " · writing"
+        }
+        S.t2(
+            "≈$rate t/s · $tokens token · $clock$phaseLabel",
+            "≈$rate t/s · $tokens tokens · $clock$phaseLabel"
+        )
     }.orEmpty()
 
     var visible by remember { mutableStateOf(false) }
@@ -789,6 +895,88 @@ private fun SpeedRow(speed: StateFlow<StreamMeter.Snapshot?>) {
                             ),
                         )
                     }
+            )
+        }
+    }
+}
+
+/**
+ * Prompt sırasındaki bot (profil) ataması — SpeedLine'ın ÜSTÜNDE yatay çipler.
+ *
+ * Çipler: "Yönlendirici" (varsayılan, profile boş) + her profil bir çip
+ * (`GET /api/profiles`). Liste boş/hatalıysa yalnız varsayılan çip kalır.
+ *
+ * Kilit: mevcut oturumda (`currentProfile != null`) çipler salt-okunur;
+ * yalnız mevcut profil gösterilir (bilinmiyorsa "—"). YENİ sohbette
+ * (`currentProfile == null`) çipler tıklanabilir; seçilen profil
+ * `createSession(profile)` argümanı olur (varsayılan → null).
+ */
+@Composable
+private fun ProfileChipsRow(
+    profiles: List<HermesProfile>,
+    selectedProfile: String,
+    currentProfile: String?,
+    onChipClick: (String) -> Unit,
+) {
+    val tr = S.lang == Lang.TR
+    val locked = chipsLocked(currentProfile)
+    val labels = profiles.map { it.name.ifBlank { it.path } }
+
+    if (locked) {
+        // Kilitli (mevcut oturum): tek salt-okunur çip — mevcut profil,
+        // bilinmiyorsa "—". Tıklanamaz, tıklanmaz.
+        val label = lockedChipLabel(currentProfile)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AssistChip(
+                onClick = {},
+                label = {
+                    Text(
+                        label ?: "—",
+                        color = HermesColors.TextMuted,
+                        fontSize = 11.sp,
+                    )
+                },
+            )
+        }
+        return
+    }
+
+    // Yeni sohbet: serbest seçim — varsayılan "Yönlendirici" + profiller.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val routerSelected = selectedProfile.isEmpty() || selectedProfile == ROUTER_CHIP
+        AssistChip(
+            onClick = { onChipClick(ROUTER_CHIP) },
+            label = {
+                Text(
+                    if (tr) ROUTER_LABEL_TR else ROUTER_LABEL_EN,
+                    color = if (routerSelected) HermesColors.TextPrimary else HermesColors.TextMuted,
+                    fontSize = 11.sp,
+                    fontWeight = if (routerSelected) FontWeight.Medium else FontWeight.Normal,
+                )
+            },
+        )
+        labels.forEach { label ->
+            val sel = selectedProfile == label
+            AssistChip(
+                onClick = { onChipClick(label) },
+                label = {
+                    Text(
+                        label,
+                        color = if (sel) HermesColors.TextPrimary else HermesColors.TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal,
+                    )
+                },
             )
         }
     }

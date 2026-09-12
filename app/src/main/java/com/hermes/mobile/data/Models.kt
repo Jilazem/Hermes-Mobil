@@ -343,6 +343,38 @@ data class LogResponse(
     val lines: List<String> = emptyList(),
 )
 
+// ── Bakım (maintenance) — hermes doctor / update uçları ───────────────────
+
+/**
+ * `POST /api/maintenance/doctor` / `POST /api/maintenance/update` yanıtı.
+ *
+ * Bu uçlar **ayrılmış (detached)** bir süreç başlatır: yanıt, sunucunun
+ * işlemi bekleyip döndüğü ANLAMINA GELMEZ — `ok: true` yalnızca "çocuk
+ * süreç kuruldu" demektir. Bitiş kodu `maintenanceStatus()` ile okunur.
+ */
+@Serializable
+data class MaintenanceStartResponse(
+    val ok: Boolean = false,
+    val pid: Int? = null,
+    val name: String = "",
+    val startedAt: String? = null,
+    val logPath: String? = null,
+    val error: String? = null,
+    val message: String? = null,
+    val alreadyRunning: Boolean = false,
+)
+
+/** `GET /api/maintenance/status` yanıtı. */
+@Serializable
+data class MaintenanceStatusResponse(
+    val running: Boolean = false,
+    val lastKind: String? = null,
+    val exitCode: Int? = null,
+    val pid: Int? = null,
+    val logPath: String? = null,
+    val startedAt: String? = null,
+)
+
 @Serializable
 data class CronSchedule(
     val kind: String = "",
