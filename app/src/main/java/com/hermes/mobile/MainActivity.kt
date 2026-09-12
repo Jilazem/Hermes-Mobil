@@ -68,6 +68,7 @@ import com.hermes.mobile.ui.SessionsScreen
 import com.hermes.mobile.ui.SessionRail
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
+import com.hermes.mobile.ui.ShareTargetScreen
 import com.hermes.mobile.ui.theme.themeById
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.HermesTheme
@@ -193,6 +194,11 @@ class MainActivity : ComponentActivity() {
      */
     private fun handleShareIntent(intent: Intent?) {
         val i = intent ?: return
+        // ShareProxyActivity'den gelen ekstraplar: hedef seçim ekranı açılır.
+        if (i.getBooleanExtra(ShareProxyActivity.EXTRA_IS_SHARE, false)) {
+            handleShareHandoff(i)
+            return
+        }
         when (i.action) {
             Intent.ACTION_SEND -> {
                 i.getStringExtra(Intent.EXTRA_TEXT)?.let(chatViewModel::shareText)
@@ -207,6 +213,27 @@ class MainActivity : ComponentActivity() {
                 uris.forEach { ingestShared(it, i.type) }
             }
         }
+    }
+
+    /**
+     * ShareProxyActivity'den gelen paylaşım niyetini hedef seçim ekranıyla
+     * karşılar. Kullanıcı oturum seçim sayfasında "Yeni konu" ya da son 10
+     * oturumdan birini seçtikten sonra metin/dosya oraya düşer.
+     */
+    private fun handleShareHandoff(intent: Intent) {
+        val sharedText = intent.getStringExtra(ShareProxyActivity.EXTRA_SHARED_TEXT)
+        val sharedFile = intent.getStringExtra(ShareProxyActivity.EXTRA_SHARED_FILE)
+        // Varsayılan hedef: yeni konu. Kullanıcı ShareTargetScreen'de
+        // değiştirebilir. Varsayılan hedefi belirle; UI oturum listesini
+        // gösterir.
+        chatViewModel.pickShareTarget(
+            sessionId = null,
+            sharedText = sharedText,
+            sharedFile = sharedFile,
+        )
+        // Dosya adı+boyutu ekleme bilgisi [HermesClient.uploadFile]
+        // gerçekte çalıştığında paylaşım hedefinin bir parçasıdır; burada
+        // yalnız taşınır, yüklemesi ChatViewModel tarafında yapılır.
     }
 
     /**
@@ -452,6 +479,10 @@ private fun HermesApp(
     val panel by panelViewModel.state.collectAsStateWithLifecycle()
     val shizukuState by chatViewModel.shizuku.state.collectAsStateWithLifecycle()
     val sharedText by chatViewModel.sharedText.collectAsStateWithLifecycle()
+    // Paylaşım hedefi seçim ekranı (ShareProxyActivity'den gelir).
+    val shareTargetVisible by chatViewModel.shareTargetVisible.collectAsStateWithLifecycle()
+    val shareTextSnippet by chatViewModel.pendingShareText.collectAsStateWithLifecycle()
+    val shareFileNote by chatViewModel.pendingShareFile.collectAsStateWithLifecycle()
 
     // Paylaşım geldiğinde hangi sekmede olursak olalım sohbete geç.
     LaunchedEffect(sharedText) {
@@ -612,6 +643,34 @@ private fun HermesApp(
         ) {
             if (detail != null) {
                 SessionDetailScreen(detail, onBack = viewModel::closeSession)
+            } else if (shareTargetVisible) {
+                ShareTargetScreen(
+                    textSnippet = shareTextSnippet,
+                    fileNote = shareFileNote,
+                    recentSessions = state.sessions.take(10),
+                    onNewTopic = {
+                        chatViewModel.pickShareTarget(
+                            sessionId = null,
+                            sharedText = shareTextSnippet,
+                            sharedFile = shareFileNote,
+                        )
+                        chatViewModel.consumePendingShare()
+                    },
+                    onPickSession = { s ->
+                        chatViewModel.pickShareTarget(
+                            sessionId = s.id,
+                            sharedText = shareTextSnippet,
+                            sharedFile = shareFileNote,
+                        )
+                        chatViewModel.consumePendingShare()
+                        chatViewModel.continueSession(
+                            liveId = s.id,
+                            dbId = s.id,
+                            title = s.title.ifBlank { s.id },
+                        )
+                    },
+                    onCancel = chatViewModel::consumePendingShare,
+                )
             } else {
                 when (tab) {
                     Tab.Chat -> Row(Modifier.fillMaxSize()) {
