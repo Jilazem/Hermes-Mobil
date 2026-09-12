@@ -228,6 +228,34 @@ class HermesClient(private val profile: ServerProfile) {
     suspend fun logs(file: String = "agent", lines: Int = 200): LogResponse =
         json.decodeFromString(getRaw("/api/logs?file=$file&lines=$lines"))
 
+    // ── Bakım (maintenance): detached `hermes doctor` / `hermes update` ──
+
+    /**
+     * `hermes doctor` (ve `--fix`) detached olarak başlatır. `fix = true`
+     * sunucuya `{"fix": true}` olarak gider ve `hermes doctor --fix` çalışır.
+     *
+     * @return çocuk sürecin PID'si / "zaten çalışıyor" durumu — bitiş kodu
+     *   için [maintenanceStatus] ile yoklama gerekir.
+     */
+    suspend fun maintenanceDoctor(fix: Boolean = false): MaintenanceStartResponse =
+        json.decodeFromString(postRaw("/api/maintenance/doctor", """{"fix":$fix}"""))
+
+    /** `hermes update` detached olarak başlatır. Aynı yoklama sözleşmesi. */
+    suspend fun maintenanceUpdate(): MaintenanceStartResponse =
+        json.decodeFromString(postRaw("/api/maintenance/update"))
+
+    /** Son bakım çalıştırmasının durumu: `running`, `lastKind`, `exitCode`… */
+    suspend fun maintenanceStatus(): MaintenanceStatusResponse =
+        json.decodeFromString(getRaw("/api/maintenance/status"))
+
+    /**
+     * Bakım logunun son `lines` satırı. `logPath` sunucunun kaydettiği
+     * dosya; yol yerine `GET /api/maintenance/log` uçtan okunur — mobil
+     * tarafın sunucu dosya sistemine erişimi olmadığı için bu zorunlu.
+     */
+    suspend fun maintenanceLog(lines: Int = 200): LogResponse =
+        json.decodeFromString(getRaw("/api/maintenance/log?lines=$lines"))
+
     /** Panel'in tam cron listesi (prompt, durum, zamanlama alanlarıyla). */
     suspend fun cronJobsFull(): List<CronJob> = json.decodeFromString(getRaw("/api/cron/jobs"))
 

@@ -771,6 +771,7 @@ private fun HermesApp(
                         onDeleteTheme = viewModel.settingsStore::deleteTheme,
                         onImportTheme = viewModel.settingsStore::importTheme,
                         onExportTheme = viewModel.settingsStore::exportTheme,
+                        activeProfile = state.active,
                     )
                 }
             }
