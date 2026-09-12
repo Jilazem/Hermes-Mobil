@@ -165,6 +165,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         gateway = gw
     }
 
+    /**
+     * Oturum eylem menüsündeki `Durdur` / `Buda` eylemleri — slashExec
+     * üzerinden `/stop` ve `/compress` gönderir. Gateway bağlı değilse
+     * sessizce döner (sohbet tarafında da aynı kural).
+     */
+    fun stopSession(id: String) {
+        runSlashOnSession(id, "/stop")
+    }
+
+    fun compressSession(id: String) {
+        runSlashOnSession(id, "/compress")
+    }
+
+    private fun runSlashOnSession(id: String, command: String) {
+        val gw = gateway ?: return
+        viewModelScope.launch {
+            runCatching { gw.slashExec(id, command) }
+                .onSuccess {
+                    // Durdurma/burada sonrası liste güncellemesi: sonlandırma
+                    // zamanı değişmiş olabilir.
+                    loadActiveDetails()
+                }
+        }
+    }
+
     /** Bir oturumu açar ve mesaj dökümünü yükler. */
     fun openSession(session: HermesSession, liveId: String? = null) {
         _detail.value = SessionDetailState(sessionId = session.id, session = session)
