@@ -134,13 +134,20 @@ object ShareHandoff {
     const val EXTRA_STAGED_FILE = "hermes_staged_file"
 
     /**
-     * Handoff ancak vekilin ürettiği nonce token ile kabul edilir. Vekil
-     * her seferinde rastgele token basar; dış uygulama token'ı bilmez — bu
-     * olmadan dışarıdan taslağa metin enjeksiyonu mümkün olurdu
-     * (denetmen önerisi #3, delta öncesi yüzey).
+     * Süreç-ömrü singleton gizli (denetmen3 fast-follow: nonce self-asserted
+     * ORTA bulgusu). Vekil EXTRA_SHARE_TOKEN olarak BU secret'i koyar;
+     * MainActivity `token == secret` karşılaştırır. Dış uygulama süreç belleğini
+     * okuyamaz → uydurma token'la handoff taklidi kapanır (eskiden yalnız
+     * bos-olmayan token yetiyordu — "bilemez" iddiası yanlıştı).
+     */
+    val secret: String = java.util.UUID.randomUUID().toString()
+
+    /**
+     * Handoff ancak vekilin bastığı gerçek secret ile kabul edilir
+     * (denetmen önerisi #3'ün gerçek karşılığı — sembolik değil).
      */
     fun accepted(isShare: Boolean, token: String?): Boolean =
-        isShare && !token.isNullOrBlank()
+        isShare && token != null && token == secret
 
     /** Sözleşme haritası: vekilin koyacağı anahtarlar (test referansı). */
     val contractKeys: Set<String> = setOf(

@@ -46,7 +46,10 @@ class ShareProxyActivity : ComponentActivity() {
             sharedFileUri = source?.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
         }
 
-        val token = java.util.UUID.randomUUID().toString()
+        // Staging dosya adı için taze nonce (kopya adı çakışmasın); el
+        // sıkışması token'ı ise süreç-ömrü ShareHandoff.secret'tir —
+        // MainActivity token == secret karşılaştırır (denetmen3 fast-follow).
+        val stagingNonce = java.util.UUID.randomUUID().toString()
 
         // Dosya: önce meta (ad+boyut) sonra staging. Sıra önemli: vekil
         // süreci finish() sonrası ölebilir, bu yüzden kopya BURADA bitmeli
@@ -61,7 +64,7 @@ class ShareProxyActivity : ComponentActivity() {
                 ShareStaging.stage(
                     input = contentResolver.openInputStream(uri),
                     dir = ShareStaging.inboxDir(cacheDir),
-                    token = token,
+                    token = stagingNonce,
                     displayName = name,
                 )
             }.getOrNull()
@@ -80,7 +83,7 @@ class ShareProxyActivity : ComponentActivity() {
             putExtra(ShareHandoff.EXTRA_IS_SHARE, isSend)
             putExtra(ShareHandoff.EXTRA_SHARED_TEXT, sharedText)
             putExtra(ShareHandoff.EXTRA_SHARED_FILE, fileNote)
-            putExtra(ShareHandoff.EXTRA_SHARE_TOKEN, token)
+            putExtra(ShareHandoff.EXTRA_SHARE_TOKEN, ShareHandoff.secret)
             stagedPath?.let { putExtra(ShareHandoff.EXTRA_STAGED_FILE, it) }
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }

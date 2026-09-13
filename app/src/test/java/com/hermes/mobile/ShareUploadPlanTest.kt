@@ -1,5 +1,6 @@
 package com.hermes.mobile
 
+import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.ShareHandoff
 import com.hermes.mobile.data.ShareUploadPlan
 import com.hermes.mobile.data.cleanupPaths
@@ -76,12 +77,37 @@ class ShareUploadPlanTest {
     }
 
     @Test
-    fun `el sikisma yalniz nonce token ile kabul edilir`() {
-        // Dış uygulama is-share koyup token'ı bilemez → ret (öneri #3).
+    fun `el sikisma yalniz gercek secret ile kabul edilir`() {
+        // Denetmen3 fast-follow: self-asserted nonce kapatıldı — dış uygulama
+        // is-share koyup UYDURMA token basarak kabul ALAMAZ (secret süreç
+        // belleğinde; süreç-dışı okunamaz).
         assertFalse(ShareHandoff.accepted(isShare = true, token = null))
         assertFalse(ShareHandoff.accepted(isShare = true, token = "  "))
-        assertFalse(ShareHandoff.accepted(isShare = false, token = "herhangi"))
-        assertTrue(ShareHandoff.accepted(isShare = true, token = "abc-123"))
+        assertFalse(ShareHandoff.accepted(isShare = false, token = ShareHandoff.secret))
+        assertFalse("uydurma token reddedilmeli", ShareHandoff.accepted(isShare = true, token = "abc-123"))
+        assertFalse("bos string reddedilmeli", ShareHandoff.accepted(isShare = true, token = ""))
+        // Doğru secret kabul (vekilin koyduğu değer — ShareProxyActivity).
+        assertTrue(ShareHandoff.accepted(isShare = true, token = ShareHandoff.secret))
+        // Secret saglamligi: bos/placeholder degil, UUID biciminde.
+        assertTrue(ShareHandoff.secret.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")))
+    }
+
+    @Test
+    fun `normalizedUrl truth table`() {
+        // Denetmen3 m2: sema-eksik çökme düzeltmesinin masası (4 satır).
+        val bare = ServerProfile(name = "x", token = "t", baseUrl = "10.0.2.2:9199")
+        val http = ServerProfile(name = "x", token = "t", baseUrl = "http://192.168.1.101:9150")
+        val https = ServerProfile(name = "x", token = "t", baseUrl = "https://tunnel.example")
+        val upper = ServerProfile(name = "x", token = "t", baseUrl = "HTTPS://Tunnel.Example")
+        val empty = ServerProfile(name = "x", token = "t", baseUrl = "   ")
+        assertEquals("semasiz -> http on-eki", "http://10.0.2.2:9199", bare.normalizedUrl)
+        assertEquals("http dokunulmaz", "http://192.168.1.101:9150", http.normalizedUrl)
+        assertEquals("https korunur (downgrade YOK)", "https://tunnel.example", https.normalizedUrl)
+        assertEquals("buyuk harf https de korunur", "HTTPS://Tunnel.Example", upper.normalizedUrl)
+        assertEquals("bos -> bos", "", empty.normalizedUrl)
+        // wsBase türevi: https → wss (cleartext downgrade regression koruması).
+        assertEquals("wss://tunnel.example", https.wsBase)
+        assertEquals("ws://10.0.2.2:9199", bare.wsBase)
     }
 
     @Test
