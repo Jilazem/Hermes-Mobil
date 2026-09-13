@@ -99,8 +99,13 @@ fun LiveFeedScreen(
         items(entries, key = { it.dbId }) { e ->
             LiveFeedRow(
                 entry = e,
-                title = e.pastSession?.let { readableTitle(it, flags, cronNames) }
-                    ?: e.title.ifBlank { e.dbId },
+                // Canlı satır: liveSessionTitle (REST karşılığı + rename + cron
+                // dahil) zincirinden; geçmiş satır: readableTitle. İkisi aynı
+                // mantık — ham id hiçbir satırda başlık olmaz.
+                title = e.liveSession?.let {
+                    liveSessionTitle(it, e.pastSession, flags, cronNames)
+                } ?: e.pastSession?.let { readableTitle(it, flags, cronNames) }
+                    ?: "Oturum",
                 onIntervene = { onIntervene(e) },
                 onInterrupt = { onInterrupt(e) },
                 onOpen = { onOpen(e) },

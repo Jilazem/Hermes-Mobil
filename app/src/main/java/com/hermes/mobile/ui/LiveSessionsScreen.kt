@@ -41,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hermes.mobile.InterventionKind
 import com.hermes.mobile.LiveState
+import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.LiveSession
+import com.hermes.mobile.data.SessionFlags
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
 import com.hermes.mobile.data.DemoMask
@@ -51,10 +53,16 @@ import com.hermes.mobile.data.DemoMask
  *
  * Telegram'dan gelen bir istek, gece koşan bir cron, açık bir CLI oturumu…
  * hepsi burada görünür ve **çalışırken** müdahale edilebilir.
+ *
+ * Başlık çözümü Oturumlar listesiyle AYNI saf fonksiyondan geçer
+ * (`liveSessionTitle` → `readableTitle`): ham süreç içi id asla başlık olmaz.
  */
 @Composable
 fun LiveSessionsScreen(
     state: LiveState,
+    restSessions: List<HermesSession> = emptyList(),
+    flags: SessionFlags = SessionFlags(),
+    cronNames: Map<String, String> = emptyMap(),
     onRefresh: () -> Unit,
     onIntervene: (LiveSession) -> Unit,
     onInterrupt: (LiveSession) -> Unit,
@@ -63,6 +71,11 @@ fun LiveSessionsScreen(
     onCloseIntervention: () -> Unit,
     onSubmitIntervention: (LiveSession, InterventionKind, String) -> Unit,
 ) {
+    // Canlı oturumun REST karşılığı (kaynak etiketi + cron hash'i burada).
+    val restById = remember(restSessions) { restSessions.associateBy { it.id } }
+    val titleOf = remember(flags, cronNames, restById) {
+        { l: LiveSession -> liveSessionTitle(l, restById[l.dbId], flags, cronNames) }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp),
@@ -133,6 +146,7 @@ fun LiveSessionsScreen(
         items(state.sessions, key = { it.id }) { session ->
             LiveSessionCard(
                 session = session,
+                title = titleOf(session),
                 onIntervene = { onIntervene(session) },
                 onInterrupt = { onInterrupt(session) },
                 onOpen = { onOpen(session) },
@@ -146,6 +160,7 @@ fun LiveSessionsScreen(
     state.intervening?.let { target ->
         InterventionDialog(
             session = target,
+            title = titleOf(target),
             sending = state.sending,
             onDismiss = onCloseIntervention,
             onSubmit = { kind, text -> onSubmitIntervention(target, kind, text) },
@@ -156,6 +171,7 @@ fun LiveSessionsScreen(
 @Composable
 private fun LiveSessionCard(
     session: LiveSession,
+    title: String,
     onIntervene: () -> Unit,
     onInterrupt: () -> Unit,
     onOpen: () -> Unit,
@@ -173,7 +189,7 @@ private fun LiveSessionCard(
             StatusDot(dot)
             Spacer(Modifier.width(8.dp))
             Text(
-                DemoMask.name(DemoMask.Kind.SESSION, session.title.ifBlank { session.id }),
+                DemoMask.name(DemoMask.Kind.SESSION, title),
                 color = HermesColors.TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
@@ -317,6 +333,7 @@ private fun ActionChip(
 @Composable
 fun InterventionDialog(
     session: LiveSession,
+    title: String = session.title.ifBlank { "Oturum" },
     sending: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (InterventionKind, String) -> Unit,
@@ -333,10 +350,7 @@ fun InterventionDialog(
         text = {
             Column {
                 Text(
-                    DemoMask.name(
-                        DemoMask.Kind.SESSION,
-                        session.title.ifBlank { session.id },
-                    ),
+                    DemoMask.name(DemoMask.Kind.SESSION, title),
                     style = MonoTextStyle,
                     color = HermesColors.TextMuted,
                 )

@@ -104,6 +104,9 @@ fun WorkScreen(
             when (tab) {
                 0 -> LiveSessionsScreen(
                     state = live,
+                    restSessions = state.sessions,
+                    flags = state.flags,
+                    cronNames = state.cronNames,
                     onRefresh = onRefreshLive,
                     onIntervene = onIntervene,
                     onInterrupt = onInterrupt,

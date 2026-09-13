@@ -2,6 +2,7 @@ package com.hermes.mobile.ui
 
 import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.LiveSession
+import com.hermes.mobile.data.SessionFlags
 
 /**
  * Canlı akış "Tümü" görünümü — Telegram'daki oturum listesi gibi: hangi bot
@@ -84,6 +85,68 @@ fun liveFeed(
             )
         }
     return liveRows + pastRows
+}
+
+/**
+ * TUI/CLI'nın ürettiği ham oturum kimliği kalıbı: `20260913_184051_52f76a`
+ * (yyyyMMdd_HHmmss_hex). Başlık olarak hiçbir şey gösterilmez; yalnız
+ * buradaki zaman damgası çözülür.
+ */
+private val RAW_SESSION_ID = Regex("""^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})\d{2}_([0-9a-f]+)$""")
+
+/** `20260913_184051_52f76a` → "13.09 18:40" (gün.ay saat:dakika, saniyesiz). */
+fun stampFromRawId(id: String): String? {
+    val m = RAW_SESSION_ID.matchEntire(id.trim().lowercase()) ?: return null
+    val (mo, d) = m.groupValues[2].toInt() to m.groupValues[3].toInt()
+    val (hh, mm) = m.groupValues[4].toInt() to m.groupValues[5].toInt()
+    // Ay/gün/saat geçerli aralıkta değilse damga uydurma sayılır → null.
+    if (mo !in 1..12 || d !in 1..31 || hh !in 0..23 || mm !in 0..59) return null
+    return "${m.groupValues[3]}.${m.groupValues[2]} ${m.groupValues[4]}:${m.groupValues[5]}"
+}
+
+/** Kaynak → kullanıcıya gösterilecek kısa etiket (readableTitle için). */
+private val SESSION_SOURCE_LABELS = mapOf(
+    "tui" to "TUI",
+    "cli" to "CLI",
+    "telegram" to "Telegram",
+    "whatsapp" to "WhatsApp",
+    "api_server" to "API",
+    "api" to "API",
+    "web" to "Web",
+    "desktop" to "Masaüstü",
+    "cron" to "Zamanlanmış görev",
+)
+
+fun sessionSourceLabel(source: String?): String? =
+    source?.trim()?.lowercase()?.let { SESSION_SOURCE_LABELS[it] }
+
+/**
+ * Canlı oturum başlığı — Oturumlar listesinin `readableTitle`ı ile AYNI zincir:
+ * rename > gateway başlığı (= canlı `title`, ham id değilse) > REST kaydının
+ * çözümü (cron iş adı / kaynak + zaman). Canlı tarafın REST karşılığı yoksa
+ * (henüz yazılmamış yeni oturum) canlı `title` ve dbId kalıbı çözülür; hiçbir
+ * şey bulunamazsa "Oturum" — ham süreç içi id hiçbir koşulda başlık olmaz.
+ */
+fun liveSessionTitle(
+    live: LiveSession,
+    rest: HermesSession?,
+    flags: SessionFlags,
+    cronNames: Map<String, String>,
+): String {
+    (flags.renames[live.dbId] ?: flags.renames[live.id])
+        ?.takeIf { it.isNotBlank() }?.let { return it }
+    val gatewayTitle = live.title.takeIf {
+        it.isNotBlank() && it != live.id && it != live.dbId
+    }
+    return readableTitle(
+        HermesSession(
+            id = live.dbId,
+            source = rest?.source,
+            displayName = gatewayTitle ?: rest?.displayName,
+        ),
+        flags,
+        cronNames,
+    )
 }
 
 /** Kaynak etiketi → insan okunur bot/kanal adı. */

@@ -126,10 +126,15 @@ private fun cronStampBase(id: String): String? {
 /**
  * Okunabilir oturum başlığı — öncelik sırası:
  * 1. kullanıcının yerel yeniden adlandırması (`flags.renames`),
- * 2. sunucudan gelen başlık (Telegram `display_name` zaten `title`a akar),
+ * 2. sunucudan gelen başlık (Telegram `display_name` zaten `title`a akar;
+ *    ham id'den FARKLIYSA),
  * 3. `cron_<hash>_<zaman>` id'si + bilinen cron iş adı → "İş Adı · gg.AA ss:dd",
- * 4. kaynak etiketi: cron → "Zamanlanmış görev", desktop → "Masaüstü",
- * 5. hiçbir şey yoksa mevcut `title` (eski davranış, gerileme yok).
+ * 4. kaynak etiketi + id'deki zaman damgası → "TUI · 13.09 18:40"
+ *    (damga yoksa yalnız etiket: "CLI", "Masaüstü", "Zamanlanmış görev"…),
+ * 5. kaynak yok ama damga var → "Oturum · 13.09 18:40",
+ * 6. hiçbir şey yok → "Oturum". Ham session id'si BU FONKSİYONDAN
+ *    birincil başlık olarak ASLA çıkamaz (boss şikâyeti: "session adları
+ *    anlaşılmaz").
  * Saf fonksiyon — Compose'suz test edilebilir.
  */
 fun readableTitle(
@@ -145,10 +150,13 @@ fun readableTitle(
             val stamp = cronStampBase(session.id)
             return if (stamp != null) "$jobName · $stamp" else jobName
         }
-    return when (session.source) {
-        "cron" -> "Zamanlanmış görev"
-        "desktop" -> "Masaüstü"
-        else -> session.title
+    val stamp = stampFromRawId(session.id)
+    val label = sessionSourceLabel(session.source)
+    return when {
+        label != null && stamp != null -> "$label · $stamp"
+        label != null -> label
+        stamp != null -> "Oturum · $stamp"
+        else -> "Oturum"
     }
 }
 
