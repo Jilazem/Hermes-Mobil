@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -53,6 +54,9 @@ fun ProfileSheet(
     loading: Boolean,
     onSelect: (HermesProfile) -> Unit,
     onDismiss: () -> Unit,
+    /** FR-002: gerçek hata (ör. "HTTP 502 · /api/profiles"); null = hatasız. */
+    error: String? = null,
+    onRetry: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -78,6 +82,30 @@ fun ProfileSheet(
 
             if (loading) {
                 Text("Yükleniyor…", color = HermesColors.TextMuted, fontSize = 13.sp)
+            }
+
+            // FR-002: hata yutulmaz — gerçek HTTP nedeni + yeniden dene.
+            if (profiles.isEmpty() && !loading) {
+                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Text(
+                        error?.let {
+                            S.t2("Profiller yüklenemedi — $it", "Profiles not loaded — $it")
+                        } ?: S.t2(
+                            "Sunucuda profil bulunamadı.",
+                            "No profiles found on the server.",
+                        ),
+                        color = HermesColors.Danger,
+                        fontSize = 13.sp,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(onClick = onRetry) {
+                        Text(
+                            S.t2("Yeniden dene", "Retry"),
+                            color = HermesColors.Midground,
+                            fontSize = 13.sp,
+                        )
+                    }
+                }
             }
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp)) {

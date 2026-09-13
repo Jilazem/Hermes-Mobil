@@ -77,12 +77,24 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
     /** Aktif sunucudan profilleri getirir (wt-bot-atama ile aynı uç). */
     fun refreshProfiles() {
         val store = ServerProfileStore(getApplication())
-        val active = store.active() ?: return
+        val active = store.active() ?: run {
+            // FR-002: sessiz dönüş yerine görünür neden — "sunucu yok" durumu
+            // "gateway bağlı değil" sanılıyordu.
+            _state.update {
+                it.copy(
+                    loadingProfiles = false,
+                    error = "Sunucu seçilmemiş — önce Ayarlar > Sunucular'dan bağlan",
+                )
+            }
+            return
+        }
         _state.update { it.copy(loadingProfiles = true) }
         viewModelScope.launch {
             runCatching { HermesClient(active).profiles() }
                 .onSuccess { profs ->
-                    _state.update { it.copy(profiles = profs, loadingProfiles = false) }
+                    // Başarılı yükleme eski hatayı da taşımamalı: aksi halde
+                    // retry sonrası hata şeridi ekranda asılı kalıyor.
+                    _state.update { it.copy(profiles = profs, loadingProfiles = false, error = null) }
                 }
                 .onFailure { e ->
                     _state.update {
@@ -122,7 +134,12 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         val topic = st.topic.trim()
         if (topic.isEmpty()) return "Konu boş olamaz"
         if (st.selectedProfiles.isEmpty()) return "En az bir bot seç"
-        val gw = gateway ?: return "Gateway bağlı değil"
+        // FR-002: gateway istemcisi henüz yok (bağlantı kurulmadı/kapatıldı).
+        // Sabit yanıltıcı metin yerine ne olduğu + ne yapılacağı söylenir; WS
+        // hatası (ör. 502) varsa ChatViewModel başlığındaki durum noktasında
+        // gerçek neden (ConnectionError.reason) zaten görünür.
+        val gw = gateway ?: return "Gateway bağlantısı yok — sohbet sekmesinde " +
+            "durum noktasına dokun, bağlanınca tekrar dene"
 
         activeGw = gw
         activeSessions.clear()

@@ -51,6 +51,9 @@ fun ShareTargetScreen(
     onNewTopic: () -> Unit,
     onPickSession: (HermesSession) -> Unit,
     onCancel: () -> Unit,
+    /** FR-001: satır başlığı `readableTitle` zincirinden gelir — çağrıca
+     *  geçirilir; boş kalırsa ham id gösterilmez, "Oturum" yazılır. */
+    titleOf: (HermesSession) -> String = { it.title },
 ) {
     val recent = recentSessions.filter { it.isActive }.take(10)
 
@@ -154,7 +157,11 @@ fun ShareTargetScreen(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 items(recent, key = { it.id }) { s ->
-                    ShareTargetRow(session = s, onClick = { onPickSession(s) })
+                    ShareTargetRow(
+                        session = s,
+                        title = titleOf(s).ifBlank { S.t2("Oturum", "Session") },
+                        onClick = { onPickSession(s) },
+                    )
                 }
             }
         }
@@ -162,9 +169,14 @@ fun ShareTargetScreen(
     }
 }
 
-/** Tek bir oturum satırı: başlık + model + zaman damgası. */
+/** Tek bir oturum satırı: başlık + model + zaman damgası. Başlık FR-001
+ *  gereği dışarıdan çözülür (readableTitle) — ham id burada asla üretilmez. */
 @Composable
-private fun ShareTargetRow(session: HermesSession, onClick: () -> Unit) {
+private fun ShareTargetRow(
+    session: HermesSession,
+    title: String,
+    onClick: () -> Unit,
+) {
     val fmt = remember { SimpleDateFormat("dd MMM · HH:mm", Locale.getDefault()) }
     val whenLabel = session.startedAt?.let { fmt.format(Date((it * 1000).toLong())) } ?: ""
     Row(
@@ -177,7 +189,7 @@ private fun ShareTargetRow(session: HermesSession, onClick: () -> Unit) {
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                session.title,
+                title,
                 color = HermesColors.TextPrimary,
                 fontSize = 14.sp,
                 maxLines = 1,

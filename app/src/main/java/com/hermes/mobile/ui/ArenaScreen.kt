@@ -148,13 +148,36 @@ fun ArenaScreen(
         )
 
         val profiles = st.profiles
-        if (profiles.isEmpty()) {
+        if (profiles.isEmpty() && st.loadingProfiles) {
             Text(
-                S.t2("Profil yüklenemedi — gateway bağlı değil",
-                    "Profiles not loaded — gateway not connected"),
+                S.t2("Profiller yükleniyor…", "Loading profiles…"),
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        } else if (profiles.isEmpty()) {
+            // FR-002: hata YUTULMAZ. Gerçek neden (ör. "HTTP 502 · /api/profiles")
+            // gösterilir + Yeniden Dene — "gateway bağlı değil" sabit metni
+            // yanıltıcıydı: 502'de gateway BAĞLI, sunucu hata veriyordu.
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    st.error?.let {
+                        S.t2("Profiller yüklenemedi — $it", "Profiles not loaded — $it")
+                    } ?: S.t2(
+                        "Sunucuda profil bulunamadı.",
+                        "No profiles found on the server.",
+                    ),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                OutlinedButton(
+                    onClick = { arenaViewModel.refreshProfiles() },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 12.dp, vertical = 2.dp,
+                    ),
+                ) {
+                    Text(S.t2("Yeniden dene", "Retry"), fontSize = 12.sp)
+                }
+            }
         } else {
             Row(
                 modifier = Modifier.fillMaxWidth(),

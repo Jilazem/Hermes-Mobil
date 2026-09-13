@@ -124,12 +124,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val _profilesLoading = MutableStateFlow(false)
     val profilesLoading: StateFlow<Boolean> = _profilesLoading.asStateFlow()
 
+    /** FR-002: profil yüklemesi hatası (ör. "HTTP 502 · /api/profiles") —
+     *  Sheet'te gösterilir; boş liste sessizce "profil yok" gibi görünmez. */
+    private val _profilesError = MutableStateFlow<String?>(null)
+    val profilesError: StateFlow<String?> = _profilesError.asStateFlow()
+
     fun loadProfiles() {
         val p = _state.value.active ?: return
         viewModelScope.launch {
             _profilesLoading.value = true
+            _profilesError.value = null
             val client = HermesClient(p)
-            runCatching { client.profiles() }.onSuccess { _profiles.value = it }
+            runCatching { client.profiles() }
+                .onSuccess { _profiles.value = it }
+                .onFailure { e -> _profilesError.value = e.message ?: "Profiller yüklenemedi" }
             runCatching { client.activeProfile() }
                 .onSuccess { _activeProfile.value = it.active.ifBlank { it.current } }
             _profilesLoading.value = false
@@ -192,7 +200,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Bir oturumu açar ve mesaj dökümünü yükler. */
     fun openSession(session: HermesSession, liveId: String? = null) {
-        _detail.value = SessionDetailState(sessionId = session.id, session = session)
+        // FR-001: detay başlığı `session.title`ı direkt basıyor; displayName
+        // boşsa o `id`ye düşüyor (ham id). Başlığı açılışta okunabilir zincirden
+        // çöz ve displayName olarak giydir — ekran değişmeden tek nokta düzeltme.
+        val resolved = com.hermes.mobile.ui.readableTitle(
+            session, _state.value.flags, _state.value.cronNames,
+        )
+        val safe = if (session.displayName.isNullOrBlank())
+            session.copy(displayName = resolved) else session
+        _detail.value = SessionDetailState(sessionId = safe.id, session = safe)
         val profile = _state.value.active ?: return
         viewModelScope.launch {
             runCatching {

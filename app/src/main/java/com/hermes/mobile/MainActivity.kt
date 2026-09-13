@@ -70,6 +70,9 @@ import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.ShareHandoff
+import com.hermes.mobile.data.LiveSession
+import com.hermes.mobile.ui.liveSessionTitle
+import com.hermes.mobile.ui.readableTitle
 import com.hermes.mobile.ui.ShareTargetScreen
 import com.hermes.mobile.ui.theme.themeById
 import com.hermes.mobile.ui.theme.HermesColors
@@ -483,6 +486,16 @@ private fun HermesApp(
 ) {
     var tab by remember { mutableStateOf(Tab.Chat) }
     val panel by panelViewModel.state.collectAsStateWithLifecycle()
+
+    // FR-001: canlı oturum başlık zinciri TEK kaynaktan — liveSessionTitle
+    // (rename > gateway başlığı > REST kaynağı > kaynak+zaman). Ham süreç içi
+    // id hiçbir ekranda başlık/etiket olmaz (ray, sohbete bağlanma, döküm).
+    val restById = remember(state.sessions) { state.sessions.associateBy { it.id } }
+    val liveTitleOf = remember(state.flags, state.cronNames, restById) {
+        { l: LiveSession ->
+            liveSessionTitle(l, restById[l.dbId], state.flags, state.cronNames)
+        }
+    }
     val shizukuState by chatViewModel.shizuku.state.collectAsStateWithLifecycle()
     val sharedText by chatViewModel.sharedText.collectAsStateWithLifecycle()
     // Paylaşım hedefi seçim ekranı (ShareProxyActivity'den gelir).
@@ -664,6 +677,7 @@ private fun HermesApp(
                     textSnippet = shareTextSnippet,
                     fileNote = shareFileNote,
                     recentSessions = state.sessions.take(10),
+                    titleOf = { s -> readableTitle(s, state.flags, state.cronNames) },
                     onNewTopic = {
                         chatViewModel.pickShareTarget(
                             sessionId = null,
@@ -679,7 +693,8 @@ private fun HermesApp(
                         chatViewModel.continueSession(
                             liveId = s.id,
                             dbId = s.id,
-                            title = s.title.ifBlank { s.id },
+                            // FR-001: okunabilir başlık; ham id yedek olarak bile geçmez.
+                            title = readableTitle(s, state.flags, state.cronNames),
                         )
                         chatViewModel.pickShareTarget(
                             sessionId = s.id,
@@ -697,12 +712,13 @@ private fun HermesApp(
                         SessionRail(
                             currentSessionId = chat.sessionId,
                             live = live,
+                            titleOf = liveTitleOf,
                             onNewChat = { backToSessions = false; chatViewModel.newSession() },
                             onSelect = { s ->
                                 chatViewModel.continueSession(
                                     liveId = s.id,
                                     dbId = s.dbId,
-                                    title = s.title.ifBlank { s.dbId },
+                                    title = liveTitleOf(s),
                                 )
                             },
                         )
@@ -774,13 +790,13 @@ private fun HermesApp(
                         onOpenLive = { session ->
                             // Döküm REST'ten gelir → veritabanı kimliği gerekir,
                             // gateway'in süreç içi `id`si değil (404 sebebi buydu).
-                            viewModel.openSessionById(session.dbId, session.title, liveId = session.id)
+                            viewModel.openSessionById(session.dbId, liveTitleOf(session), liveId = session.id)
                         },
                         onContinueLive = { session ->
                             chatViewModel.continueSession(
                                 liveId = session.id,
                                 dbId = session.dbId,
-                                title = session.title.ifBlank { session.dbId },
+                                title = liveTitleOf(session),
                             )
                             backToSessions = true
                             tab = Tab.Chat
@@ -792,7 +808,8 @@ private fun HermesApp(
                             chatViewModel.continueSession(
                                 liveId = s.id,
                                 dbId = s.id,
-                                title = s.title,
+                                // FR-001: geçmiş oturumda da okunabilir başlık.
+                                title = readableTitle(s, state.flags, state.cronNames),
                             )
                             backToSessions = true
                             tab = Tab.Chat
@@ -858,10 +875,13 @@ private fun HermesApp(
         }
 
         if (profileSheet) {
+            val profilesError by viewModel.profilesError.collectAsStateWithLifecycle()
             ProfileSheet(
                 profiles = hermesProfiles,
                 activeName = activeHermesProfile,
                 loading = profilesLoading,
+                error = profilesError,
+                onRetry = viewModel::loadProfiles,
                 onSelect = { p ->
                     viewModel.selectHermesProfile(p.name) { name ->
                         // Yeni oturumlar bu profilin evinde açılsın; mevcut

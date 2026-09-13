@@ -61,10 +61,12 @@ fun WorkScreen(
     /** Oturum eylem menüsü: '/compress' slashExec. */
     onBudaPast: (HermesSession) -> Unit = {},
 ) {
-    // Sekme: 0 = Çalışan (yalnız bellekte ajanı olanlar), 1 = Tümü (Telegram
-    // gibi: her oturum + hangi bot ne yapıyor), 2 = Geçmiş (klasik liste).
+    // Sekme: 0 = Canlı (gateway belleğindeki oturumlar — idle dahil hepsi;
+    // FR-004: eski "Çalışan" etiketi Geçmiş sekmesinin "n etkin" sayacıyla
+    // çelişiyordu; artık her sayaç kendi veri kümesinin adını taşıyor),
+    // 1 = Tümü (Telegram gibi: her oturum + hangi bot ne yapıyor), 2 = Geçmiş.
     var tab by remember { mutableStateOf(0) }
-    val runningCount = live.sessions.size
+    val liveCount = live.sessions.size
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -83,8 +85,8 @@ fun WorkScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Tab(
-                label = if (runningCount > 0) S.t2("Çalışan ($runningCount)", "Working ($runningCount)")
-                    else S.t2("Çalışan", "Working"),
+                label = if (liveCount > 0) S.t2("Canlı ($liveCount)", "Live ($liveCount)")
+                    else S.t2("Canlı", "Live"),
                 selected = tab == 0,
                 modifier = Modifier.weight(1f),
             ) { tab = 0 }

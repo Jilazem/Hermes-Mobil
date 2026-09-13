@@ -290,7 +290,10 @@ fun SessionsScreen(
             Column(Modifier.weight(1f)) {
                 Text(S.t2("Oturumlar", "Sessions"), color = HermesColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
                 Text(
-                    "${base.count { it.isActive }} ${S.t2("etkin", "active")} · ${base.size} ${S.t2("toplam", "total")}",
+                    // FR-004: "etkin" yerine "açık kayıt" — bu sayı DB'de
+                    // ended_at=null olan KAYITLARI sayar (gateway'de çalışan
+                    // ajan sayısıyla aynı şey değil; Canlı sekmesi onu söyler).
+                    "${base.count { it.isActive }} ${S.t2("açık kayıt", "open records")} · ${base.size} ${S.t2("toplam", "total")}",
                     color = HermesColors.TextMuted,
                     fontSize = 12.sp,
                 )

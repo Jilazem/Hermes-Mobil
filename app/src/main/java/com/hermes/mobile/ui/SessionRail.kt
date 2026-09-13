@@ -53,6 +53,9 @@ fun SessionRail(
     live: LiveState,
     onNewChat: () -> Unit,
     onSelect: (LiveSession) -> Unit,
+    /** FR-001: hücre etiketi/erişilebilirlik adı ham id OLMAMALI — çağıran
+     *  `liveSessionTitle` zincirini geçirir; boş gelirse "?" gösterilir. */
+    titleOf: (LiveSession) -> String = { it.title },
     modifier: Modifier = Modifier,
 ) {
     // Ray ÇALIŞAN oturumları gösterir; bitmişleri listelemez. Tek istisna:
@@ -87,6 +90,10 @@ fun SessionRail(
                     .background(MaterialTheme.colorScheme.outline),
             )
             shown.forEach { s ->
+                // FR-001: etiket ve erişilebilirlik adı çözümlenmiş başlıktan
+                // gelir (titleOf = liveSessionTitle zinciri) — ham süreç içi id
+                // ya da dbId asla ray etiketi olmaz.
+                val resolved = titleOf(s)
                 RailItem(
                     // ChatViewModel sessionId olarak gateway'in SÜREÇ İÇİ id'sini
                     // tutuyor; dbId (session key) ayrı. İkisine göre de kıyasla —
@@ -94,8 +101,8 @@ fun SessionRail(
                     selected = currentSessionId != null &&
                         (currentSessionId == s.id || currentSessionId == s.dbId),
                     working = s.isWorking,
-                    label = railLabel(s.title),
-                    contentDescription = s.title,
+                    label = railLabel(resolved),
+                    contentDescription = resolved,
                     onClick = { onSelect(s) },
                 )
             }
@@ -106,12 +113,22 @@ fun SessionRail(
 /** Ray etiketi: başlığın ilk İKİ karakteri, büyük harf. Boş başlık → "?".
  *  `String.uppercase()` cihazın yerel ayarından etkilenip Türkçe 'i' tuzağına
  *  düşebiliyor; karakter bazlı `Char.uppercaseChar()` (Character.uppercaseChar)
- *  yerel ayardan bağımsız tek anlamlı eşlemeyi verir. */
+ *  yerel ayardan bağımsız tek anlamlı eşlemeyi verir.
+ *  FR-001 savunması: çözüm başarısız olup ham oturum id'si (20260913_184051_52f76a
+ *  veya cron_<hash>_) sızarsa "20"/"CR" gibi anlamsız etiket yerine "?" gösterilir. */
 internal fun railLabel(title: String): String {
     val trimmed = title.trim()
     if (trimmed.isEmpty()) return "?"
+    if (RAW_SESSION_ID.matches(trimmed)) return "?"
     return trimmed.take(2).map { it.uppercaseChar() }.joinToString("")
 }
+
+/** Ham süreç içi/cron oturum id kalıbı (readableTitle'ın çözdüğü desenler):
+ *  20260913_184051_52f76a · 20260913_184051 · cron_<hex> · cron_<hex>_<tarih>_<saat>. */
+private val RAW_SESSION_ID = Regex(
+    """^(?:\d{8}_\d{6}(?:_[0-9a-f]+)?|cron_[0-9a-f]{4,}(?:_\d{8}_\d{6})?)$""",
+    RegexOption.IGNORE_CASE,
+)
 
 /** Ray hücresi: 48dp dokunma alanı (spec erişilebilirlik asgari), 40dp görsel
  *  hap, aktifken dolgu, çalışırken nabız. clickable padding'den ÖNCE: dokunma

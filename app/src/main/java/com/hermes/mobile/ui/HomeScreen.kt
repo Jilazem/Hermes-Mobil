@@ -243,7 +243,11 @@ private fun GatewayCard(
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "v$version" + (releaseDate?.let { " · $it" } ?: "") + " · $activeAgents etkin ajan",
+            // FR-004: bu sayı SUNUCUNUN (/api/status active_agents) bildirdiği
+            // değerdir ve Oturumlar > Canlı sekmesinin gateway belleğinden saydığı
+            // oturumdan farklı veri kümesidir — etiket bunu söyler, çelişki sanılmasın.
+            "v$version" + (releaseDate?.let { " · $it" } ?: "") +
+                " · $activeAgents etkin ajan (sunucu raporu)",
             color = HermesColors.TextMuted,
             fontSize = 11.sp,
         )

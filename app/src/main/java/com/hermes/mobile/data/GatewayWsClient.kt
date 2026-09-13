@@ -211,6 +211,10 @@ class GatewayWsClient(private val profile: ServerProfile) {
             Json { ignoreUnknownKeys = true }
                 .decodeFromJsonElement(ActiveSessionsResponse.serializer(), result)
                 .sessions
+        }.onFailure {
+            // FR-002: çözüm hatası BOŞ liste diye yutulmasın — iz bırak;
+            // aksi halde "canlı oturum yok" ile "bozuk yanıt" ayırt edilemiyor.
+            DiagLog.w("ws", "session.active_list cozulemedi: ${it.message}")
         }.getOrDefault(emptyList())
     }
 
@@ -233,6 +237,8 @@ class GatewayWsClient(private val profile: ServerProfile) {
                 .decodeFromJsonElement(SessionHistoryResponse.serializer(), result)
                 .messages
                 .map { it.toSessionMessage() }
+        }.onFailure {
+            DiagLog.w("ws", "session.history cozulemedi (sid=$sessionId): ${it.message}")
         }.getOrDefault(emptyList())
     }
 
@@ -373,14 +379,18 @@ class GatewayWsClient(private val profile: ServerProfile) {
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            _connection.value = ConnectionState.Error(
-                when (response?.code) {
-                    401, 403 -> "Token reddedildi"
-                    else -> t.message ?: "bağlantı hatası"
-                }
-            )
+            // FR-002: HTTP yükseltme hatası (ör. 502) "bağlantı hatası" diye
+            // yutulmaz — gateway'e ulaşılıyor ama gateway/proxy hata veriyor;
+            // kullanıcı ve DiagLog gerçeği (HTTP kodunu) görür.
+            val reason = when (response?.code) {
+                401, 403 -> "Token reddedildi (${response.code})"
+                null -> t.message ?: "bağlantı hatası"
+                else -> "Sunucu WS el sıkışmasını reddetti (HTTP ${response.code}) — " +
+                    (t.message?.take(120) ?: "gateway geçici olarak meşgul olabilir")
+            }
+            _connection.value = ConnectionState.Error(reason)
             DiagLog.e("ws", "failed http=${response?.code ?: "-"}", t)
-            failAllPending(t.message ?: "bağlantı hatası")
+            failAllPending(reason)
             scheduleReconnect()
         }
     }
