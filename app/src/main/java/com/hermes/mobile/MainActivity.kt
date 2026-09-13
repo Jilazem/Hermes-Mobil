@@ -68,6 +68,7 @@ import com.hermes.mobile.ui.SessionsScreen
 import com.hermes.mobile.ui.SessionRail
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
+import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.ShareHandoff
 import com.hermes.mobile.ui.ShareTargetScreen
 import com.hermes.mobile.ui.theme.themeById
@@ -209,6 +210,13 @@ class MainActivity : ComponentActivity() {
             )
         ) {
             handleShareHandoff(i)
+        } else if (i.action == Intent.ACTION_SEND ||
+            i.action == "android.intent.action.SEND_MULTIPLE"
+        ) {
+            // Görünür gözlem (MS-2 sertleştirme): dışarıdan vektörü ATLAYARAK
+            // explicit MainActivity intent'i atan her giriş REDDEDİLİR — logda
+            // izi kalsın (sessiz düşürmek denetimi zorlaştırırdı).
+            DiagLog.w("ShareHandoff", "reddedildi: nonce'suz ${i.action} doğrudan MainActivity — paylaşım yalnız ShareProxyActivity üzerinden")
         }
         // SEND_MULTIPLE bilinçli olarak YOK (denetmen önerisi #4):
         // MainActivity'nin MULTIPLE filtresi kaldırıldı, vektörde de
