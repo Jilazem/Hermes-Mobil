@@ -191,6 +191,37 @@ class HermesClient(private val profile: ServerProfile) {
         filename: String,
         targetDir: String = "uploads",
     ): String = withContext(Dispatchers.IO) {
+        uploadManagedFileBlocking(bytes, filename, targetDir)
+    }
+
+    /**
+     * Dosyayı DISKTEN yükler (HIGH-1 teli): paylaşım staging kopyası gibi
+     * büyük içeriklerde readBytes ile belleğe almak OOM riski (denetmen #5);
+     * OkHttp asRequestBody dosyayı parça parça akıtır.
+     */
+    suspend fun uploadManagedFile(file: java.io.File, filename: String, targetDir: String = "uploads"): String =
+        withContext(Dispatchers.IO) {
+            val safeName = filename.replace(Regex("""[^A-Za-z0-9._-]+"""), "_")
+            val target = "$targetDir/$safeName"
+            val body = okhttp3.MultipartBody.Builder()
+                .setType(okhttp3.MultipartBody.FORM)
+                .addFormDataPart("path", target)
+                .addFormDataPart("overwrite", "true")
+                .addFormDataPart(
+                    "file",
+                    safeName,
+                    file.asRequestBody("application/octet-stream".toMediaType()),
+                )
+                .build()
+            val base = profile.activeUrl ?: profile.normalizedUrl
+            http.newCall(request(base, "/api/files/upload-stream").post(body).build()).execute().use { res ->
+                val text = res.body?.string().orEmpty()
+                if (!res.isSuccessful) throw HermesApiException(res.code, "/api/files/upload-stream", text.take(300))
+                target
+            }
+        }
+
+    private fun uploadManagedFileBlocking(bytes: ByteArray, filename: String, targetDir: String): String {
         val safeName = filename.replace(Regex("""[^A-Za-z0-9._-]+"""), "_")
         val target = "$targetDir/$safeName"
         val body = okhttp3.MultipartBody.Builder()
@@ -204,7 +235,7 @@ class HermesClient(private val profile: ServerProfile) {
             )
             .build()
         val base = profile.activeUrl ?: profile.normalizedUrl
-        http.newCall(request(base, "/api/files/upload-stream").post(body).build()).execute().use { res ->
+        return http.newCall(request(base, "/api/files/upload-stream").post(body).build()).execute().use { res ->
             val text = res.body?.string().orEmpty()
             if (!res.isSuccessful) throw HermesApiException(res.code, "/api/files/upload-stream", text.take(300))
             target

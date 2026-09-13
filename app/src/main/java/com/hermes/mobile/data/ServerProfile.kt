@@ -78,8 +78,19 @@ data class ServerProfile(
             (o[0] == 172 && o[1] in 16..31)
     }
 
-    /** Sondaki eğik çizgileri temizlenmiş taban adres. */
-    val normalizedUrl: String get() = baseUrl.trimEnd('/')
+    /**
+     * Sondaki eğik çizgileri temizlenmiş taban adres.
+     *
+     * Kullanıcı şemasız yazabilir ("10.0.2.2:9199") — dialog'ın önerisi de
+     * "http://" ile başlıyor ama kullanıcı yazmayabiliyor. Semasız adres
+     * OkHttp'de FATAL EXCEPTION üretiyor (GatewayWsClient.openSocket,
+     * 260913 emülatör kanıtı); burada http:// ekleyerek çökme sınıfını
+     * kapatıyoruz. https kullanıcısı şemayı zaten kendisi yazar.
+     */
+    val normalizedUrl: String
+        get() = baseUrl.trim().trimEnd('/').let {
+            if (it.isNotEmpty() && !it.contains("://")) "http://$it" else it
+        }
 
     val isHttps: Boolean get() = normalizedUrl.startsWith("https://", ignoreCase = true)
 
