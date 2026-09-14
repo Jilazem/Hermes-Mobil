@@ -2,9 +2,11 @@ package com.hermes.mobile.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,12 +18,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -49,93 +51,134 @@ fun MarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     color: androidx.compose.ui.graphics.Color = HermesColors.TextSecondary,
-    fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
+    fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
 ) {
     val blocks = remember(markdown) { parseMarkdown(markdown) }
+    // Telegram: ardışık maddeler BİTİŞİK, bloklar arası boş satır. Tek sabit
+    // 7dp yerine grup ayrımı — Tight içi sıfır boşluk, gruplar arası nefes.
+    val groups = remember(blocks) { groupBlocks(blocks) }
     val inline = rememberInlineColors()
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        blocks.forEach { block ->
-            when (block) {
-                is MdBlock.Code -> CodeBlock(block)
-                is MdBlock.Heading -> Text(
-                    inlineMarkdown(block.text, inline),
-                    color = HermesColors.TextPrimary,
-                    fontSize = when (block.level) {
-                        1 -> 19.sp
-                        2 -> 17.sp
-                        else -> 15.sp
-                    },
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 24.sp,
-                )
+    // Satır aralığı ~1.45 (FR: 1.4-1.5); satırsonu yüksekliği govde fontuna bağli.
+    val bodyLine = fontSize * 1.45f
 
-                is MdBlock.Paragraph -> Text(
-                    inlineMarkdown(block.text, inline),
-                    color = color,
-                    fontSize = fontSize,
-                    lineHeight = fontSize * 1.5f,
-                )
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        groups.forEach { group ->
+            when (group) {
+                is MdGroup.Tight -> Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    group.items.forEach { ListItemRow(it, inline, color, fontSize, bodyLine) }
+                }
 
-                is MdBlock.Bullet -> Row(Modifier.fillMaxWidth()) {
-                    Spacer(Modifier.width((block.indent * 14).dp))
-                    Text("•", color = HermesColors.Midground, fontSize = fontSize, lineHeight = fontSize * 1.5f)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
+                is MdGroup.Solo -> when (val block = group.block) {
+                    is MdBlock.Code -> CodeBlock(block)
+
+                    // FR-001: hiyerarşi KALINLIKLA, boyutla değil — başlık gövdeyle
+                    // aynı punto, yalnız daha ağır (SemiBold). Eski 19/17/15.sp
+                    // boyut şişirmesi kaldırıldı.
+                    is MdBlock.Heading -> Text(
+                        inlineMarkdown(block.text, inline),
+                        color = HermesColors.TextPrimary,
+                        fontSize = fontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = bodyLine,
+                    )
+
+                    // FR-005: gövde Telegram ikincil tonu (#d1d1d1 civarı), 15sp.
+                    is MdBlock.Paragraph -> Text(
                         inlineMarkdown(block.text, inline),
                         color = color,
                         fontSize = fontSize,
-                        lineHeight = fontSize * 1.5f,
+                        lineHeight = bodyLine,
                     )
-                }
 
-                is MdBlock.Numbered -> Row(Modifier.fillMaxWidth()) {
-                    Spacer(Modifier.width((block.indent * 14).dp))
-                    Text(
-                        "${block.number}.",
-                        color = HermesColors.Midground,
-                        fontSize = fontSize,
-                        lineHeight = fontSize * 1.5f,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        inlineMarkdown(block.text, inline),
-                        color = color,
-                        fontSize = fontSize,
-                        lineHeight = fontSize * 1.5f,
-                    )
-                }
-
-                is MdBlock.Quote -> Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(HermesColors.SurfaceDim)
-                        .padding(start = 3.dp)
-                ) {
-                    Spacer(
+                    is MdBlock.Quote -> Row(
                         Modifier
-                            .width(2.dp)
-                            .height(20.dp)
-                            .background(HermesColors.BorderStrong)
-                    )
-                    Text(
-                        inlineMarkdown(block.text, inline),
-                        color = HermesColors.TextMuted,
-                        fontSize = fontSize,
-                        lineHeight = fontSize * 1.5f,
-                        modifier = Modifier.padding(start = 9.dp, top = 4.dp, bottom = 4.dp),
-                    )
-                }
+                            .fillMaxWidth()
+                            .background(HermesColors.SurfaceDim)
+                            .padding(start = 3.dp),
+                    ) {
+                        Spacer(
+                            Modifier
+                                .width(2.dp)
+                                .height(20.dp)
+                                .background(HermesColors.BorderStrong),
+                        )
+                        Text(
+                            // Alıntı içi devam satırları da \n taşır; tek Text.
+                            inlineMarkdown(block.text, inline),
+                            color = HermesColors.TextMuted,
+                            fontSize = fontSize,
+                            lineHeight = bodyLine,
+                            modifier = Modifier.padding(start = 9.dp, top = 4.dp, bottom = 4.dp),
+                        )
+                    }
 
-                MdBlock.Rule -> Spacer(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(HermesColors.Border)
-                )
+                    MdBlock.Rule -> Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(HermesColors.Border),
+                    )
+
+                    // Yalnız liste maddesi Tight'a gider; Solo'ya düşen tek madde
+                    // (liste tek satırlık) burada da doğru çizilir.
+                    is MdBlock.Bullet, is MdBlock.Numbered ->
+                        ListItemRow(block, inline, color, fontSize, bodyLine)
+                }
             }
         }
     }
+}
+
+/**
+ * Bir liste maddesi: işareti sabit genişlikte bir sütunda (gutter) tutar,
+ * gövde kalan alanı `weight` ile kaplar. Madde sarıldığında DEVAM satırı
+ * gövde sütununun solundan — yani madde metni hizasından — başlar; sola
+ * kaymaz (hanging indent, FR-002). Gövde tek `Text` olduğu için içindeki
+ * "\n" satırsonları doğal olarak aynı hizada sarar.
+ */
+@Composable
+private fun ListItemRow(
+    block: MdBlock,
+    inline: InlineColors,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    bodyLine: androidx.compose.ui.unit.TextUnit,
+) {
+    val level = block.levelIndentDp
+    val mark = when (block) {
+        is MdBlock.Numbered -> "${block.number}."
+        else -> "•"
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = level.dp),
+    ) {
+        // Sabit işareti sütunu: tüm maddelerde işaret aynı x'te, gövde aynı
+        // x'te başlar → sarma hizası sabit kalır.
+        Text(
+            mark,
+            color = HermesColors.Midground,
+            fontSize = fontSize,
+            lineHeight = bodyLine,
+            modifier = Modifier.width(LIST_MARK_GUTTER_DP.dp),
+        )
+        Text(
+            inlineMarkdown(block.textForItem(), inline),
+            color = color,
+            fontSize = fontSize,
+            lineHeight = bodyLine,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** Maddenin gövde metni (Bullet/Numbered için [text], diğerlerinde boş). */
+private fun MdBlock.textForItem(): String = when (this) {
+    is MdBlock.Bullet -> text
+    is MdBlock.Numbered -> text
+    else -> ""
 }
 
 @Composable
@@ -146,76 +189,196 @@ private fun CodeBlock(block: MdBlock.Code) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
-            .border(1.dp, HermesColors.Border, RoundedCornerShape(8.dp))
+            // FR-004: balondan KOYU panel — Background tonu (SurfaceDim'den koyu).
+            .background(HermesColors.Background, RoundedCornerShape(8.dp))
+            .border(1.dp, HermesColors.Border, RoundedCornerShape(8.dp)),
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(start = 10.dp, end = 2.dp, top = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                block.language.ifBlank { "kod" },
-                color = HermesColors.TextFaint,
-                fontSize = 10.sp,
+        // Sol dikey vurgu çizgisi + içerik.
+        Row(Modifier.fillMaxWidth()) {
+            Spacer(
+                Modifier
+                    .width(3.dp)
+                    .height(IntrinsicSize.Min)
+                    .background(HermesColors.Midground),
             )
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { clipboard.setText(AnnotatedString(block.code)) }) {
-                Icon(
-                    Icons.Default.ContentCopy,
-                    contentDescription = "Kodu kopyala",
-                    tint = HermesColors.TextMuted,
-                    modifier = Modifier.width(15.dp),
+            Column(Modifier.weight(1f)) {
+                // Üstte yalnız dil etiketi (satır sayısı YOK — sade).
+                if (block.language.isNotBlank()) {
+                    Text(
+                        block.language.lowercase(),
+                        color = HermesColors.TextFaint,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(start = 10.dp, top = 6.dp, end = 10.dp),
+                    )
+                }
+                Text(
+                    block.code,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = HermesColors.TextSecondary,
+                    modifier = Modifier
+                        .horizontalScroll(scroll)
+                        .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 10.dp),
                 )
             }
         }
-        Text(
-            block.code,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            color = HermesColors.TextSecondary,
-            modifier = Modifier
-                .horizontalScroll(scroll)
-                .padding(start = 10.dp, end = 10.dp, bottom = 9.dp),
+        // Altta ayraç + ortalanmış BÜYÜK HARF "KODU KOPYALA" (ikon + metin).
+        Spacer(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(HermesColors.Border),
         )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
+                .clickable { clipboard.setText(AnnotatedString(block.code)) }
+                .padding(vertical = 9.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.ContentCopy,
+                contentDescription = null,
+                tint = HermesColors.Midground,
+                modifier = Modifier.width(15.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                S.t2("KODU KOPYALA", "COPY CODE"),
+                color = HermesColors.Midground,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.5.sp,
+            )
+        }
     }
 }
 
 // ── Ayrıştırma ────────────────────────────────────────────────────────
 
-private sealed interface MdBlock {
+// internal: JVM'de Compose'suz test edilebilir render modeli (FR-002/FR-003).
+sealed interface MdBlock {
     data class Heading(val level: Int, val text: String) : MdBlock
     data class Paragraph(val text: String) : MdBlock
     data class Code(val language: String, val code: String) : MdBlock
+
+    /**
+     * Madde. [text] birden fazla fizik satır taşıyabilir: bir madde sarıldığında
+     * (devam satırı tire/numara taşımaz) devam satırları [text] içine "\n" ile
+     * birleştirilir — render tarafı bunu TEK blok olarak çizip devam satırını
+     * madde metni hizasından sardırır (hanging indent, FR-002). [indent] üst
+     * seviye boşluk sayısı (ikili girinti = 1 kademe).
+     */
     data class Bullet(val text: String, val indent: Int) : MdBlock
     data class Numbered(val number: Int, val text: String, val indent: Int) : MdBlock
     data class Quote(val text: String) : MdBlock
     data object Rule : MdBlock
+
+    /** Liste maddesi mi? (bitişik çizim + gruplama kararı için). */
+    val isListItem: Boolean get() = this is Bullet || this is Numbered
+
+    /** İç içe kademe girintisi dp (render ve test aynı kaynaktan okur). */
+    val levelIndentDp: Int
+        get() = when (this) {
+            is Bullet -> indent * LIST_LEVEL_INDENT_DP
+            is Numbered -> indent * LIST_LEVEL_INDENT_DP
+            else -> 0
+        }
 }
 
-private val BULLET = Regex("""^(\s*)[-*+]\s+(.*)$""")
-private val NUMBERED = Regex("""^(\s*)(\d+)[.)]\s+(.*)$""")
-private val HEADING = Regex("""^(#{1,6})\s+(.*)$""")
+/** Liste işareti sütunu genişliği dp (Telegram ~24dp toplam kenar boşluğu). */
+const val LIST_MARK_GUTTER_DP = 20
+/** İç içe liste kademesi başına ek girinti. */
+const val LIST_LEVEL_INDENT_DP = 14
 
-private fun parseMarkdown(source: String): List<MdBlock> {
+// internal: saf gruplama (FR-003 — bitişik maddeler tek sıkı grup, blok
+// kırılımları ayrı grup). Compose'suz test edilir.
+internal sealed interface MdGroup {
+    /** Sıkı çizilen ardışık satırlar (liste maddeleri): aralarında boşluk YOK. */
+    data class Tight(val items: List<MdBlock>) : MdGroup
+    /** Tek blok (paragraf/başlık/kod/alıntı/çizgi): blok arası boşluk görür. */
+    data class Solo(val block: MdBlock) : MdGroup
+}
+
+/**
+ * Ardışık liste maddelerini tek [MdGroup.Tight] grubunda toplar; diğer
+ * bloklar solo. Telegram'da maddeler bitişik, bloklar arası boş satırla
+ * ayrılır — ayrımı markdown'daki blok sınırından değil komşuluktan alıyoruz.
+ */
+internal fun groupBlocks(blocks: List<MdBlock>): List<MdGroup> {
+    val out = mutableListOf<MdGroup>()
+    var run = mutableListOf<MdBlock>()
+    fun flush() {
+        if (run.isEmpty()) return
+        out += if (run.size == 1) MdGroup.Solo(run.first())
+               else MdGroup.Tight(run.toList())
+        run = mutableListOf()
+    }
+    for (b in blocks) {
+        if (b.isListItem) run += b else { flush(); out += MdGroup.Solo(b) }
+    }
+    flush()
+    return out
+}
+
+internal val BULLET = Regex("""^(\s*)[-*+]\s+(.*)$""")
+internal val NUMBERED = Regex("""^(\s*)(\d+)[.)]\s+(.*)$""")
+internal val HEADING = Regex("""^(#{1,6})\s+(.*)$""")
+
+private fun indentOf(leading: String): Int = leading.length / 2
+
+/** Satır bir blok başlangıcı mı? (devam satırı tespiti için). */
+private fun startsBlock(line: String): Boolean =
+    line.isBlank() ||
+        line.trimStart().startsWith("```") ||
+        line.trim().let { it == "---" || it == "***" || it == "___" } ||
+        HEADING.matches(line) ||
+        BULLET.matches(line) ||
+        NUMBERED.matches(line) ||
+        line.trimStart().startsWith("> ")
+
+internal fun parseMarkdown(source: String): List<MdBlock> {
     val blocks = mutableListOf<MdBlock>()
     val lines = source.split("\n")
     var i = 0
     val paragraph = StringBuilder()
+    // Açık liste maddesi: devam satırları (tire/numara olmayan, boş olmayan)
+    // buraya "\n" ile eklenir → tek madde, doğru hanging indent.
+    var itemLines: MutableList<String>? = null
+    var itemIndent = 0
+    var itemNumber = 0   // >0 ise numaralı madde
+    var itemQuote = false
 
     fun flushParagraph() {
         if (paragraph.isNotBlank()) blocks += MdBlock.Paragraph(paragraph.toString().trim())
         paragraph.setLength(0)
     }
 
+    fun flushItem() {
+        val lines2 = itemLines ?: return
+        val text = lines2.joinToString("\n")
+        itemLines = null
+        when {
+            itemQuote -> blocks += MdBlock.Quote(text)
+            itemNumber > 0 -> blocks += MdBlock.Numbered(itemNumber, text, itemIndent)
+            else -> blocks += MdBlock.Bullet(text, itemIndent)
+        }
+        itemNumber = 0
+        itemQuote = false
+        itemIndent = 0
+    }
+
+    fun flushAll() { flushItem(); flushParagraph() }
+
     while (i < lines.size) {
         val line = lines[i]
 
         // Çitli kod bloğu — kapanış yoksa akış hâlâ sürüyordur, sona kadar al.
         if (line.trimStart().startsWith("```")) {
-            flushParagraph()
+            flushAll()
             val language = line.trimStart().removePrefix("```").trim()
             val code = StringBuilder()
             i++
@@ -228,49 +391,76 @@ private fun parseMarkdown(source: String): List<MdBlock> {
             continue
         }
 
-        when {
-            line.isBlank() -> flushParagraph()
-
-            line.trim().let { it == "---" || it == "***" || it == "___" } -> {
-                flushParagraph()
-                blocks += MdBlock.Rule
-            }
-
-            HEADING.matches(line) -> {
-                flushParagraph()
-                val m = HEADING.find(line)!!
-                blocks += MdBlock.Heading(m.groupValues[1].length, m.groupValues[2])
-            }
-
-            BULLET.matches(line) -> {
-                flushParagraph()
-                val m = BULLET.find(line)!!
-                blocks += MdBlock.Bullet(m.groupValues[2], m.groupValues[1].length / 2)
-            }
-
-            NUMBERED.matches(line) -> {
-                flushParagraph()
-                val m = NUMBERED.find(line)!!
-                blocks += MdBlock.Numbered(
-                    m.groupValues[2].toIntOrNull() ?: 1,
-                    m.groupValues[3],
-                    m.groupValues[1].length / 2,
-                )
-            }
-
-            line.trimStart().startsWith("> ") -> {
-                flushParagraph()
-                blocks += MdBlock.Quote(line.trimStart().removePrefix("> "))
-            }
-
-            else -> {
-                if (paragraph.isNotEmpty()) paragraph.append('\n')
-                paragraph.append(line)
-            }
+        // Boş satır = blok kırılımı: açık madde/paragrafı kapatır.
+        if (line.isBlank()) {
+            flushAll()
+            i++
+            continue
         }
+
+        if (line.trim().let { it == "---" || it == "***" || it == "___" }) {
+            flushAll()
+            blocks += MdBlock.Rule
+            i++
+            continue
+        }
+
+        if (HEADING.matches(line)) {
+            flushAll()
+            val m = HEADING.find(line)!!
+            blocks += MdBlock.Heading(m.groupValues[1].length, m.groupValues[2])
+            i++
+            continue
+        }
+
+        if (BULLET.matches(line)) {
+            flushParagraph()
+            flushItem()
+            val m = BULLET.find(line)!!
+            itemLines = mutableListOf(m.groupValues[2].trim())
+            itemIndent = indentOf(m.groupValues[1])
+            itemNumber = 0
+            itemQuote = false
+            i++
+            continue
+        }
+
+        if (NUMBERED.matches(line)) {
+            flushParagraph()
+            flushItem()
+            val m = NUMBERED.find(line)!!
+            itemLines = mutableListOf(m.groupValues[3].trim())
+            itemIndent = indentOf(m.groupValues[1])
+            itemNumber = m.groupValues[2].toIntOrNull() ?: 1
+            itemQuote = false
+            i++
+            continue
+        }
+
+        if (line.trimStart().startsWith("> ")) {
+            flushAll()
+            itemQuote = true
+            itemIndent = 0
+            itemLines = mutableListOf(line.trimStart().removePrefix("> ").trim())
+            i++
+            continue
+        }
+
+        // Buraya kadar: boş olmayan, blok işareti taşımayan satır.
+        // Açık madde varsa DEVAM satırı (hanging); yoksa paragraf satırı.
+        val open = itemLines
+        if (open != null && !startsBlock(line)) {
+            open += line.trim()
+            i++
+            continue
+        }
+
+        flushItem()
+        if (paragraph.isNotEmpty()) paragraph.append('\n')
+        paragraph.append(line)
         i++
     }
-    flushParagraph()
+    flushAll()
     return blocks
 }
 

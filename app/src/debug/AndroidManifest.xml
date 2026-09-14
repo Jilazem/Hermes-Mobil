@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Yalnız DEBUG build'e merge olur (src/debug source set): mesaj render
+  tasarımı için görsel kanıt ekranı. Launcher'da YOK — yalnız adb'den
+  explicit component ile açılır. Üretim (release) manifest'ine sızmaz.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".ui.MarkdownRenderDebugActivity"
+            android:exported="true"
+            android:label="Render Kanıtı"
+            android:theme="@style/Theme.HermesMobile" />
+    </application>
+</manifest>
