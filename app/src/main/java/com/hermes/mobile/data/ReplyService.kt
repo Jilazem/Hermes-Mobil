@@ -26,7 +26,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 class ReplyService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Tur-2 K3(a): yakalanmayan coroutine hatasi izsiz dusmesin.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
 
     override fun onBind(intent: Intent?): IBinder? = null
 

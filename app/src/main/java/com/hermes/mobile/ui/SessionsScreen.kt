@@ -124,15 +124,30 @@ private fun cronStampBase(id: String): String? {
 }
 
 /**
+ * Önizlemeyi tek satırlık kart başlığına çevirir: satırsonları boşa, fazla
+ * boşluklar teke indirilir, `maxLen` karaktere kırpılır (kabarcık taşıyla).
+ * Boş/ yok önizleme → "".
+ */
+fun previewLine(preview: String?, maxLen: Int = 60): String {
+    val flat = preview?.replace('\n', ' ')?.replace('\r', ' ')
+        ?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
+    if (flat.length <= maxLen) return flat
+    return flat.take(maxLen).trimEnd() + "…"
+}
+
+/**
  * Okunabilir oturum başlığı — öncelik sırası:
  * 1. kullanıcının yerel yeniden adlandırması (`flags.renames`),
  * 2. sunucudan gelen başlık (Telegram `display_name` zaten `title`a akar;
- *    ham id'den FARKLIYSA),
+ *    ayrıca `GET /api/sessions` → `title` — ham id'den FARKLIYSA),
  * 3. `cron_<hash>_<zaman>` id'si + bilinen cron iş adı → "İş Adı · gg.AA ss:dd",
- * 4. kaynak etiketi + id'deki zaman damgası → "TUI · 13.09 18:40"
+ * 4. sunucu `preview`'ı (ilk mesajdan) — tek satır, ~60 karakter
+ *    (boss şikâyeti tur-2: "konu nedir belli değil"; kart artık konuyu
+ *    önizlemeden gösteriyor),
+ * 5. kaynak etiketi + id'deki zaman damgası → "TUI · 13.09 18:40"
  *    (damga yoksa yalnız etiket: "CLI", "Masaüstü", "Zamanlanmış görev"…),
- * 5. kaynak yok ama damga var → "Oturum · 13.09 18:40",
- * 6. hiçbir şey yok → "Oturum". Ham session id'si BU FONKSİYONDAN
+ * 6. kaynak yok ama damga var → "Oturum · 13.09 18:40",
+ * 7. hiçbir şey yok → "Oturum". Ham session id'si BU FONKSİYONDAN
  *    birincil başlık olarak ASLA çıkamaz (boss şikâyeti: "session adları
  *    anlaşılmaz").
  * Saf fonksiyon — Compose'suz test edilebilir.
@@ -144,12 +159,14 @@ fun readableTitle(
 ): String {
     flags.renames[session.id]?.takeIf { it.isNotBlank() }?.let { return it }
     session.title.takeIf { it.isNotBlank() && it != session.id }?.let { return it }
+    session.serverTitle?.takeIf { it.isNotBlank() && it != session.id }?.let { return it }
     CRON_SESSION_ID.find(session.id)?.groupValues?.get(1)
         ?.let { hash -> cronNames[hash]?.takeIf { it.isNotBlank() } }
         ?.let { jobName ->
             val stamp = cronStampBase(session.id)
             return if (stamp != null) "$jobName · $stamp" else jobName
         }
+    previewLine(session.preview).takeIf { it.isNotBlank() }?.let { return it }
     val stamp = stampFromRawId(session.id)
     val label = sessionSourceLabel(session.source)
     return when {
@@ -158,6 +175,29 @@ fun readableTitle(
         stamp != null -> "Oturum · $stamp"
         else -> "Oturum"
     }
+}
+
+/**
+ * Kart ikincil satırı (tur-2 K2): birinci satır gerçek bir konu taşıyorsa
+ * (rename / sunucu başlığı / cron iş adı / önizleme) altında soluk
+ * "kaynak · damga" gösterilir; birinci satır zaten kaynak+damgaFallback'i ise
+ * yinelenmesin diye null döner.
+ */
+fun cardSubtitle(
+    session: HermesSession,
+    flags: SessionFlags,
+    cronNames: Map<String, String>,
+): String? {
+    val primary = readableTitle(session, flags, cronNames)
+    val stamp = stampFromRawId(session.id)
+    val label = sessionSourceLabel(session.source)
+    val fallback = when {
+        label != null && stamp != null -> "$label · $stamp"
+        label != null -> label
+        stamp != null -> "Oturum · $stamp"
+        else -> "Oturum"
+    }
+    return fallback.takeIf { it != primary }
 }
 
 /**
@@ -274,7 +314,8 @@ fun SessionsScreen(
         if (q.isBlank()) base else base.filter {
             readableTitle(it, flags, cronNames).contains(q, true) ||
                 (it.model ?: "").contains(q, true) ||
-                (it.source ?: "").contains(q, true)
+                (it.source ?: "").contains(q, true) ||
+                (it.preview ?: "").contains(q, true)
         }
     }
     val items = remember(shown, flags, query) {
@@ -398,6 +439,7 @@ fun SessionsScreen(
                                 session = session,
                                 actions = sessionMenuActions(session, flags),
                                 title = readableTitle(session, flags, cronNames),
+                                subtitle = cardSubtitle(session, flags, cronNames),
                                 pinned = session.id in flags.pinned,
                                 archived = session.id in flags.archived,
                                 menuOpen = menuSession?.id == session.id,
@@ -616,6 +658,7 @@ private fun SearchField(query: String, onChange: (String) -> Unit) {
 private fun SessionRow(
     session: HermesSession,
     title: String,
+    subtitle: String?,
     pinned: Boolean,
     archived: Boolean,
     menuOpen: Boolean,
@@ -649,14 +692,28 @@ private fun SessionRow(
             }
             StatusDot(if (session.isActive) HermesColors.Online else HermesColors.Offline, size = 7)
             Spacer(Modifier.width(8.dp))
-            Text(
-                title,
-                color = HermesColors.TextPrimary,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    color = HermesColors.TextPrimary,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Tur-2 K2: konu kartın birinci satırında (rename > title >
+                // preview). Altında soluk "kaynak · damga" — boss "konu nedir
+                // belli değil" dediği için konu öne, kaynak ikincil.
+                if (subtitle != null) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        subtitle,
+                        color = HermesColors.TextMuted,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             Spacer(Modifier.width(8.dp))
             Text(formatRelative(session.startedAt), color = HermesColors.TextMuted, fontSize = 11.sp)
 
@@ -688,9 +745,13 @@ private fun SessionRow(
             Meta("${session.toolCallCount} ${S.t2("araç", "tools")}")
             Spacer(Modifier.width(12.dp))
             Meta("${(session.inputTokens + session.outputTokens) / 1000}k token")
-            session.source?.let {
-                Spacer(Modifier.width(12.dp))
-                Meta(it)
+            // Kaynak alt Meta'da yalnız subtitle'da YOKKEN gösterilir — yoksa
+            // aynı bilgi hem ikincil satırda hem altta yinelenir.
+            if (subtitle == null) {
+                session.source?.let {
+                    Spacer(Modifier.width(12.dp))
+                    Meta(it)
+                }
             }
         }
 

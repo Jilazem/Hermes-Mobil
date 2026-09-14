@@ -73,17 +73,39 @@ data class HermesSession(
     val source: String? = null,
     val model: String? = null,
     @SerialName("display_name") val displayName: String? = null,
+    /**
+     * Sunucunun oturum başlığı (`GET /api/sessions` → `title`).
+     *
+     * Başlık çoğu oturumda HAM ID ile aynı geliyor (kullanıcı rename yapmadıysa)
+     * — bu yüzden okuyan taraf `!= id` kontrolüyle kullanmalı; yokla ayrımı
+     * ekranlar yapar ([com.hermes.mobile.ui.sessionCardTitles]).
+     */
+    @SerialName("title") val serverTitle: String? = null,
+    /** İlk mesajdan kısa önizleme — konusuz oturum kartının birinci satırı. */
+    val preview: String? = null,
+    /** Sunucunun insan-dostu etkinlik damgası ("5 dk önce" gibi; şimdilik yedek). */
+    @SerialName("last_activity_description") val lastActivityDescription: String? = null,
     @SerialName("started_at") val startedAt: Double? = null,
     @SerialName("ended_at") val endedAt: Double? = null,
     @SerialName("end_reason") val endReason: String? = null,
-    @SerialName("message_count") val messageCount: Int = 0,
-    @SerialName("tool_call_count") val toolCallCount: Int = 0,
-    @SerialName("input_tokens") val inputTokens: Long = 0,
-    @SerialName("output_tokens") val outputTokens: Long = 0,
+    // Tur-2 K3(b): sunucu bos sayaclari acik `null` yollayabiliyor. Duz
+    // `Int = 0` explicit JSON null'da FATAL decode hatasi veriyor
+    // (isLenient null'u non-null tipe atamaz) — "sik sik kapanma"nin sessiz
+    // yollarindan biri. Nullable ham + 0'a inen erisimci (SessionMessage
+    // toolCalls deseniyle ayni savunma). Named-arg cagrisi olmayan alanlar.
+    @SerialName("message_count") private val messageCountRaw: Int? = null,
+    @SerialName("tool_call_count") private val toolCallCountRaw: Int? = null,
+    @SerialName("input_tokens") private val inputTokensRaw: Long? = null,
+    @SerialName("output_tokens") private val outputTokensRaw: Long? = null,
     val cwd: String? = null,
 ) {
     val isActive: Boolean get() = endedAt == null
     val title: String get() = displayName?.takeIf { it.isNotBlank() } ?: id
+
+    val messageCount: Int get() = messageCountRaw ?: 0
+    val toolCallCount: Int get() = toolCallCountRaw ?: 0
+    val inputTokens: Long get() = inputTokensRaw ?: 0L
+    val outputTokens: Long get() = outputTokensRaw ?: 0L
 }
 
 @Serializable

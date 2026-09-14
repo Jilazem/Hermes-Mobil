@@ -19,9 +19,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -44,8 +46,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.mobile.ui.CameraScreen
@@ -68,6 +72,7 @@ import com.hermes.mobile.ui.SessionsScreen
 import com.hermes.mobile.ui.SessionRail
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
+import com.hermes.mobile.data.CrashGuard
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.ShareHandoff
 import com.hermes.mobile.data.LiveSession
@@ -496,6 +501,23 @@ private fun HermesApp(
             liveSessionTitle(l, restById[l.dbId], state.flags, state.cronNames)
         }
     }
+
+    // Tur-2 K3(a): CrashGuard bağlamı — cökme satırında hangi oturumda hangi
+    // ekranda olunduğu yazsın ('coktu' yerine 'Sohbet ekranında, sid=…').
+    val screenLabel = when {
+        detail != null -> "Oturum detayı"
+        else -> when (tab) {
+            Tab.Chat -> "Sohbet"
+            Tab.Work -> "Oturumlar"
+            Tab.Panel -> "Pano"
+            Tab.Arena -> "Arena"
+            Tab.Settings -> "Ayarlar"
+        }
+    }
+    LaunchedEffect(screenLabel, chat.sessionId) {
+        CrashGuard.sessionProvider = { chat.sessionId }
+        CrashGuard.screenProvider = { screenLabel }
+    }
     val shizukuState by chatViewModel.shizuku.state.collectAsStateWithLifecycle()
     val sharedText by chatViewModel.sharedText.collectAsStateWithLifecycle()
     // Paylaşım hedefi seçim ekranı (ShareProxyActivity'den gelir).
@@ -872,6 +894,11 @@ private fun HermesApp(
                     )
                 }
             }
+
+            // Tur-2 K3(a): "sik sik kapaniyor" artık sessiz değil — çökme
+            // izinden sonraki ilk açılışta kullanıcı ne olduğunu GÖRÜR
+            // ("uygulama çöktü" yerine gorunur hata; FR-003).
+            CrashRecoveryBanner()
         }
 
         if (profileSheet) {
@@ -967,5 +994,41 @@ private fun HermesApp(
                 onDismiss = { modelSheet = false },
             )
         }
+    }
+}
+
+/**
+ * Tur-2 K3(a): çökme kurtarma şeridi. Süreç çökmeyle öldüğünde bellek
+ * gider — kalıcı iz diag.log'dadır ve [CrashGuard.recoverFromDiagLog] onu
+ * açılışta [CrashGuard.lastCrash]'e yükler. Kullanıcı "neden kapandı"
+ * sorusunu tahmin etmek yerine görür; dokununca şerit kapanır.
+ */
+@Composable
+private fun CrashRecoveryBanner() {
+    // lastCrash @Volatile — recomposition'ı StateFlow akışıyla tetiklemeyi
+    // ucuz tutmak için tek seferlik remember yeter: açılışta bir kez okunur.
+    var visible by remember { mutableStateOf(CrashGuard.lastCrash != null) }
+    val text = CrashGuard.lastCrash
+    if (!visible || text == null) return
+    Row(
+        Modifier
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .background(HermesColors.Danger.copy(alpha = 0.92f))
+            .clickable {
+                CrashGuard.lastCrash = null
+                visible = false
+            }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "⚠ $text",
+            color = androidx.compose.ui.graphics.Color.White,
+            fontSize = 12.sp,
+            maxLines = 3,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
     }
 }

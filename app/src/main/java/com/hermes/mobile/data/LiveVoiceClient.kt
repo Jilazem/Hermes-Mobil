@@ -71,7 +71,8 @@ class LiveVoiceClient(
     enum class State { Idle, Connecting, Listening, Speaking, Error }
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Tur-2 K3(a): yakalanmayan coroutine hatasi izsiz dusmesin.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)

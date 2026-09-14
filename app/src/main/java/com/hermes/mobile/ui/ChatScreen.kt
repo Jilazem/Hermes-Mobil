@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -149,19 +151,37 @@ fun ChatScreen(
     }
     val listState = rememberLazyListState()
     var followBottom by remember { mutableStateOf(true) }
-    LaunchedEffect(state.items.size, state.items.lastOrNull()?.let { (it as? ChatItem.Thinking)?.text?.length }) {
-        // Kullanıcı en alttayken yeni satırlar düşse de görüş alanı kendiliğinden
-        // izler (canlı düşünce satırları kaydırma gerektirmez); kullanıcı
-        // yukarı kaydırıp araştırmak isterse izleme durur.
-        val info = listState.layoutInfo
-        val total = info.totalItemsCount.coerceAtLeast(1)
-        val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
-        if (lastVisible >= total - 2) {
-            followBottom = true
-            if (state.items.isNotEmpty()) listState.scrollToItem(state.items.lastIndex)
-        } else if (!state.items.isNotEmpty()) {
-            followBottom = true
-        }
+
+    // Ardışık araç çağrıları tek satıra katlanır; ham liste bozulmadan yalnız
+    // görüntüleme katmanında gruplanır. RENDER EDİLEN liste budur — kaydırma
+    // hedefi de bundan hesaplanır (tur-2 K1: eski kod ham items.lastIndex'i
+    // katlanmış rows'a uyguluyor, taşkın indeks balonu header'ın altına
+    // itip İLK SATIRI kırpıyordu).
+    val rows = remember(state.items) { foldToolRuns(state.items) }
+
+    // Kullanıcı bilinçli olarak yukarı kaydırırsa takip kapanır; alta dönünce
+    // kendiliğinden açılır. (Eski kodda bayrağı false'a çeken hiçbir yol
+    // yoktu — tek emniyet 'en altta değilse kaydırma' dalıydı.)
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val total = info.totalItemsCount
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            total <= 1 || lastVisible >= total - 2
+        }.collect { near -> followBottom = near }
+    }
+
+    // Tur-2 K1: akışta izleme her mesaj türünde güncellenmeli — eski efekt
+    // yalnız Thinking uzayan metni görüyordu, akan Assistant/Tool'da
+    // kaydırma tetiklenmiyordu. Saf imza (test: ChatScrollTest) her
+    // büyüme/eklenmede değişir.
+    val streamSig = remember(state.items) { streamSignature(state.items) }
+    LaunchedEffect(streamSig) {
+        if (rows.isEmpty() || !followBottom) return@LaunchedEffect
+        // Son BALON satırına yasla (sondaki sabit Spacer'a değil): balon üst
+        // kenere oturur, ilk satırı header altında kalmaz; akışta alt satır
+        // her zaman görünür.
+        listState.scrollToItem(rows.lastIndex)
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
@@ -191,9 +211,7 @@ fun ChatScreen(
                     onOpenPrompts = { promptsSheet = true },
                 )
             } else {
-                // Ardışık araç çağrıları tek satıra katlanır; ham liste
-                // bozulmadan yalnız görüntüleme katmanında gruplanır.
-                val rows = remember(state.items) { foldToolRuns(state.items) }
+                // rows yukarıda hesaplandı (render + kaydırma tek kaynak).
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
@@ -583,6 +601,28 @@ private sealed interface ChatRow {
 
     data class Tools(override val key: String, val entries: List<ToolEntry>) : ChatRow
 }
+
+/**
+ * Akış imzası (tur-2 K1) — sohbet kaydırıcısının "yeni içerik var" sinyalini
+ * her mesaj türünde üretir. Eski efekt yalnız Thinking.text uzunluğuna
+ * bakıyordu; akan Assistant metni ve biten araç satırları kaydırmayı
+ * tetiklemiyordu → en alttaki balonun ilk satırı header altında kalıyordu.
+ *
+ * Biçim: `anahtar|uzunluk|durum` öğelerinin boşluksuz birleşimi. Uzunluk
+ * YAKLAŞIK olabilir (uydurma değil, ama hassas değil); önemli olan akış
+ * ilerledikçe DEĞİŞMESİ ve akış durunca SABİT kalmasıdır. Saf — JVM testi.
+ */
+internal fun streamSignature(items: List<ChatItem>): String =
+    items.joinToString(";") { item ->
+        when (item) {
+            is ChatItem.User -> "U:${item.key}:${item.text.length}"
+            is ChatItem.Assistant -> "A:${item.key}:${item.text.length}:${item.streaming}"
+            is ChatItem.Thinking -> "T:${item.key}:${item.text.length}:${item.live}"
+            is ChatItem.Tool -> "F:${item.key}:${item.state}:${item.detail?.length ?: -1}"
+            is ChatItem.Notice -> "N:${item.key}:${item.text.length}"
+            is ChatItem.Approval -> "K:${item.key}:${item.answered ?: ""}"
+        }
+    }
 
 /** Ardışık `ChatItem.Tool` öğelerini tek gruba indirir. */
 private fun foldToolRuns(items: List<ChatItem>): List<ChatRow> {

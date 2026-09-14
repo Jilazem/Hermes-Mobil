@@ -47,7 +47,10 @@ import java.util.concurrent.atomic.AtomicLong
 class GatewayWsClient(private val profile: ServerProfile) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Tur-2 K3(a): SupervisorJob kardeşleri korusa da launch içinde yakalanmayan
+    // hata buradan sessizce düşerdi (telefon 'sik sik kapaniyor' izsiz). Handler
+    // izi DiagLog'a bırakır — scope ölmese de ne olduğunu görüyoruz.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
     private val nextId = AtomicLong(0)
     private val pending = mutableMapOf<String, CompletableDeferred<JsonElement?>>()
     private val pendingLock = Any()

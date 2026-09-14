@@ -13,6 +13,7 @@ import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.car.app.validation.HostValidator
+import com.hermes.mobile.data.CrashGuard
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.ServerProfileStore
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +53,7 @@ class HermesCarService : CarAppService() {
  */
 class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
     private val store = ServerProfileStore(carContext)
 
     private var loading = true

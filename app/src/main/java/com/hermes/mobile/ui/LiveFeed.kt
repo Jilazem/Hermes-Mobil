@@ -59,7 +59,11 @@ fun liveFeed(
             status = if (l.isWorking) "working" else if (l.isWaiting) "waiting"
                 else if (l.isStarting) "starting" else "idle",
             title = l.title.ifBlank { rest?.title ?: l.id },
-            preview = l.preview.ifBlank { rest?.displayName.orEmpty() },
+            // Tur-2 K2: WS cercevesinde preview bos geldiyse REST kaydinin
+            // preview'i (ilk mesaj) kullanilir — birlestirme bozulmasin.
+            preview = l.preview.ifBlank {
+                previewLine(rest?.preview).ifBlank { rest?.displayName.orEmpty() }
+            },
             lastActive = if (l.lastActive > 0) l.lastActive else (rest?.startedAt ?: 0.0),
             liveId = l.id,
             liveSession = l,
@@ -77,7 +81,9 @@ fun liveFeed(
                 live = false,
                 status = if (s.isActive) "idle" else "done",
                 title = s.title,
-                preview = "",
+                // Tur-2 K2: REST /api/sessions artik preview donuyor — satir
+                // konusuz kalmasin.
+                preview = previewLine(s.preview),
                 lastActive = s.startedAt ?: 0.0,
                 liveId = "",
                 liveSession = null,

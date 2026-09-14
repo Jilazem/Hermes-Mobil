@@ -3,6 +3,7 @@ package com.hermes.mobile
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
 import com.hermes.mobile.data.LiveSession
 import kotlinx.coroutines.Job
@@ -75,7 +76,15 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
             if (!quiet) _state.update { it.copy(loading = true, error = null) }
             runCatching { gw.activeSessions() }
                 .onSuccess { list ->
-                    _state.update { it.copy(sessions = list, loading = false, error = null) }
+                    // Tur-2 K3(b): yeniden bağlanmada gateway aynı oturumu iki
+                    // süreç içi kayıtla bırakabiliyor — LazyColumn key={id}
+                    // çakışması FATAL. liveFeed() dbId'de ayıklıyor; bu ekran
+                    // ham id kullanıyor, burada süz.
+                    val distinct = list.distinctBy { it.id }
+                    if (distinct.size != list.size) {
+                        DiagLog.w("live", "active_list tekrarli: ${list.size} -> ${distinct.size}")
+                    }
+                    _state.update { it.copy(sessions = distinct, loading = false, error = null) }
                 }
                 .onFailure { e ->
                     _state.update {
