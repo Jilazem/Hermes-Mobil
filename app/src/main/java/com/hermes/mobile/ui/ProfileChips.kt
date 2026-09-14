@@ -47,3 +47,37 @@ fun createSessionProfileArg(selectedChip: String?): String? =
 
 /** Çip sırası: varsayılan ilk, sonra profiller; yüklenmemişse yalnız varsayılan. */
 fun orderedChips(profiles: List<HermesProfile>): List<HermesProfile> = profiles
+
+/**
+ * Tur-4 (kusus G): sohbet üst şeridindeki profil çipleri İÇ TERMİNOLOJİ
+ * sızdırıyordu ("default", "ac", "android"). Kural:
+ *  - varsayılan profil çipi GÖSTERİLMEZ ("Yönlendirici" zaten onu temsil eder),
+ *  - insan adı (`display_name`) olmayan profil çipi GÖSTERİLMEZ (iç ad sızmaz;
+ *    profil seçimi ⋯ / Ayarlar → Profiller yolundan yapılır).
+ * Dönen liste boşsa çağrı satırı hiç çizmez.
+ * Saf fonksiyon — JVM testi (ProfileChipLogicTest).
+ */
+fun visibleProfileChips(profiles: List<HermesProfile>): List<Pair<HermesProfile, String>> =
+    profiles
+        .filter { !it.isDefault }
+        .mapNotNull { p ->
+            val label = p.displayName.trim().ifBlank { return@mapNotNull null }
+            if (isInternalProfileName(label)) null else p to label
+        }
+
+/** "default", "ac", "android" gibi iç/token adlar insan adı sayılmaz. */
+internal fun isInternalProfileName(name: String): Boolean {
+    val n = name.trim()
+    if (n.isEmpty()) return true
+    if (n.lowercase() in INTERNAL_PROFILE_NAMES) return true
+    // Tek kelimelik, tamamen KÜÇÜK harfli teknik ad ("ac", "android", "ac_2").
+    // İnsan görünen adı büyük harfle başlar ("Yedek Bot", "Arena") — korunur.
+    return n.none { it == ' ' } && n.length <= 12 && n.all {
+        it.isDigit() || it == '_' || it == '-' || (it.isLetter() && it.isLowerCase())
+    }
+}
+
+private val INTERNAL_PROFILE_NAMES = setOf(
+    "default", "varsayılan", "ac", "android", "cli", "tui", "api", "cron",
+    "main", "root", "system", "worker", "node",
+)

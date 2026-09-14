@@ -48,12 +48,17 @@ fun MessageBubble(
     message: SessionMessage,
     modifier: Modifier = Modifier,
     onOpenFile: (FileRef) -> Unit = {},
+    /**
+     * Tur-4 (H): dökümde düşünme bloğu ayrı "Ayrıntı" satırına katlandığı için
+     * burada YENİDEN çizilmez (çift gösterim olurdu).
+     */
+    withReasoning: Boolean = true,
 ) {
     when {
         message.isUser -> UserBubble(message, modifier)
         message.isTool -> ToolResultCard(message, modifier)
-        message.isSystem -> CollapsedBlock("Sistem istemi", message.content.orEmpty(), modifier)
-        else -> AssistantBlock(message, modifier, onOpenFile)
+        message.isSystem -> CollapsedBlock(S.t2("Sistem istemi", "System prompt"), message.content.orEmpty(), modifier)
+        else -> AssistantBlock(message, modifier, onOpenFile, withReasoning)
     }
 }
 
@@ -82,10 +87,11 @@ private fun AssistantBlock(
     message: SessionMessage,
     modifier: Modifier,
     onOpenFile: (FileRef) -> Unit = {},
+    withReasoning: Boolean = true,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        if (!message.reasoning.isNullOrBlank()) {
-            CollapsedBlock("Düşünme", message.reasoning, Modifier.fillMaxWidth())
+        if (withReasoning && !message.reasoning.isNullOrBlank()) {
+            CollapsedBlock(S.t2("Düşünme", "Thinking"), message.reasoning, Modifier.fillMaxWidth())
             Spacer(Modifier.height(6.dp))
         }
         if (!message.content.isNullOrBlank()) {

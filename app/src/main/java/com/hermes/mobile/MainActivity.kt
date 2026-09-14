@@ -498,7 +498,11 @@ private fun HermesApp(
     val restById = remember(state.sessions) { state.sessions.associateBy { it.id } }
     val liveTitleOf = remember(state.flags, state.cronNames, restById) {
         { l: LiveSession ->
-            liveSessionTitle(l, restById[l.dbId], state.flags, state.cronNames)
+            liveSessionTitle(
+                l, restById[l.dbId], state.flags, state.cronNames,
+                // Tur-4: başlık yedeği de yerelleşir ("Sohbet · …" / "Chat · …").
+                en = com.hermes.mobile.ui.serviceLang == com.hermes.mobile.ui.Lang.EN,
+            )
         }
     }
 
@@ -832,7 +836,14 @@ private fun HermesApp(
                         onOpenLive = { session ->
                             // Döküm REST'ten gelir → veritabanı kimliği gerekir,
                             // gateway'in süreç içi `id`si değil (404 sebebi buydu).
-                            viewModel.openSessionById(session.dbId, liveTitleOf(session), liveId = session.id)
+                            // Tur-4 (D): REST kaydı varsa tam kaydı geçir — mesaj
+                            // sayacı kartla aynı kaynaktan gelsin (39 vs 0 çelişkisi).
+                            val rest = state.sessions.firstOrNull { it.id == session.dbId }
+                            if (rest != null) {
+                                viewModel.openSession(rest, liveId = session.id)
+                            } else {
+                                viewModel.openSessionById(session.dbId, liveTitleOf(session), liveId = session.id)
+                            }
                         },
                         onContinueLive = { session ->
                             chatViewModel.continueSession(

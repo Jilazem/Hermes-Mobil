@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AssistChip
@@ -223,7 +224,10 @@ fun ChatScreen(
                     items(rows, key = { it.key }) { row ->
                         when (row) {
                             is ChatRow.Single -> ChatItemView(row.item, onApproval, onOpenFile)
-                            is ChatRow.Tools -> ToolActivityRow(row.entries)
+                            is ChatRow.Tools -> ToolActivityRow(
+                                row.entries,
+                                label = if (S.lang == Lang.TR) DETAIL_ROW_TR else DETAIL_ROW_EN,
+                            )
                         }
                     }
                     item { Spacer(Modifier.height(6.dp)) }
@@ -330,72 +334,66 @@ private fun ChatHeader(
     onOpenReasoning: () -> Unit,
     activeProfileName: String,
 ) {
-    val (dot, label) = when (val c = state.connection) {
-        is ConnectionState.Open -> HermesColors.Online to S.connected
-        is ConnectionState.Connecting -> HermesColors.Busy to S.connecting
-        is ConnectionState.Error -> HermesColors.Danger to c.reason
-        is ConnectionState.Closed -> HermesColors.Offline to S.closed
-        ConnectionState.Idle -> HermesColors.Offline to S.notReady
+    // Tur-4 (P2 #7): model etiketi ve "bağlı" rozeti üst şeritten ÇIKTI.
+    // Bağlantı yalnız KOPUNCA görünür (kırmızı "bağlantı yok"); sağlıklı
+    // durumda sessiz — Telegram da "bağlıyım" demez.
+    val problem = when (val c = state.connection) {
+        is ConnectionState.Open -> null
+        is ConnectionState.Error -> c.reason
+        is ConnectionState.Connecting -> null
+        is ConnectionState.Closed -> S.t2("bağlantı yok", "no connection")
+        ConnectionState.Idle -> S.t2("bağlantı yok", "no connection")
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = 52.dp)
             .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StatusDot(dot)
+        StatusDot(if (problem == null) HermesColors.Online else HermesColors.Danger)
         Spacer(Modifier.width(8.dp))
         Column(
             Modifier
                 .weight(1f)
-                .heightIn(min = 48.dp)
+                .heightIn(min = 44.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .clickable(onClick = onOpenModelPicker)
+                .clickable(onClick = onOpenProfiles)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    state.currentModel?.let { DemoMask.model(it) } ?: S.chatTitle,
-                    color = HermesColors.TextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 200.dp),
-                )
-                Icon(
-                    Icons.Default.ExpandMore,
-                    contentDescription = S.t2("Model seç", "Pick a model"),
-                    tint = HermesColors.TextMuted,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, color = HermesColors.TextMuted, fontSize = 11.sp)
-                if (activeProfileName.isNotBlank() && activeProfileName != "default") {
-                    Text(" · ", color = HermesColors.TextFaint, fontSize = 11.sp)
-                    // Profil düğmesi kaldırıldı (C-1): işlev burada, tıklanabilir
-                    // alt bilgide yaşıyor — Ekran sadeliği için başlıkta ikon yok.
-                    Text(
-                        activeProfileName,
-                        color = HermesColors.Midground,
-                        fontSize = 11.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .clickable(onClick = onOpenProfiles),
-                    )
-                }
+            // Tek satır KONU (P3 #8): chrome ince, model orada durmaz.
+            Text(
+                state.topic.takeIf { it.isNotBlank() } ?: S.chatTitle,
+                color = HermesColors.TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            // İkinci satır yalnız gerçekten bir şey söylüyorsa.
+            problem?.let {
+                Text(it, color = HermesColors.Danger, fontSize = 11.sp, maxLines = 1)
             }
         }
 
+        // Model seçimi burada yaşıyor ama ETİKETSİZ: ⋯ ikonu (iç terminoloji
+        // üst şeride yazılmaz).
+        IconButton(onClick = onOpenModelPicker) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = S.t2("Model ve profiller", "Model and profiles"),
+                tint = HermesColors.TextMuted,
+            )
+        }
+
         // Başlıkta yalnız iki ikon: ses + yeni oturum. Komut paleti composer'ın
-        // "Ek" menüsünde (onOpenSnippets = onOpenCommands), profil alt bilgide.
-        // Eller-serbest sesli sohbet anahtarı.
+        // "Ek" menüsünde (onOpenSnippets = onOpenCommands), profil ⋯ içinde.
         IconButton(onClick = onToggleHandsFree) {
             Icon(
                 if (state.handsFree) Icons.Default.RecordVoiceOver else Icons.Default.Headphones,
-                contentDescription = if (state.handsFree) "Sesli kipi kapat" else "Sesli sohbet",
+                contentDescription = if (state.handsFree)
+                    S.t2("Sesli kipi kapat", "Turn voice mode off")
+                else S.t2("Sesli sohbet", "Voice chat"),
                 tint = if (state.handsFree) HermesColors.Online else HermesColors.TextMuted,
             )
         }
@@ -403,7 +401,7 @@ private fun ChatHeader(
         IconButton(onClick = onNewSession) {
             Icon(
                 Icons.Default.Add,
-                contentDescription = "Yeni sohbet",
+                contentDescription = S.t2("Yeni sohbet", "New chat"),
                 tint = HermesColors.Midground,
             )
         }
@@ -615,6 +613,10 @@ private sealed interface ChatRow {
     data class Tools(override val key: String, val entries: List<ToolEntry>) : ChatRow
 }
 
+/** "Ayrıntı" satırının etiketi — katlanmış ajan günlüğü (tur-4 H). */
+const val DETAIL_ROW_TR = "Ayrıntı"
+const val DETAIL_ROW_EN = "Details"
+
 /**
  * Akış imzası (tur-2 K1) — sohbet kaydırıcısının "yeni içerik var" sinyalini
  * her mesaj türünde üretir. Eski efekt yalnız Thinking.text uzunluğuna
@@ -637,32 +639,50 @@ internal fun streamSignature(items: List<ChatItem>): String =
         }
     }
 
-/** Ardışık `ChatItem.Tool` öğelerini tek gruba indirir. */
+/**
+ * Ajan günlüğünü tek satıra katlar (tur-4 H): ardışık `Tool` öğeleri + bitmiş
+ * `Thinking` blokları TEK "Ayrıntı" satırına iner. Canlı (akan) düşünme bloğu
+ * katlanmaz — kullanıcı yazarken görür (Telegram "yazıyor…" karşılığı);
+ * asistanın metni her durumda öne çıkar (hiç katlanmaz).
+ */
 private fun foldToolRuns(items: List<ChatItem>): List<ChatRow> {
     val rows = mutableListOf<ChatRow>()
-    var run = mutableListOf<ChatItem.Tool>()
+    val run = mutableListOf<ToolEntry>()
+    var runKey: String? = null
 
     fun flush() {
         if (run.isEmpty()) return
-        rows += ChatRow.Tools(
-            key = "tools-${run.first().key}",
-            entries = run.map { t ->
-                ToolEntry(
-                    name = t.name,
-                    state = when (t.state) {
-                        ToolState.Running -> ToolEntryState.Running
-                        ToolState.Done -> ToolEntryState.Done
-                        ToolState.Failed -> ToolEntryState.Failed
-                    },
-                    detail = t.detail,
-                )
-            },
-        )
-        run = mutableListOf()
+        rows += ChatRow.Tools(key = "detail-$runKey", entries = run.toList())
+        run.clear()
+        runKey = null
     }
 
+    fun detailOf(t: ChatItem.Tool) = ToolEntry(
+        name = t.name,
+        state = when (t.state) {
+            ToolState.Running -> ToolEntryState.Running
+            ToolState.Done -> ToolEntryState.Done
+            ToolState.Failed -> ToolEntryState.Failed
+        },
+        detail = t.detail,
+    )
+
     items.forEach { item ->
-        if (item is ChatItem.Tool) run += item else { flush(); rows += ChatRow.Single(item) }
+        when {
+            item is ChatItem.Tool -> {
+                if (runKey == null) runKey = item.key
+                run += detailOf(item)
+            }
+            // Bitmiş düşünme bloğu da ayrıntıya katılır; canlı blok katlanmaz.
+            item is ChatItem.Thinking && !item.live -> {
+                if (runKey == null) runKey = item.key
+                run += ToolEntry(name = "Düşünme", state = ToolEntryState.Done, detail = item.text)
+            }
+            else -> {
+                flush()
+                rows += ChatRow.Single(item)
+            }
+        }
     }
     flush()
     return rows
@@ -973,12 +993,15 @@ private fun ProfileChipsRow(
 ) {
     val tr = S.lang == Lang.TR
     val locked = chipsLocked(currentProfile)
-    val labels = profiles.map { it.name.ifBlank { it.path } }
+    // Tur-4 (kusur G): İÇ AD SIZMAZ. İnsan adı olmayan profil ("default", "ac",
+    // "android") çip olarak ÇİZİLMEZ; kalan yoksa satır tamamen gizlenir.
+    val visible = visibleProfileChips(profiles)
 
     if (locked) {
-        // Kilitli (mevcut oturum): tek salt-okunur çip — mevcut profil,
-        // bilinmiyorsa "—". Tıklanamaz, tıklanmaz.
-        val label = lockedChipLabel(currentProfile)
+        val label = visible.firstOrNull { it.first.name == currentProfile }?.second
+            ?: profiles.firstOrNull { it.name == currentProfile }
+                ?.displayName?.takeIf { !isInternalProfileName(it) }
+        if (label.isNullOrBlank()) return
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -988,18 +1011,13 @@ private fun ProfileChipsRow(
             AssistChip(
                 onClick = {},
                 label = {
-                    Text(
-                        label ?: "—",
-                        color = HermesColors.TextMuted,
-                        fontSize = 11.sp,
-                    )
+                    Text(label, color = HermesColors.TextMuted, fontSize = 11.sp)
                 },
             )
         }
         return
     }
 
-    // Yeni sohbet: serbest seçim — varsayılan "Yönlendirici" + profiller.
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1018,10 +1036,10 @@ private fun ProfileChipsRow(
                 )
             },
         )
-        labels.forEach { label ->
-            val sel = selectedProfile == label
+        visible.forEach { (profile, label) ->
+            val sel = selectedProfile == profile.name
             AssistChip(
-                onClick = { onChipClick(label) },
+                onClick = { onChipClick(profile.name) },
                 label = {
                     Text(
                         label,

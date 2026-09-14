@@ -57,7 +57,12 @@ enum class ToolEntryState { Running, Done, Failed }
  * aracın adı, bitince "N araç" özeti.
  */
 @Composable
-fun ToolActivityRow(entries: List<ToolEntry>, modifier: Modifier = Modifier) {
+fun ToolActivityRow(
+    entries: List<ToolEntry>,
+    modifier: Modifier = Modifier,
+    /** Katlanmış ajan günlüğü satırının etiketi (tur-4 H): "Ayrıntı". */
+    label: String? = null,
+) {
     if (entries.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
 
@@ -110,9 +115,18 @@ fun ToolActivityRow(entries: List<ToolEntry>, modifier: Modifier = Modifier) {
             }
             Spacer(Modifier.width(8.dp))
 
-            if (entries.size > 1) {
+            if (label != null) {
+                // Tur-4 (H): varsayılan görünür satır "Ayrıntı" — düşünme, araç
+                // çağrıları ve sonuçları tek katlanır satırda toplanır.
                 Text(
-                    "${entries.size} araç",
+                    label,
+                    color = HermesColors.TextSecondary,
+                    fontSize = 12.sp,
+                )
+                Spacer(Modifier.width(7.dp))
+            } else if (entries.size > 1) {
+                Text(
+                    S.t2("${entries.size} araç", "${entries.size} tools"),
                     color = HermesColors.TextSecondary,
                     fontSize = 12.sp,
                 )
@@ -135,7 +149,7 @@ fun ToolActivityRow(entries: List<ToolEntry>, modifier: Modifier = Modifier) {
 
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (expanded) "Daralt" else "Detay",
+                contentDescription = if (expanded) S.t2("Daralt", "Collapse") else S.t2("Detay", "Details"),
                 tint = HermesColors.TextFaint,
                 modifier = Modifier.size(16.dp),
             )

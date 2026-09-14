@@ -59,10 +59,12 @@ fun liveFeed(
             status = if (l.isWorking) "working" else if (l.isWaiting) "waiting"
                 else if (l.isStarting) "starting" else "idle",
             title = l.title.ifBlank { rest?.title ?: l.id },
-            // Tur-2 K2: WS cercevesinde preview bos geldiyse REST kaydinin
-            // preview'i (ilk mesaj) kullanilir — birlestirme bozulmasin.
-            preview = l.preview.ifBlank {
-                previewLine(rest?.preview).ifBlank { rest?.displayName.orEmpty() }
+            // Tur-4 (kusur A/B): canlı çerçevenin önizlemesi ham tool/JSON
+            // çıktısı olabilir. Makine çıktısı ATILIR; bir önceki anlamlı
+            // metne — REST kaydının ilk mesajına — düşülür; o da yoksa ""
+            // (kart önizlemesiz çizilir, çağıran çalışıyorsa "yazıyor…" yazar).
+            preview = meaningfulPreview(l.preview).ifBlank {
+                meaningfulPreview(rest?.preview)
             },
             lastActive = if (l.lastActive > 0) l.lastActive else (rest?.startedAt ?: 0.0),
             liveId = l.id,
@@ -80,10 +82,10 @@ fun liveFeed(
                 source = s.source,
                 live = false,
                 status = if (s.isActive) "idle" else "done",
-                title = s.title,
-                // Tur-2 K2: REST /api/sessions artik preview donuyor — satir
-                // konusuz kalmasin.
-                preview = previewLine(s.preview),
+                title = readableTitle(s, SessionFlags(), emptyMap()),
+                // Tur-4 (kusur A/B): sistem/cron promptu ve tool çıktısı kart
+                // önizlemesine çıkmaz; anlamlı satır yoksa önizleme boş kalır.
+                preview = meaningfulPreview(s.preview),
                 lastActive = s.startedAt ?: 0.0,
                 liveId = "",
                 liveSession = null,
@@ -110,21 +112,24 @@ fun stampFromRawId(id: String): String? {
     return "${m.groupValues[3]}.${m.groupValues[2]} ${m.groupValues[4]}:${m.groupValues[5]}"
 }
 
-/** Kaynak → kullanıcıya gösterilecek kısa etiket (readableTitle için). */
+/** Kaynak → kullanıcıya gösterilecek kısa etiket. Tur-4: TR/EN ayrıldı —
+ *  İngilizce arayüzde "Masaüstü"/"Zamanlanmış görev" sızıntısı olmaz. */
 private val SESSION_SOURCE_LABELS = mapOf(
-    "tui" to "TUI",
-    "cli" to "CLI",
-    "telegram" to "Telegram",
-    "whatsapp" to "WhatsApp",
-    "api_server" to "API",
-    "api" to "API",
-    "web" to "Web",
-    "desktop" to "Masaüstü",
-    "cron" to "Zamanlanmış görev",
+    "tui" to ("TUI" to "TUI"),
+    "cli" to ("CLI" to "CLI"),
+    "telegram" to ("Telegram" to "Telegram"),
+    "whatsapp" to ("WhatsApp" to "WhatsApp"),
+    "api_server" to ("API" to "API"),
+    "api" to ("API" to "API"),
+    "web" to ("Web" to "Web"),
+    "desktop" to ("Masaüstü" to "Desktop"),
+    "cron" to ("Zamanlanmış görev" to "Scheduled job"),
 )
 
-fun sessionSourceLabel(source: String?): String? =
-    source?.trim()?.lowercase()?.let { SESSION_SOURCE_LABELS[it] }
+fun sessionSourceLabel(source: String?, en: Boolean = false): String? =
+    source?.trim()?.lowercase()?.let { key ->
+        SESSION_SOURCE_LABELS[key]?.let { (tr, enLabel) -> if (en) enLabel else tr }
+    }
 
 /**
  * Canlı oturum başlığı — Oturumlar listesinin `readableTitle`ı ile AYNI zincir:
@@ -138,6 +143,7 @@ fun liveSessionTitle(
     rest: HermesSession?,
     flags: SessionFlags,
     cronNames: Map<String, String>,
+    en: Boolean = false,
 ): String {
     (flags.renames[live.dbId] ?: flags.renames[live.id])
         ?.takeIf { it.isNotBlank() }?.let { return it }
@@ -149,20 +155,25 @@ fun liveSessionTitle(
             id = live.dbId,
             source = rest?.source,
             displayName = gatewayTitle ?: rest?.displayName,
+            preview = rest?.preview,
+            serverTitle = rest?.serverTitle,
         ),
         flags,
         cronNames,
+        en,
     )
 }
 
-/** Kaynak etiketi → insan okunur bot/kanal adı. */
-fun feedSourceLabel(source: String?): String = when (source) {
+/** Kaynak etiketi → insan okunur bot/kanal adı (TR/EN). */
+fun feedSourceLabel(source: String?, en: Boolean = false): String = when (source) {
     "telegram" -> "Telegram"
     "whatsapp" -> "WhatsApp"
-    "cron" -> "Zamanlanmış görev"
+    "cron" -> if (en) "Scheduled job" else "Zamanlanmış görev"
     "cli" -> "CLI"
-    "desktop" -> "Masaüstü"
-    "api" -> "API"
-    null, "" -> "Bilinmeyen kaynak"
+    "tui" -> "TUI"
+    "web" -> "Web"
+    "api", "api_server" -> "API"
+    "desktop" -> if (en) "Desktop" else "Masaüstü"
+    null, "" -> if (en) "Unknown source" else "Bilinmeyen kaynak"
     else -> source
 }

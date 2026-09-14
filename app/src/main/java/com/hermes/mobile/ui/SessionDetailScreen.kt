@@ -30,46 +30,118 @@ import com.hermes.mobile.data.SessionMessage
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
 
-private sealed interface TranscriptRow {
+/**
+ * Döküm satırı (tur-4 H): konuşma ÖNE, ajan günlüğü TEK katlanır satıra.
+ *
+ * Boss şikâyeti: "mesaj listesi ajan günlüğü gibi; asistanın yanıtı kayboluyor".
+ * Telegram'da gördüğün şey senin mesajın + asistanın bitmiş yanıtıdır; düşünme
+ * ve araç turları görünmez. Bu yüzden varsayılan görünür satırlar yalnız
+ * user/assistant METNİ; `Düşünme`, araç çağrıları, araç sonuçları ve sistem
+ * istemleri tek bir "Ayrıntı" satırında toplanır (dokununca açılır).
+ */
+sealed interface TranscriptRow {
     data class Message(val message: SessionMessage) : TranscriptRow
-    data class Tools(val entries: List<ToolEntry>) : TranscriptRow
+
+    /** Katlanmış ajan günlüğü: reasoning + araç çağrı/sonuçları + sistem. */
+    data class Detail(val entries: List<ToolEntry>) : TranscriptRow
 }
 
+/** Araç gövdesi hata izi taşıyor mu — sunucu ayrı başarı alanı göndermiyor. */
+private fun looksFailed(body: String): Boolean =
+    body.contains("\"error\"") || body.contains("BLOCKED:")
+
 /**
- * Ardışık `role=tool` mesajlarını tek gruba indirir.
- *
- * Hata tespiti gövdeye bakarak yapılır — sunucu ayrı bir başarı alanı
- * göndermiyor, sonuç JSON'unda `"error"` ya da `BLOCKED:` geçiyor.
+ * Ham mesaj listesini görüntüleme satırlarına indirger. Saf fonksiyon —
+ * Compose'suz JVM testi (`TranscriptFoldTest`).
  */
-private fun foldToolMessages(messages: List<SessionMessage>): List<TranscriptRow> {
+fun foldTranscript(
+    messages: List<SessionMessage>,
+    toolLabel: String = "araç",
+    systemLabel: String = "Sistem",
+    otherLabel: String = "Kayıt",
+): List<TranscriptRow> {
     val rows = mutableListOf<TranscriptRow>()
-    var run = mutableListOf<SessionMessage>()
+    val pending = mutableListOf<ToolEntry>()
 
     fun flush() {
-        if (run.isEmpty()) return
-        rows += TranscriptRow.Tools(
-            run.map { m ->
-                val body = m.content.orEmpty()
-                val failed = body.contains("\"error\"") || body.contains("BLOCKED:")
-                ToolEntry(
-                    name = m.toolName ?: "araç",
-                    state = if (failed) ToolEntryState.Failed else ToolEntryState.Done,
-                    detail = body,
-                )
-            }
-        )
-        run = mutableListOf()
+        if (pending.isEmpty()) return
+        rows += TranscriptRow.Detail(pending.toList())
+        pending.clear()
     }
 
     messages.forEach { m ->
-        if (m.isTool) run += m else { flush(); rows += TranscriptRow.Message(m) }
+        when {
+            m.isUser -> {
+                flush()
+                rows += TranscriptRow.Message(m)
+            }
+
+            m.isAssistant -> {
+                // Yanıt metni varsa ÖNE çıkar (katlanmaz).
+                if (!m.content.isNullOrBlank()) {
+                    rows += TranscriptRow.Message(m)
+                }
+                // Düşünme + araç çağrıları ayrıntı satırına katılır.
+                m.reasoning?.takeIf { it.isNotBlank() }?.let {
+                    pending += ToolEntry(name = "Düşünme", state = ToolEntryState.Done, detail = it)
+                }
+                m.toolCalls.forEach { call ->
+                    pending += ToolEntry(
+                        name = call.function.name?.takeIf { n -> n.isNotBlank() } ?: "araç",
+                        state = ToolEntryState.Done,
+                        detail = call.function.arguments,
+                    )
+                }
+            }
+
+            m.isTool -> {
+                val body = m.content.orEmpty()
+                pending += ToolEntry(
+                    name = m.toolName ?: toolLabel,
+                    state = if (looksFailed(body)) ToolEntryState.Failed else ToolEntryState.Done,
+                    detail = body,
+                )
+            }
+
+            else -> {
+                // system (ve bilinmeyen roller): asla öne çıkmaz.
+                m.content?.takeIf { it.isNotBlank() }?.let {
+                    pending += ToolEntry(
+                        name = if (m.isSystem) systemLabel else otherLabel,
+                        state = ToolEntryState.Done,
+                        detail = it,
+                    )
+                }
+            }
+        }
     }
     flush()
     return rows
 }
 
+/**
+ * Detay üst şeridinin sayaç metni — kusur D: "0 mesaj" yazılmaz.
+ *
+ * Kural: sunucunun oturum sayacı (`message_count`) varsa O gösterilir — kartla
+ * birebir aynı sayı (tutarlılık sözleşmesi). Sayı yoksa (canlı oturumda REST
+ * kaydı bulunmuyorsa) YÜKLENEN mesaj sayısı gösterilir. İkisi de yoksa (henüz
+ * yükleniyor / hata / gerçekten boş) satır hiç çizilmez.
+ */
+fun detailCounterText(
+    sessionCount: Int,
+    loading: Boolean,
+    error: String?,
+    loaded: Int,
+    en: Boolean,
+): String? {
+    if (loading || error != null) return null
+    val count = sessionCount.takeIf { it > 0 } ?: loaded.takeIf { it > 0 } ?: return null
+    return if (en) "$count messages" else "$count mesaj"
+}
+
 @Composable
 fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
+    val en = S.lang == Lang.EN
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -93,13 +165,18 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                state.session?.let { s ->
+                // Tur-4 (kusur D): sayaç YÜKLENEN konuşmayı sayar; yüklenirken
+                // ya da hata varsa hiçbir sayı yazılmaz (eski kod oturum
+                // kaydındaki 0'ı basıp karttaki 39 ile çelişiyordu).
+                detailCounterText(
+                    sessionCount = state.session?.messageCount ?: 0,
+                    loading = state.loading,
+                    error = state.error,
+                    loaded = state.messages.size,
+                    en = en,
+                )?.let { counter ->
                     Text(
-                        listOfNotNull(
-                            s.model,
-                            "${s.messageCount} mesaj",
-                            s.source,
-                        ).joinToString(" · "),
+                        counter,
                         color = HermesColors.TextMuted,
                         fontSize = 11.sp,
                         maxLines = 1,
@@ -119,7 +196,11 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Mesajlar alınamadı", color = HermesColors.Danger, fontSize = 14.sp)
+                    Text(
+                        S.t2("Mesajlar alınamadı", "Could not load messages"),
+                        color = HermesColors.Danger,
+                        fontSize = 14.sp,
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(state.error, color = HermesColors.TextMuted, fontSize = 12.sp)
                 }
@@ -129,33 +210,41 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
                 Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Bu oturumda mesaj yok.", color = HermesColors.TextMuted, fontSize = 13.sp)
+                Text(
+                    S.t2("Bu oturumda mesaj yok.", "No messages in this session."),
+                    color = HermesColors.TextMuted,
+                    fontSize = 13.sp,
+                )
             }
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                // Ardışık araç sonuçları tek satıra katlanır — sekiz
-                // `execute_code` yan yana gelince yanıt kaybolmasın.
-                val rows = foldToolMessages(state.messages)
-                itemsIndexed(rows) { index, row ->
-                    if (index == 0) Spacer(Modifier.height(2.dp))
-                    when (row) {
-                        is TranscriptRow.Message -> MessageBubble(row.message)
-                        is TranscriptRow.Tools -> ToolActivityRow(row.entries)
+            else -> {
+                val rows = foldTranscript(
+                    state.messages,
+                    toolLabel = tr("araç", "tool"),
+                    systemLabel = tr("Sistem", "System"),
+                    otherLabel = tr("Kayıt", "Record"),
+                )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    itemsIndexed(rows) { index, row ->
+                        if (index == 0) Spacer(Modifier.height(2.dp))
+                        when (row) {
+                            is TranscriptRow.Message -> MessageBubble(row.message, withReasoning = false)
+                            is TranscriptRow.Detail -> ToolActivityRow(
+                                row.entries,
+                                label = if (en) DETAIL_ROW_EN else DETAIL_ROW_TR,
+                            )
+                        }
                     }
-                }
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "${state.messages.size} mesaj yüklendi",
-                        style = MonoTextStyle,
-                        color = HermesColors.TextFaint,
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                    )
+                    // "N mesaj yüklendi" dipnotu kaldırıldı (tur-4 D): üst şeritteki
+                    // sayı zaten oturumun gerçek mesaj sayısı; iki farklı sayı
+                    // göstermek güven kırığıydı.
+                    item { Spacer(Modifier.height(24.dp)) }
                 }
             }
         }
     }
 }
+

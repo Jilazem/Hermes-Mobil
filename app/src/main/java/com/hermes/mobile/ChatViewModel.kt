@@ -169,6 +169,12 @@ data class ChatState(
     val voicePartial: String = "",
     val handsFree: Boolean = false,
     val currentModel: String? = null,
+    /**
+     * Açık oturumun KONUSU (tur-4). Üst şerit artık model adını değil konuyu
+     * gösterir (Telegram başlığı gibi); model seçimi ⋯ ikonuna taşındı.
+     * Oturum yoksa boş — başlık "Sohbet" olur.
+     */
+    val topic: String = "",
     val notice: String? = null,
 )
 
@@ -1349,6 +1355,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 connection = it.connection,
                 currentModel = it.currentModel,
                 sessionId = liveId,
+                // Tur-4 (P3 #8): üst şerit KONUYU gösterir — model orada durmaz.
+                topic = title,
                 items = listOf(
                     ChatItem.Notice(nextKey("n"), "\"$title\" konuşmasına bağlanıldı")
                 ),

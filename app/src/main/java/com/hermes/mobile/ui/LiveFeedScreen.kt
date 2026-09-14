@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,12 +19,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,9 +106,9 @@ fun LiveFeedScreen(
                 // dahil) zincirinden; geçmiş satır: readableTitle. İkisi aynı
                 // mantık — ham id hiçbir satırda başlık olmaz.
                 title = e.liveSession?.let {
-                    liveSessionTitle(it, e.pastSession, flags, cronNames)
-                } ?: e.pastSession?.let { readableTitle(it, flags, cronNames) }
-                    ?: "Oturum",
+                    liveSessionTitle(it, e.pastSession, flags, cronNames, en = S.lang == Lang.EN)
+                } ?: e.pastSession?.let { readableTitle(it, flags, cronNames, en = S.lang == Lang.EN) }
+                    ?: S.t2("Sohbet", "Chat"),
                 onIntervene = { onIntervene(e) },
                 onInterrupt = { onInterrupt(e) },
                 onOpen = { onOpen(e) },
@@ -125,94 +128,96 @@ private fun LiveFeedRow(
     onOpen: () -> Unit,
     onContinue: () -> Unit,
 ) {
-    val (dot, statusLabel) = when (entry.status) {
-        "working" -> HermesColors.Online to S.t2("çalışıyor", "working")
-        "waiting" -> HermesColors.Busy to S.t2("yanıt bekliyor", "awaiting reply")
-        "starting" -> HermesColors.Busy to S.t2("başlıyor", "starting")
-        "idle" -> HermesColors.Offline to S.t2("boşta", "idle")
-        else -> HermesColors.TextFaint to S.t2("bitti", "done")
+    // Durum = sinyal: boşta/bitmiş oturum ETİKETSİZ (Telegram "idle" yazmaz).
+    val pill = statusPill(entry.status)
+    val dot = when (pill?.tone) {
+        StatusTone.Live -> HermesColors.Online
+        StatusTone.Waiting, StatusTone.Starting -> HermesColors.Busy
+        null -> HermesColors.Offline
     }
+    val card = cardActions(working = entry.status == "working" || entry.status == "waiting" ||
+        entry.status == "starting")
+
     HermesCard(
         Modifier
             .fillMaxWidth()
-            .clickable { onOpen() },
+            .clickable { onContinue() },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusDot(dot)
             Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    DemoMask.name(DemoMask.Kind.SESSION, title),
-                    color = HermesColors.TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            Text(
+                DemoMask.name(DemoMask.Kind.SESSION, title),
+                color = HermesColors.TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(formatRelative(entry.lastActive), color = HermesColors.TextMuted, fontSize = 11.sp)
+            // Döküm SABİT konumda: sağdaki ikon, her kartta aynı yerde.
+            IconButton(onClick = onOpen, modifier = Modifier.size(30.dp)) {
+                Icon(
+                    Icons.Default.Article,
+                    contentDescription = S.t2("Döküm", "Transcript"),
+                    tint = HermesColors.TextMuted,
+                    modifier = Modifier.size(16.dp),
                 )
-                Spacer(Modifier.height(2.dp))
-                // "hangi bot hangi oturumda" — kaynak rozeti + canlılık.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        feedSourceLabel(entry.source),
-                        style = MonoTextStyle,
-                        color = HermesColors.TextMuted,
-                        fontSize = 10.sp,
-                        modifier = Modifier
-                            .background(HermesColors.SurfaceDim, RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 1.dp),
-                    )
-                    if (entry.live) {
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            S.t2("canlı", "live"),
-                            color = HermesColors.Online,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
             }
-            Text(statusLabel, color = dot, fontSize = 11.sp)
         }
 
+        // Tek satır önizleme (Telegram sözleşmesi): ham JSON/tool/sistem
+        // metni buraya çıkmaz — ayıklama `liveFeed` içinde yapıldı.
         if (entry.preview.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(3.dp))
             Text(
                 DemoMask.description(entry.preview),
                 color = HermesColors.TextMuted,
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FeedActionChip(
-                icon = Icons.AutoMirrored.Filled.Chat,
-                label = S.t2("Devam", "Continue"),
-                enabled = true,
-                primary = true,
-                onClick = onContinue,
-                modifier = Modifier.weight(1f),
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                feedSourceLabel(entry.source, en = S.lang == Lang.EN),
+                style = MonoTextStyle,
+                color = HermesColors.TextMuted,
+                fontSize = 10.sp,
+                modifier = Modifier
+                    .background(HermesColors.SurfaceDim, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
             )
-            if (entry.live) {
-                FeedActionChip(
-                    icon = Icons.Default.PlaylistAdd,
-                    label = S.t2("Müdahale", "Steer"),
-                    enabled = entry.status != "idle",
-                    onClick = onIntervene,
-                    modifier = Modifier.weight(1f),
+            Spacer(Modifier.width(8.dp))
+            pill?.let {
+                Text(
+                    S.t2(it.labelTr, it.labelEn),
+                    color = dot,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
                 )
-                FeedActionChip(
-                    icon = Icons.Default.Stop,
-                    label = S.t2("Dur", "Stop"),
-                    enabled = entry.status != "idle",
-                    danger = true,
-                    onClick = onInterrupt,
-                    modifier = Modifier.weight(1f),
-                )
+            }
+            Spacer(Modifier.weight(1f))
+            // Çalışan oturumda TEK birincil eylem: Dur. Buton yığını yok.
+            if (card.steer) {
+                IconButton(onClick = onIntervene, modifier = Modifier.size(30.dp)) {
+                    Icon(
+                        Icons.Default.PlaylistAdd,
+                        contentDescription = S.t2("Müdahale", "Steer"),
+                        tint = HermesColors.Midground,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+            if (card.stop) {
+                TextButton(onClick = onInterrupt, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    Text(S.t2("Dur", "Stop"), color = HermesColors.Danger, fontSize = 12.sp)
+                }
             }
         }
     }

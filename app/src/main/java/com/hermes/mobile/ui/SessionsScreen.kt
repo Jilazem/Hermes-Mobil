@@ -7,6 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
@@ -127,6 +129,9 @@ private fun cronStampBase(id: String): String? {
  * Önizlemeyi tek satırlık kart başlığına çevirir: satırsonları boşa, fazla
  * boşluklar teke indirilir, `maxLen` karaktere kırpılır (kabarcık taşıyla).
  * Boş/ yok önizleme → "".
+ *
+ * NOT (tur-4): makine çıktısı ayıklaması [meaningfulPreview] yapar; bu fonksiyon
+ * yalnız düzleştirme/kırpma yapar ve mevcut çağrılar için korunur.
  */
 fun previewLine(preview: String?, maxLen: Int = 60): String {
     val flat = preview?.replace('\n', ' ')?.replace('\r', ' ')
@@ -135,69 +140,94 @@ fun previewLine(preview: String?, maxLen: Int = 60): String {
     return flat.take(maxLen).trimEnd() + "…"
 }
 
+/** Başlığın hangi kuraldan geldiği — kart anatomisi ikincil satırı buna bağlı. */
+enum class TopicKind { Rename, ServerTitle, GatewayTitle, CronName, Preview, Fallback }
+
+data class SessionTopic(val text: String, val kind: TopicKind)
+
 /**
- * Okunabilir oturum başlığı — öncelik sırası:
+ * Okunabilir oturum başlığı — tur-4 sırası (büyük model danışması, bağlayıcı):
  * 1. kullanıcının yerel yeniden adlandırması (`flags.renames`),
- * 2. sunucudan gelen başlık (Telegram `display_name` zaten `title`a akar;
- *    ayrıca `GET /api/sessions` → `title` — ham id'den FARKLIYSA),
- * 3. `cron_<hash>_<zaman>` id'si + bilinen cron iş adı → "İş Adı · gg.AA ss:dd",
- * 4. sunucu `preview`'ı (ilk mesajdan) — tek satır, ~60 karakter
- *    (boss şikâyeti tur-2: "konu nedir belli değil"; kart artık konuyu
- *    önizlemeden gösteriyor),
- * 5. kaynak etiketi + id'deki zaman damgası → "TUI · 13.09 18:40"
- *    (damga yoksa yalnız etiket: "CLI", "Masaüstü", "Zamanlanmış görev"…),
- * 6. kaynak yok ama damga var → "Oturum · 13.09 18:40",
- * 7. hiçbir şey yok → "Oturum". Ham session id'si BU FONKSİYONDAN
- *    birincil başlık olarak ASLA çıkamaz (boss şikâyeti: "session adları
- *    anlaşılmaz").
+ * 2. sunucunun ANLAMLI başlığı (`title` / `title_source`),
+ * 3. canlı oturumun okunaklı gateway başlığı (`displayName`),
+ * 4. ilk ANLAMLI kullanıcı cümlesi (`preview`, ~40 karakter),
+ * 5. `cron_<hash>_<zaman>` + bilinen cron iş adı → "İş Adı · gg.AA ss:dd",
+ * 6. "Sohbet · gg.AA ss:dd" (damga çözülebiliyorsa),
+ * 7. "Sohbet".
+ *
+ * Kişi/kanal adı ("Gökhan Uzman"), kaynak adı ("Telegram", "Masaüstü") ve ham
+ * makine çıktısı (JSON/tool/cron sistem metni) KONU SAYILMAZ; ham session id'si
+ * bu fonksiyondan birincil başlık olarak ASLA çıkamaz.
  * Saf fonksiyon — Compose'suz test edilebilir.
  */
+fun sessionTopic(
+    session: HermesSession,
+    flags: SessionFlags,
+    cronNames: Map<String, String>,
+    en: Boolean = false,
+): SessionTopic {
+    val chatWord = if (en) "Chat" else "Sohbet"
+    flags.renames[session.id]?.takeIf { it.isNotBlank() }?.let {
+        return SessionTopic(it, TopicKind.Rename)
+    }
+    session.serverTitle?.takeIf { meaningfulTopic(it, session.id) }?.let {
+        return SessionTopic(it.trim(), TopicKind.ServerTitle)
+    }
+    session.displayName?.takeIf { meaningfulTopic(it, session.id) }?.let {
+        return SessionTopic(it.trim(), TopicKind.GatewayTitle)
+    }
+    topicFromPreview(session.preview).takeIf { it.isNotBlank() }?.let {
+        return SessionTopic(it, TopicKind.Preview)
+    }
+    CRON_SESSION_ID.find(session.id)?.groupValues?.get(1)
+        ?.let { hash -> cronNames[hash]?.takeIf { it.isNotBlank() } }
+        ?.let { jobName ->
+            val stamp = cronStampBase(session.id) ?: stampFromRawId(session.id)
+            return SessionTopic(
+                if (stamp != null) "$jobName · $stamp" else jobName,
+                TopicKind.CronName,
+            )
+        }
+    val stamp = stampFromRawId(session.id) ?: cronStampBase(session.id)
+    return if (stamp != null) SessionTopic("$chatWord · $stamp", TopicKind.Fallback)
+    else SessionTopic(chatWord, TopicKind.Fallback)
+}
+
+/** Başlık adayı konu mudur? Ham id, kişi/kaynak adı ve makine çıktısı değilse evet. */
+private fun meaningfulTopic(candidate: String, sessionId: String): Boolean {
+    val t = candidate.trim()
+    if (t.isBlank() || t == sessionId) return false
+    if (isMachineNoise(t)) return false
+    if (isGenericIdentityTitle(t)) return false
+    return true
+}
+
 fun readableTitle(
     session: HermesSession,
     flags: SessionFlags,
     cronNames: Map<String, String>,
-): String {
-    flags.renames[session.id]?.takeIf { it.isNotBlank() }?.let { return it }
-    session.title.takeIf { it.isNotBlank() && it != session.id }?.let { return it }
-    session.serverTitle?.takeIf { it.isNotBlank() && it != session.id }?.let { return it }
-    CRON_SESSION_ID.find(session.id)?.groupValues?.get(1)
-        ?.let { hash -> cronNames[hash]?.takeIf { it.isNotBlank() } }
-        ?.let { jobName ->
-            val stamp = cronStampBase(session.id)
-            return if (stamp != null) "$jobName · $stamp" else jobName
-        }
-    previewLine(session.preview).takeIf { it.isNotBlank() }?.let { return it }
-    val stamp = stampFromRawId(session.id)
-    val label = sessionSourceLabel(session.source)
-    return when {
-        label != null && stamp != null -> "$label · $stamp"
-        label != null -> label
-        stamp != null -> "Oturum · $stamp"
-        else -> "Oturum"
-    }
-}
+    en: Boolean = false,
+): String = sessionTopic(session, flags, cronNames, en).text
 
 /**
- * Kart ikincil satırı (tur-2 K2): birinci satır gerçek bir konu taşıyorsa
- * (rename / sunucu başlığı / cron iş adı / önizleme) altında soluk
- * "kaynak · damga" gösterilir; birinci satır zaten kaynak+damgaFallback'i ise
+ * Kart ikincil satırı: başlık GERÇEK bir konuysa (rename / sunucu başlığı /
+ * canlı gateway başlığı / ilk kullanıcı cümlesi / cron iş adı) altında soluk
+ * "kaynak · damga · mesaj" gösterilir; başlık zaten zaman damgası yedeğiyse
  * yinelenmesin diye null döner.
  */
 fun cardSubtitle(
     session: HermesSession,
     flags: SessionFlags,
     cronNames: Map<String, String>,
+    en: Boolean = false,
 ): String? {
-    val primary = readableTitle(session, flags, cronNames)
-    val stamp = stampFromRawId(session.id)
-    val label = sessionSourceLabel(session.source)
-    val fallback = when {
-        label != null && stamp != null -> "$label · $stamp"
-        label != null -> label
-        stamp != null -> "Oturum · $stamp"
-        else -> "Oturum"
+    val topic = sessionTopic(session, flags, cronNames, en)
+    if (topic.kind == TopicKind.Fallback) return null
+    val parts = buildList {
+        sessionSourceLabel(session.source, en)?.let { add(it) }
+        stampFromRawId(session.id)?.let { add(it) }
     }
-    return fallback.takeIf { it != primary }
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }
 
 /**
@@ -438,8 +468,8 @@ fun SessionsScreen(
                             SessionRow(
                                 session = session,
                                 actions = sessionMenuActions(session, flags),
-                                title = readableTitle(session, flags, cronNames),
-                                subtitle = cardSubtitle(session, flags, cronNames),
+                                title = readableTitle(session, flags, cronNames, en = S.lang == Lang.EN),
+                                subtitle = cardSubtitle(session, flags, cronNames, en = S.lang == Lang.EN),
                                 pinned = session.id in flags.pinned,
                                 archived = session.id in flags.archived,
                                 menuOpen = menuSession?.id == session.id,
@@ -674,11 +704,14 @@ private fun SessionRow(
     onStop: () -> Unit,
     onBuda: () -> Unit,
 ) {
-    val actionsEnabled = !session.isActive
+    // Tek kural (tur-4): kartta buton YIĞINI yok — satırın tamamı sohbeti açar,
+    // "Döküm" sabit konumda sağdaki ikon, çalışan oturumda tek birincil eylem "Dur".
+    val card = cardActions(working = session.isActive)
+    val preview = meaningfulPreview(session.preview)
     HermesCard(
         Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
+            .combinedClickable(onClick = onContinue, onLongClick = onLongPress),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (pinned) {
@@ -700,15 +733,14 @@ private fun SessionRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // Tur-2 K2: konu kartın birinci satırında (rename > title >
-                // preview). Altında soluk "kaynak · damga" — boss "konu nedir
-                // belli değil" dediği için konu öne, kaynak ikincil.
-                if (subtitle != null) {
+                // Telegram satırı: başlık KONU, altında tek satır son mesaj.
+                // Başlık zaten önizlemeden türetildiyse yinelenmez.
+                if (preview.isNotBlank() && preview != title) {
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        subtitle,
+                        preview,
                         color = HermesColors.TextMuted,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -716,6 +748,20 @@ private fun SessionRow(
             }
             Spacer(Modifier.width(8.dp))
             Text(formatRelative(session.startedAt), color = HermesColors.TextMuted, fontSize = 11.sp)
+
+            // Tur-4 (P1 #5): liste kartında buton YIĞINI yok. Geçmiş listesinde
+            // yalnız "Döküm" sabit konumda durur; durdurma/müdahale CANLI
+            // sekmesinin ve uzun-bas menüsünün işi (bu kart tarihsel kayıt).
+            if (card.transcript) {
+                IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.Article,
+                        contentDescription = S.t2("Döküm", "Transcript"),
+                        tint = HermesColors.TextMuted,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
 
             // Uzun basınca eylem menüsü ModalBottomSheet olarak açılır —
             // satırda çapa gerekmez; menü ekranın altında yükselir.
@@ -734,39 +780,27 @@ private fun SessionRow(
                 )
             }
         }
-        Spacer(Modifier.height(6.dp))
-        session.model?.let {
-            Text(it, style = MonoTextStyle, color = HermesColors.TextMuted)
-            Spacer(Modifier.height(4.dp))
-        }
-        Row {
-            Meta("${session.messageCount} ${S.t2("mesaj", "messages")}")
-            Spacer(Modifier.width(12.dp))
-            Meta("${session.toolCallCount} ${S.t2("araç", "tools")}")
-            Spacer(Modifier.width(12.dp))
-            Meta("${(session.inputTokens + session.outputTokens) / 1000}k token")
-            // Kaynak alt Meta'da yalnız subtitle'da YOKKEN gösterilir — yoksa
-            // aynı bilgi hem ikincil satırda hem altta yinelenir.
-            if (subtitle == null) {
-                session.source?.let {
-                    Spacer(Modifier.width(12.dp))
-                    Meta(it)
-                }
-            }
-        }
 
-        // Geçmiş salt-okunur değil artık: buradan konuşmaya devam edilebiliyor.
-        Spacer(Modifier.height(9.dp))
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(HermesColors.Midground, RoundedCornerShape(8.dp))
-                .clickable(onClick = onContinue)
-                .padding(vertical = 9.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(S.t2("Konuşmaya devam et", "Continue the conversation"), color = HermesColors.Background, fontSize = 12.sp)
+        // Alt satır: kaynak rozeti + mesaj sayısı. Model/token/araç sayaçları
+        // karttan çıkarıldı (tur-4 G): iç terminoloji KONU'nun önüne geçiyordu.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            session.source?.let { src ->
+                Text(
+                    feedSourceLabel(src, en = S.lang == Lang.EN),
+                    style = MonoTextStyle,
+                    color = HermesColors.TextMuted,
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .background(HermesColors.SurfaceDim, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Meta("${session.messageCount} ${S.t2("mesaj", "messages")}")
+            subtitle?.let {
+                Spacer(Modifier.width(8.dp))
+                Meta(it)
+            }
         }
     }
 }

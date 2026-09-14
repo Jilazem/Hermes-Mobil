@@ -167,6 +167,8 @@ data class HermesProfile(
     val provider: String? = null,
     @SerialName("skill_count") val skillCount: Int = 0,
     @SerialName("gateway_running") val gatewayRunning: Boolean = false,
+    /** Sunucunun insan-okur görünen adı (`display_name`) — çiplerde iç ad yerine bu. */
+    @SerialName("display_name") val displayName: String = "",
     val description: String = "",
 )
 

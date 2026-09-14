@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -74,7 +75,12 @@ fun LiveSessionsScreen(
     // Canlı oturumun REST karşılığı (kaynak etiketi + cron hash'i burada).
     val restById = remember(restSessions) { restSessions.associateBy { it.id } }
     val titleOf = remember(flags, cronNames, restById) {
-        { l: LiveSession -> liveSessionTitle(l, restById[l.dbId], flags, cronNames) }
+        { l: LiveSession ->
+            liveSessionTitle(
+                l, restById[l.dbId], flags, cronNames,
+                en = serviceLang == Lang.EN,
+            )
+        }
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -177,14 +183,24 @@ private fun LiveSessionCard(
     onOpen: () -> Unit,
     onContinue: () -> Unit,
 ) {
-    val (dot, statusLabel) = when {
-        session.isWorking -> HermesColors.Online to S.t2("çalışıyor", "working")
-        session.isWaiting -> HermesColors.Busy to S.t2("yanıt bekliyor", "awaiting reply")
-        session.isStarting -> HermesColors.Busy to S.t2("başlıyor", "starting")
-        else -> HermesColors.Offline to S.t2("boşta", "idle")
+    // Tur-4: durum ETİKET DEĞİL SİNYAL — boşta olanın etiketi olmaz.
+    val pill = statusPill(if (session.isWorking) "working" else if (session.isWaiting) "waiting"
+        else if (session.isStarting) "starting" else "idle")
+    val dot = when (pill?.tone) {
+        StatusTone.Live -> HermesColors.Online
+        StatusTone.Waiting, StatusTone.Starting -> HermesColors.Busy
+        null -> HermesColors.Offline
     }
+    val card = cardActions(working = session.canIntervene)
+    // Önizleme: ham JSON/tool/sistem metni ASLA — makine çıktısıysa boş kalır,
+    // çalışan oturumda yerine "yazıyor…" sinyali zaten üstte duruyor.
+    val preview = meaningfulPreview(session.preview)
 
-    HermesCard(Modifier.fillMaxWidth()) {
+    HermesCard(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onContinue() },
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusDot(dot)
             Spacer(Modifier.width(8.dp))
@@ -198,93 +214,68 @@ private fun LiveSessionCard(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
-            Text(statusLabel, color = dot, fontSize = 11.sp)
+            Text(
+                formatRelative(session.lastActive),
+                color = HermesColors.TextMuted,
+                fontSize = 11.sp,
+            )
+            // "Döküm" SABİT konum (tur-4 E): her kartta aynı yerde, sağdaki ikon.
+            IconButton(onClick = onOpen, modifier = Modifier.size(30.dp)) {
+                Icon(
+                    Icons.Default.Article,
+                    contentDescription = S.t2("Döküm", "Transcript"),
+                    tint = HermesColors.TextMuted,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
         }
 
-        if (session.preview.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
+        if (preview.isNotBlank()) {
+            Spacer(Modifier.height(3.dp))
             Text(
-                // Önizleme oturumun ilk mesajı — tanıtım kipinde en çok bilgi
-                // sızdıran yer burası.
-                DemoMask.description(session.preview),
+                DemoMask.description(preview),
                 color = HermesColors.TextMuted,
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
-                maxLines = 3,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
         Spacer(Modifier.height(6.dp))
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                DemoMask.model(session.model),
-                style = MonoTextStyle,
-                color = HermesColors.TextFaint,
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                S.t2(
-                    "${session.messageCount} mesaj · ${formatRelative(session.lastActive)}",
-                    "${session.messageCount} messages · ${formatRelative(session.lastActive)}",
-                ),
+                S.t2("${session.messageCount} mesaj", "${session.messageCount} messages"),
                 color = HermesColors.TextFaint,
                 fontSize = 10.sp,
             )
-        }
-
-        Spacer(Modifier.height(11.dp))
-
-        // Devam et her zaman kullanılabilir — asıl istenen bu: Telegram'dan
-        // ya da cron'dan başlamış konuşmayı telefondan sürdürmek.
-        ActionChip(
-            icon = Icons.AutoMirrored.Filled.Chat,
-            label = S.t2("Konuşmaya devam et", "Continue the conversation"),
-            enabled = true,
-            primary = true,
-            onClick = onContinue,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(Modifier.height(7.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ActionChip(
-                icon = Icons.Default.PlaylistAdd,
-                label = S.t2("Müdahale", "Steer"),
-                enabled = session.canIntervene,
-                onClick = onIntervene,
-                modifier = Modifier.weight(1f),
-            )
-            ActionChip(
-                icon = Icons.Default.Article,
-                label = S.t2("Döküm", "Transcript"),
-                enabled = true,
-                onClick = onOpen,
-                modifier = Modifier.weight(1f),
-            )
-            ActionChip(
-                icon = Icons.Default.Stop,
-                label = S.t2("Dur", "Stop"),
-                enabled = session.canIntervene,
-                danger = true,
-                onClick = onInterrupt,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        if (!session.canIntervene) {
-            Spacer(Modifier.height(5.dp))
-            Text(
-                S.t2(
-                    "Müdahale/durdurma yalnız ajan çalışırken anlamlı — " +
-                        "boştaki oturuma normal mesaj yazarak devam edebilirsin.",
-                    "Steering and stopping only apply while the agent is working — " +
-                        "for an idle session, just send a normal message.",
-                ),
-                color = HermesColors.TextFaint,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-            )
+            Spacer(Modifier.width(8.dp))
+            pill?.let {
+                Text(
+                    S.t2(it.labelTr, it.labelEn),
+                    color = dot,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            // Çalışan oturumda TEK birincil eylem "Dur"; müdahale ikincil ikon.
+            // (Eski tam genişlikli buton yığını ve kart altı kılavuz SİLİNDİ.)
+            if (card.steer) {
+                IconButton(onClick = onIntervene, modifier = Modifier.size(30.dp)) {
+                    Icon(
+                        Icons.Default.PlaylistAdd,
+                        contentDescription = S.t2("Müdahale", "Steer"),
+                        tint = HermesColors.Midground,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+            if (card.stop) {
+                TextButton(onClick = onInterrupt, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    Text(S.t2("Dur", "Stop"), color = HermesColors.Danger, fontSize = 12.sp)
+                }
+            }
         }
     }
 }
@@ -358,8 +349,8 @@ fun InterventionDialog(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     KindOption(
-                        title = "Ekle",
-                        detail = "Turu kesmez",
+                        title = S.t2("Ekle", "Append"),
+                        detail = S.t2("Turu kesmez", "Does not cut the turn"),
                         selected = kind == InterventionKind.Add,
                         onClick = { kind = InterventionKind.Add },
                         modifier = Modifier.weight(1f),
@@ -381,9 +372,9 @@ fun InterventionDialog(
                     placeholder = {
                         Text(
                             if (kind == InterventionKind.Add)
-                                "Şu dosyayı da kontrol et…"
+                                S.t2("Şu dosyayı da kontrol et…", "Also check this file…")
                             else
-                                "Bunun yerine önce raporu özetle…",
+                                S.t2("Bunun yerine önce raporu özetle…", "Instead, summarize the report first…"),
                             color = HermesColors.TextFaint,
                         )
                     },
@@ -393,10 +384,17 @@ fun InterventionDialog(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     if (kind == InterventionKind.Add)
-                        "Mesaj sonraki araç sonucuna iliştirilir; ajan bir sonraki adımında görür."
+                        S.t2(
+                            "Mesaj sonraki araç sonucuna iliştirilir; ajan bir sonraki adımında görür.",
+                            "The message rides the next tool result; the agent sees it on its next step.",
+                        )
                     else
-                        "Süren tur yönlendirilir, yapılan iş korunur. Her ajan desteklemez — " +
-                            "desteklemezse otomatik olarak eklemeye düşülür.",
+                        S.t2(
+                            "Süren tur yönlendirilir, yapılan iş korunur. Her ajan desteklemez — " +
+                                "desteklemezse otomatik olarak eklemeye düşülür.",
+                            "The running turn is redirected, finished work is kept. Not every agent " +
+                                "supports it — falls back to appending.",
+                        ),
                     color = HermesColors.TextFaint,
                     fontSize = 11.sp,
                     lineHeight = 15.sp,

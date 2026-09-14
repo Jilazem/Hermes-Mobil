@@ -200,14 +200,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Bir oturumu açar ve mesaj dökümünü yükler. */
     fun openSession(session: HermesSession, liveId: String? = null) {
-        // FR-001: detay başlığı `session.title`ı direkt basıyor; displayName
-        // boşsa o `id`ye düşüyor (ham id). Başlığı açılışta okunabilir zincirden
-        // çöz ve displayName olarak giydir — ekran değişmeden tek nokta düzeltme.
+        // FR-001 + tur-4 (kusur C): detay başlığı `session.title`ı direkt
+        // basıyordu; Telegram oturumlarında bu KİŞİ adı ("Gökhan Uzman") oluyordu.
+        // Başlığı açılışta okunabilir zincirden (konu > sunucu başlığı > damga)
+        // çöz ve displayName olarak giydir — ekranlar başlığı kendi üretmez.
         val resolved = com.hermes.mobile.ui.readableTitle(
             session, _state.value.flags, _state.value.cronNames,
         )
-        val safe = if (session.displayName.isNullOrBlank())
-            session.copy(displayName = resolved) else session
+        val safe = session.copy(displayName = resolved)
         _detail.value = SessionDetailState(sessionId = safe.id, session = safe)
         val profile = _state.value.active ?: return
         viewModelScope.launch {

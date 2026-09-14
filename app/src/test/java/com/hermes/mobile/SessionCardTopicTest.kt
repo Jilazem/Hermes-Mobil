@@ -59,7 +59,7 @@ class SessionCardTopicTest {
         assertEquals("Hermes update", readableTitle(s, SessionFlags(), emptyMap()))
     }
 
-    /** title yok, preview var → konu preview'dan (ilk mesaj). */
+    /** title yok, preview var → konu ilk kullanıcı cümlesinden (~40 karakter). */
     @Test
     fun titleYokPreviewVar() {
         val s = sess(
@@ -67,17 +67,32 @@ class SessionCardTopicTest {
             source = "tui",
             preview = "Kamulaştırma raporundaki trees sayisini kontrol et",
         )
+        // Tur-4: konu ~40 karakterde kelime sınırında kırpılır.
         assertEquals(
-            "Kamulaştırma raporundaki trees sayisini kontrol et",
+            "Kamulaştırma raporundaki trees sayisini…",
             readableTitle(s, SessionFlags(), emptyMap()),
         )
     }
 
-    /** İkisi de yok → eski davranış: kaynak + damga (ham id DEĞİL). */
+    /** Ham JSON önizlemesi konu OLMAZ — damga yedeğine düşülür (tur-4 kusur A). */
     @Test
-    fun ikisiDeYokKaynakDamga() {
+    fun hamJsonOnizlemesiKonuOlmaz() {
+        val s = sess(
+            "20260914_202501_abc123",
+            source = "telegram",
+            preview = """{"status": "success", "output": "=== ESBLESME: /Users/gokhan/rapor len 11050"}""",
+        )
+        val t = readableTitle(s, SessionFlags(), emptyMap())
+        assertEquals("Sohbet · 14.09 20:25", t)
+        assertFalse(t.contains("status"))
+        assertFalse(t.contains("ESBLESME"))
+    }
+
+    /** İkisi de yok → zaman damgası yedeği (ham id DEĞİL, kaynak adı da değil). */
+    @Test
+    fun ikisiDeYokSohbetDamgasi() {
         val s = sess("20260914_202501_abc123", source = "desktop")
-        assertEquals("Masaüstü · 14.09 20:25", readableTitle(s, SessionFlags(), emptyMap()))
+        assertEquals("Sohbet · 14.09 20:25", readableTitle(s, SessionFlags(), emptyMap()))
     }
 
     /** Rename her zaman kazanır — preview/title ikisini de ezer. */
@@ -88,13 +103,29 @@ class SessionCardTopicTest {
         assertEquals("Benim adım", readableTitle(s, flags, emptyMap()))
     }
 
-    /** Cron iş adı preview'dan önce gelir (bilinen hash → iş adı). */
+    /**
+     * Tur-4 sıra değişikliği: ilk ANLAMLI kullanıcı cümlesi cron iş adından
+     * ÖNCE gelir (büyük model danışması sırası). Cron oturumlarının gerçek ilk
+     * mesajı sistem promptu olduğu için pratikte iş adı kazanır — o yüzden
+     * ikinci assert "sistem metni varsa iş adı" sözleşmesini sabitler.
+     */
     @Test
-    fun cronIsAdiPreviewdanOnce() {
+    fun kullaniciCumlesiCronIsAdindanOnce() {
         val s = sess(
             "cron_2e4ea303c123_20260911_221601",
             source = "cron",
             preview = "yedek aldım",
+        )
+        assertEquals("yedek aldım", readableTitle(s, SessionFlags(), mapOf("2e4ea303c123" to "hermes-gunluk-yedek-02")))
+    }
+
+    /** Cron oturumunun ilk mesajı sistem promptu ise önizleme atılır → iş adı + saat. */
+    @Test
+    fun cronSistemMetniAtilirIsAdiKalir() {
+        val s = sess(
+            "cron_2e4ea303c123_20260911_221601",
+            source = "cron",
+            preview = "[IMPORTANT: You are running as a scheduled cron job. DELIVER this report.]",
         )
         assertEquals(
             "hermes-gunluk-yedek-02 · 11.09 22:16",
@@ -108,7 +139,7 @@ class SessionCardTopicTest {
         val s = sess("bes_20260911_x")
         val t = readableTitle(s, SessionFlags(), emptyMap())
         assertFalse(t.contains("bes_20260911_x"))
-        assertEquals("Oturum", t)
+        assertEquals("Sohbet", t)
     }
 
     /** Preview tek satıra düzleştirilir: satırsonu → boşluk. */

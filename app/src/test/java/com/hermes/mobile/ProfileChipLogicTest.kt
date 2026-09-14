@@ -4,6 +4,7 @@ import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.ui.createSessionProfileArg
 import com.hermes.mobile.ui.chipsLocked
 import com.hermes.mobile.ui.lockedChipLabel
+import com.hermes.mobile.ui.visibleProfileChips
 import com.hermes.mobile.ui.ROUTER_CHIP
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -88,5 +89,49 @@ class ProfileChipLogicTest {
         assertEquals("bilirkisi", createSessionProfileArg(chosen))
         // Bir sonraki createSession aynı profili kullanır.
         assertEquals("bilirkisi", createSessionProfileArg("bilirkisi"))
+    }
+
+    // ---- 5. İç terminoloji sızmaz (tur-4 kusur G) ---------------------------
+
+    @Test
+    fun `ic profil adlari cip olarak cizilmez`() {
+        // Emülatörde görülen sızıntı: "default", "ac", "android".
+        val profiles = listOf(
+            HermesProfile(name = "default", isDefault = true),
+            HermesProfile(name = "ac"),
+            HermesProfile(name = "android"),
+            HermesProfile(name = "arastirma"),
+        )
+        val visible = visibleProfileChips(profiles)
+        assertTrue("iç adlar gizlenir: $visible", visible.isEmpty())
+    }
+
+    @Test
+    fun `varsayilan cip her durumda gizlenir`() {
+        // display_name dolu olsa bile varsayılan profil çipi çizilmez —
+        // "Yönlendirici" zaten onu temsil eder.
+        val visible = visibleProfileChips(
+            listOf(HermesProfile(name = "default", isDefault = true, displayName = "Varsayılan Bot")),
+        )
+        assertTrue(visible.isEmpty())
+    }
+
+    @Test
+    fun `insan adi olan profil gorunur ve secim gercek adi tasir`() {
+        val visible = visibleProfileChips(
+            listOf(
+                HermesProfile(name = "ac", displayName = "Bilirkişi Botu"),
+                HermesProfile(name = "android"),
+            ),
+        )
+        assertEquals(1, visible.size)
+        assertEquals("Bilirkişi Botu", visible.first().second)
+        // Çip tıklandığında createSession GERÇEK profil adını alır.
+        assertEquals("ac", createSessionProfileArg(visible.first().first.name))
+    }
+
+    @Test
+    fun `bos profil listesi bos doner`() {
+        assertTrue(visibleProfileChips(emptyList()).isEmpty())
     }
 }
