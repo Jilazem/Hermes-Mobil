@@ -131,6 +131,10 @@ class PreviewSanitizeTest {
         assertTrue(isGenericIdentityTitle("Telegram Desktop"))
         assertTrue(isGenericIdentityTitle("default"))
         assertTrue(isGenericIdentityTitle("—"))
+        assertTrue("noktalama kırıntısı konu değil: '.'", isGenericIdentityTitle("."))
+        assertTrue(isGenericIdentityTitle("..."))
+        // Sunucunun `derived` ürettiği ". #2" gibi kırıntı da konu sayılmaz.
+        assertTrue(isGenericIdentityTitle(". #2"))
         assertTrue(isGenericIdentityTitle(null))
     }
 

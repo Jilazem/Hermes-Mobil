@@ -151,6 +151,9 @@ fun isGenericIdentityTitle(title: String?): Boolean {
     val t = title?.trim().orEmpty()
     if (t.isEmpty()) return true
     if (t == "-" || t == "—" || t == "?") return true
+    // Harf içermeyen "başlık" (".", "...", ". #2") konu değildir — sunucu
+    // `title_source=derived` ile böyle bir kırıntı gönderebiliyor.
+    if (t.none { it.isLetter() }) return true
     val lower = t.lowercase()
     if (lower in GENERIC_IDENTITIES) return true
     // Kaynak kelimesinin kendisi ("telegram", "masaüstü") de konu değildir.
