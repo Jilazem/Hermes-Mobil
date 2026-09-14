@@ -98,6 +98,8 @@ fun ChatScreen(
     onOpenCommands: () -> Unit = {},
     onOpenFile: (FileRef) -> Unit = {},
     onOpenProfiles: () -> Unit = {},
+    /** Boş sohbet CTA'sı: sunucu + token ekranını açar (ilk kurulum yolu). */
+    onOpenServers: () -> Unit = {},
     /** Üst çubuk Psychology ikonu: düşünce panosu alt sayfasını açar. */
     onOpenReasoning: () -> Unit = {},
     /** Düşünce panosundaki çaba seçimi — `/reasoning <seviye>` slash komutu. */
@@ -209,6 +211,7 @@ fun ChatScreen(
                     },
                     savedPrompts = savedPrompts,
                     onOpenPrompts = { promptsSheet = true },
+                    onOpenServers = onOpenServers,
                 )
             } else {
                 // rows yukarıda hesaplandı (render + kaydırma tek kaynak).
@@ -466,6 +469,7 @@ private fun EmptyChatHint(
     onUsePrompt: (String) -> Unit,
     savedPrompts: List<SavedPrompt>,
     onOpenPrompts: () -> Unit,
+    onOpenServers: () -> Unit = {},
 ) {
     Column(
         modifier.padding(horizontal = 24.dp),
@@ -482,6 +486,15 @@ private fun EmptyChatHint(
             color = HermesColors.TextMuted,
             fontSize = 12.sp,
         )
+        // İlk kurulum yolu (emülatör denetimi bulgu-1, 2026-09-14): bağlantı
+        // yokken kullanıcı "nereye token gireceğini" bulamıyordu — CTA doğrudan
+        // Sunucular ekranına götürür (≤2 dokunuş: CTA → Sunucu ekle).
+        if (connection !is ConnectionState.Open) {
+            Spacer(Modifier.height(14.dp))
+            androidx.compose.material3.Button(onClick = onOpenServers) {
+                Text(S.t2("Sunucu ekle", "Add server"))
+            }
+        }
         if (connection is ConnectionState.Open) {
             Spacer(Modifier.height(18.dp))
             // Öneri çipleri: dokunma taslağı doldurur, mesaj göndermez (draft

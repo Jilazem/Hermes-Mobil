@@ -112,7 +112,14 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (p.token.isBlank()) {
-            _state.update { it.copy(error = "Önce Sunucular sekmesinden token girin") }
+            _state.update {
+                it.copy(
+                    error = com.hermes.mobile.ui.tr(
+                        "Sunucu bağlı değil — Ayarlar > Sunucular'dan token girin",
+                        "No server connected — add a token in Settings > Servers",
+                    )
+                )
+            }
             return
         }
 

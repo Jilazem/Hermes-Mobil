@@ -566,6 +566,8 @@ private fun HermesApp(
         if (pendingAction != null) chatViewModel.pendingAction.value = null
     }
     var profileSheet by remember { mutableStateOf(false) }
+    /** Ayarlar→Sunucular / boş-sohbet CTA: ConnectScreen tam ekranı. */
+    var serversScreen by remember { mutableStateOf(false) }
     val hermesProfiles by viewModel.profiles.collectAsStateWithLifecycle()
     val activeHermesProfile by viewModel.activeProfile.collectAsStateWithLifecycle()
     val profilesLoading by viewModel.profilesLoading.collectAsStateWithLifecycle()
@@ -692,7 +694,24 @@ private fun HermesApp(
                 .background(HermesColors.Background)
                 .padding(innerPadding)
         ) {
-            if (detail != null) {
+            if (serversScreen) {
+                // İlk kurulum yolu: sunucu + token tek ekrandan (2026-09-14
+                // emülatör denetimi bulgu-1). Profil seçilince kapatılır.
+                ConnectScreen(
+                    state = state,
+                    onSelect = { id ->
+                        viewModel.selectProfile(id)
+                        serversScreen = false
+                    },
+                    onSave = { profile ->
+                        viewModel.saveProfile(profile)
+                        viewModel.selectProfile(profile.id)
+                    },
+                    onDelete = viewModel::deleteProfile,
+                    onRefresh = viewModel::refreshAll,
+                    onBack = { serversScreen = false },
+                )
+            } else if (detail != null) {
                 SessionDetailScreen(detail, onBack = viewModel::closeSession)
             } else if (shareTargetVisible) {
                 ShareTargetScreen(
@@ -772,6 +791,7 @@ private fun HermesApp(
                             viewModel.loadProfiles()
                             profileSheet = true
                         },
+                        onOpenServers = { serversScreen = true },
                         onOpenReasoning = {
                             reasoningSheet = true
                             // Sunucunun bildirdiği aktif çabayı öne al — panel
@@ -891,6 +911,7 @@ private fun HermesApp(
                         onImportTheme = viewModel.settingsStore::importTheme,
                         onExportTheme = viewModel.settingsStore::exportTheme,
                         activeProfile = state.active,
+                        onOpenServers = { serversScreen = true },
                     )
                 }
             }

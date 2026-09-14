@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -53,6 +55,8 @@ fun ConnectScreen(
     onSave: (ServerProfile) -> Unit,
     onDelete: (String) -> Unit,
     onRefresh: () -> Unit,
+    /** Tam-ekran CTA'dan açıldığında geri oku; null = gömülü kullanım. */
+    onBack: (() -> Unit)? = null,
 ) {
     var editing by remember { mutableStateOf<ServerProfile?>(null) }
     var confirmDelete by remember { mutableStateOf<ServerProfile?>(null) }
@@ -66,11 +70,22 @@ fun ConnectScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Sunucular", color = HermesColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                    Text("Kayıtlı Hermes profilleri", color = HermesColors.TextMuted, fontSize = 12.sp)
+                if (onBack != null) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = S.back,
+                        tint = HermesColors.TextSecondary,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clickable { onBack() }
+                            .padding(end = 10.dp),
+                    )
                 }
-                TextButton(onClick = onRefresh) { Text("Yenile", color = HermesColors.Midground) }
+                Column(Modifier.weight(1f)) {
+                    Text(S.t2("Sunucular", "Servers"), color = HermesColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                    Text(S.t2("Kayıtlı Hermes profilleri", "Saved Hermes profiles"), color = HermesColors.TextMuted, fontSize = 12.sp)
+                }
+                TextButton(onClick = onRefresh) { Text(S.refresh, color = HermesColors.Midground) }
             }
         }
 
@@ -87,21 +102,21 @@ fun ConnectScreen(
 
         item {
             Button(
-                onClick = { editing = ServerProfile(name = "", baseUrl = "http://", token = "") },
+                onClick = { editing = ServerProfile(name = "", baseUrl = "", token = "") },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.width(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Sunucu ekle")
+                Text(S.t2("Sunucu ekle", "Add server"))
             }
         }
 
         item {
             HermesCard(Modifier.fillMaxWidth()) {
-                SectionLabel("Token nereden alınır")
+                SectionLabel(S.t2("Token nereden alınır", "Where to get the token"))
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "the server üzerinde:",
+                    S.t2("Sunucu üzerinde:", "On the server:"),
                     color = HermesColors.TextSecondary,
                     fontSize = 12.sp,
                 )
@@ -133,16 +148,16 @@ fun ConnectScreen(
             containerColor = HermesColors.Surface,
             titleContentColor = HermesColors.TextPrimary,
             textContentColor = HermesColors.TextSecondary,
-            title = { Text("Sunucu silinsin mi?") },
-            text = { Text("\"${target.name}\" profili ve tokeni cihazdan kaldırılacak.") },
+            title = { Text(S.t2("Sunucu silinsin mi?", "Delete this server?")) },
+            text = { Text(S.t2("\"${target.name}\" profili ve tokeni cihazdan kaldırılacak.", "\"${target.name}\" profile and its token will be removed from this device.")) },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(target.id)
                     confirmDelete = null
-                }) { Text("Sil", color = HermesColors.Danger) }
+                }) { Text(S.t2("Sil", "Delete"), color = HermesColors.Danger) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) { Text("Vazgeç") }
+                TextButton(onClick = { confirmDelete = null }) { Text(S.t2("Vazgeç", "Cancel")) }
             },
         )
     }
@@ -158,9 +173,10 @@ private fun ProfileRow(
     onDelete: () -> Unit,
 ) {
     val (dotColor, statusText) = when (probe) {
-        is ProbeResult.Ok -> HermesColors.Online to "çevrimiçi · ${probe.latencyMs} ms"
+        is ProbeResult.Ok -> HermesColors.Online to
+            S.t2("çevrimiçi", "online") + " · ${probe.latencyMs} ms"
         is ProbeResult.Fail -> HermesColors.Offline to probe.reason
-        null -> HermesColors.Busy to "yoklanıyor…"
+        null -> HermesColors.Busy to S.t2("yoklanıyor…", "probing…")
     }
 
     HermesCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
@@ -168,28 +184,28 @@ private fun ProfileRow(
             StatusDot(dotColor)
             Spacer(Modifier.width(8.dp))
             Text(
-                profile.name.ifBlank { "(adsız)" },
+                profile.name.ifBlank { S.t2("(adsız)", "(unnamed)") },
                 color = if (isActive) HermesColors.Midground else HermesColors.TextSecondary,
                 fontSize = 15.sp,
                 fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
             )
             if (isActive) {
                 Spacer(Modifier.width(8.dp))
-                Text("aktif", color = HermesColors.Online, fontSize = 10.sp)
+                Text(S.t2("aktif", "active"), color = HermesColors.Online, fontSize = 10.sp)
             }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, "Düzenle", tint = HermesColors.TextMuted, modifier = Modifier.width(18.dp))
+                Icon(Icons.Default.Edit, S.t2("Düzenle", "Edit"), tint = HermesColors.TextMuted, modifier = Modifier.width(18.dp))
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, "Sil", tint = HermesColors.TextMuted, modifier = Modifier.width(18.dp))
+                Icon(Icons.Default.Delete, S.t2("Sil", "Delete"), tint = HermesColors.TextMuted, modifier = Modifier.width(18.dp))
             }
         }
         Spacer(Modifier.height(4.dp))
         Text(profile.normalizedUrl, style = MonoTextStyle, color = HermesColors.TextMuted)
         if (profile.normalizedRemote.isNotBlank()) {
             Text(
-                "uzak: ${profile.normalizedRemote}",
+                "${S.t2("uzak", "remote")}: ${profile.normalizedRemote}",
                 style = MonoTextStyle,
                 color = HermesColors.TextFaint,
             )
@@ -221,7 +237,7 @@ fun ProfileEditorDialog(
         containerColor = HermesColors.Surface,
         titleContentColor = HermesColors.TextPrimary,
         textContentColor = HermesColors.TextSecondary,
-        title = { Text(if (initial.name.isBlank()) "Sunucu ekle" else "Sunucuyu düzenle") },
+        title = { Text(if (initial.name.isBlank()) S.t2("Sunucu ekle", "Add server") else S.t2("Sunucuyu düzenle", "Edit server")) },
         text = {
             Column(
                 Modifier
@@ -232,20 +248,20 @@ fun ProfileEditorDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Ad") },
+                    label = { Text(S.t2("Ad", "Name")) },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("Adres") },
+                    label = { Text(S.t2("Adres", "Address")) },
                     placeholder = { Text("http://192.168.1.10:9150") },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = token,
                     onValueChange = { token = it },
-                    label = { Text("Session token") },
+                    label = { Text(S.t2("Oturum anahtarı", "Session token")) },
                     singleLine = true,
                     visualTransformation =
                         if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -263,13 +279,17 @@ fun ProfileEditorDialog(
                 OutlinedTextField(
                     value = remote,
                     onValueChange = { remote = it },
-                    label = { Text("Uzak adres (ev dışı)") },
+                    label = { Text(S.t2("Uzak adres (ev dışı)", "Remote address (off-network)")) },
                     placeholder = { Text("http://100.x.y.z:9150") },
                     singleLine = true,
                 )
                 Text(
-                    "LAN adresine ulaşılamazsa buraya düşer. Tailscale IP'si ya da " +
-                        "tünel adresi yaz.",
+                    S.t2(
+                        "LAN adresine ulaşılamazsa buraya düşer. Tailscale IP'si ya da " +
+                            "tünel adresi yaz.",
+                        "Used when the LAN address is unreachable. Write a Tailscale IP " +
+                            "or tunnel address.",
+                    ),
                     color = HermesColors.TextFaint,
                     fontSize = 10.sp,
                     lineHeight = 14.sp,
@@ -277,7 +297,7 @@ fun ProfileEditorDialog(
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("Not (isteğe bağlı)") },
+                    label = { Text(S.t2("Not (isteğe bağlı)", "Note (optional)")) },
                     singleLine = true,
                 )
             }
@@ -296,9 +316,9 @@ fun ProfileEditorDialog(
                         )
                     )
                 },
-            ) { Text("Kaydet", color = HermesColors.Midground) }
+            ) { Text(S.t2("Kaydet", "Save"), color = HermesColors.Midground) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(S.t2("Vazgeç", "Cancel")) } },
     )
 }
 
@@ -314,11 +334,11 @@ fun DeleteProfileDialog(
         containerColor = HermesColors.Surface,
         titleContentColor = HermesColors.TextPrimary,
         textContentColor = HermesColors.TextSecondary,
-        title = { Text("Sunucu silinsin mi?") },
-        text = { Text("\"${profile.name}\" profili ve tokeni cihazdan kaldırılacak.") },
+        title = { Text(S.t2("Sunucu silinsin mi?", "Delete this server?")) },
+        text = { Text(S.t2("\"${profile.name}\" profili ve tokeni cihazdan kaldırılacak.", "\"${profile.name}\" profile and its token will be removed from this device.")) },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Sil", color = HermesColors.Danger) }
+            TextButton(onClick = onConfirm) { Text(S.t2("Sil", "Delete"), color = HermesColors.Danger) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(S.t2("Vazgeç", "Cancel")) } },
     )
 }

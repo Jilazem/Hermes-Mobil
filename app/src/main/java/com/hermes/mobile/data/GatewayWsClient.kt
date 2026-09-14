@@ -93,8 +93,22 @@ class GatewayWsClient(private val profile: ServerProfile) {
 
     private fun openSocket() {
         _connection.value = ConnectionState.Connecting
-        val url = "${profile.wsBase}/api/ws?token=${profile.token}"
-        val request = Request.Builder().url(url).build()
+        // Bozuk adres (kullanıcı 'httphttp://…' gibi girerse) eskiden
+        // Request.Builder.url ile FATAL EXCEPTION üretiyordu (2026-09-14
+        // emülatör denetimi kanıtı: httpws:// şeması). Artık çökme YOK —
+        // görünen hata durumu.
+        val request = runCatching {
+            Request.Builder().url("${profile.wsBase}/api/ws?token=${profile.token}").build()
+        }.getOrElse {
+            DiagLog.w("ws", "gecersiz ws adresi: ${profile.wsBase}")
+            _connection.value = ConnectionState.Error(
+                com.hermes.mobile.ui.tr(
+                    "Sunucu adresi geçersiz — Sunucular ekranından düzeltin",
+                    "Invalid server address — fix it on the Servers screen",
+                )
+            )
+            return
+        }
         socket = http.newWebSocket(request, Listener())
     }
 

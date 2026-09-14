@@ -503,7 +503,10 @@ class LiveVoiceClient(
             return
         }
         val delayMs = minOf(15_000L, 1_000L * (1L shl minOf(reconnectAttempt, 4)))
-        _error.value = "$reason — yeniden bağlanılıyor ($reconnectAttempt)"
+        _error.value = "$reason — " + com.hermes.mobile.ui.tr(
+            "yeniden bağlanılıyor ($reconnectAttempt)",
+            "reconnecting (attempt $reconnectAttempt)",
+        )
         _state.value = State.Connecting
         scope.launch {
             kotlinx.coroutines.delay(delayMs)
@@ -514,11 +517,25 @@ class LiveVoiceClient(
     }
 
     private fun describeClose(code: Int, reason: String): String = when (code) {
-        4401 -> "Token reddedildi — Sunucular sekmesinden tokeni kontrol edin"
-        4402 -> "Sunucuda Gemini API anahtarı yok"
-        4403 -> "Gemini anahtarı geçersiz ya da kotası dolu"
-        4504 -> "Gemini yanıt vermedi (zaman aşımı)"
-        else -> reason.ifBlank { "Bağlantı kapandı ($code)" }
+        4401 -> com.hermes.mobile.ui.tr(
+            "Token reddedildi — Sunucular ekranından tokeni kontrol edin",
+            "Token rejected — check the token on the Servers screen",
+        )
+        4402 -> com.hermes.mobile.ui.tr(
+            "Sunucuda Gemini API anahtarı yok",
+            "No Gemini API key on the server",
+        )
+        4403 -> com.hermes.mobile.ui.tr(
+            "Gemini anahtarı geçersiz ya da kotası dolu",
+            "Gemini key invalid or out of quota",
+        )
+        4504 -> com.hermes.mobile.ui.tr(
+            "Gemini yanıt vermedi (zaman aşımı)",
+            "Gemini did not respond (timeout)",
+        )
+        else -> reason.ifBlank {
+            com.hermes.mobile.ui.tr("Bağlantı kapandı ($code)", "Connection closed ($code)")
+        }
     }
 
     companion object {

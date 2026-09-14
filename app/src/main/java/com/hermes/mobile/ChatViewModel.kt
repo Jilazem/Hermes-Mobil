@@ -460,7 +460,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         if (profile == null || profile.token.isBlank()) {
             teardown()
             _state.value = ChatState(
-                connection = ConnectionState.Error("Önce Sunucular sekmesinden token girin")
+                // tr(): dil sızıntısı olmasın — hata metni arayüz dilinde.
+                connection = ConnectionState.Error(
+                    com.hermes.mobile.ui.tr(
+                        "Sunucu bağlı değil — \"Sunucu ekle\" ile adres + token girin",
+                        "No server connected — tap \"Add server\" and enter address + token",
+                    )
+                )
             )
             return
         }

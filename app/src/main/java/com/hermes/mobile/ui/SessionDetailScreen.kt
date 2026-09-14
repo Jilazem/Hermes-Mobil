@@ -80,7 +80,7 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Geri",
+                    contentDescription = S.t2("Geri", "Back"),
                     tint = HermesColors.Midground,
                 )
             }

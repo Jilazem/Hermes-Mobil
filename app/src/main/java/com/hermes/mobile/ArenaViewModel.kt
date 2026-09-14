@@ -83,7 +83,12 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
             _state.update {
                 it.copy(
                     loadingProfiles = false,
-                    error = "Sunucu seçilmemiş — önce Ayarlar > Sunucular'dan bağlan",
+                    // FR-002: sessiz dönüş yerine görünür neden — "sunucu yok" durumu
+                    // "gateway bağlı değil" sanılıyordu. tr(): dil sızıntısı yasak.
+                    error = com.hermes.mobile.ui.tr(
+                        "Sunucu seçilmemiş — önce Ayarlar > Sunucular'dan bağlan",
+                        "No server selected — connect first via Settings > Servers",
+                    ),
                 )
             }
             return

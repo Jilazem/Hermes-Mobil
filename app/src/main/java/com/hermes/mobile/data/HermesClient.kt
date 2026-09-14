@@ -390,17 +390,29 @@ class HermesClient(private val profile: ServerProfile) {
     } catch (e: HermesApiException) {
         ProbeResult.Fail(
             when (e.code) {
-                401, 403 -> "Token reddedildi (${e.code})"
-                404 -> "Adres bulunamadı — dashboard portu doğru mu?"
-                else -> "Sunucu hatası ${e.code}"
+                401, 403 -> com.hermes.mobile.ui.tr("Token reddedildi (${e.code})", "Token rejected (${e.code})")
+                404 -> com.hermes.mobile.ui.tr(
+                    "Adres bulunamadı — dashboard portu doğru mu?",
+                    "Address not found — is the dashboard port correct?",
+                )
+                else -> com.hermes.mobile.ui.tr("Sunucu hatası ${e.code}", "Server error ${e.code}")
             }
         )
     } catch (e: IOException) {
         val hint = if (profile.normalizedRemote.isBlank())
-            " (ev ağı dışındaysan Sunucular'dan uzak adres ekle)" else ""
-        ProbeResult.Fail("Ulaşılamıyor$hint")
+            com.hermes.mobile.ui.tr(
+                " (ev ağı dışındaysan Sunucular'dan uzak adres ekle)",
+                " (off the home network? add a remote address under Servers)",
+            ) else ""
+        ProbeResult.Fail(
+            com.hermes.mobile.ui.tr("Ulaşılamıyor", "Unreachable") + hint
+        )
     } catch (e: Exception) {
-        ProbeResult.Fail("Beklenmeyen yanıt — ${e.message ?: e::class.simpleName}")
+        ProbeResult.Fail(
+            com.hermes.mobile.ui.tr(
+                "Beklenmeyen yanıt", "Unexpected response",
+            ) + " — ${e.message ?: e::class.simpleName}"
+        )
     }
 
     companion object {

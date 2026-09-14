@@ -320,7 +320,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun probe(profile: ServerProfile) {
         val result = if (profile.token.isBlank()) {
-            ProbeResult.Fail("Token girilmemiş")
+            ProbeResult.Fail(com.hermes.mobile.ui.tr("Token girilmemiş", "No token entered"))
         } else {
             HermesClient(profile).probe()
         }

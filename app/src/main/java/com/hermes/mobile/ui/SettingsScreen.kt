@@ -56,6 +56,7 @@ import com.hermes.mobile.ui.theme.MonoTextStyle
 import com.hermes.mobile.ui.theme.toColorOrNull
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.lazy.items
 import com.hermes.mobile.data.ShizukuBridge
 import com.hermes.mobile.data.HermesClient
@@ -88,6 +89,8 @@ fun SettingsScreen(
      * `hermes doctor` / `hermes update` çalıştırır; profil yoksa kart gizli kalır.
      */
     activeProfile: com.hermes.mobile.data.ServerProfile? = null,
+    /** Ayarlar→Sunucular: kayıtlı sunucu/token ekranını tam ekran açar. */
+    onOpenServers: () -> Unit = {},
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
@@ -258,7 +261,7 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.General) {
-    item { Header("Genel") }
+    item { Header(S.t2("Genel", "General")) }
             item {
                 // Arayüz dili: cihaz dilini geçersiz kılmak isteyenler için.
                 Row(
@@ -317,7 +320,37 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Server) {
-    item { Header("Spark izleme") }
+            // Sunucu/token girişi — ilk kurulum yolu. ConnectScreen'e gerçek
+            // bağlantı (ölü kod değildi ama UI'dan erişilemiyordu; 2026-09-14
+            // emülatör denetiminde kanıtlandı).
+            item {
+                HermesCard(Modifier.fillMaxWidth().clickable(onClick = onOpenServers)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                S.t2("Sunucular", "Servers"),
+                                color = HermesColors.TextPrimary, fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                S.t2(
+                                    if (activeProfile == null) "Sunucu adresi ve token ekle"
+                                    else "${activeProfile.name} — profilleri ve tokeni yönet",
+                                    if (activeProfile == null) "Add a server address and token"
+                                    else "${activeProfile.name} — manage profiles and token",
+                                ),
+                                color = HermesColors.TextMuted, fontSize = 12.sp,
+                            )
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = HermesColors.TextFaint,
+                        )
+                    }
+                }
+            }
+            item { Header(S.t2("Spark izleme", "Spark monitoring")) }
             item {
                 SwitchRow(
                     S.t2("DGX Spark panelini göster", "Show the DGX Spark panel"),
@@ -328,8 +361,11 @@ fun SettingsScreen(
             if (settings.sparkEnabled) {
                 item {
                     TextRow(
-                        title = "sparkDash adresi",
-                        detail = "boş bırakırsan sunucu adresinin 5555 portu kullanılır",
+                        title = "sparkDash",
+                        detail = S.t2(
+                            "boş bırakırsan sunucu adresinin 5555 portu kullanılır",
+                            "leave empty to use port 5555 of the server address",
+                        ),
                         value = settings.sparkUrl,
                     ) { v -> onUpdate { it.copy(sparkUrl = v.trim()) } }
                 }
@@ -412,10 +448,10 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Privacy) {
-    item { Header("Gizlilik") }
+    item { Header(S.t2("Gizlilik", "Privacy")) }
             item {
                 SwitchRow(
-                    "Biyometrik kilit",
+                    S.t2("Biyometrik kilit", "Biometric lock"),
                     S.t2("Uygulama açılışında parmak izi / yüz sorulsun", "Ask for fingerprint / face on launch"),
                     settings.biometricLock,
                 ) { v -> onUpdate { it.copy(biometricLock = v) } }
@@ -433,8 +469,8 @@ fun SettingsScreen(
     item { Header(S.t2("Bağlantı", "Connection")) }
             item {
                 SliderRow(
-                    "Durum yenileme",
-                    "${settings.pollSeconds} sn",
+                    S.t2("Durum yenileme", "Status refresh"),
+                    S.t2("${settings.pollSeconds} sn", "${settings.pollSeconds} s"),
                     settings.pollSeconds.toFloat(),
                     5f..60f,
                 ) { v -> onUpdate { it.copy(pollSeconds = v.toInt()) } }
@@ -442,7 +478,7 @@ fun SettingsScreen(
             item {
                 SliderRow(
                     S.t2("Canlı oturum yenileme", "Live session refresh"),
-                    "${settings.livePollSeconds} sn",
+                    S.t2("${settings.livePollSeconds} sn", "${settings.livePollSeconds} s"),
                     settings.livePollSeconds.toFloat(),
                     3f..30f,
                 ) { v -> onUpdate { it.copy(livePollSeconds = v.toInt()) } }
@@ -452,14 +488,14 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Privacy) {
-    item { Header("Bildirimler") }
+    item { Header(S.t2("Bildirimler", "Notifications")) }
             item {
-                SwitchRow("Cron bitince", null, settings.notifyCron) { v ->
+                SwitchRow(S.t2("Cron bitince", "When a cron job ends"), null, settings.notifyCron) { v ->
                     onUpdate { it.copy(notifyCron = v) }
                 }
             }
             item {
-                SwitchRow("Hata olunca", null, settings.notifyErrors) { v ->
+                SwitchRow(S.t2("Hata olunca", "When an error happens"), null, settings.notifyErrors) { v ->
                     onUpdate { it.copy(notifyErrors = v) }
                 }
             }

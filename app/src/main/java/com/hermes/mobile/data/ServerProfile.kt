@@ -88,7 +88,26 @@ data class ServerProfile(
      * kapatıyoruz. https kullanıcısı şemayı zaten kendisi yazar.
      */
     val normalizedUrl: String
-        get() = baseUrl.trim().trimEnd('/').let {
+        get() = baseUrl.trim().let { raw ->
+            var it = raw.trimEnd('/', ':')
+            // Kirli sema temizliği (2026-09-14 emülatör kanıtı): alan
+            // "http://" önyüklüydü ve kullanıcı adresi başına yazınca
+            // "httphttp://host" oluşuyor; toWs() ortadaki 'http://'yi
+            // eşleştirip 'httpws://' üretiyor ve okhttp FATAL çökertiyordu.
+            // Son "://" esas alınır; temiz sema ('http', 'https' — büyük/küçük
+            // harf korunur, downgrade YOK) aynen bırakılır.
+            val idx = it.lastIndexOf("://")
+            if (idx > 0) {
+                val schemeRaw = it.substring(0, idx)
+                val scheme = when {
+                    schemeRaw.equals("https", ignoreCase = true) ||
+                        schemeRaw.equals("http", ignoreCase = true) -> schemeRaw
+                    schemeRaw.endsWith("https", ignoreCase = true) -> "https"
+                    schemeRaw.endsWith("http", ignoreCase = true) -> "http"
+                    else -> schemeRaw
+                }
+                it = scheme + "://" + it.substring(idx + 3)
+            }
             if (it.isNotEmpty() && !it.contains("://")) "http://$it" else it
         }
 
