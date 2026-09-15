@@ -78,9 +78,36 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Dijital asistan: Ayarlar → Varsayılan uygulamalar → Dijital
-                 asistan listesinde Hermes görünür; asistan hareketi doğrudan
-                 canlı sesi açar. -->
+            <!-- DİJİTAL ASİSTAN FİLTRESİ BURADA DEĞİL: asistan listesinde
+                 "Hermes Asistan" adıyla görünmesi için aşağıdaki
+                 `AssistantAlias` vekil aktivitede. İkiye bölersek aynı
+                 uygulama listede iki kez çıkar (paylaşım filtresindeki
+                 çift-girdi dersinin aynısı). -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
+            <!-- PAYLAŞIM FİLTRESİ BURADA DEĞİL: paylaşım girdisi yalnız
+                 şeffaf ShareProxyActivity üzerinden akar (aşağıda).
+                 MainActivity'de kendi SEND/SEND_MULTIPLE filtresi olursa
+                 "Paylaş" menüsünde Hermes İKİ KEZ görünür — vekil ekstrapları
+                 akışı zaten MainActivity'e taşıyor, buradaki filtre gereksiz. -->
+        </activity>
+        <!-- ── Telefon asistanı (tur-13) ─────────────────────────────────
+             Asistan listesinde "Hermes Asistan" adıyla görünen vekil.
+             `activity-alias` seçildi çünkü etiket YALNIZ asistan girdisinde
+             değişmeli: MainActivity'ye label yazmak launcher'daki uygulama
+             adını da ("Hermes") değiştirirdi.
+
+             `exported="true"` şart: niyeti sistem (rol sahibi olarak) ve
+             `am start -a android.intent.action.ASSIST` çözebilmeli.
+             Filtreler KASITLI olarak yalnız burada: aynı filtre MainActivity'de
+             de olsaydı asistan listesinde aynı uygulama iki kez çıkardı. -->
+        <activity-alias
+            android:name=".AssistantAlias"
+            android:exported="true"
+            android:label="@string/assistant_label"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -89,15 +116,8 @@
                 <action android:name="android.intent.action.VOICE_COMMAND" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
-            <!-- PAYLAŞIM FİLTRESİ BURADA DEĞİL: paylaşım girdisi yalnız
-                 şeffaf ShareProxyActivity üzerinden akar (aşağıda).
-                 MainActivity'de kendi SEND/SEND_MULTIPLE filtresi olursa
-                 "Paylaş" menüsünde Hermes İKİ KEZ görünür — vekil ekstrapları
-                 akışı zaten MainActivity'e taşıyor, buradaki filtre gereksiz. -->
-        </activity>
+        </activity-alias>
+
         <!-- Sürüş kipi: ekran kapalıyken mikrofonun çalışmaya devam etmesi
              Android 14+'ta bu servisi zorunlu kılıyor. -->
         <service

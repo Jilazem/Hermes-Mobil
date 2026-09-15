@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Hermes</string>
+    <!-- Asistan listesinde görünen ad (activity-alias: .AssistantAlias).
+         Uygulama adından AYRI: launcher'da "Hermes" kalır, asistan seçicide
+         ne olduğu anlaşılsın diye "Hermes Asistan" yazıyor. -->
+    <string name="assistant_label">Hermes Asistan</string>
     <string name="shortcut_voice">Sesli konuşma</string>
     <string name="shortcut_driving">Sürüş kipi</string>
     <string name="shortcut_camera">Kamera</string>

@@ -80,6 +80,15 @@ fun LiveVoiceSheet(
     onNeedCameraPermission: () -> Boolean = { true },
     onCycleRoute: () -> Unit = {},
     onStartDriving: () -> Unit = {},
+    /**
+     * Tur-13: "Yerel (Kahya)" seçildi — sheet kapanır ve asistan modu açılır
+     * (bas-konuş → whisper → yanıt → yerel seslendirme).
+     *
+     * Bu sheet Gemini Live'ı çalıştırır; yerel hat ayrı bir akış olduğu için
+     * seçim burada YÖNLENDİRME olarak duruyor, iki motoru aynı ekranda
+     * karıştırmıyoruz.
+     */
+    onUseLocal: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -101,7 +110,13 @@ fun LiveVoiceSheet(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(10.dp))
+
+            // Tur-13: iki ses yolu NET ayrılır. Asistan akışının varsayılanı
+            // YEREL; Gemini Live isteğe bağlı bir özellik olarak kalır.
+            VoicePathRow(onUseLocal = onUseLocal)
+            Spacer(Modifier.height(12.dp))
+
             Text(
                 when (state.state) {
                     LiveVoiceClient.State.Idle -> S.voiceTapToStart
@@ -202,6 +217,86 @@ fun LiveVoiceSheet(
                 )
             }
         }
+    }
+}
+
+/**
+ * Tur-13: ses yolu seçimi.
+ *
+ * "Yerel (Kahya)" **varsayılan asistan yoludur** (sunucudaki voice_api :8174 —
+ * whisper + kahya motoru); "Gemini Live" ise bu ekranın çalıştırdığı isteğe
+ * bağlı canlı ses özelliğidir. İki motor aynı ekranda karıştırılmaz: yerel
+ * seçimi akışı değiştirir (asistan modu), bu sheet kapanır.
+ */
+@Composable
+private fun VoicePathRow(onUseLocal: () -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            S.t2("Ses yolu", "Voice path"),
+            color = HermesColors.TextFaint,
+            fontSize = 10.sp,
+        )
+        Spacer(Modifier.height(5.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            VoicePathChip(
+                title = S.t2("Yerel (Kahya)", "Local (Kahya)"),
+                detail = S.t2("Önerilen · sunucuda çalışır", "Recommended · runs on your server"),
+                active = false,
+                onClick = onUseLocal,
+                modifier = Modifier.weight(1f),
+            )
+            VoicePathChip(
+                title = "Gemini Live",
+                detail = S.t2("İsteğe bağlı · Google", "Optional · Google"),
+                active = true,
+                onClick = {},
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            S.t2(
+                "Asistan akışı ve sesli okuma varsayılanı YEREL hattır; bu ekran " +
+                    "yalnız Gemini Live için.",
+                "The assistant flow and speech default to the LOCAL path; this screen " +
+                    "is Gemini Live only.",
+            ),
+            color = HermesColors.TextFaint,
+            fontSize = 10.sp,
+            lineHeight = 14.sp,
+        )
+    }
+}
+
+@Composable
+private fun VoicePathChip(
+    title: String,
+    detail: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+            .border(
+                1.dp,
+                if (active) HermesColors.Midground else HermesColors.BorderStrong,
+                RoundedCornerShape(10.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+    ) {
+        Text(
+            title,
+            color = if (active) HermesColors.TextPrimary else HermesColors.TextSecondary,
+            fontSize = 13.sp,
+            fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
+        )
+        Text(detail, color = HermesColors.TextFaint, fontSize = 10.sp)
     }
 }
 

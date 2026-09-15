@@ -75,6 +75,8 @@ import com.hermes.mobile.ui.RecentRailSession
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
 import com.hermes.mobile.data.CrashGuard
+import com.hermes.mobile.data.AssistantModeLogic
+import com.hermes.mobile.data.AssistantRole
 import com.hermes.mobile.data.toVoicePrefs
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.ShareHandoff
@@ -119,6 +121,91 @@ class MainActivity : ComponentActivity() {
     private val requestNotif = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* sürüş kipi bildirimi için; reddedilse de servis çalışır */ }
+
+    /**
+     * Tur-13: asistan modu için mikrofon izni — **sessiz** istek.
+     *
+     * [requestMic]'ten ayrı: onun geri çağrısı izin verilince dikte
+     * oturumunu kendiliğinden başlatıyor. Asistan hareketinde istenen şey
+     * yalnız iznin sorulması; kaydı kullanıcı bas-konuş ile başlatır
+     * ("otomatik kayda başlama" şartı).
+     */
+    private val requestMicQuiet = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* izin verilince kullanıcı bas-konuş yapar */ }
+
+    /**
+     * Tur-13: `ROLE_ASSISTANT` sistem diyaloğu.
+     *
+     * Sonuç ne olursa olsun rol satırı TAZELENİR — kullanıcı diyaloğu
+     * reddettiyse satır hâlâ doğruyu ("Şu an: Google") göstermeli.
+     *
+     * **Android 12+ gerçeği:** asistan rolü sistem tarafından yönetiliyor;
+     * `RequestRoleActivity` ekrana gelip ANINDA kapanıyor
+     * (`E RequestRoleActivity: Role is not requestable: android.app.role.ASSISTANT`
+     * — emülatörde ölçüldü). Rol bizim olmadıysa sessizce dönmek kullanıcıyı
+     * kilitler; Ayarlar → Varsayılan uygulamalar açılır ve adımlar gösterilir.
+     */
+    private val requestAssistantRole = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        refreshAssistantRole()
+        if (!AssistantRole.selfHolds(this)) {
+            DiagLog.i("asistan", "rol istegi tamamlanmadi - Ayarlar yonlendirmesi")
+            openDefaultAppsSettings()
+        }
+    }
+
+    /** Rol durumu — Compose tarafı bu akışı okur (Ayarlar → Telefon asistanı). */
+    private val assistantRole = kotlinx.coroutines.flow.MutableStateFlow(
+        AssistantModeLogic.RoleStatus(AssistantModeLogic.RoleState.None)
+    )
+
+    private fun refreshAssistantRole() {
+        assistantRole.value = AssistantRole.status(this)
+    }
+
+    /** "Hermes'i varsayılan asistan yap" — sistem diyaloğu, yoksa Ayarlar. */
+    private fun makeDefaultAssistant() {
+        val intent = AssistantRole.requestIntent(this)
+        if (intent != null) {
+            runCatching { requestAssistantRole.launch(intent) }
+                .onFailure { openDefaultAppsSettings() }
+            return
+        }
+        // Rol API'si yok/rol sunulmuyor: kullanıcıyı Ayarlar'a götür.
+        openDefaultAppsSettings()
+    }
+
+    private fun openDefaultAppsSettings() {
+        val opened = runCatching { startActivity(AssistantRole.settingsIntent()) }.isSuccess
+        if (!opened) runCatching { startActivity(AssistantRole.fallbackSettingsIntent()) }
+        android.widget.Toast.makeText(
+            this,
+            com.hermes.mobile.ui.tr(
+                "Ayarlar → Varsayılan uygulamalar → Dijital asistan → Hermes Asistan",
+                "Settings → Default apps → Digital assistant → Hermes Asistan",
+            ),
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    /**
+     * Asistan modu: mikrofon izni (sessiz) + mod açılışı.
+     *
+     * Kayıt BAŞLATILMAZ — kullanıcı bas-konuş yapar. Ekranı hangi sekmenin
+     * açacağı çağıranın işi (sekme durumu HermesApp'in içinde).
+     */
+    private fun enterAssistantMode() {
+        if (AssistantModeLogic.askMicOnEnter(hasMicPermission())) {
+            requestMicQuiet.launch(Manifest.permission.RECORD_AUDIO)
+        }
+        chatViewModel.enterAssistantMode()
+    }
+
+    private fun hasMicPermission(): Boolean = ContextCompat.checkSelfPermission(
+        this, Manifest.permission.RECORD_AUDIO
+    ) == PackageManager.PERMISSION_GRANTED
 
     private fun ensureNotificationPermission() {
         if (android.os.Build.VERSION.SDK_INT < 33) return
@@ -270,8 +357,13 @@ class MainActivity : ComponentActivity() {
     private fun handleActionIntent(intent: Intent?) {
         val i = intent ?: return
         val action = when {
+            // Tur-13: asistan hareketi artık CANLI SES (Gemini Live) değil,
+            // asistan modu. Gerekçe: kullanıcı telefonun asistan uygulamasının
+            // yerine Hermes'i koymak istiyor ve o akış Google'a gitmemeli —
+            // sesli yol whisper + kahya (voice_api). Canlı ses özelliği
+            // duruyor, yalnız hareketin hedefi değişti.
             i.action == Intent.ACTION_ASSIST || i.action == "android.intent.action.VOICE_COMMAND" ->
-                "voice"
+                "assistant"
             else -> i.getStringExtra("hermes_action")
         } ?: return
         i.removeExtra("hermes_action")
@@ -366,6 +458,9 @@ class MainActivity : ComponentActivity() {
                     // Sesli mesaj tercihleri: otomatik gönder (varsayılan kapalı),
                     // motor (varsayılan kahya), uç adresi ve son çalışan adres.
                     chatViewModel.voicePrefs = settings.toVoicePrefs()
+                    // Tur-13: asistan akışında yanıt kendiliğinden okunsun mu
+                    // (varsayılan AÇIK, ama yalnız asistan modunda etkili).
+                    chatViewModel.assistantAutoRead = settings.assistantAutoRead
                 }
 
                 // Model denenip başarısız olursa kalıcı olarak "bozuk" işaretlenir;
@@ -418,6 +513,10 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                // Tur-13: asistan rolü — Activity akışından Compose değerine.
+                // `onResume` ve sistem rol diyaloğu dönüşünde tazelenir.
+                val assistantRoleState by assistantRole.collectAsStateWithLifecycle()
+
                 HermesApp(
                     onFinish = { finish() },
                     state = state,
@@ -440,6 +539,10 @@ class MainActivity : ComponentActivity() {
                     onOpenFile = { ref -> openServerFile(state.active, ref) },
                     settings = settings,
                     customThemes = customThemes,
+                    // Tur-13: asistan rolü — rol akışı Activity'de, burada değer.
+                    assistantRoleState = assistantRoleState,
+                    onEnterAssistantMode = ::enterAssistantMode,
+                    onMakeDefaultAssistant = ::makeDefaultAssistant,
                 )
               }
             }
@@ -469,6 +572,9 @@ class MainActivity : ComponentActivity() {
         viewModel.refreshAll()
         // Arka plandayken kaçırılmış yanıt varsa tamamla.
         chatViewModel.syncPending()
+        // Tur-13: rol satırı — kullanıcı rolü sistem Ayarlar'ından da
+        // değiştirebilir; her dönüşte tazelenir (bayat "Şu an: Google" kalmasın).
+        refreshAssistantRole()
     }
 }
 
@@ -523,6 +629,23 @@ private fun HermesApp(
     onOpenFile: (FileRef) -> Unit,
     settings: com.hermes.mobile.data.AppSettings,
     customThemes: List<com.hermes.mobile.ui.theme.HermesPalette>,
+    /**
+     * Tur-13: asistan rolü durumu (Activity `onResume`da tazeler).
+     *
+     * setContent lambda'sından değer olarak geçiyor: `assistantRole` akışı
+     * Activity'de yaşıyor, HermesApp'in kapsamı ayrı.
+     */
+    assistantRoleState: com.hermes.mobile.data.AssistantModeLogic.RoleStatus =
+        com.hermes.mobile.data.AssistantModeLogic.RoleStatus(
+            com.hermes.mobile.data.AssistantModeLogic.RoleState.None
+        ),
+    /**
+     * Tur-13: asistan modunu aç (mikrofon izni sessizce istenir, kayıt
+     * başlamaz). Sekmeyi çağıran ayarlar — `tab` bu composable'ın içinde.
+     */
+    onEnterAssistantMode: () -> Unit = {},
+    /** Tur-13: "Hermes'i varsayılan asistan yap" — sistem rol diyaloğu. */
+    onMakeDefaultAssistant: () -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(Tab.Chat) }
     // Tur-11: sesli mesaj durumu (kayıt sayacı + seslendirme fazı) ve sesle
@@ -601,6 +724,13 @@ private fun HermesApp(
     val pendingAction by chatViewModel.pendingAction.collectAsStateWithLifecycle()
     LaunchedEffect(pendingAction) {
         when (pendingAction) {
+            // Tur-13: asistan hareketi — sohbet öne gelir, bas-konuş öne çıkar,
+            // mikrofon izni sorulur. Kayıt KENDİLİĞİNDEN başlamaz.
+            "assistant" -> {
+                tab = Tab.Chat
+                backToSessions = false
+                onEnterAssistantMode()
+            }
             "voice" -> { tab = Tab.Chat; voiceSheet = true }
             "driving" -> {
                 onNeedNotification()
@@ -895,6 +1025,13 @@ private fun HermesApp(
                         onVoiceHoldRelease = chatViewModel::voiceHoldRelease,
                         onVoiceCancel = chatViewModel::voiceCancel,
                         onSpeak = chatViewModel::speak,
+                        // Tur-13: asistan şeridi — anahtarın tek kaynağı
+                        // Ayarlar'daki değer; şerit onu yazar.
+                        autoReadAssistant = settings.assistantAutoRead,
+                        onToggleAssistantAutoRead = { v ->
+                            viewModel.settingsStore.update { it.copy(assistantAutoRead = v) }
+                        },
+                        onExitAssistantMode = chatViewModel::exitAssistantMode,
                         )
                     }
                     Tab.Work -> WorkScreen(
@@ -989,6 +1126,10 @@ private fun HermesApp(
                         onRequestShizuku = chatViewModel.shizuku::requestPermission,
                         settings = settings,
                         customThemes = customThemes,
+                        // Tur-13: asistan rolü satırı — ölü değil, onResume'da
+                        // ve sistem diyaloğu dönüşünde tazelenir.
+                        assistantRole = assistantRoleState,
+                        onMakeDefaultAssistant = onMakeDefaultAssistant,
                         onUpdate = viewModel.settingsStore::update,
                         onSaveTheme = viewModel.settingsStore::saveTheme,
                         onDeleteTheme = viewModel.settingsStore::deleteTheme,
@@ -1055,6 +1196,15 @@ private fun HermesApp(
                     onNeedNotification()
                     voiceSheet = false
                     voiceViewModel.startDriving()
+                },
+                // Tur-13: "Yerel (Kahya)" seçildi — Gemini Live oturumu kapanır,
+                // asistan modu (yerel hat) açılır. İki motor birlikte çalışmaz.
+                onUseLocal = {
+                    voiceViewModel.stop()
+                    voiceSheet = false
+                    tab = Tab.Chat
+                    backToSessions = false
+                    onEnterAssistantMode()
                 },
             )
         }

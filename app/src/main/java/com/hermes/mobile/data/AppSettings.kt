@@ -198,6 +198,18 @@ data class AppSettings(
     /** Son çalıştığı doğrulanan ses ucu — sonraki açılışta öne alınır. */
     val voiceLastOk: String = "",
 
+    // ── Telefon asistanı (tur-13) ────────────────────────────────────
+    /**
+     * Asistan akışında yanıt kendiliğinden seslendirilsin mi.
+     *
+     * Varsayılan **AÇIK** — ama yalnız asistan bağlamında okunur:
+     * `AssistantModeLogic.shouldAutoRead` bu ayarı asistan modu bayrağıyla
+     * VE'liyor, normal sohbette ses başlamıyor. Kullanıcı bas-konuş yapıp
+     * sorusunu sorduğunda cevabı dinlemek istiyor; ayrıca dokunması gerekmesin.
+     */
+    val assistantAutoRead: Boolean = true,
+
+
     // ── Gizlilik ─────────────────────────────────────────────────────
     val biometricLock: Boolean = false,
     val maskToken: Boolean = true,
@@ -316,6 +328,11 @@ data class VoicePrefs(
     val url: String = "",
     /** Son çalışan adres — ilk aday olur. */
     val lastOk: String = "",
+    /**
+     * Asistan akışında yanıt otomatik okunsun mu — varsayılan AÇIK, ama
+     * yalnız asistan bağlamında etkili ([AssistantModeLogic.shouldAutoRead]).
+     */
+    val assistantAutoRead: Boolean = true,
 )
 
 /** Ayarlardan ses tercihlerini çözer; bilinmeyen motor adı varsayılana düşer. */
@@ -324,6 +341,7 @@ fun AppSettings.toVoicePrefs(): VoicePrefs = VoicePrefs(
     engine = VoiceSpeakLogic.Engine.fromId(voiceEngine),
     url = voiceUrl,
     lastOk = voiceLastOk,
+    assistantAutoRead = assistantAutoRead,
 )
 
 private const val PREFS = "hermes_settings"

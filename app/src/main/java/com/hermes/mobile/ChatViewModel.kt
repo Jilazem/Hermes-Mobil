@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.AwaitReplyService
+import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
 import com.hermes.mobile.data.PhoneIntent
@@ -198,6 +199,15 @@ data class ChatState(
      * balonlar yalnız bu bayrak açıkken ve hiç mesaj yokken çizilir.
      */
     val historyLoading: Boolean = false,
+    /**
+     * Telefon asistanı modu (tur-13).
+     *
+     * ASSIST hareketiyle (ya da canlı ses sheet'inden "Yerel (Kahya)" seçimiyle)
+     * açılır: sohbet ekranı öne gelir, bas-konuş öne çıkar ve gönderilen sesli
+     * mesajın yanıtı kendiliğinden seslendirilir. Normal sohbet davranışı
+     * (metin önce girdiye düşer, ses kullanıcı dokununca başlar) DEĞİŞMEZ.
+     */
+    val assistantMode: Boolean = false,
 )
 
 /**
@@ -526,6 +536,17 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             voiceMsg.engine = value.engine
         }
 
+    /**
+     * Tur-13: asistan akışında yanıtı kendiliğinden oku (ayar, varsayılan açık).
+     *
+     * Ayrı tutuluyor çünkü [VoiceMessageController.autoSend]'ten farklı bir
+     * karar: okuma yalnız asistan modunda etkili
+     * ([AssistantModeLogic.shouldAutoRead]).
+     */
+    @Volatile
+    var assistantAutoRead: Boolean = true
+
+
     /** Çalışan ses ucu adresi hatırlandı — MainActivity ayarlara yazar. */
     var onVoiceBase: (String) -> Unit = {}
 
@@ -545,7 +566,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         voiceMsg.onTranscript = { text ->
-            if (voiceMsg.autoSend) send(text) else _voicePrefill.value = text
+            // Tur-13: asistan akışında metin doğrudan gönderilir (bas-konuş'un
+            // amacı soruyu sormak). Normal sohbette karar kullanıcı ayarında.
+            if (AssistantModeLogic.autoSendTranscript(_state.value.assistantMode, voiceMsg.autoSend)) {
+                send(text)
+            } else {
+                _voicePrefill.value = text
+            }
         }
         // Hata sessiz kalmasın: sohbet akışına bildirim düşer (DiagLog'a da
         // istemci içinden yazılıyor).
@@ -564,6 +591,28 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     fun voiceHoldRelease() = voiceMsg.holdRelease()
 
     fun voiceCancel() = voiceMsg.cancelRecording()
+
+    // ── Telefon asistanı (tur-13) ────────────────────────────────────
+
+    /**
+     * Asistan modunu açar — ASSIST hareketi ya da canlı ses sheet'indeki
+     * "Yerel (Kahya)" seçimi buradan geçer.
+     *
+     * Kayıt KENDİLİĞİNDEN başlamaz: mod yalnız bas-konuş'u öne çıkarır ve
+     * yanıt okumasını açar; mikrofonu kullanıcı basar. Mikrofon izni çağıran
+     * taraf (Activity) ister — izin diyaloğu gerçekten gerekiyorsa.
+     */
+    fun enterAssistantMode() {
+        _state.update { it.copy(assistantMode = true) }
+        DiagLog.i("asistan", "mod acildi (yerel hat)")
+    }
+
+    /** Asistan modundan çık — normal sohbet davranışına dön. */
+    fun exitAssistantMode() {
+        voiceMsg.stopSpeaking()
+        _state.update { it.copy(assistantMode = false) }
+        DiagLog.i("asistan", "mod kapatildi")
+    }
 
     /** Asistan balonunu seslendir/durdur (aynı balona ikinci dokunuş durdurur). */
     fun speak(key: String, text: String) = voiceMsg.speak(key, text)
@@ -1777,6 +1826,18 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 // Sesli kip açıkken yanıtı oku; TTS bitince eller-serbest döngü
                 // kendiliğinden yeniden dinlemeye geçer.
                 if (_state.value.handsFree && spoken.isNotBlank()) voice.speak(spoken)
+                // Tur-13: telefon asistanı akışı — YEREL hat (voice_api/whisper +
+                // kahya) üzerinden kendiliğinden seslendir. Karar saf katmanda:
+                // normal sohbette ayar açık olsa bile OKUMAZ (asistan modu şart).
+                if (
+                    AssistantModeLogic.shouldAutoRead(
+                        assistantMode = _state.value.assistantMode,
+                        settingOn = assistantAutoRead,
+                        reply = spoken,
+                    )
+                ) {
+                    voiceMsg.speak(key.orEmpty(), spoken)
+                }
                 // Kullanıcı uygulamadan çıktıysa yanıtı bildirim olarak göster.
                 if (spoken.isNotBlank()) {
                     Notifier.agentReply(

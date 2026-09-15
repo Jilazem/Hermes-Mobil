@@ -66,6 +66,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.lazy.items
 import com.hermes.mobile.data.ShizukuBridge
+import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.VoiceSpeakLogic
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.LogResponse
@@ -128,6 +129,16 @@ fun SettingsScreen(
     onVoiceWarmReset: (VoiceSpeakLogic.Engine) -> Unit = {},
     /** Tur-12: `Isıt` durum makinesi (MainActivity'den akış olarak gelir). */
     voiceWarmState: VoiceStatusLogic.WarmState = VoiceStatusLogic.WarmState(),
+    /**
+     * Tur-13: asistan rolü durumu — `RoleManager.getRoleHolders(ROLE_ASSISTANT)`.
+     *
+     * Saf katmanda hesaplanır ([AssistantModeLogic.roleStatus]); burada yalnız
+     * satır çizilir. MainActivity her `onResume`da tazeler.
+     */
+    assistantRole: AssistantModeLogic.RoleStatus =
+        AssistantModeLogic.RoleStatus(AssistantModeLogic.RoleState.None),
+    /** "Hermes'i varsayılan asistan yap" — sistem rol diyaloğunu açar. */
+    onMakeDefaultAssistant: () -> Unit = {},
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
@@ -587,6 +598,88 @@ fun SettingsScreen(
                     state = shizukuState,
                     onToggle = { v -> onUpdate { it.copy(shizukuEnabled = v) } },
                     onRequestPermission = onRequestShizuku,
+                )
+            }
+
+            // ── Telefon asistanı (tur-13) ────────────────────────────────
+        }
+
+        if (open == SettingsCategory.Assistant) {
+            item { Header(S.t2("Telefon asistanı", "Phone assistant")) }
+
+            item {
+                AssistantRoleRow(
+                    role = assistantRole,
+                    onMakeDefault = onMakeDefaultAssistant,
+                )
+            }
+
+            item {
+                SwitchRow(
+                    S.t2("Asistan yanıtını otomatik oku", "Read the assistant reply aloud"),
+                    S.t2(
+                        "Yalnız asistan akışında geçerli: bas-konuş ile sorduğun " +
+                            "sorunun yanıtı gelince kendiliğinden okunur. Normal " +
+                            "sohbette seslendirme değişmez — balondaki hoparlöre " +
+                            "dokunman gerekir.",
+                        "Only inside the assistant flow: the reply to a push-to-talk " +
+                            "question is read out automatically. Normal chat is " +
+                            "unchanged — tap the speaker on the bubble.",
+                    ),
+                    settings.assistantAutoRead,
+                ) { v -> onUpdate { it.copy(assistantAutoRead = v) } }
+            }
+
+            item {
+                HermesCard(Modifier.fillMaxWidth()) {
+                    Text(
+                        S.t2("Asistan hangi ses hattını kullanır", "Which voice path the assistant uses"),
+                        color = HermesColors.TextPrimary,
+                        fontSize = 14.sp,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        S.t2(
+                            "Yerel (Kahya) — VARSAYILAN. Ses, sunucudaki voice_api " +
+                                "(:8174) üzerinden yazıya çevrilir ve yanıt yine orada " +
+                                "seslendirilir; konuşma Google'a gitmez.",
+                            "Local (Kahya) — DEFAULT. Audio is transcribed through the " +
+                                "voice_api on your server (:8174) and the reply is " +
+                                "synthesised there too; the exchange never goes to Google.",
+                        ),
+                        color = HermesColors.TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        S.t2(
+                            "Gemini Live — isteğe bağlı, ayrı bir özellik olarak duruyor " +
+                                "(canlı ses ekranındaki \"Gemini Live\" sekmesi). Asistan " +
+                                "hareketi artık oraya gitmez.",
+                            "Gemini Live — optional and still available (the \"Gemini Live\" " +
+                                "tab on the live voice screen). The assistant gesture no " +
+                                "longer opens it.",
+                        ),
+                        color = HermesColors.TextMuted,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp,
+                    )
+                }
+            }
+
+            item {
+                Text(
+                    S.t2(
+                        "Asistan modu: sohbet açılır, mikrofon öne çıkar ve kayıt " +
+                            "SENDEN bekler — asistan hareketi tek başına mikrofonu açmaz.",
+                        "Assistant mode: chat opens, the microphone comes forward and " +
+                            "recording waits for YOU — the gesture alone never opens the mic.",
+                    ),
+                    color = HermesColors.TextMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                 )
             }
 
@@ -1238,8 +1331,83 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
 
 
 
+/**
+ * Tur-13: "Telefon asistanı" — rol durumu + sistem diyaloğunu açan düğme.
+ *
+ * Rol desteklenmiyorsa (API < 29 ya da cihaz rolü sunmuyor) düğme yerine
+ * kısa elle atama adımları gösterilir; sessiz kalan bir düğme bırakılmaz.
+ */
+@Composable
+private fun AssistantRoleRow(
+    role: AssistantModeLogic.RoleStatus,
+    onMakeDefault: () -> Unit,
+) {
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text(
+            S.t2("Varsayılan asistan", "Default assistant"),
+            color = HermesColors.TextPrimary,
+            fontSize = 14.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            AssistantModeLogic.roleLine(role, ::tr),
+            color = when (role.state) {
+                AssistantModeLogic.RoleState.Hermes -> HermesColors.Online
+                AssistantModeLogic.RoleState.Unsupported -> HermesColors.TextMuted
+                else -> HermesColors.TextSecondary
+            },
+            fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+
+        val canRequest = AssistantModeLogic.canRequestRole(role)
+        if (canRequest) {
+            SmallButton(S.t2("Hermes'i varsayılan asistan yap", "Make Hermes the default assistant")) {
+                onMakeDefault()
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                S.t2(
+                    "Android 12 ve üstünde sistem, rolü yalnız Ayarlar'dan atatabiliyor " +
+                        "— düğme diyaloğu açar, kapanırsa seni doğrudan Ayarlar → " +
+                        "Varsayılan uygulamalar → Dijital asistan ekranına götürür.",
+                    "On Android 12+ the system only lets the role be set from Settings — " +
+                        "the button opens the dialog and, if it closes, takes you straight " +
+                        "to Settings → Default apps → Digital assistant.",
+                ),
+                color = HermesColors.TextMuted,
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+            )
+        } else {
+            // Rol API'si yok: kullanıcıyı adımlarla Ayarlar'a yönlendir.
+            AssistantModeLogic.manualSteps(::tr).forEach { step ->
+                Text(
+                    "• $step",
+                    color = HermesColors.TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
+        Text(
+            S.t2(
+                "Asistan hareketi (ana ekrandan yukarı kaydırma / güç tuşu) Hermes'i " +
+                    "açtığında mikrofon hazır bekler — kayıt sen basınca başlar.",
+                "When the assistant gesture (swipe up from a corner / power button) opens " +
+                    "Hermes, the microphone waits ready — recording starts when you press.",
+            ),
+            color = HermesColors.TextMuted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+    }
+}
+
 /** Ayar kategorileri — panonun bölüm listesiyle aynı desen. */
-enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Server, Privacy, Developer }
+enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, Developer }
 
 @Composable
 private fun catLabel(c: SettingsCategory): String = when (c) {
@@ -1248,6 +1416,7 @@ private fun catLabel(c: SettingsCategory): String = when (c) {
     SettingsCategory.Chat -> S.t2("Sohbet", "Chat")
     SettingsCategory.General -> S.t2("Genel", "General")
     SettingsCategory.Phone -> S.t2("Telefon denetimi", "Phone control")
+    SettingsCategory.Assistant -> S.t2("Telefon asistanı", "Phone assistant")
     SettingsCategory.Server -> S.t2("Sunucu", "Server")
     SettingsCategory.Privacy -> S.t2("Gizlilik ve bildirim", "Privacy & notifications")
     SettingsCategory.Developer -> S.t2(S.t2("Geliştirici", "Developer"), "Developer")
@@ -1260,6 +1429,7 @@ private fun catHint(c: SettingsCategory): String = when (c) {
     SettingsCategory.Chat -> S.t2("Düşünme, araçlar, geçmiş", "Thinking, tools, history")
     SettingsCategory.General -> S.t2("Arayüz dili, çıkış onayı", "Interface language, exit confirmation")
     SettingsCategory.Phone -> S.t2("Sesli asistanın telefonu kullanması", "Letting voice use the phone")
+    SettingsCategory.Assistant -> S.t2("Varsayılan asistan, yerel ses", "Default assistant, local voice")
     SettingsCategory.Server -> S.t2("Spark izleme, yenileme aralıkları", "Spark monitoring, refresh intervals")
     SettingsCategory.Privacy -> S.t2("Kilit, token, bildirimler", "Lock, token, notifications")
     SettingsCategory.Developer -> S.t2("Ham olaylar", "Raw events")

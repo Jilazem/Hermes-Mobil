@@ -174,6 +174,15 @@ fun ChatScreen(
     onVoiceCancel: () -> Unit = {},
     /** Asistan balonunu seslendir/durdur — (balon anahtarı, metin). */
     onSpeak: (String, String) -> Unit = { _, _ -> },
+    /**
+     * Tur-13: asistan modu şeridi — "yanıtı otomatik oku" anahtarının durumu
+     * (`AppSettings.assistantAutoRead`).
+     */
+    autoReadAssistant: Boolean = true,
+    /** Anahtar değişti — Ayarlar'daki aynı değere yazılır (tek kaynak). */
+    onToggleAssistantAutoRead: (Boolean) -> Unit = {},
+    /** Asistan modundan çık — normal sohbet davranışına dön. */
+    onExitAssistantMode: () -> Unit = {},
 ) {
     // Sheet burada açılıyor: taslak `draft` bu kompozablda, "satıra dokun →
     // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
@@ -384,6 +393,24 @@ fun ChatScreen(
                     modifier = Modifier.padding(horizontal = 18.dp, vertical = 2.dp),
                 )
             }
+
+        // ── Telefon asistanı şeridi (tur-13) ─────────────────────────────
+        // Asistan modunda bas-konuş ÖNE ÇIKAR: faz ipucu + "yanıtı otomatik
+        // oku" anahtarı + çıkış. Mikrofonu açan tek şey kullanıcının basışı;
+        // bu şerit yalnız durumu gösterir.
+        if (state.assistantMode) {
+            AssistantBanner(
+                phase = com.hermes.mobile.data.AssistantModeLogic.phase(
+                    active = true,
+                    record = voice.record,
+                    speak = voice.speak,
+                    agentBusy = state.agentBusy,
+                ),
+                autoRead = autoReadAssistant,
+                onToggleAutoRead = onToggleAssistantAutoRead,
+                onExit = onExitAssistantMode,
+            )
+        }
 
         ChatComposer(
             draft = draft,
@@ -1322,6 +1349,91 @@ private fun ProfileChipsRow(
                         fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal,
                     )
                 },
+            )
+        }
+    }
+}
+
+/**
+ * Tur-13: telefon asistanı şeridi — bas-konuş öne çıkar, durum tek satırda.
+ *
+ * Şerit HİÇBİR ŞEYİ kendiliğinden başlatmaz: mikrofon yalnız kullanıcının
+ * basışıyla açılır (asistan hareketi mikrofonu açmaz — yanlışlıkla kayıt
+ * olmasın). "Yanıtı otomatik oku" anahtarı Ayarlar'daki aynı değeri yazar
+ * (tek kaynak), böylece iki yerde ayrı doğruluk tutulmaz.
+ */
+@Composable
+private fun AssistantBanner(
+    phase: com.hermes.mobile.data.AssistantModeLogic.Phase,
+    autoRead: Boolean,
+    onToggleAutoRead: (Boolean) -> Unit,
+    onExit: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+            .background(HermesColors.SurfaceDim, RoundedCornerShape(11.dp))
+            .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(11.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.RecordVoiceOver,
+                contentDescription = null,
+                tint = HermesColors.Online,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                com.hermes.mobile.data.AssistantModeLogic.bannerText(phase, ::tr),
+                color = HermesColors.TextPrimary,
+                fontSize = 13.sp,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                S.t2("Çık", "Exit"),
+                color = HermesColors.TextMuted,
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .clickable(onClick = onExit)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            S.t2(
+                "Yerel hat · voice_api · Google'a gitmez",
+                "Local path · voice_api · never goes to Google",
+            ),
+            color = HermesColors.TextFaint,
+            fontSize = 10.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier
+                .background(HermesColors.Surface, RoundedCornerShape(20.dp))
+                .border(
+                    1.dp,
+                    if (autoRead) HermesColors.Midground else HermesColors.BorderStrong,
+                    RoundedCornerShape(20.dp),
+                )
+                .clickable { onToggleAutoRead(!autoRead) }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.VolumeUp,
+                contentDescription = null,
+                tint = if (autoRead) HermesColors.Midground else HermesColors.TextFaint,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(7.dp))
+            Text(
+                if (autoRead) S.t2("Yanıtı otomatik oku ✓", "Auto-read reply ✓")
+                else S.t2("Yanıtı otomatik oku", "Auto-read reply"),
+                color = if (autoRead) HermesColors.TextSecondary else HermesColors.TextFaint,
+                fontSize = 11.sp,
             )
         }
     }

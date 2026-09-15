@@ -31,5 +31,16 @@
             android:label="Sesli Mesaj Öz-Testi"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
+
+        <!-- Tur-13: telefon asistanı öz-testi. Asistan modu kararlarını (saf
+             katman) + kayıt durum makinesini + gerçek istemciyle transcribe →
+             oto-okuma → sentez → çalma zincirini koşturur. Token intent
+             extra'sıyla geçirilir; kaynakta/kalıcı depoda durmaz. -->
+        <activity
+            android:name=".ui.AssistantSelfTestActivity"
+            android:exported="true"
+            android:label="Asistan Öz-Testi"
+            android:noHistory="true"
+            android:theme="@style/Theme.HermesMobile" />
     </application>
 </manifest>
