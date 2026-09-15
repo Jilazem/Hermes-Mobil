@@ -1,0 +1,17 @@
+--- APK dex icinde yeni UI metni ve sabit ---
+yeni-ui-metni(bazen 5 dk) = 0
+eski-ui-metni(3 dakikaya kadar) = 0
+warm-420-mesaji = 0
+--- sabit (kaynak) ---
+45:    const val SYNTH_TIMEOUT_MS = 420_000L
+--- git ---
+45b0ab8 docs(tur-12b): report section + run evidence (test log, 574 tests, APK sha256, health check)
+2f6ace8 fix(tur-12b): synth client timeout 300 -> 420 s (safety margin) + consistent UI copy
+?? denetim/__pycache__/
+?? denetim/tur11/validate_tur11.py
+?? denetim/tur12b/son_teyit.sh
+?? denetim/tur12b/son_teyit.txt
+?? denetim/verdict-tur11.json
+fc1439b Hız göstergesi + ray seçim düzeltmesi
+--- yarn: uzak dal farki (push YOK teyidi) ---
+upstream yok (push edilmedi)

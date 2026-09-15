@@ -204,3 +204,68 @@ emulator-*.png,ui-*.xml,boot_emulator.sh,pull_prefs*.sh}`, `tools/tur12/mock_voi
 - Fiziksel telefonda bas-konuş + ogg/opus gerçek kayıt kanıtı (izin akışı dahil).
 - Sesli okuma kuyruğu, hız/ton ayarı; "Isıt" sonrası kısa bir deneme cümlesi çalma (kullanıcı
   motorun gerçekten konuştuğunu duysun).
+
+---
+
+# TUR-12b — "sentez tavanına güvenlik payı" (mini düzeltme) — RAPOR
+
+Tarih: 2026-09-15 · Repo: `/Users/gokhanuzman/hermes-workspace/wt-android-uzman`
+Dal: `feat/android-uzman-devralma` · Taban HEAD: **`c6dff3d`** (tur-12 tepesi) · **Push YOK**.
+
+## 1. Neden (tur-12 §B-1 canlı ölçümünün doğrudan sonucu)
+
+| Ölçüm (tur-12, gerçek makine) | Değer |
+|---|---|
+| Soğuk ilk `POST /synthesize` (kahya) | **297,5 sn** |
+| Isınmış ikinci çağrı | **5,3 sn** |
+| O günkü istemci tavanı | **300 sn** → yalnız **~2,5 sn** kil payı |
+
+Soğuk yol **motor değişiminde / ilk kullanımda** gerçekleşir → risk gerçek, kabul edilemez
+kil payı. tur-12 §9 öneri #1 (tavan 420 sn) bu turda uygulandı.
+
+## 2. Ne değişti
+
+| # | Değişiklik | Dosya / kanıt |
+|---|---|---|
+| 1 | `SYNTH_TIMEOUT_MS` **300_000 → 420_000** (=420 sn) | `data/VoiceApiEndpoints.kt:45` (tek sabit; `VoiceApiClient` okuma yolu bu sabiti kullanır → read 420 sn, call 450 sn = `+30 sn`) |
+| 2 | Isıtma tavanı sabiti **takma ad** olduğu için otomatik 420 sn | `data/VoiceStatusLogic.kt:40 WARM_TIMEOUT_MS = VoiceApiEndpoints.SYNTH_TIMEOUT_MS`; `warmTimeoutMsg` metni sabitten üretilir → "Isıtma **420** sn'de tamamlanmadı…" |
+| 3 | **Kayıt ve transcribe süreleri DEĞİŞMEDİ** | `MAX_RECORD_MS = 60_000L` (sözleşme <=60 sn) aynen; yükleme istemcisi `write 60 sn / call 90 sn` aynen. Test: `VoiceApiClientTest` içinde `MAX_RECORD_MS == 60_000` teyidi |
+| 4 | UI bilgisi tutarlı: **"ilk yanıt 2-3 dk sürebilir (bazen 5 dk'ya kadar)"** (TR+EN) | **Isıt ipucu** `VoiceStatusLogic.coldHint`; **soğuk başlangıç uyarısı** `VoiceSpeakLogic.statusLine` (8 sn sonra); motor ipucu `VoiceSpeakLogic.engineHint(KAHYA)`. Düğme etiketi `Isıtılıyor… (~2-3 dk)` ve durumlar değişmedi |
+| 5 | Yorum/Kdoc atıfları tazelendi (300→420; "tur-12 canlı ölçümü 297,5 sn") | `VoiceApiClient`, `VoiceMessageController`, `SettingsScreen`, `VoiceApiEndpoints`, `VoiceSpeakLogic`, `VoiceStatusLogic` — **davranış değişikliği yok** (yalnız yorum) |
+
+**Başka davranış değişikliği yok:** sentez yolu dışında hiçbir sabit/mantık değişmedi;
+`relay/`, `gateway`, `caddy` **hiç dokunulmadı** (bu turda okunmadı bile).
+
+## 3. Kanıt
+
+- **Koşum:** `denetim/tur12b/derle.sh` → `denetim/tur12b/test.log`
+  (`JAVA_HOME` jdk-17 + gradle 8.9, `testDebugUnitTest assembleDebug --rerun-tasks`):
+  **`BUILD SUCCESSFUL`, `GRADLE-EXIT=0`**, 41 görev — hepsi `executed` (cache yanılsaması yok).
+- **Testler:** `denetim/tur12b/sayi.sh` → 45 XML · **tests=574 failures=0 errors=0 skipped=0**
+  (tur-12 ile **aynı** sayı; yeni test eklenmedi, sabite bağlı testler güncellendi):
+  - `VoiceApiClientTest."sentez zaman asimi guvenlik payiyla 420 sn"` → `SYNTH_TIMEOUT_MS == 420_000` + `MAX_RECORD_MS == 60_000`
+  - `VoiceStatusLogicTest."isitma tavani sentez zaman asimiyla ayni 420 sn"` → `WARM_TIMEOUT_MS == SYNTH_TIMEOUT_MS == 420_000`
+  - `VoiceStatusLogicTest."zaman asimi satiri tavani soyler"` → mesaj "420 sn" içerir
+  - `VoiceApiEndpointsTest."sozlesme tavanlari sabit"` → `SYNTH_TIMEOUT_MS >= 420_000`, kayıt tavanı 60 sn sabit
+  - UI tutarlılığı **testle bağlandı**: `coldHint` ve soğuk başlangıç uyarısı ikisi de `2-3 dk` + `5 dk` içeriyor
+- **APK:** `app/build/outputs/apk/debug/app-debug.apk` — **24.303.218 bayt**,
+  sha256 `fb8f52b6269901cf47ba22c372ef1e293a115a063c71d27321ac0d1afa70a2db` (`denetim/tur12b/kanit.txt`).
+- **APK içeriği (uçtan uca teyit):** `denetim/tur12b/dex_teyit.sh` → `dex_teyit.txt`:
+  `classes3.dex` içinde yeni metin **`bazen 5 dk` 3 kez** (coldHint + soğuk başlangıç uyarısı +
+  Kahya motor ipucu) ve `sn'de tamamlanmad` (ısıtma tavanı mesajı) **var**; eski metin
+  `3 dakikaya kadar` **0** → derlenen APK gerçekten yeni kopyayı taşıyor ("kaynakta değişti, APK'da yok" riski elendi).
+- **Kahya servisi dokunulmadan AÇIK:** `denetim/tur12b/health.py` → `denetim/tur12b/health.json`:
+  bu turda **0** `/synthesize` çağrısı; `GET /health` **200** →
+  `{"ok":true,"stt":"acik","engines":{"kahya":"hazir","chatterbox":"kapali","kadin":"kapali"}}`
+  (tur-12 sonundaki hâl **aynı**); tokensiz `GET /health` **403** `yetkisiz` (fail-closed teyidi).
+- **Araç/kanıt dosyaları:** `denetim/tur12b/{derle.sh,test.log,sayi.sh,kanit.sh,kanit.txt,health.py,health.json,health.txt}`
+  (rapor metni bu dosyada, tur-12 RAPOR.md içinde).
+
+## 4. Kalan risk (dürüst)
+
+1. Gerçek soğuk ölçüm (297,5 sn) bu turda **tekrarlanmadı** (kısıt: motor ısıtma) → 420 sn tavanının
+   yeterliliği ölçüme göre ~**120 sn** pay ile **gerekçeli**, yeniden ölçümle teyit değil.
+2. Zaman aşımında otomatik **tek yeniden deneme** (ısınmış çağrı 5,3 sn) hâlâ açık öneri (tur-13).
+3. Emülatör/cihaz koşumu bu turda yapılmadı — metin/etiket değişiklikleri **saf fonksiyon** +
+   birim testle bağlı (`coldHint`, `statusLine`, `engineHint`), UI dökümü kanıtı tur-12'ninkidir.
+

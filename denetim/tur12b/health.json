@@ -1,0 +1,15 @@
+{
+  "base": "http://192.168.1.101:8174",
+  "token_present": true,
+  "synthesize_calls": 0,
+  "health_tokenli": {
+    "code": 200,
+    "ms": 10,
+    "text": "{\"ok\": true, \"stt\": \"acik\", \"engines\": {\"kahya\": \"hazir\", \"chatterbox\": \"kapali\", \"kadin\": \"kapali\"}}"
+  },
+  "health_tokensiz": {
+    "code": 403,
+    "ms": 0,
+    "text": "{\"error\": \"yetkisiz\"}"
+  }
+}

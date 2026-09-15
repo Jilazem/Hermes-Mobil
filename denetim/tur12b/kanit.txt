@@ -1,0 +1,15 @@
+--- test XML zaman damgası ---
+-rw-r--r--@ 1 gokhanuzman  staff  1897 Sep 15 22:48 app/build/test-results/testDebugUnitTest/TEST-com.hermes.mobile.VoiceApiClientTest.xml
+-rw-r--r--@ 1 gokhanuzman  staff  3372 Sep 15 22:48 app/build/test-results/testDebugUnitTest/TEST-com.hermes.mobile.VoiceStatusLogicTest.xml
+--- yeni test adları (XML) ---
+app/build/test-results/testDebugUnitTest/TEST-com.hermes.mobile.VoiceApiClientTest.xml:name="sentez zaman asimi guvenlik payiyla 420 sn"
+app/build/test-results/testDebugUnitTest/TEST-com.hermes.mobile.VoiceStatusLogicTest.xml:name="isitma tavani sentez zaman asimiyla ayni 420 sn"
+--- eski ad kaldı mı (0 olmalı) ---
+0
+--- APK ---
+boyut=24303218 bayt
+fb8f52b6269901cf47ba22c372ef1e293a115a063c71d27321ac0d1afa70a2db  app/build/outputs/apk/debug/app-debug.apk
+--- sabitler ---
+app/src/main/java/com/hermes/mobile/data/VoiceApiEndpoints.kt:31:    const val MAX_RECORD_MS = 60_000L
+app/src/main/java/com/hermes/mobile/data/VoiceApiEndpoints.kt:45:    const val SYNTH_TIMEOUT_MS = 420_000L
+app/src/main/java/com/hermes/mobile/data/VoiceStatusLogic.kt:40:    const val WARM_TIMEOUT_MS = VoiceApiEndpoints.SYNTH_TIMEOUT_MS

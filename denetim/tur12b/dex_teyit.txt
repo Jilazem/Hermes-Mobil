@@ -1,0 +1,19 @@
+--- dex dosyalari ---
+classes.dex
+classes2.dex
+classes3.dex
+classes4.dex
+classes5.dex
+classes6.dex
+classes7.dex
+classes8.dex
+classes9.dex
+classes.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
+classes2.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
+classes3.dex : yeni_ui=3 eski_ui=0 isit_ipucu=0 warm_mesaji=1
+classes4.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
+classes5.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
+classes6.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
+classes7.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
+classes8.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
+classes9.dex : yeni_ui=0 eski_ui=0 isit_ipucu=0 warm_mesaji=0
