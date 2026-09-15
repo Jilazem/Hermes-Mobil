@@ -34,10 +34,15 @@ object VoiceApiEndpoints {
      * Sentez okuma zaman aşımı (ms).
      *
      * Ses ucu ekibinin 15.09 ölçümü: **ilk sentez SOĞUKKEN 173-187 sn**
-     * sürüyor (motorlar tembel açılıyor). Bu yüzden istemci okuma zaman aşımı
-     * 300 sn'den kısa olamaz; [VoiceApiClient] bu değeri kullanır.
+     * sürüyordu (motorlar tembel açılıyor). tur-12 **canlı** ölçümü bu
+     * iddianın üzerine çıktı: soğuk `/synthesize` **297,5 sn** → 300 sn
+     * tavanında yalnız ~2,5 sn güvenlik payı kalıyordu (motor değişiminde/
+     * ilk kullanımda risk). tur-12b: tavan **420 sn** (ısınmış çağrı 5,3 sn;
+     * soğuk yola ~120 sn pay) — kayıt ([MAX_RECORD_MS]) ve `/transcribe`
+     * zaman aşımları DEĞİŞMEZ, yalnız sentez okuma yolu uzar.
+     * [VoiceApiClient] bu değeri kullanır.
      */
-    const val SYNTH_TIMEOUT_MS = 300_000L
+    const val SYNTH_TIMEOUT_MS = 420_000L
 
     data class Attempt(val base: String, val code: Int, val detail: String = "") {
         val reachable: Boolean get() = code > 0

@@ -327,8 +327,10 @@ class VoiceMessageController(
     /**
      * Seçili motoru kısa sabit cümleyle ısıtır (`POST /synthesize`).
      *
-     * Motor **gerçekten** yüklenir: soğukken 173-187 sn sürer, bu yüzden tavan
-     * [VoiceStatusLogic.WARM_TIMEOUT_MS] = 300 sn. **Çift tık koruması**
+     * Motor **gerçekten** yüklenir: soğukken 173-187 sn (tur-12 canlı ölçümü
+     * **297,5 sn**) sürer, bu yüzden tavan
+     * [VoiceStatusLogic.WARM_TIMEOUT_MS] = 420 sn (tur-12b güvenlik payı).
+     * **Çift tık koruması**
      * [VoiceStatusLogic.warmStart]tadır — ısıtma sürerken ikinci çağrı hiçbir
      * istek üretmez. Isıtma işi [scope] içinde koşar: kullanıcı bölümden
      * çıksa da motor yüklenmeye devam eder.

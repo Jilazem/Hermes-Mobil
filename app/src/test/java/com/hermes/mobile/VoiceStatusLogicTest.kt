@@ -20,8 +20,8 @@ import org.junit.Test
  *  - `/health` gövdesi **yapılandırılmış** satıra çözülür ve eksik bilgi
  *    fail-closed kapalı sayılır → 'Isıt' görünür.
  *  - Isıtma akışı (`Isıt → Isıtılıyor… (~2-3 dk) → Hazır ✓`) çift tıklama
- *    koruması, tavan (300 sn) ve motor değişimiyle sıfırlama ile birlikte
- *    deterministik koşar (sahte saat).
+ *    koruması, tavan (420 sn — tur-12b güvenlik payı) ve motor değişimiyle
+ *    sıfırlama ile birlikte deterministik koşar (sahte saat).
  */
 class VoiceStatusLogicTest {
 
@@ -145,6 +145,10 @@ class VoiceStatusLogicTest {
         val hint = VoiceStatusLogic.coldHint(t)
         assertTrue(hint.contains("Motor kapalı"))
         assertTrue(hint.contains("Isıt"))
+        // tur-12b: süre bilgisi soğuk başlangıç uyarısıyla AYNI olmalı
+        // ("ilk yanıt 2-3 dk sürebilir (bazen 5 dk'ya kadar)").
+        assertTrue(hint.contains("2-3 dk"))
+        assertTrue(hint.contains("5 dk"))
     }
 
     @Test
@@ -241,7 +245,7 @@ class VoiceStatusLogicTest {
     @Test
     fun `zaman asimi satiri tavani soyler`() {
         val msg = VoiceStatusLogic.warmTimeoutMsg(t)
-        assertTrue(msg.contains("300 sn"))
+        assertTrue(msg.contains("420 sn"))
         assertTrue(msg.contains("Yenile"))
     }
 
@@ -260,9 +264,9 @@ class VoiceStatusLogicTest {
     }
 
     @Test
-    fun `isitma tavani sentez zaman asimiyla ayni 300 sn`() {
+    fun `isitma tavani sentez zaman asimiyla ayni 420 sn`() {
         assertEquals(VoiceApiEndpoints.SYNTH_TIMEOUT_MS, VoiceStatusLogic.WARM_TIMEOUT_MS)
-        assertEquals(300_000L, VoiceStatusLogic.WARM_TIMEOUT_MS)
+        assertEquals(420_000L, VoiceStatusLogic.WARM_TIMEOUT_MS)
     }
 
     @Test

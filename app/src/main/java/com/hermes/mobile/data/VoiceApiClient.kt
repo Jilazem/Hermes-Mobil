@@ -41,7 +41,8 @@ private data class ErrorBody(@SerialName("error") val error: String = "")
  *
  * Okuma yolu **yazma yolundan farklı**: `/transcribe` kaydı yükler (<=60 sn,
  * yazma zaman aşımı 60 sn), `/synthesize` motoru ısıtır ve **soğukken
- * 173-187 sn** sürer → okuma zaman aşımı 300 sn ([VoiceApiEndpoints.SYNTH_TIMEOUT_MS]).
+ * 173-187 sn** (tur-12 canlı ölçümü: **297,5 sn**) sürer → okuma zaman aşımı
+ * 420 sn ([VoiceApiEndpoints.SYNTH_TIMEOUT_MS]).
  * Tek bir OkHttp istemcisinde ikisini birlikte ayarlamak ya yüklemeyi ya da
  * sentezi bozardı; bu yüzden iki ayrı istemci var.
  *
@@ -59,7 +60,7 @@ class VoiceApiClient(
     private val token: String = "",
     /** Adres sağlığı kaydının anahtarı — profil kimliği (kanal ayrı tutulur). */
     private val profileId: String = "voice",
-    /** Sentez okuma zaman aşımı — testte kısaltılabilir (varsayılan 300 sn). */
+    /** Sentez okuma zaman aşımı — testte kısaltılabilir (varsayılan 420 sn). */
     private val synthTimeoutMs: Long = VoiceApiEndpoints.SYNTH_TIMEOUT_MS,
 ) {
 

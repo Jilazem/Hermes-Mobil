@@ -141,6 +141,9 @@ class VoiceSpeakLogicTest {
         val late = VoiceSpeakLogic.waiting(VoiceSpeakLogic.start("a"), 9_000)
         val cold = VoiceSpeakLogic.statusLine(late, t)!!
         assertTrue(cold.contains("İlk yanıt uzun sürebilir"))
+        // tur-12b: süre bilgisi "Isıt" ipucuyla AYNI (2-3 dk, bazen 5 dk).
+        assertTrue(cold.contains("2-3 dk"))
+        assertTrue(cold.contains("5 dk"))
         assertEquals(8_000L, VoiceSpeakLogic.COLD_HINT_AFTER_MS)
     }
 

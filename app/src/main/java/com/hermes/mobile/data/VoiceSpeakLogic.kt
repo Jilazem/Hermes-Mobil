@@ -7,7 +7,8 @@ package com.hermes.mobile.data
  *  - `POST /synthesize {text, engine}` → `audio/ogg`; motorlar
  *    `kahya | chatterbox | kadin`, **varsayılan kahya**.
  *  - Motorlar **tembel** açılır (`kahya :8172`, `chatterbox :8173`); kapalıysa
- *    servis kendisi açar ve **ilk çağrı yavaştır** (soğukken 173-187 sn).
+ *    servis kendisi açar ve **ilk çağrı yavaştır** (soğukken 173-187 sn;
+ *    tur-12 canlı ölçümü **297,5 sn**).
  *    Bu yüzden UI'da "ilk yanıt uzun sürebilir" durumu gösterilir
  *    ([coldStartHint]).
  *  - Üretim önerisi: ana motor **kahya**, kadın ses için **kadin**;
@@ -66,8 +67,8 @@ object VoiceSpeakLogic {
     /** Motor açıklaması — Ayarlar satırının altı. */
     fun engineHint(engine: Engine, t: (String, String) -> String): String = when (engine) {
         Engine.KAHYA -> t(
-            "Ana motor. İlk sentez motoru ısıtır: 2-3 dakika sürebilir.",
-            "Primary engine. The first synthesis warms the engine: it can take 2-3 minutes.",
+            "Ana motor. İlk sentez motoru ısıtır: 2-3 dk sürebilir (bazen 5 dk'ya kadar).",
+            "Primary engine. The first synthesis warms the engine: 2-3 min (sometimes up to 5 min).",
         )
         Engine.KADIN -> t(
             "Kadın ses. Üretimde kadın ses için önerilen motor.",
@@ -92,8 +93,10 @@ object VoiceSpeakLogic {
         Phase.Downloading ->
             if (state.waitingMs >= COLD_HINT_AFTER_MS) {
                 t(
-                    "İlk yanıt uzun sürebilir: ses motoru şimdi açılıyor (soğukken 3 dakikaya kadar)",
-                    "The first reply can take a while: the voice engine is starting now (up to 3 minutes when cold)",
+                    "İlk yanıt uzun sürebilir: ses motoru şimdi açılıyor — " +
+                        "2-3 dk sürebilir (bazen 5 dk'ya kadar)",
+                    "The first reply can take a while: the voice engine is starting now — " +
+                        "2-3 min (sometimes up to 5 min)",
                 )
             } else {
                 t("Ses indiriliyor…", "Downloading audio…")

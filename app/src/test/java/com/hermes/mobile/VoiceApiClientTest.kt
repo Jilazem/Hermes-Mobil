@@ -270,10 +270,12 @@ class VoiceApiClientTest {
     }
 
     @Test
-    fun `sentez zaman asimi sozlesme geregi 300 sn`() = runBlocking {
-        // İlk sentez SOĞUKKEN 173-187 sn sürüyor (ses ucu ekibi ölçümü);
-        // 300 sn'den kısa tavan sentezi keserdi.
-        assertEquals(300_000L, com.hermes.mobile.data.VoiceApiEndpoints.SYNTH_TIMEOUT_MS)
+    fun `sentez zaman asimi guvenlik payiyla 420 sn`() = runBlocking {
+        // tur-12 canlı ölçümü: soğuk /synthesize 297,5 sn (173-187 sn iddiasının
+        // üzerinde) → 300 sn tavanında yalnız ~2,5 sn pay kalıyordu. tur-12b:
+        // tavan 420 sn. Kayıt (60 sn) ve transcribe (60/90 sn) DEĞİŞMEZ.
+        assertEquals(420_000L, com.hermes.mobile.data.VoiceApiEndpoints.SYNTH_TIMEOUT_MS)
+        assertEquals(60_000L, com.hermes.mobile.data.VoiceApiEndpoints.MAX_RECORD_MS)
         assertTrue(client().health().ok)
     }
 

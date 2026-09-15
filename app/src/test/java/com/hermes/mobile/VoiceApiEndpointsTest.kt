@@ -217,10 +217,10 @@ class VoiceApiEndpointsTest {
 
     @Test
     fun `sozlesme tavanlari sabit`() {
-        // Sözleşme: yükleme <=60 sn; ilk sentez soğukken 173-187 sn →
-        // okuma zaman aşımı 300 sn'den kısa olamaz.
+        // Sözleşme: yükleme <=60 sn (DEĞİŞMEZ); ilk sentez soğukken 173-187 sn,
+        // tur-12 canlı ölçümü 297,5 sn → istemci okuma tavanı güvenlik payıyla 420 sn.
         assertEquals(60_000L, VoiceApiEndpoints.MAX_RECORD_MS)
-        assertTrue(VoiceApiEndpoints.SYNTH_TIMEOUT_MS >= 300_000L)
+        assertTrue(VoiceApiEndpoints.SYNTH_TIMEOUT_MS >= 420_000L)
         assertEquals(8174, VoiceApiEndpoints.LAN_PORT)
         assertEquals("/voice-api", VoiceApiEndpoints.EXTERNAL_PATH)
     }

@@ -18,8 +18,9 @@ package com.hermes.mobile.data
  *     `Isıt → Isıtılıyor… (~2-3 dk) → Hazır ✓` (hata/timeout'ta net mesaj);
  *     çift tıklama koruması [warmStart]'ın aynı nesneyi döndürmesiyle sağlanır.
  *
- * Sözleşme: motorlar **tembel** açılır, soğuk ilk sentez 173-187 sn sürer →
- * tavan [WARM_TIMEOUT_MS] = [VoiceApiEndpoints.SYNTH_TIMEOUT_MS] = 300 sn.
+ * Sözleşme: motorlar **tembel** açılır, soğuk ilk sentez 173-187 sn sürer
+ * (tur-12 canlı ölçümü: **297,5 sn**) → tavan [WARM_TIMEOUT_MS] =
+ * [VoiceApiEndpoints.SYNTH_TIMEOUT_MS] = 420 sn (tur-12b güvenlik payı).
  */
 object VoiceStatusLogic {
 
@@ -35,7 +36,7 @@ object VoiceStatusLogic {
     /** Isıtma için gönderilen kısa sabit cümle — motoru yükler, uzun iş yapmaz. */
     const val WARM_SENTENCE = "Merhaba, sesli asistan hazır!"
 
-    /** Isıtma tavanı: istemci sentez zaman aşımıyla aynı (300 sn). */
+    /** Isıtma tavanı: istemci sentez zaman aşımıyla aynı (420 sn). */
     const val WARM_TIMEOUT_MS = VoiceApiEndpoints.SYNTH_TIMEOUT_MS
 
     /** Durum satırındaki parçaların sırası (sözleşmedeki motor sırası). */
@@ -166,10 +167,17 @@ object VoiceStatusLogic {
     fun warmVisible(probe: Probe?, engine: VoiceSpeakLogic.Engine): Boolean =
         probe?.health != null && !engineOpen(probe.health, engine)
 
-    /** "Şimdi dene" sonucu motor kapalı çıktığında gösterilen ipucu. */
+    /**
+     * "Şimdi dene" sonucu motor kapalı çıktığında gösterilen ipucu.
+     *
+     * Süre bilgisi soğuk başlangıç uyarısıyla ([VoiceSpeakLogic.statusLine])
+     * **aynı** olmalı: kullanıcı iki yerde aynı beklentiyi görsün.
+     */
     fun coldHint(t: (String, String) -> String): String = t(
-        "Motor kapalı — 'Isıt' ile ön-yüklersen ilk çağrı hızlı olur",
-        "The engine is off — preload it with 'Warm up' and the first call will be fast",
+        "Motor kapalı — 'Isıt' ile ön-yüklersen ilk çağrı hızlı olur. " +
+            "Isıtmasız ilk yanıt 2-3 dk sürebilir (bazen 5 dk'ya kadar)",
+        "The engine is off — preload it with 'Warm up' and the first call will be fast. " +
+            "Without warming, the first reply can take 2-3 min (sometimes up to 5 min)",
     )
 
     // ── Isıtma durum makinesi ─────────────────────────────────────────

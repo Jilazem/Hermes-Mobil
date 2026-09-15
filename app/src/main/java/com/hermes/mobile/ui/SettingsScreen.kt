@@ -752,7 +752,7 @@ private fun SwitchRow(title: String, detail: String?, value: Boolean, onChange: 
  *    (açık = yeşil [HermesColors.Online], kapalı = gri [HermesColors.Offline]).
  *  - `Isıt` yalnız seçili motor KAPALIYSA görünür; kısa sabit cümleyle
  *    `/synthesize` çağırıp motoru ön-yükler (durum: `Isıt → Isıtılıyor… (~2-3 dk)
- *    → Hazır ✓`; tavan [VoiceStatusLogic.WARM_TIMEOUT_MS] = 300 sn).
+ *    → Hazır ✓`; tavan [VoiceStatusLogic.WARM_TIMEOUT_MS] = 420 sn).
  *  - Isıtma durumu **denetleyicide** yaşar ([warm]): kullanıcı bölümden çıksa da
  *    yükleme sürer, geri döndüğünde "Hazır ✓" görünür.
  */
