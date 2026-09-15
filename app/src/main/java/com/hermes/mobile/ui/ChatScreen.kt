@@ -41,8 +41,13 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -103,6 +108,12 @@ fun ChatScreen(
     onOpenServers: () -> Unit = {},
     /** Üst çubuk Psychology ikonu: düşünce panosu alt sayfasını açar. */
     onOpenReasoning: () -> Unit = {},
+    /**
+     * ⋯ menüsünden çalışan ajana müdahale (KALAN-2): açık sohbette
+     * `session.steer` / `session.redirect` — talimat metni bir diyalogla
+     * sorulur, gönderim ChatViewModel'de yapılır.
+     */
+    onIntervene: (com.hermes.mobile.InterventionKind, String) -> Unit = { _, _ -> },
     /** Düşünce panosundaki çaba seçimi — `/reasoning <seviye>` slash komutu. */
     onReasoningLevel: (String) -> Unit = {},
     /** Gateway'in rapor ettiği aktif /reasoning seviyesi (null = bilinmiyor). */
@@ -142,6 +153,8 @@ fun ChatScreen(
     // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
     var promptsSheet by remember { mutableStateOf(false) }
     var reasoningSheet by remember { mutableStateOf(false) }
+    // KALAN-2: ⋯ → "Müdahale" bu diyaloğu açar (yalnız ajan çalışırken).
+    var interventionOpen by remember { mutableStateOf(false) }
 
     var draft by remember { mutableStateOf("") }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
@@ -196,11 +209,21 @@ fun ChatScreen(
             onOpenCommands,
             onOpenProfiles,
             onOpenReasoning = { reasoningSheet = true },
+            onIntervene = { interventionOpen = true },
+            onStop = onStop,
             activeProfileName,
         )
 
         Box(Modifier.weight(1f)) {
-            if (state.items.isEmpty()) {
+            // KALAN-1: geçmiş yüklenirken boş ekran yerine iskelet balonlar
+            // (boş-sohbet öneri ekranı ile "henüz gelmedi" karışmasın).
+            val historyPlaceholder = skeletonRowCount(state.historyLoading, state.items.size, placeholder = 4)
+            if (state.items.isEmpty() && historyPlaceholder > 0) {
+                ChatSkeleton(
+                    historyPlaceholder,
+                    Modifier.align(Alignment.TopCenter).padding(top = 14.dp),
+                )
+            } else if (state.items.isEmpty()) {
                 EmptyChatHint(
                     Modifier.align(Alignment.Center),
                     state.connection,
@@ -321,6 +344,50 @@ fun ChatScreen(
             onDismiss = { reasoningSheet = false },
         )
     }
+
+    // KALAN-2: açık sohbetten çalışan ajana müdahale — Canlı sekmesindeki
+    // diyaloğun aynısı (tek sözleşme: "Ekle" turu kesmez, "Yönlendir" çevirir).
+    if (interventionOpen) {
+        InterventionDialog(
+            session = interventionSession(state),
+            title = state.topic.takeIf { it.isNotBlank() } ?: S.t2("Oturum", "Session"),
+            sending = false,
+            onDismiss = { interventionOpen = false },
+            onSubmit = { kind, text ->
+                onIntervene(kind, text)
+                interventionOpen = false
+            },
+        )
+    }
+}
+
+/**
+ * Müdahale diyaloğu bir `LiveSession` bekliyor; açık sohbette elimizde yalnız
+ * sohbet state'i var. Köprü saf ve önemsiz görünse de tek yerde tutuluyor:
+ * başlık boşsa "Sohbet" yazılır (diyalog başlığı boş çıkmasın).
+ */
+fun interventionSession(state: ChatState): com.hermes.mobile.data.LiveSession =
+    com.hermes.mobile.data.LiveSession(
+        id = state.sessionId.orEmpty(),
+        sessionKey = state.sessionId.orEmpty(),
+        title = state.topic,
+    )
+
+/** ⋯ menüsü etiketi — dile göre. */
+@Composable
+private fun chatMenuLabel(action: ChatMenuAction): String = when (action) {
+    ChatMenuAction.Model -> S.t2("Model ve profiller", "Model and profiles")
+    ChatMenuAction.Reasoning -> S.t2("Düşünme", "Thinking")
+    ChatMenuAction.Intervene -> S.t2("Müdahale…", "Steer…")
+    ChatMenuAction.Stop -> S.t2("Durdur", "Stop")
+}
+
+/** ⋯ menüsü ikonu — saf eşleme (dil bağımsız). */
+private fun chatMenuIcon(action: ChatMenuAction) = when (action) {
+    ChatMenuAction.Model -> Icons.Default.Tune
+    ChatMenuAction.Reasoning -> Icons.Default.Psychology
+    ChatMenuAction.Intervene -> Icons.Default.EditNote
+    ChatMenuAction.Stop -> Icons.Default.Stop
 }
 
 @Composable
@@ -332,8 +399,11 @@ private fun ChatHeader(
     onOpenCommands: () -> Unit,
     onOpenProfiles: () -> Unit,
     onOpenReasoning: () -> Unit,
+    onIntervene: () -> Unit,
+    onStop: () -> Unit,
     activeProfileName: String,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
     // Tur-4 (P2 #7): model etiketi ve "bağlı" rozeti üst şeritten ÇIKTI.
     // Bağlantı yalnız KOPUNCA görünür (kırmızı "bağlantı yok"); sağlıklı
     // durumda sessiz — Telegram da "bağlıyım" demez.
@@ -376,14 +446,52 @@ private fun ChatHeader(
             }
         }
 
-        // Model seçimi burada yaşıyor ama ETİKETSİZ: ⋯ ikonu (iç terminoloji
-        // üst şeride yazılmaz).
-        IconButton(onClick = onOpenModelPicker) {
-            Icon(
-                Icons.Default.MoreVert,
-                contentDescription = S.t2("Model ve profiller", "Model and profiles"),
-                tint = HermesColors.TextMuted,
-            )
+        // Model, düşünme ve (ajan çalışırken) müdahale/durdurma tek ⋯ menüsünde.
+        // Etiketsiz ikon: iç terminoloji (model adı, profil adı) üst şeride yazılmaz.
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(
+                    Icons.Default.MoreVert,
+                    contentDescription = S.t2("Menü", "Menu"),
+                    tint = HermesColors.TextMuted,
+                )
+            }
+            DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { menuOpen = false },
+                containerColor = HermesColors.Surface,
+            ) {
+                chatMenuActions(state.agentBusy).forEach { action ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                chatMenuLabel(action),
+                                color = if (action == ChatMenuAction.Stop)
+                                    HermesColors.Danger else HermesColors.TextPrimary,
+                                fontSize = 14.sp,
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                chatMenuIcon(action),
+                                contentDescription = null,
+                                tint = if (action == ChatMenuAction.Stop)
+                                    HermesColors.Danger else HermesColors.TextMuted,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                        onClick = {
+                            menuOpen = false
+                            when (action) {
+                                ChatMenuAction.Model -> onOpenModelPicker()
+                                ChatMenuAction.Reasoning -> onOpenReasoning()
+                                ChatMenuAction.Intervene -> onIntervene()
+                                ChatMenuAction.Stop -> onStop()
+                            }
+                        },
+                    )
+                }
+            }
         }
 
         // Başlıkta yalnız iki ikon: ses + yeni oturum. Komut paleti composer'ın

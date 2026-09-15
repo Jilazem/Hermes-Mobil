@@ -35,6 +35,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import com.hermes.mobile.ui.createSessionProfileArg
 import com.hermes.mobile.ui.ROUTER_CHIP
 import com.hermes.mobile.ui.tr
+import com.hermes.mobile.ui.visibleUserMessage
 
 /** Sohbet akışındaki tek bir görsel öğe. */
 sealed interface ChatItem {
@@ -176,7 +177,28 @@ data class ChatState(
      */
     val topic: String = "",
     val notice: String? = null,
+    /**
+     * Geçmiş mesajlar sunucudan çekilirken true (KALAN-1).
+     *
+     * Boş sohbet ekranı ile "geçmiş yolda" durumunu ayırmak için: iskelet
+     * balonlar yalnız bu bayrak açıkken ve hiç mesaj yokken çizilir.
+     */
+    val historyLoading: Boolean = false,
 )
+
+/**
+ * Müdahale sonucu sohbete yazılan tek satır (KALAN-2) — saf fonksiyon
+ * (`ChatMenuTest`). Sessiz başarısızlık yok: sunucu `queued` dışında bir şey
+ * döndürdüyse kullanıcı bunu GÖRÜR.
+ */
+fun interventionNotice(kind: InterventionKind, status: String): String = when {
+    status == "queued" && kind == InterventionKind.Redirect ->
+        tr("Talimat iletildi — süren tur yönlendirildi", "Instruction sent — the running turn was redirected")
+    status == "queued" ->
+        tr("Talimat iletildi — ajan bir sonraki adımında görecek", "Instruction sent — the agent sees it on its next step")
+    else ->
+        tr("Talimat iletilemedi ($status)", "Instruction could not be sent ($status)")
+}
 
 /**
  * `/api/ws` JSON-RPC üzerinden canlı sohbet.
@@ -902,6 +924,46 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * ⋯ → "Müdahale" (KALAN-2): ÇALIŞAN ajana açık sohbetten talimat iletir.
+     *
+     * Canlı sekmesindeki müdahale ile aynı sözleşme: `Ekle` (`session.steer`)
+     * turu kesmez, ajan bir sonraki adımında görür; `Yönlendir`
+     * (`session.redirect`) süren turu çevirir. Yönlendirmeyi desteklemeyen
+     * ajanlarda sunucu `queued` dışında bir durum döner — o zaman sessizce
+     * `steer`e düşülür (kullanıcının niyeti her hâlükârda mesajı ulaştırmak).
+     *
+     * Sonuç, sohbete tek satır not olarak yazılır: kullanıcı talimatının
+     * gerçekten gittiğini görür (sessiz başarısızlık yok).
+     */
+    fun intervene(kind: InterventionKind, text: String) {
+        val gw = client ?: return
+        val sid = _state.value.sessionId ?: return
+        val body = text.trim()
+        if (body.isEmpty()) return
+
+        viewModelScope.launch {
+            val primary = runCatching {
+                if (kind == InterventionKind.Redirect) gw.redirect(sid, body)
+                else gw.steer(sid, body)
+            }.getOrElse { "error" }
+
+            val finalStatus =
+                if (kind == InterventionKind.Redirect && primary != "queued") {
+                    runCatching { gw.steer(sid, body) }.getOrElse { "error" }
+                } else {
+                    primary
+                }
+
+            _state.update { st ->
+                st.copy(
+                    items = st.items +
+                        ChatItem.Notice(nextKey("n"), interventionNotice(kind, finalStatus)),
+                )
+            }
+        }
+    }
+
+    /**
      * Telefon eylemini çalıştırır ve sonucu sohbete araç kartı olarak yazar.
      *
      * Sunucuya hiç gitmiyor — bu yüzden çevrimdışı da çalışıyor ve anında.
@@ -1357,6 +1419,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 sessionId = liveId,
                 // Tur-4 (P3 #8): üst şerit KONUYU gösterir — model orada durmaz.
                 topic = title,
+                // KALAN-1: geçmiş gelene kadar iskelet balonlar (aşağıda
+                // item'lar yazılınca/boş çıkınca kapanır).
+                historyLoading = true,
                 items = listOf(
                     ChatItem.Notice(nextKey("n"), "\"$title\" konuşmasına bağlanıldı")
                 ),
@@ -1409,6 +1474,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     st.copy(
                         items = if (alive) st.items else emptyList(),
                         sessionId = if (alive) st.sessionId else null,
+                        historyLoading = false,
                     )
                 }
                 return@launch
@@ -1419,7 +1485,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             val trimmed = if (all.size > HISTORY_LIMIT) all.takeLast(HISTORY_LIMIT) else all
             val restored = trimmed.mapNotNull { m ->
                 when {
-                    m.isUser && !m.content.isNullOrBlank() ->
+                    // Kusur I (tur-5): sistem/cron istemi `isUser` olarak dönüyor;
+                    // ham hâliyle balon basılıyordu — sohbet değildir, çizilmez.
+                    m.isUser && !m.content.isNullOrBlank() && visibleUserMessage(m.content) ->
                         ChatItem.User(nextKey("u"), m.content)
                     m.isAssistant && !m.content.isNullOrBlank() ->
                         ChatItem.Assistant(nextKey("a"), m.content)
@@ -1427,6 +1495,21 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         ChatItem.Tool(nextKey("t"), m.toolName ?: "araç", ToolState.Done, m.content)
                     else -> null
                 }
+            }
+            // Filtreden sonra hiç konuşma kalmadıysa ekran bomboş kalmasın:
+            // sebebini tek satır söyle (kullanıcı "mesajlarım nerede" demesin).
+            val body = if (restored.isEmpty()) {
+                listOf(
+                    ChatItem.Notice(
+                        nextKey("n"),
+                        tr(
+                            "Bu oturumda gösterilecek sohbet mesajı yok — yalnız sistem/araç kayıtları var.",
+                            "Nothing to show in this session — only system/tool records.",
+                        ),
+                    )
+                )
+            } else {
+                restored
             }
             val header = if (all.size > trimmed.size) {
                 listOf(
@@ -1446,7 +1529,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 ),
             )
 
-            _state.update { st -> st.copy(items = header + restored + footer) }
+            _state.update { st -> st.copy(items = header + body + footer, historyLoading = false) }
         }
     }
 

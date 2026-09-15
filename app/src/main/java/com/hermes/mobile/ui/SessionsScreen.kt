@@ -360,14 +360,20 @@ fun SessionsScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(S.t2("Oturumlar", "Sessions"), color = HermesColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                Text(
-                    // FR-004: "etkin" yerine "açık kayıt" — bu sayı DB'de
-                    // ended_at=null olan KAYITLARI sayar (gateway'de çalışan
-                    // ajan sayısıyla aynı şey değil; Canlı sekmesi onu söyler).
-                    "${base.count { it.isActive }} ${S.t2("açık kayıt", "open records")} · ${base.size} ${S.t2("toplam", "total")}",
-                    color = HermesColors.TextMuted,
-                    fontSize = 12.sp,
-                )
+                // KALAN-6 (FR-004): tek ve tutarlı sayaç — "26 oturum · 14 açık".
+                // İki sayı da AYNI kümeden (görünen liste) gelir; liste boşken
+                // ya da yüklenirken satır hiç yazılmaz.
+                sessionCounter(
+                    total = base.size,
+                    open = base.count { it.isActive },
+                    en = S.lang == Lang.EN,
+                )?.let { counter ->
+                    Text(
+                        counter,
+                        color = HermesColors.TextMuted,
+                        fontSize = 12.sp,
+                    )
+                }
             }
         }
 
@@ -420,7 +426,15 @@ fun SessionsScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (base.isEmpty() && query.isBlank()) {
+                // KALAN-1: sunucudan liste beklenirken boş ekran yerine iskelet.
+                // (Boş DURUM ile "henüz gelmedi"yi ayırır; polling'in `loading`
+                // bayrağı yalnız liste bomboşken iskelet çizer.)
+                val placeholder = skeletonRowCount(state.loading, base.size)
+                if (placeholder > 0) {
+                    item(key = "skeleton") { SessionListSkeleton(placeholder) }
+                }
+
+                if (base.isEmpty() && query.isBlank() && placeholder == 0) {
                     item(key = "empty") {
                         HermesCard(Modifier.fillMaxWidth()) {
                             Text(
@@ -781,20 +795,12 @@ private fun SessionRow(
             }
         }
 
-        // Alt satır: kaynak rozeti + mesaj sayısı. Model/token/araç sayaçları
-        // karttan çıkarıldı (tur-4 G): iç terminoloji KONU'nun önüne geçiyordu.
+        // Alt satır: kaynak ikonu + mesaj sayısı (KALAN-5: metin rozeti yerine
+        // TEK 12 dp ikon; tanınmayan iç kaynak adı hiç çizilmez).
         Row(verticalAlignment = Alignment.CenterVertically) {
-            session.source?.let { src ->
-                Text(
-                    feedSourceLabel(src, en = S.lang == Lang.EN),
-                    style = MonoTextStyle,
-                    color = HermesColors.TextMuted,
-                    fontSize = 10.sp,
-                    modifier = Modifier
-                        .background(HermesColors.SurfaceDim, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 1.dp),
-                )
-                Spacer(Modifier.width(8.dp))
+            if (sourceIcon(session.source) != null) {
+                SourceBadgeIcon(session.source, en = S.lang == Lang.EN)
+                Spacer(Modifier.width(6.dp))
             }
             Meta("${session.messageCount} ${S.t2("mesaj", "messages")}")
             subtitle?.let {

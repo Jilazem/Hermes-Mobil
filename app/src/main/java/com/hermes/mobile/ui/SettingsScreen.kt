@@ -91,6 +91,16 @@ fun SettingsScreen(
     activeProfile: com.hermes.mobile.data.ServerProfile? = null,
     /** Ayarlar→Sunucular: kayıtlı sunucu/token ekranını tam ekran açar. */
     onOpenServers: () -> Unit = {},
+    /**
+     * Ayarlar→Profiller (KALAN-4): Hermes ajan profili seçimi.
+     *
+     * Tur-4'te `default/ac/android` çipleri sohbet üst şeridinden çıkarıldı ve
+     * seçim yalnız ⋯ menüsünde kaldı — Ayarlar'da görünür bir giriş yoktu.
+     * Bu satır aynı sayfayı (ProfileSheet) Ayarlar'dan da erişilebilir yapar.
+     */
+    onOpenProfiles: () -> Unit = {},
+    /** Aktif Hermes profili adı — satırda görünür (boşsa "—"). */
+    activeHermesProfile: String = "",
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
@@ -129,6 +139,38 @@ fun SettingsScreen(
         }
 
         if (open == null) {
+            // KALAN-4: "Profiller" — profil seçimi Ayarlar'dan da erişilebilir.
+            // Satırın kendisi bir kategori DEĞİL: sohbetin ⋯ menüsüyle aynı
+            // ProfileSheet'i açar (tek seçim yolu, iki giriş).
+            item(key = "profiles") {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(HermesColors.SurfaceDim, RoundedCornerShape(11.dp))
+                        .border(1.dp, HermesColors.Border, RoundedCornerShape(11.dp))
+                        .clickable { onOpenProfiles() }
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(S.t2("Profiller", "Profiles"), color = HermesColors.TextPrimary, fontSize = 15.sp)
+                        Text(
+                            S.t2(
+                                "Ajan kişiliği ve araç seti — şu an: ${activeHermesProfile.ifBlank { "—" }}",
+                                "Agent persona and toolset — now: ${activeHermesProfile.ifBlank { "—" }}",
+                            ),
+                            color = HermesColors.TextMuted,
+                            fontSize = 11.sp,
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = HermesColors.TextMuted,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
             items(SettingsCategory.entries.toList(), key = { it.name }) { cat ->
                 Row(
                     Modifier

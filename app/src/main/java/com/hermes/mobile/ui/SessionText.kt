@@ -219,3 +219,42 @@ fun loadedMessageCount(loading: Boolean, error: String?, loaded: Int): Int? {
     if (loading || error != null) return null
     return loaded.takeIf { it > 0 }
 }
+
+/**
+ * Liste başlığı sayacı (KALAN-6 / FR-004).
+ *
+ * Eski hâli iki farklı adı yan yana koyuyordu: "14 açık kayıt · 26 toplam".
+ * İki sayı da AYNI kümeden geliyor ama farklı sözcüklerle anıldığı için
+ * "kayıt" ve "toplam" iki ayrı liste gibi okunuyordu (Telegram'da tek sayaç
+ * vardır). Yeni ifade tek cümledir, önce TOPLAM sonra açık olanı söyler ve
+ * ikisi de aynı adı taşır:
+ *
+ *   TR: "26 oturum · 14 açık"
+ *   EN: "26 sessions · 14 open"
+ *
+ * Açık oturum yoksa ikinci sayı yazılmaz (gürültü olur); liste boşsa null
+ * döner ve başlık altı satır hiç çizilmez.
+ */
+fun sessionCounter(total: Int, open: Int, en: Boolean = false): String? {
+    if (total <= 0) return null
+    val safeOpen = open.coerceIn(0, total)
+    val totalText = if (en) "$total sessions" else "$total oturum"
+    if (safeOpen <= 0) return totalText
+    return if (en) "$totalText · $safeOpen open" else "$totalText · $safeOpen açık"
+}
+
+/**
+ * Döküme ÇİZİLECEK kullanıcı mesajı mı? (tur-5 kusur I)
+ *
+ * Cron/otomasyon oturumlarının geçmişinde sistem istemi `isUser = true` bir
+ * kayıt olarak dönüyor:
+ *
+ *   [IMPORTANT: You are running as a scheduled cron job. DELIVERY: Your final
+ *    response will be automatically delivered …]
+ *
+ * Tur-4'te bu metin KART ÖNİZLEMESİNDEN atılmıştı (`isMachineNoise`) ama
+ * DÖKÜM/sohbet çizimi ham hâliyle balon basıyordu — ekranda kullanıcıya ait
+ * olmayan bir sistem istemi, üstelik İngilizce. Sistem istemi sohbet değildir:
+ * balon çizilmez.
+ */
+fun visibleUserMessage(text: String?): Boolean = !isMachineNoise(text)

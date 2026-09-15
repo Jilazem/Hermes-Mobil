@@ -796,6 +796,9 @@ private fun HermesApp(
                             profileSheet = true
                         },
                         onOpenServers = { serversScreen = true },
+                        // KALAN-2: ⋯ → Müdahale — çalışan ajana açık sohbetten
+                        // talimat (session.steer / session.redirect).
+                        onIntervene = chatViewModel::intervene,
                         onOpenReasoning = {
                             reasoningSheet = true
                             // Sunucunun bildirdiği aktif çabayı öne al — panel
@@ -923,6 +926,13 @@ private fun HermesApp(
                         onExportTheme = viewModel.settingsStore::exportTheme,
                         activeProfile = state.active,
                         onOpenServers = { serversScreen = true },
+                        // KALAN-4: Ayarlar→Profiller — sohbetin ⋯ menüsüyle aynı
+                        // ProfileSheet (tek seçim yolu, iki giriş noktası).
+                        onOpenProfiles = {
+                            viewModel.loadProfiles()
+                            profileSheet = true
+                        },
+                        activeHermesProfile = activeHermesProfile,
                     )
                 }
             }
