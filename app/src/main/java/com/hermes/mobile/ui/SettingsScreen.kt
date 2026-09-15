@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -481,6 +482,10 @@ fun SettingsScreen(
                         onToggle = { v -> onUpdate { it.copy(fullControl = v) } },
                     )
                 }
+            }
+
+            if (settings.agentMayUsePhone) {
+                item { BridgeStatusRow() }
             }
 
             item { Spacer(Modifier.height(10.dp)) }
@@ -1319,6 +1324,100 @@ private fun FullControlRow(
                 ),
                 color = HermesColors.TextMuted,
                 fontSize = 11.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BridgeStatusRow() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val state by com.hermes.mobile.data.PhoneBridgeService.stateFlow
+        .collectAsState()
+    val (label, color) = when (state) {
+        com.hermes.mobile.data.BridgeState.CONNECTED ->
+            S.t2("bağlı", "connected") to HermesColors.Online
+        com.hermes.mobile.data.BridgeState.TAKEN_OVER ->
+            S.t2("devralındı", "taken over") to HermesColors.Busy
+        com.hermes.mobile.data.BridgeState.RETRYING ->
+            S.t2("yeniden bağlanıyor", "reconnecting") to HermesColors.Busy
+        com.hermes.mobile.data.BridgeState.CONNECTING ->
+            S.t2("bağlanıyor", "connecting") to HermesColors.Busy
+        com.hermes.mobile.data.BridgeState.OFF ->
+            S.t2("kapalı", "off") to HermesColors.TextMuted
+    }
+
+    HermesCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    S.t2("Köprü durumu", "Bridge status"),
+                    color = HermesColors.TextPrimary,
+                    fontSize = 14.sp,
+                )
+                Text(
+                    S.t2(
+                        "Telefonun sunucuya açtığı kalıcı bağlantı",
+                        "The persistent connection the phone opens to the server",
+                    ),
+                    color = HermesColors.TextMuted,
+                    fontSize = 11.sp,
+                )
+            }
+            Box(
+                Modifier
+                    .size(7.dp)
+                    .background(color, RoundedCornerShape(4.dp)),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(label, color = color, fontSize = 11.sp)
+        }
+
+        if (state == com.hermes.mobile.data.BridgeState.TAKEN_OVER) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                S.t2(
+                    "Köprü başka bir cihaz tarafından devralındı — yeniden bağlanmak " +
+                        "için dokun. Kendiliğinden yeniden bağlanma durduruldu; aksi " +
+                        "hâlde iki cihaz birbirini sonsuz devirir.",
+                    "The bridge was taken over by another device — tap to reconnect. " +
+                        "Automatic reconnection is stopped; otherwise the two devices " +
+                        "would keep evicting each other forever.",
+                ),
+                color = HermesColors.TextMuted,
+                fontSize = 11.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                S.t2("Yeniden bağlan", "Reconnect"),
+                color = HermesColors.Midground,
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                    .clickable { com.hermes.mobile.data.PhoneBridgeService.reconnect(context) }
+                    .padding(horizontal = 11.dp, vertical = 6.dp),
+            )
+        } else if (state != com.hermes.mobile.data.BridgeState.CONNECTED) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                S.t2(
+                    "Koptuğunda artan aralıkla yeniden denenir (2 → 5 → 15 → 30 → 60 sn). " +
+                        "Hemen denemek istersen:",
+                    "On drop it retries with growing backoff (2 → 5 → 15 → 30 → 60 s). " +
+                        "To try right now:",
+                ),
+                color = HermesColors.TextMuted,
+                fontSize = 11.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                S.t2("Yeniden bağlan", "Reconnect"),
+                color = HermesColors.Midground,
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                    .clickable { com.hermes.mobile.data.PhoneBridgeService.reconnect(context) }
+                    .padding(horizontal = 11.dp, vertical = 6.dp),
             )
         }
     }

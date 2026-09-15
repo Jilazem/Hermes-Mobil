@@ -4,7 +4,12 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -41,6 +46,16 @@ import java.util.concurrent.TimeUnit
  *   kalıyor — bu kısıtlar ajan çağırınca da geçerli.
  * - Her çağrı [DiagLog]'a yazılıyor; ajanın telefonda ne yaptığı sonradan
  *   görülebilir olmalı.
+ *
+ * ## Devralma (tur-7)
+ *
+ * Sunucudaki yuva tek: aynı anda tek cihaz bağlı kalabiliyor. İkinci cihaz
+ * bağlandığında sunucu eskisine `taken_over` karesi + **4001** close kodu
+ * gönderiyor. Telefon bunu görünce **kendiliğinden yeniden bağlanmayı
+ * bırakıyor** (durum [BridgeState.TAKEN_OVER]); yoksa iki cihaz birbirini
+ * sonsuza dek devirir — 2026-09-15'te canlıda 21 dakikada 716 devir ölçüldü.
+ * Devralma, "ağ hatası"ndan farklıdır: hatada artan geri çekilmeyle yeniden
+ * denenir, devralmada kullanıcı isteyene kadar denenmez.
  */
 class PhoneBridgeService : Service() {
 
@@ -50,6 +65,10 @@ class PhoneBridgeService : Service() {
     private var live = false
     private var closedByUser = false
     private var attempt = 0
+    /** Devralma sinyali görüldü: kullanıcı istemeden yeniden bağlanılmaz. */
+    private var takenOver = false
+    private val handler = Handler(Looper.getMainLooper())
+    private var pending: Runnable? = null
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -74,6 +93,7 @@ class PhoneBridgeService : Service() {
         profiles = ServerProfileStore(this)
         tools = PhoneTools(this, ShizukuBridge())
         fullTools = FullControlTools(this)
+        state = BridgeState.OFF
         startForeground(NOTIF_ID, buildNotification())
     }
 
@@ -82,6 +102,9 @@ class PhoneBridgeService : Service() {
      * IMPORTANCE_MIN: kullanicinin dikkatini cekmesi gerekmiyor ama ajanin
      * telefona erisiminin ACIK oldugu her zaman gorunur olmali -- gizli bir
      * uzaktan erisim kanali olmamali.
+     *
+     * Durum değişince bildirim de değişiyor: "devralındı" hâlinde kullanıcı
+     * bunu kalıcı bildirimden görmeli, uygulamayı açması gerekmemeli.
      */
     private fun buildNotification(): android.app.Notification {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
@@ -96,38 +119,105 @@ class PhoneBridgeService : Service() {
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
         )
+        // Devralındı hâlinde bildirime dokunmak TEK SEFERLİK bağlanma başlatır:
+        // kullanıcı "geri al" demek için Ayarlar'ı aramak zorunda kalmamalı.
+        val tap = if (state == BridgeState.TAKEN_OVER) {
+            android.app.PendingIntent.getService(
+                this, 1,
+                Intent(this, PhoneBridgeService::class.java).setAction(ACTION_RECONNECT),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            )
+        } else {
+            open
+        }
         val readOnly = settings.settings.value.agentReadOnly
         val full = settings.settings.value.fullControl
+        val (title, text) = when (state) {
+            BridgeState.TAKEN_OVER -> com.hermes.mobile.ui.tr(
+                "Köprü devralındı",
+                "Bridge taken over",
+            ) to com.hermes.mobile.ui.tr(
+                "Köprü başka bir cihaz tarafından devralındı — yeniden bağlanmak için dokun",
+                "The bridge was taken over by another device — tap to reconnect",
+            )
+            BridgeState.RETRYING -> com.hermes.mobile.ui.tr(
+                "Köprü yeniden bağlanıyor",
+                "Bridge reconnecting",
+            ) to com.hermes.mobile.ui.tr(
+                "bağlantı koptu, artan aralıkla denenecek",
+                "connection lost, retrying with growing backoff",
+            )
+            BridgeState.CONNECTING -> com.hermes.mobile.ui.tr(
+                "Köprü bağlanıyor",
+                "Bridge connecting",
+            ) to com.hermes.mobile.ui.tr("bağlanma denemesi", "connect attempt")
+            BridgeState.CONNECTED -> com.hermes.mobile.ui.tr(
+                "Ajan telefona bağlı",
+                "Agent connected to phone",
+            ) to when {
+                full -> com.hermes.mobile.ui.tr("tam kontrol", "full control")
+                readOnly -> com.hermes.mobile.ui.tr("yalnız okuma", "read-only")
+                else -> com.hermes.mobile.ui.tr("okuma ve eylem", "read and act")
+            }
+            BridgeState.OFF -> com.hermes.mobile.ui.tr(
+                "Ajan telefona bağlı",
+                "Agent connected to phone",
+            ) to when {
+                full -> com.hermes.mobile.ui.tr("tam kontrol", "full control")
+                readOnly -> com.hermes.mobile.ui.tr("yalnız okuma", "read-only")
+                else -> com.hermes.mobile.ui.tr("okuma ve eylem", "read and act")
+            }
+        }
         return androidx.core.app.NotificationCompat.Builder(this, BRIDGE_CHANNEL)
             .setSmallIcon(com.hermes.mobile.R.drawable.ic_stat_hermes)
-            .setContentTitle(com.hermes.mobile.ui.tr("Ajan telefona bağlı", "Agent connected to phone"))
-            .setContentText(
-                when {
-                    full -> com.hermes.mobile.ui.tr("tam kontrol", "full control")
-                    readOnly -> com.hermes.mobile.ui.tr("yalnız okuma", "read-only")
-                    else -> com.hermes.mobile.ui.tr("okuma ve eylem", "read and act")
-                },
-            )
+            .setContentTitle(title)
+            .setContentText(text)
             .setOngoing(true)
-            .setContentIntent(open)
+            .setContentIntent(tap)
             .build()
+    }
+
+    /** Durumu yayınla ve kalıcı bildirimi tazele. */
+    private fun setState(next: BridgeState) {
+        if (state == next) return
+        state = next
+        runCatching {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            nm.notify(NOTIF_ID, buildNotification())
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             closedByUser = true
             live = false
+            cancelPending()
             socket?.close(1000, "stopped")
             socket = null
             stopSelf()
             return START_NOT_STICKY
+        }
+        if (intent?.action == ACTION_RECONNECT) {
+            // Tek seferlik bağlanma: devralma kilidini burada açıyoruz.
+            DiagLog.i("bridge", "kullanici yeniden baglan istedi")
+            takenOver = false
+            attempt = 0
+            cancelPending()
+            socket?.cancel()
+            socket = null
+            live = false
+            connect()
+            return START_STICKY
         }
         // Idempotent olmalı: MainActivity her recomposition'da start() çağırıyor
         // (ayar state'i her değiştiğinde). Koşulsuz connect() ikinci bir WebSocket
         // açar, sunucu tek bağlantı politikasıyla eskisini düşürür, ölü soketin
         // onClosed'u da ayrı bir yeniden bağlanma döngüsü başlatırdı — telefon
         // 2026-09-08'de 30 dakikada 533 kez böyle kendini yeniden bağladı.
-        if (!live && socket == null) connect()
+        //
+        // DEVRAIMA kuralı (tur-7): devralındıysa burada da bağlanılmaz — yoksa
+        // MainActivity'nin her start()'ı kilitli durumu delerdi.
+        if (!live && socket == null && !takenOver) connect()
         // Süreç öldürülürse yeniden başlasın: kanalın açık kalması bu
         // özelliğin tamamı.
         return START_STICKY
@@ -136,20 +226,24 @@ class PhoneBridgeService : Service() {
     private fun connect() {
         val p = profiles.active() ?: run {
             DiagLog.w("bridge", "no server profile, not connecting")
+            setState(BridgeState.OFF)
             stopSelf()
             return
         }
         if (p.token.isBlank()) {
             DiagLog.w("bridge", "no token, not connecting")
+            setState(BridgeState.OFF)
             stopSelf()
             return
         }
         val url = bridgeUrl(p) ?: run {
             DiagLog.e("bridge", "could not derive bridge url")
+            setState(BridgeState.OFF)
             stopSelf()
             return
         }
         DiagLog.i("bridge", "connecting to ${DiagLog.redact(url)}")
+        setState(BridgeState.CONNECTING)
         live = false
         socket = http.newWebSocket(Request.Builder().url(url).build(), Listener())
     }
@@ -157,26 +251,14 @@ class PhoneBridgeService : Service() {
     /**
      * Köprü adresi. Röle ile aynı mantık: ev ağında doğrudan port, dışarıda
      * Hermes'in ters vekilindeki yol — ayrı port yönlendirmesi gerekmiyor.
+     * Açık `bridgeUrl` verilmişse port türetmesi yapılmaz (sandbox/özel kurulum).
      */
     private fun bridgeUrl(p: ServerProfile): String? {
-        val base = p.activeUrl ?: p.normalizedUrl
-        val uri = runCatching { java.net.URI(base) }.getOrNull() ?: return null
-        val host = uri.host ?: return null
+        val base = p.effectiveBridgeUrl
+        if (base.isBlank()) return null
+        val sep = if (base.contains("?")) "&" else "?"
         val token = java.net.URLEncoder.encode(p.token, "UTF-8")
-        return if (isPrivate(host)) {
-            "ws://$host:$LAN_PORT/phone?token=$token"
-        } else {
-            val port = uri.port.takeIf { it > 0 }?.let { ":$it" }.orEmpty()
-            "wss://$host$port/phone-bridge/phone?token=$token"
-        }
-    }
-
-    private fun isPrivate(host: String): Boolean {
-        if (host.equals("localhost", true) || host.endsWith(".local", true)) return true
-        val o = host.split(".").mapNotNull { it.toIntOrNull() }
-        if (o.size != 4) return false
-        return o[0] == 10 || o[0] == 127 ||
-            (o[0] == 192 && o[1] == 168) || (o[0] == 172 && o[1] in 16..31)
+        return "$base$sep" + "token=$token"
     }
 
     /**
@@ -205,10 +287,14 @@ class PhoneBridgeService : Service() {
                 webSocket.cancel()
                 return
             }
+            // Bağlanma başarılı: devralma kilidi ve geri çekilme merdiveni sıfır.
+            takenOver = false
             live = true
             attempt = 0
+            cancelPending()
             val list = advertised()
             DiagLog.i("bridge", "connected, advertising ${list.size} tools")
+            setState(BridgeState.CONNECTED)
             webSocket.send(
                 buildJsonObject {
                     put("hello", buildJsonObject {
@@ -221,6 +307,14 @@ class PhoneBridgeService : Service() {
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            // Devralma bildirimi bir "çağrı" değil: id alanı yok, yanıtlanmaz.
+            // Önce bu kontrol edilmeli, yoksa aşağıdaki id ayrıştırmasında
+            // sessizce düşer ve istemci haberi hiç almaz.
+            if (BridgePolicy.isTakeoverFrame(text)) {
+                DiagLog.w("bridge", "sunucu devralma bildirdi (taken_over karesi)")
+                enterTakenOver()
+                return
+            }
             val frame = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
             val id = frame["id"]?.jsonPrimitive?.content ?: return
             val tool = frame["tool"]?.jsonPrimitive?.content.orEmpty()
@@ -273,13 +367,24 @@ class PhoneBridgeService : Service() {
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             DiagLog.w("bridge", "closed code=$code reason=${reason.ifBlank { "-" }}")
-            // Yalnızca CANLI soket kapanırsa yeniden bağlan: sunucunun "replaced"
-            // ile düşürdüğü eski soketin kapanışı yeni bir döngü başlatırsa iki
-            // zombi sonsuza dek savaşıyor (2026-09-08 fırtınasının kök nedeni).
+            // Yalnızca CANLI soket kapanırsa yeniden bağlan: sunucunun
+            // "replaced" ile düşürdüğü eski soketin kapanışı yeni bir döngü
+            // başlatırsa iki zombi sonsuza dek savaşıyor (2026-09-08
+            // fırtınasının kök nedeni).
             if (webSocket !== socket) return
             live = false
             socket = null
-            scheduleReconnect()
+            when (BridgePolicy.decision(code, takenOver, closedByUser)) {
+                BridgePolicy.Decision.TAKEN_OVER -> {
+                    DiagLog.i("bridge", "devralindi (close kodu $code) - yeniden baglanma DURDURULDU")
+                    enterTakenOver()
+                }
+                BridgePolicy.Decision.STOP -> Unit
+                BridgePolicy.Decision.RETRY -> {
+                    setState(BridgeState.RETRYING)
+                    scheduleReconnect()
+                }
+            }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -287,8 +392,33 @@ class PhoneBridgeService : Service() {
             if (webSocket !== socket) return
             live = false
             socket = null
+            // Devralma sonrası ortaya çıkan ağ hatası yeniden bağlanma sebebi
+            // değildir: sunucu bizi bilerek düşürdü.
+            if (takenOver || closedByUser) return
+            setState(BridgeState.RETRYING)
             scheduleReconnect()
         }
+    }
+
+    /**
+     * Devralma: kendiliğinden yeniden bağlanma tamamen durur, durum
+     * [BridgeState.TAKEN_OVER] olur ve bildirim "yeniden bağlanmak için dokun"
+     * hâline geçer. Bağlanma yalnız elle (bildirim ya da Ayarlar düğmesi)
+     * başlatılır.
+     */
+    private fun enterTakenOver() {
+        if (takenOver && state == BridgeState.TAKEN_OVER) return
+        takenOver = true
+        live = false
+        attempt = 0
+        cancelPending()
+        socket = null
+        setState(BridgeState.TAKEN_OVER)
+    }
+
+    private fun cancelPending() {
+        pending?.let { handler.removeCallbacks(it) }
+        pending = null
     }
 
     /** Log'a yazılacak kısa argüman özeti — büyük alanlar (base64) kırpılır. */
@@ -310,22 +440,29 @@ class PhoneBridgeService : Service() {
     }
 
     /**
-     * Üssel geri çekilme, 5 dakikada sınırlı. Bu bağlantının saniyeler içinde
-     * geri gelmesi gerekmiyor — ajan zaten "telefon bağlı değil" cevabı
-     * alıyor — ama pili boşaltan bir yeniden bağlanma döngüsü de olmamalı.
+     * Artan geri çekilme ([BridgePolicy.BACKOFF_MS]), en fazla 60 sn.
+     *
+     * Normal kopmalarda otomatik bağlanma sürer — bu bağlantının saniyeler
+     * içinde geri gelmesi gerekmiyor ama pili boşaltan bir döngü de olmamalı.
+     * Devralmada buraya hiç gelinmez.
      */
     private fun scheduleReconnect() {
-        if (closedByUser) return
+        if (closedByUser || takenOver) return
         attempt++
-        val delayMs = minOf(300_000L, 2_000L * (1L shl minOf(attempt, 7)))
+        val delayMs = BridgePolicy.backoffMs(attempt)
         DiagLog.d("bridge", "reconnect #$attempt in ${delayMs}ms")
-        android.os.Handler(mainLooper).postDelayed({
-            if (!closedByUser) connect()
-        }, delayMs)
+        cancelPending()
+        val r = Runnable {
+            pending = null
+            if (!closedByUser && !takenOver) connect()
+        }
+        pending = r
+        handler.postDelayed(r, delayMs)
     }
 
     override fun onDestroy() {
         closedByUser = true
+        cancelPending()
         socket?.close(1000, "service destroyed")
         socket = null
         super.onDestroy()
@@ -335,9 +472,21 @@ class PhoneBridgeService : Service() {
 
     companion object {
         private const val NOTIF_ID = 4813
-        private const val LAN_PORT = 9180
         private const val BRIDGE_CHANNEL = "hermes-bridge"
         const val ACTION_STOP = "com.hermes.mobile.BRIDGE_STOP"
+        const val ACTION_RECONNECT = "com.hermes.mobile.BRIDGE_RECONNECT"
+
+        /**
+         * Kullanıcıya görünen durum. Ayarlar ekranı bunu doğrudan izliyor;
+         * süreç içi tek kaynak, ikinci bir "gerçekten bağlı mı" tahmini yok.
+         */
+        private val _state = MutableStateFlow(BridgeState.OFF)
+        var state: BridgeState
+            get() = _state.value
+            private set(value) {
+                _state.value = value
+            }
+        val stateFlow: StateFlow<BridgeState> = _state.asStateFlow()
 
         fun start(context: Context) {
             val s = SettingsStore(context).settings.value
@@ -353,6 +502,23 @@ class PhoneBridgeService : Service() {
             runCatching {
                 context.startService(
                     Intent(context, PhoneBridgeService::class.java).setAction(ACTION_STOP),
+                )
+            }
+        }
+
+        /**
+         * Tek seferlik yeniden bağlanma — devralma kilidini açar.
+         *
+         * Bilerek `start()` değil: `start()` "açık mı" ayarına bakar,
+         * bu ise kullanıcının açık isteğini taşır.
+         */
+        fun reconnect(context: Context) {
+            val s = SettingsStore(context).settings.value
+            if (!s.agentMayUsePhone) return
+            runCatching {
+                androidx.core.content.ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, PhoneBridgeService::class.java).setAction(ACTION_RECONNECT),
                 )
             }
         }

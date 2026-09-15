@@ -36,6 +36,10 @@ class Tur6SeedActivity : ComponentActivity() {
         val agent = intent?.getBooleanExtra("agent", true) ?: true
         val readonly = intent?.getBooleanExtra("readonly", false) ?: false
         val full = intent?.getBooleanExtra("full", true) ?: true
+        // Köprü adresi (tur-7). Boşsa profil adresinden türetilir (ev ağında
+        // 9180). SANDBOX doğrulaması için şart: uygulama aksi hâlde sabit 9180'e
+        // gidip CANLI köprüyü meşgul ediyordu.
+        val bridge = intent?.getStringExtra("bridge")?.trim().orEmpty()
 
         val tokenFile = File(filesDir, "tur6_token.txt")
         val token = tokenFile.takeIf { it.exists() }?.readText()?.trim().orEmpty()
@@ -54,8 +58,9 @@ class Tur6SeedActivity : ComponentActivity() {
 
         if (url.isNotBlank() && token.isNotBlank()) {
             val store = ServerProfileStore(this)
-            val profile = store.active()?.copy(name = name, baseUrl = url, token = token)
-                ?: ServerProfile(name = name, baseUrl = url, token = token)
+            val profile = store.active()?.copy(name = name, baseUrl = url, token = token)?.let {
+                if (bridge.isNotBlank()) it.copy(bridgeUrl = bridge) else it
+            } ?: ServerProfile(name = name, baseUrl = url, token = token, bridgeUrl = bridge)
             store.upsert(profile)
             store.setActiveId(profile.id)
         }
@@ -66,7 +71,7 @@ class Tur6SeedActivity : ComponentActivity() {
         // Token'ın KENDİSİ değil, yalnız varlığı ve uzunluğu log'lanıyor.
         DiagLog.i(
             "tur6seed",
-            "seed tamam: url=$url agent=$agent readonly=$readonly full=$full " +
+            "seed tamam: url=$url bridge=$bridge agent=$agent readonly=$readonly full=$full " +
                 "token=${if (token.isBlank()) "yok" else "var(${token.length} karakter)"}",
         )
         finish()

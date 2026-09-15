@@ -40,6 +40,15 @@ data class ServerProfile(
      */
     val relayUrl: String = "",
     /**
+     * Telefon köprüsü (WS). Boşsa Hermes adresinin host'u + 9180 varsayılır.
+     *
+     * Neden gerekli: köprü portu sabit 9180'e gömülüydü, yani profildeki
+     * adres portu yok sayılıyordu — 9280'deki bir sandbox köprüye (ya da
+     * taşınmış gerçek porta) hiç ulaşılamıyor, sessizce canlı 9180'e
+     * gidiliyordu. Açık verilen adres her şeyi ezer (relayUrl ile aynı kural).
+     */
+    val bridgeUrl: String = "",
+    /**
      * Kullanıcının kendi Gemini anahtarı (isteğe bağlı). Boşsa röle sunucudaki
      * anahtarı kullanır; dolu olması anahtarın telefonda durması demektir.
      */
@@ -113,6 +122,26 @@ data class ServerProfile(
 
     val isHttps: Boolean get() = normalizedUrl.startsWith("https://", ignoreCase = true)
 
+    /**
+     * Köprü WebSocket adresi. Açık adres verilmişse o; yoksa etkin host +
+     * [PHONE_BRIDGE_LAN_PORT]. Token burada eklenmez — çağıran kendi
+     * kaçışlamasını yapar.
+     */
+    val effectiveBridgeUrl: String
+        get() {
+            val explicit = bridgeUrl.trim().trimEnd('/')
+            if (explicit.isNotBlank()) return explicit
+            val base = activeUrl ?: normalizedUrl
+            val uri = runCatching { java.net.URI(base) }.getOrNull() ?: return ""
+            val host = uri.host ?: return ""
+            return if (isPrivateHost(host)) {
+                "ws://$host:$PHONE_BRIDGE_LAN_PORT/phone"
+            } else {
+                val port = uri.port.takeIf { it > 0 }?.let { ":$it" }.orEmpty()
+                "wss://$host$port/phone-bridge/phone"
+            }
+        }
+
     /** Röle adresi — açık verilmemişse etkin host'tan türetilir. */
 
     val normalizedRemote: String get() = remoteUrl.trim().trimEnd('/')
@@ -150,6 +179,13 @@ data class ServerProfile(
 private const val PREFS_FILE = "hermes_profiles"
 private const val KEY_PROFILES = "profiles"
 private const val KEY_ACTIVE = "active_id"
+
+/**
+ * Köprünün ev ağındaki varsayılan WS portu (`phone_bridge.py` →
+ * `PHONE_BRIDGE_PORT`, HTTP ucu port+1). Sunucuda başka bir porta alınırsa
+ * profildeki `bridgeUrl` ile ezilir.
+ */
+const val PHONE_BRIDGE_LAN_PORT = 9180
 
 class ServerProfileStore(context: Context) {
 
