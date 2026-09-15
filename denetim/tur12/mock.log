@@ -1,0 +1,250 @@
+2026-09-15 22:31:00 mock voice_api basladi · port=8199 ogg=31774 bayt
+2026-09-15 22:31:09 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'kapali', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:31:09 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:34:03 403 GET /health · token=var (beklenenle uyusmadi)
+2026-09-15 22:34:03 http "GET /health HTTP/1.1" 403 -
+2026-09-15 22:34:51 mock voice_api basladi · port=8199 ogg=31774 bayt
+2026-09-15 22:34:56 GET /health · token_any · sha8=9f86d081 len=4
+2026-09-15 22:34:56 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'kapali', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:34:56 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:08 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:08 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'kapali', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:08 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:13 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:13 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'kapali', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:13 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:16 POST /synthesize · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:16 SOGUK sentez: 25.0 sn motor isitma taklidi (motor=kahya)
+2026-09-15 22:35:18 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:18 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:18 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:22 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:22 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:22 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:27 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:27 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:27 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:31 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:31 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:31 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:36 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:36 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:36 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:41 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:41 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:41 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:41 200 POST /synthesize · motor=kahya metin="Merhaba, sesli asistan hazır!" uzunluk=29 oggg_bayt=31774
+2026-09-15 22:35:41 http "POST /synthesize HTTP/1.1" 200 -
+2026-09-15 22:35:41 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:41 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:41 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:45 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:45 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:45 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:50 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:50 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:50 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:54 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:54 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:54 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:35:59 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:35:59 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:35:59 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:03 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:03 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:03 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:08 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:08 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:08 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:12 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:12 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:12 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:17 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:17 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:17 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:21 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:21 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:21 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:26 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:26 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:26 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:31 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:31 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:31 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:35 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:35 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:35 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:40 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:40 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:40 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:44 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:44 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:44 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:49 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:49 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:49 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:53 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:53 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:53 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:36:58 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:36:58 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:36:58 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:02 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:02 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:02 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:07 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:07 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:07 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:11 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:11 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:11 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:16 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:16 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:16 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:20 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:20 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:20 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:25 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:25 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:25 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:29 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:29 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:29 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:34 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:34 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:34 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:38 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:38 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:38 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:43 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:43 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:43 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:48 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:48 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:48 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:52 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:52 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:52 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:57 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:57 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:57 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:37:57 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:37:57 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:37:57 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:38:01 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:38:01 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:38:01 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:38:06 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:38:06 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:38:06 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:38:10 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:38:10 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:38:10 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:38:15 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:38:15 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:38:15 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:38:19 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:38:19 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:38:19 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:38:23 GET /health · token_any · sha8=488f445f len=16
+2026-09-15 22:38:23 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:38:23 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:38:23 POST /transcribe · token_any · sha8=488f445f len=16
+2026-09-15 22:38:23 200 POST /transcribe · multipart=True alan_audio=True dosya=kayit.ogg ogg_imza=True boyut=31976
+2026-09-15 22:38:23 http "POST /transcribe HTTP/1.1" 200 -
+2026-09-15 22:40:21 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:21 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:21 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:40:26 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:26 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:26 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:40:30 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:30 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:30 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:40:35 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:35 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:35 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:40:39 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:39 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:39 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:40:44 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:44 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:44 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:40:48 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:48 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:48 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:40:53 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:40:53 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:40:53 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:41:22 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:41:22 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:41:22 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:41:29 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:41:29 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:41:29 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:41:34 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:41:34 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:41:34 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:41:38 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:41:38 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:41:38 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:42:47 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:42:47 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:42:47 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:42:52 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:42:52 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:42:52 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:42:56 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:42:56 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:42:56 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:01 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:01 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:01 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:05 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:05 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:05 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:10 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:10 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:10 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:14 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:14 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:14 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:19 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:19 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:19 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:23 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:23 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:23 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:28 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:28 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:28 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:32 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:32 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:32 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:37 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:37 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:37 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:41 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:41 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:41 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:46 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:46 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:46 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:51 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:51 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:51 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:43:55 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:43:55 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:43:55 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:44:00 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:44:00 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:44:00 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:44:04 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:44:04 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:44:04 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:44:37 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:44:37 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:44:37 http "GET /health HTTP/1.1" 200 -
+2026-09-15 22:44:42 GET /health · token_any · sha8=b311cfe2 len=43
+2026-09-15 22:44:42 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'acik', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 22:44:42 http "GET /health HTTP/1.1" 200 -

@@ -1,0 +1,18 @@
+=== DNS (Mac) ===
+name: hermes.winterfell07.keenetic.pro
+ipv6_address: 2001:2::c633:640b
+
+name: hermes.winterfell07.keenetic.pro
+ip_address: 198.51.100.11
+
+=== DNS (emulator) ===
+
+=== genel internet (ornek) ===
+name: www.google.com
+ipv6_address: 2001:4860:4827:7700::
+ipv6_address: 2001:4860:482b:7700::
+ipv6_address: 2001:4860:4826:7700::
+=== HTTPS denemesi: dis /voice-api (tokensiz, salt GET) ===
+code=403 dns=0.031528 connect=0.032227 total=0.199406
+govde:
+{"error": "yetkisiz"}

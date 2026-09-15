@@ -1,0 +1,11 @@
+sesli mesaj oz-testi
+uc: http://10.0.2.2:8199
+token: var (16 karakter)
+motor: kadin
+1 OK health ok=true stt=acik motorlar={kahya=acik, chatterbox=kapali, kadin=kapali}
+2 kayit.ogg okundu: 31774 bayt
+2 OK metin (66 ms): Bu bir sesli mesaj denemesidir.
+3 OK ogg indirildi: tts-kadin-803004573904755-31.ogg 31774 bayt (13 ms)
+4 OYNATMA basladi=true sure=5600 ms
+4 OK calma tamam (5800 ms izlendi, hala caliyor=false)
+SONUC: BASARILI

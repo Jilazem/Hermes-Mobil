@@ -1,0 +1,2 @@
+mock voice_api http://0.0.0.0:8199 (ogg 31774 bayt)
+/Users/gokhanuzman/hermes-workspace/wt-android-uzman/denetim/tur12/mock_baslat.sh: line 11: 53285 Terminated: 15          python3 tools/tur12/mock_voice_api.py --port 8199 --token-any --ogg app/src/debug/assets/sesli/kayit.ogg --log denetim/tur12/mock.log --cold-seconds 25 --text "Bu bir sesli mesaj denemesidir."

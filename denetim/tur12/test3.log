@@ -1,0 +1,102 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:checkDebugAarMetadata
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
+> Task :app:mergeDebugJniLibFolders
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeDebugResources
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libimage_processing_util_jni.so, libsurface_util_jni.so.
+
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeLibDexDebug
+> Task :app:processDebugResources
+> Task :app:mergeExtDexDebug
+
+> Task :app:compileDebugKotlin
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:106:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:113:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:141:14 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:143:14 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:144:14 'fun setActionStrip(p0: @NonNull() ActionStrip!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:234:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:259:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:979:59 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/Composer.kt:246:48 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/Composer.kt:450:36 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/DrivingScreen.kt:98:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/LiveFeedScreen.kt:163:35 'val Icons.Filled.Article: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Article.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/LiveFeedScreen.kt:210:39 'val Icons.Filled.PlaylistAdd: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.PlaylistAdd.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/LiveSessionsScreen.kt:227:35 'val Icons.Filled.Article: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Article.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/LiveSessionsScreen.kt:269:39 'val Icons.Filled.PlaylistAdd: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.PlaylistAdd.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/LiveVoiceSheet.kt:137:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:67:40 'val Icons.Filled.Subject: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Subject.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:456:76 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/PermissionRows.kt:59:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/SessionsScreen.kt:774:39 'val Icons.Filled.Article: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Article.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:58:42 'val Icons.Filled.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Send.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:59:38 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeProjectDexDebug
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/test/java/com/hermes/mobile/CrashGuardTest.kt:39:52 Division by zero.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/test/java/com/hermes/mobile/ProfileChipLogicTest.kt:87:9 'static fun assertEquals(p0: (Array<Any!>..Array<out Any!>?), p1: (Array<Any!>..Array<out Any!>?)): Unit' is deprecated. Deprecated in Java.
+
+> Task :app:mergeDebugJavaResource
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+VoiceStatusLogicTest > isOn degerleri FAILED
+    java.lang.AssertionError at VoiceStatusLogicTest.kt:97
+
+574 tests completed, 1 failed
+
+> Task :app:testDebugUnitTest FAILED
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUİLD FAILED in 38s
+41 actionable tasks: 41 executed
+TEST-EXIT=1

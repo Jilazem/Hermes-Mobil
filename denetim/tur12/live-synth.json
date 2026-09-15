@@ -1,0 +1,47 @@
+{
+  "base": "http://192.168.1.101:8174",
+  "token_present": true,
+  "sentence": "Merhaba, sesli asistan hazır!",
+  "engine": "kahya",
+  "health_once": {
+    "code": 200,
+    "ms": 105,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 101,
+    "head": "7b226f6b223a20747275652c2022737474223a20226163696b222c2022656e67",
+    "text": "{\"ok\": true, \"stt\": \"acik\", \"engines\": {\"kahya\": \"hazir\", \"chatterbox\": \"kapali\", \"kadin\": \"kapali\"}}"
+  },
+  "synth_1": {
+    "code": 200,
+    "ms": 297461,
+    "content_type": "audio/ogg",
+    "bytes": 11678,
+    "head": "4f67675300020000000000000000739ebe70000000006624e13b01134f707573",
+    "text": "",
+    "sha256": "18f0682c1c693793ec2e3af1c2820e524461e3323537a9a0eb7368dd9d7f744b",
+    "ogg_imza": true,
+    "kayit": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman/denetim/tur12/live-kahya.ogg"
+  },
+  "synth_2_sicak": {
+    "code": 200,
+    "ms": 5316,
+    "content_type": "audio/ogg",
+    "bytes": 11678,
+    "head": "4f67675300020000000000000000dd55540b0000000081bac59101134f707573",
+    "text": "",
+    "sha256": "7624c313545bfafaadad6ad3f6e7b8d706980ab2a00bef56c09596e09aee546e"
+  },
+  "health_sonra": {
+    "code": 200,
+    "ms": 6,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 101,
+    "head": "7b226f6b223a20747275652c2022737474223a20226163696b222c2022656e67",
+    "text": "{\"ok\": true, \"stt\": \"acik\", \"engines\": {\"kahya\": \"hazir\", \"chatterbox\": \"kapali\", \"kadin\": \"kapali\"}}"
+  },
+  "health_tokensiz": {
+    "code": 403,
+    "ms": 0,
+    "text": "{\"error\": \"yetkisiz\"}"
+  }
+}
