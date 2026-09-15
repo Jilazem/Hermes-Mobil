@@ -53,7 +53,11 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.ui.text.font.FontWeight
 import com.hermes.mobile.data.SLASH_COMMANDS
+import com.hermes.mobile.data.VoiceRecordLogic
 import com.hermes.mobile.ui.theme.HermesColors
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 
 /**
  * Mesaj yazma çubuğu — ek, dikte, gönder/durdur.
@@ -77,6 +81,15 @@ fun ChatComposer(
     onRemoveAttachment: (String) -> Unit,
     onPasteUrl: () -> Unit = {},
     onOpenSnippets: () -> Unit = {},
+    /**
+     * Bas-konuş kaydının durumu (tur-11). Mikrofon düğmesi **basılı tutulunca**
+     * kayıt başlar, bırakılınca `/transcribe`'a gider. Faz
+     * [VoiceRecordLogic.Phase.Transcribing] iken düğme döner göstergeye döner.
+     */
+    voiceRecord: VoiceRecordLogic.State = VoiceRecordLogic.State(),
+    onVoiceHoldStart: () -> Unit = {},
+    onVoiceHoldRelease: () -> Unit = {},
+    onVoiceCancel: () -> Unit = {},
     /**
      * Sunucuya ulaşılabiliyor mu. Yazmak buna bağlı **değil**: kopukken yazılan
      * mesaj kuyruğa girip bağlanınca gönderiliyor. Yalnız dosya/görsel ekleme
@@ -153,6 +166,54 @@ fun ChatComposer(
             }
         }
 
+        // Kayıt/metinleştirme durumu — kullanıcı ne olduğunu görsün: kırmızı
+        // nokta + sayaç (60 sn tavanı) + "bırakınca metne çevirir" ipucu.
+        if (voiceRecord.phase != VoiceRecordLogic.Phase.Idle) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (voiceRecord.recording) {
+                    Box(
+                        Modifier
+                            .size(9.dp)
+                            .background(HermesColors.Danger, CircleShape),
+                    )
+                    Spacer(Modifier.width(7.dp))
+                }
+                Text(
+                    VoiceRecordLogic.recordHint(voiceRecord, ::tr),
+                    color = if (voiceRecord.phase == VoiceRecordLogic.Phase.Failed)
+                        HermesColors.Danger else HermesColors.TextMuted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                if (voiceRecord.recording) {
+                    Text(
+                        VoiceRecordLogic.timerLabel(voiceRecord.elapsedMs),
+                        color = HermesColors.TextSecondary,
+                        fontSize = 12.sp,
+                    )
+                } else if (voiceRecord.busy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(13.dp),
+                        strokeWidth = 1.5.dp,
+                        color = HermesColors.Busy,
+                    )
+                }
+            }
+            voiceRecord.message?.takeIf { voiceRecord.phase == VoiceRecordLogic.Phase.Failed }?.let { msg ->
+                Text(
+                    msg,
+                    color = HermesColors.Danger,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 1.dp),
+                )
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -199,6 +260,15 @@ fun ChatComposer(
                             Icon(Icons.Default.Bolt, null, tint = HermesColors.Midground)
                         },
                         onClick = { attachMenu = false; onOpenSnippets() },
+                    )
+                    // Mikrofon düğmesi artık bas-konuş (sesli mesaj) olduğu için
+                    // canlı sesli sohbet menüden erişilir kaldı.
+                    DropdownMenuItem(
+                        text = { Text("Canlı ses (eller serbest)", color = HermesColors.TextPrimary) },
+                        leadingIcon = {
+                            Icon(Icons.Default.GraphicEq, null, tint = HermesColors.Midground)
+                        },
+                        onClick = { attachMenu = false; onDictate() },
                     )
                 }
             }
@@ -253,15 +323,76 @@ fun ChatComposer(
                     onClick = onSend,
                 )
 
-                else -> ActionButton(
-                    icon = if (voiceMode == VoiceController.Mode.Listening)
-                        Icons.Default.GraphicEq else Icons.Default.Mic,
-                    label = "Sesle yaz",
-                    filled = voiceMode == VoiceController.Mode.Listening,
+                // Boş taslakta mikrofon = BAS-KONUŞ (tur-11). Canlı sesli sohbet
+                // (Gemini Live) ek menüsündeki "Canlı ses" satırına taşındı.
+                else -> HoldToTalkButton(
+                    state = voiceRecord,
                     enabled = enabled,
-                    onClick = onDictate,
+                    onHoldStart = onVoiceHoldStart,
+                    onHoldRelease = onVoiceHoldRelease,
+                    onCancel = onVoiceCancel,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Bas-konuş düğmesi — parmak basılıyken kayıt, bırakınca `/transcribe`.
+ *
+ * [detectTapGestures] `onPress` + `tryAwaitRelease`: bırakılınca `true`
+ * (normal), jest iptal edilirse `false` (kaydırıp çıkma → kayıt atılır).
+ * 0,8 sn'den kısa basışı [VoiceRecordLogic] zaten atıyor, bu yüzden yanlışlıkla
+ * dokunma yükleme üretmez.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun HoldToTalkButton(
+    state: VoiceRecordLogic.State,
+    enabled: Boolean,
+    onHoldStart: () -> Unit,
+    onHoldRelease: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val recording = state.recording
+    val busy = state.busy
+    Box(
+        Modifier
+            .size(46.dp)
+            .background(
+                when {
+                    recording -> HermesColors.Danger
+                    busy -> HermesColors.SurfaceDim
+                    else -> HermesColors.SurfaceDim
+                },
+                RoundedCornerShape(13.dp),
+            )
+            .pointerInput(enabled, busy) {
+                if (!enabled || busy) return@pointerInput
+                detectTapGestures(
+                    onPress = {
+                        onHoldStart()
+                        val released = tryAwaitRelease()
+                        if (released) onHoldRelease() else onCancel()
+                    },
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (busy) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(19.dp),
+                strokeWidth = 2.dp,
+                color = HermesColors.Busy,
+            )
+        } else {
+            Icon(
+                if (recording) Icons.Default.Stop else Icons.Default.Mic,
+                contentDescription = if (recording)
+                    S.t2("Kaydı bitir", "Finish recording")
+                else S.t2("Basılı tut, konuş", "Hold to talk"),
+                tint = if (recording) HermesColors.Background else HermesColors.TextFaint,
+            )
         }
     }
 }

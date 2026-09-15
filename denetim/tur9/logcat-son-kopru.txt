@@ -1,0 +1,16 @@
+--------- beginning of main
+09-15 15:47:38.264 21334 21334 I ArenaScene: sahne yukleniyor: file:///android_asset/arena/arena3d.html
+09-15 15:47:38.968 21334 21334 I ArenaScene: konsol: arena3d boot arena3d-1 @file:///android_asset/arena/arena3d.js:22
+09-15 15:47:39.030 21334 21334 I ArenaScene: konsol: arena3d ready figur:0 yazilimGL=1 @file:///android_asset/arena/arena3d.js:22
+09-15 15:47:39.032 21334 21334 I ArenaScene: sayfa yuklendi: file:///android_asset/arena/arena3d.html
+09-15 15:47:39.044 21334 21334 I ArenaScene: veri basiliyor (430 bayt)
+09-15 15:47:39.063 21334 21334 I ArenaScene: konsol: arena3d etiket "?" rozet=- durum=waiting cerceve=#7fb4d8 punto=62 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.066 21334 21334 I ArenaScene: konsol: arena3d etiket "Yaz WhatsApp gelen mesajları" rozet=Canlı durum=waiting cerceve=#7fb4d8 punto=36 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.110 21334 21334 I ArenaScene: konsol: arena3d etiket "Yaz WhatsApp gelen mesajları" rozet=Canlı durum=waiting cerceve=#7fb4d8 punto=36 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.110 21334 21334 I ArenaScene: konsol: arena3d etiket "?" rozet=- durum=waiting cerceve=#7fb4d8 punto=62 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.110 21334 21334 I ArenaScene: konsol: arena3d etiket "Bot Arena beyin fırtınası t…" rozet=Canlı durum=waiting cerceve=#7fb4d8 punto=40 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.110 21334 21334 I ArenaScene: konsol: arena3d etiket "Bot Arena beyin fırtınası t…" rozet=Canlı durum=waiting cerceve=#7fb4d8 punto=40 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.110 21334 21334 I ArenaScene: konsol: arena3d etiket "?" rozet=- durum=waiting cerceve=#7fb4d8 punto=62 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.110 21334 21334 I ArenaScene: konsol: arena3d etiket "6f3e9429" rozet=Canlı durum=waiting cerceve=#7fb4d8 punto=62 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.110 21334 21334 I ArenaScene: konsol: arena3d etiket "6f3e9429" rozet=Canlı durum=waiting cerceve=#7fb4d8 punto=62 @file:///android_asset/arena/arena3d.js:372
+09-15 15:47:39.111 21334 21334 I ArenaScene: konsol: arena3d data 3|idle @file:///android_asset/arena/arena3d.js:22

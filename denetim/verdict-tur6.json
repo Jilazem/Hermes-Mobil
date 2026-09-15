@@ -1,0 +1,73 @@
+{
+  "verdict": "pass",
+  "gorev": "tur6",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman",
+  "dal": "feat/android-uzman-devralma",
+  "head": "5ce5f2b",
+  "aralik": "a028e43..5ce5f2b",
+  "tarih": "2026-09-15T09:33:18Z",
+  "test_sonucu": "kendi koşum: ./gradlew testDebugUnitTest --rerun-tasks → BUILD SUCCESSFUL; XML sayımı (30 suite): 311 passed / 0 failed / 0 errors / 0 skipped; FullControlTest tek başına 42/0/0/0",
+  "bulgular": [
+    {
+      "id": "genel-1",
+      "sev": "LOW",
+      "baslik": "FullControl.advertise imzasındaki readOnly parametresi gövdede kullanılmıyor",
+      "dosya": "app/src/main/java/com/hermes/mobile/data/FullControl.kt",
+      "satir": 368,
+      "neden": "İlk iki koşul (mayUsePhone/fullControl) kararı zaten veriyor; readOnly kapıyı guardReason (satır 334-343) ve PhoneBridgeService.onMessage (satır 229-253) uyguluyor. İşlevsel olarak doğru (salt-okunur testi 47-58 satırlarda geçiyor), yalnız ölü parametre."
+    },
+    {
+      "id": "genel-2",
+      "sev": "LOW",
+      "baslik": "Guard iki kez değerlendiriliyor (köprü + FullControlTools.execute)",
+      "dosya": "app/src/main/java/com/hermes/mobile/data/FullControlTools.kt",
+      "satir": 126,
+      "neden": "PhoneBridgeService.onMessage advertised()/guardReason ile reddediyor, FullControlTools.execute aynı FullControl.guardReason'ı tekrar çağırıyor. Tek kaynak fonksiyon olduğu için tutarsızlık riski yok; maliyet ihmal edilebilir. Bilgi amaçlı."
+    },
+    {
+      "id": "genel-3",
+      "sev": "LOW",
+      "baslik": "Araç sayısı iki düzeyde farklı görünüyor: MCP 28, cihaz ilanı 27",
+      "dosya": "007-HERMES/10-MCP-SERVERS/phone-bridge/phone_mcp_server.py",
+      "satir": 229,
+      "neden": "Doğrulandı: MCP tools/list = 28 (eski 17 + yeni 11), /status cihaz ilanı = 27. Fark bir wrapper: phone_battery MCP'de ayrı araç, cihaz tarafında phone_status aracına eşlenmiş. Canlı phone_battery çağrısı 'Pil %100 · Wi-Fi bağlı' döndürdü — kayıp araç yok, sayım tutarlı."
+    },
+    {
+      "id": "genel-4",
+      "sev": "LOW",
+      "baslik": "Raporun B6 kalanları açık bırakılmış (dürüst kalanlar), engelleyici değil",
+      "dosya": "000-TEMP/android-tur6-rapor.md",
+      "satir": 96,
+      "neden": "Geçmiş açılıştaki ForegroundServiceDidNotStartInTime ekran dökümü metninde duruyor; mevcut crash buffer boş (kendi koşulum: 0 satır) — tur-5 düzeltmesi ayakta. HTTP 404 WS el sıkışması geçici, /status şu an online. SMS/arama/uninstall/PIN kapsam dışı beyanı kodla birebir örtüşüyor (FullControlTools.kt satır 145, 180; HermesAccessibilityService.kt satır 505)."
+    }
+  ],
+  "sayilar": { "critical": 0, "high": 0, "medium": 0, "low": 4 },
+  "dogrulamalar": {
+    "guard_kapali_varsayilan": "AppSettings.kt: fullControl = false (diff satırı doğrulandı). advertise(true→false) boş liste; kapalıyken çağrı 'denied: full-control is off' — FullControlTest 26-73 satırlar + canlı 9181.",
+    "uc_anahtar_tek_nokta": "FullControl.guardReason (FullControl.kt:334-343); PhoneBridgeService.kt:237 ve FullControlTools.kt:126 aynı fonksiyonu çağırıyor.",
+    "servis_yoksa_net_hata": "HermesAccessibilityService.kt:179-182 'Ekran okunamadı: ... Ayarlar → Erişilebilirlik' + PhoneBridgeService.kt:250-252 'denied: erişilebilirlik servisi etkin değil' — sessiz başarı yok.",
+    "token_sinirlari": "DiagLog.redact (DiagLog.kt:114-130) token/key/authorization/AIza maskeliyor; briefArgs base64'ü 60 karakterde kırpıyor (PhoneBridgeService.kt:295-299); Tur6SeedActivity token'ı dosyadan okuyor, uzunluk log'luyor (satır 66-71).",
+    "dump_sinirlari": "MAX_NODES=400, MAX_CHARS=20000, maxWalk=1600, derinlik 40, alan bazlı take(300)/take(200), screenshot ~300KB hedef küçültme planı — hepsi kodda.",
+    "kapsam_disilar": "phone_dial son tuşu bırakıyor, phone_sms_draft GO (task #363), closeApplications kullanılıyor, kilitli ekranda PIN net mesaj — FullControlTools.kt 145/161-162/180.",
+    "mcp_dogrulama": "py_compile OK; stdio tools/list = 28 araç, eski 17'nin hepsi içinde (denetim/tools_list_check.py ile bağımsız koşum, aktif venv /Users/gokhanuzman/bilirkisi-mcp-venv).",
+    "relay": "20-ARACLAR/phone_bridge.py mtime Sep 8 22:43 (iddia ile uyumlu, repo dışı olduğu için diff alınadı; /status davranışı pas-through ile tutarlı).",
+    "canli_zincir": "9181 /status online (sdk_gphone64_arm64, Android 34, 27 araç); screen.dump canlı OK: nexuslauncher, 34 düğüm, truncated=false.",
+    "crash_buffer": "adb logcat -d -b crash → 0 satır (kendi koşulum; kanıt 11b_crash_buffer.txt 0 bayt ile birebir).",
+    "apk": "md5 decc11c01eb5104bc6dbaa4a0ba49ef7 (iddia ile aynı); apksigner verify: imzalı, CN=Android Debug (debug varyantı beklentisi).",
+    "B1_B5_karşılıkları": "B1: snapshot(root,0,...) 3 argüman (HermesAccessibilityService.kt:183). B2: windows?+isActive TYPE_APPLICATION (120-130). B3: puanlı findLive (272-301). B4: redReason→guardReason metinleri aynı (WHY_* sabitleri). B5: 17 eski araç korundu (tools/list kanıtı)."
+  },
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/FullControl.kt": "5845df6c3493ea1b0d02f629a81c18e9c88a377e625f53f7e32e3dcd95ed9d90",
+    "app/src/main/java/com/hermes/mobile/data/FullControlTools.kt": "bea4f973bc13180e797e943485280410a63e9be5242fa5cae1a731f40861176c",
+    "app/src/main/java/com/hermes/mobile/data/HermesAccessibilityService.kt": "0f7a34710469948e832923683289e31e30904a871d456f0f087132fb4bfbf91d",
+    "app/src/main/java/com/hermes/mobile/data/PhoneBridgeService.kt": "a18c1b633ae06699403d9199691564c9e44ec4add369dcc4db657c7a1cbf12ea",
+    "app/src/test/java/com/hermes/mobile/FullControlTest.kt": "1be09014ac535921471609c2015468036548bbc179d2c1a55ed1ec32c471ea75",
+    "007-HERMES/10-MCP-SERVERS/phone-bridge/phone_mcp_server.py": "501f8f82b64bf8143dcb7d1a3fbdf7d2ec776c696f7b0715df44de974f399aad",
+    "000-TEMP/android-tur6/hermes-tur6-5ce5f2b.apk": "d354b0ba4419a356aded6f457094182cae1341fe261f641bd472cf62f146be77"
+  },
+  "dogrulanamadi": [
+    "release APK (app/build/outputs/apk/debug/) denetlenmedi — görev debug APK md5+imza istedi, karşılandı.",
+    "relay phone_bridge.py için git-diff alınadı (repoda değil); mtime + davranış gözlemiyle doğrulandı."
+  ],
+  "lesson": "Üç anahtlı guard tek fonksiyonda (guardReason) toplanınca kapalıyken 'denied: <sebep>' zinciri hem kapalı duyuruda hem canlı çağrıda tutarlı; sayım iddiaları (311/28) XML ve tools/list üzerinden bağımsız sayılınca doğrulanıyor."
+}

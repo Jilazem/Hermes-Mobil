@@ -75,6 +75,7 @@ import com.hermes.mobile.ui.RecentRailSession
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
 import com.hermes.mobile.data.CrashGuard
+import com.hermes.mobile.data.toVoicePrefs
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.ShareHandoff
 import com.hermes.mobile.data.LiveSession
@@ -362,6 +363,9 @@ class MainActivity : ComponentActivity() {
                     chatViewModel.selectedProfileValue = settings.selectedProfile
                         .ifBlank { null }
                     panelViewModel.sparkUrl = settings.sparkUrl
+                    // Sesli mesaj tercihleri: otomatik gönder (varsayılan kapalı),
+                    // motor (varsayılan kahya), uç adresi ve son çalışan adres.
+                    chatViewModel.voicePrefs = settings.toVoicePrefs()
                 }
 
                 // Model denenip başarısız olursa kalıcı olarak "bozuk" işaretlenir;
@@ -389,6 +393,11 @@ class MainActivity : ComponentActivity() {
                         viewModel.settingsStore.update {
                             it.copy(selectedProfile = name.orEmpty())
                         }
+                    }
+                    // Çalışan ses ucu adresi hatırlanır (tur-11): sonraki açılışta
+                    // ilk aday o olur, ölü adres her seferinde denenmez.
+                    chatViewModel.onVoiceBase = { base ->
+                        viewModel.settingsStore.update { it.copy(voiceLastOk = base) }
                     }
                 }
 
@@ -516,6 +525,11 @@ private fun HermesApp(
     customThemes: List<com.hermes.mobile.ui.theme.HermesPalette>,
 ) {
     var tab by remember { mutableStateOf(Tab.Chat) }
+    // Tur-11: sesli mesaj durumu (kayıt sayacı + seslendirme fazı) ve sesle
+    // yazılan metin. HermesApp gövdesinde toplanıyor: ChatScreen çağrısı bu
+    // kapsamda (setContent lambda'sındaki val'lar burada görünmez).
+    val voiceMsgState by chatViewModel.voiceMsg.state.collectAsStateWithLifecycle()
+    val voicePrefillState by chatViewModel.voicePrefill.collectAsStateWithLifecycle()
     val panel by panelViewModel.state.collectAsStateWithLifecycle()
 
     // FR-001: canlı oturum başlık zinciri TEK kaynaktan — liveSessionTitle
@@ -871,6 +885,14 @@ private fun HermesApp(
                             chatViewModel.selectedProfileValue =
                                 name.takeIf { it != com.hermes.mobile.ui.ROUTER_CHIP }
                         },
+                        // Tur-11: bas-konuş kaydı + sesli okuma.
+                        voice = voiceMsgState,
+                        voicePrefill = voicePrefillState,
+                        onVoicePrefillConsumed = chatViewModel::consumeVoicePrefill,
+                        onVoiceHoldStart = chatViewModel::voiceHoldStart,
+                        onVoiceHoldRelease = chatViewModel::voiceHoldRelease,
+                        onVoiceCancel = chatViewModel::voiceCancel,
+                        onSpeak = chatViewModel::speak,
                         )
                     }
                     Tab.Work -> WorkScreen(
@@ -979,6 +1001,8 @@ private fun HermesApp(
                             profileSheet = true
                         },
                         activeHermesProfile = activeHermesProfile,
+                        // Tur-11: ses hattı sağlık denemesi (GET /health).
+                        onVoiceProbe = { chatViewModel.voiceHealthLine() },
                     )
                 }
             }

@@ -1,0 +1,25 @@
+2026-09-15 13:27:49,825 INFO köprü hazır: ws :9280/phone · http 127.0.0.1:9281
+2026-09-15 13:27:51,860 INFO 127.0.0.1 [15/Sep/2026:13:27:51 +0300] "GET /status HTTP/1.1" 200 287 "-" "curl/8.7.1"
+2026-09-15 13:27:51,959 INFO telefon bağlandı: A-emulator · 1 araç
+2026-09-15 13:27:52,319 INFO 127.0.0.1 [15/Sep/2026:13:27:52 +0300] "GET /status HTTP/1.1" 200 353 "-" "Python-urllib/3.12"
+2026-09-15 13:27:52,320 INFO devralındı: A-emulator → B-gercek-telefon
+2026-09-15 13:27:52,372 INFO telefon ayrıldı
+2026-09-15 13:27:52,372 INFO 127.0.0.1 [15/Sep/2026:13:27:51 +0300] "GET /phone?token=*** HTTP/1.1" 101 0 "-" "Python/3.12 aiohttp/3.14.1"
+2026-09-15 13:27:52,372 INFO telefon bağlandı: B-gercek-telefon · 1 araç
+2026-09-15 13:27:52,674 INFO 127.0.0.1 [15/Sep/2026:13:27:52 +0300] "GET /status HTTP/1.1" 200 426 "-" "Python-urllib/3.12"
+2026-09-15 13:27:52,677 INFO devralındı: B-gercek-telefon → A-emulator-yeniden
+2026-09-15 13:27:52,729 INFO telefon ayrıldı
+2026-09-15 13:27:52,730 INFO 127.0.0.1 [15/Sep/2026:13:27:52 +0300] "GET /phone?token=*** HTTP/1.1" 101 0 "-" "Python/3.12 aiohttp/3.14.1"
+2026-09-15 13:27:52,730 INFO telefon bağlandı: A-emulator-yeniden · 1 araç
+2026-09-15 13:27:53,030 INFO 127.0.0.1 [15/Sep/2026:13:27:53 +0300] "GET /status HTTP/1.1" 200 436 "-" "Python-urllib/3.12"
+2026-09-15 13:27:58,034 INFO 127.0.0.1 [15/Sep/2026:13:27:58 +0300] "GET /status HTTP/1.1" 200 436 "-" "Python-urllib/3.12"
+2026-09-15 13:27:58,035 INFO devralındı: A-emulator-yeniden → C-olu-soket
+2026-09-15 13:27:58,087 INFO telefon ayrıldı
+2026-09-15 13:27:58,088 INFO 127.0.0.1 [15/Sep/2026:13:27:52 +0300] "GET /phone?token=*** HTTP/1.1" 101 0 "-" "Python/3.12 aiohttp/3.14.1"
+2026-09-15 13:27:58,088 INFO telefon bağlandı: C-olu-soket · 1 araç
+2026-09-15 13:27:58,387 INFO telefon ayrıldı
+2026-09-15 13:27:58,388 INFO 127.0.0.1 [15/Sep/2026:13:27:58 +0300] "GET /phone?token=*** HTTP/1.1" 101 0 "-" "Python/3.12 aiohttp/3.14.1"
+2026-09-15 13:27:58,791 INFO telefon bağlandı: D-yeni · 1 araç
+2026-09-15 13:27:59,145 INFO 127.0.0.1 [15/Sep/2026:13:27:59 +0300] "GET /status HTTP/1.1" 200 422 "-" "Python-urllib/3.12"
+2026-09-15 13:27:59,151 INFO telefon ayrıldı
+2026-09-15 13:27:59,151 INFO 127.0.0.1 [15/Sep/2026:13:27:58 +0300] "GET /phone?token=*** HTTP/1.1" 101 0 "-" "Python/3.12 aiohttp/3.14.1"

@@ -61,6 +61,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.lazy.items
 import com.hermes.mobile.data.ShizukuBridge
+import com.hermes.mobile.data.VoiceSpeakLogic
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.LogResponse
 import com.hermes.mobile.data.MaintenanceStatusResponse
@@ -103,6 +104,13 @@ fun SettingsScreen(
     onOpenProfiles: () -> Unit = {},
     /** Aktif Hermes profili adı — satırda görünür (boşsa "—"). */
     activeHermesProfile: String = "",
+    /**
+     * Ses hattı (voice_api) sağlık denemesi — `GET /health`.
+     *
+     * Askıya alınabilir (suspend) çünkü soğuk motor uyarısı olan bir kanal:
+     * düğmeye basınca sonuç satırı dolar; ağ işi UI iş parçacığında koşmaz.
+     */
+    onVoiceProbe: suspend () -> String = { "" },
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
@@ -270,6 +278,63 @@ fun SettingsScreen(
                 LiveModelRow(settings.liveModel) { v ->
                     onUpdate { it.copy(liveModel = v) }
                 }
+            }
+
+            // ── Sesli mesaj (tur-11) ──────────────────────────────────────
+            // Kayıt (bas-konuş) + sesli okuma: uç `voice_api` (8174 / dış /voice-api).
+            item { Header(S.t2("Sesli mesaj (uygulama içi)", "Voice messages (in-app)")) }
+
+            item {
+                ChoiceRow(
+                    S.t2("Seslendirme motoru", "Speech engine"),
+                    VoiceSpeakLogic.engineOptions(::tr),
+                    VoiceSpeakLogic.Engine.fromId(settings.voiceEngine).id,
+                ) { v -> onUpdate { it.copy(voiceEngine = v) } }
+            }
+
+            item {
+                Text(
+                    VoiceSpeakLogic.engineHint(
+                        VoiceSpeakLogic.Engine.fromId(settings.voiceEngine),
+                        ::tr,
+                    ),
+                    color = HermesColors.TextMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                )
+            }
+
+            item {
+                SwitchRow(
+                    S.t2("Metni otomatik gönder", "Send the transcript automatically"),
+                    S.t2(
+                        "Kapalıyken konuştuğun metin sohbet girdisine yazılır, " +
+                            "göndermeden önce düzeltebilirsin.",
+                        "When off, the transcript goes into the composer so you can fix it before sending.",
+                    ),
+                    settings.voiceAutoSend,
+                ) { v -> onUpdate { it.copy(voiceAutoSend = v) } }
+            }
+
+            item {
+                TextRow(
+                    title = "voice_api",
+                    detail = S.t2(
+                        "boş bırakırsan sunucu adresinden türetilir: ev ağında :8174, " +
+                            "dışarıda /voice-api",
+                        "leave empty to derive it from the server address: :8174 on the " +
+                            "home network, /voice-api externally",
+                    ),
+                    value = settings.voiceUrl,
+                ) { v -> onUpdate { it.copy(voiceUrl = v.trim(), voiceLastOk = "") } }
+            }
+
+            item {
+                VoiceProbeRow(
+                    lastOk = settings.voiceLastOk,
+                    onProbe = onVoiceProbe,
+                ) { base -> onUpdate { it.copy(voiceLastOk = base) } }
             }
 
             // ── Sohbet ───────────────────────────────────────────────────
@@ -645,6 +710,51 @@ private fun SwitchRow(title: String, detail: String?, value: Boolean, onChange: 
                 }
             }
             Switch(checked = value, onCheckedChange = onChange)
+        }
+    }
+}
+
+@Composable
+private fun VoiceProbeRow(
+    lastOk: String,
+    onProbe: suspend () -> String,
+    onBase: (String) -> Unit = {},
+) {
+    val scope = rememberCoroutineScope()
+    var result by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text("Ses ucu durumu", color = HermesColors.TextPrimary, fontSize = 14.sp)
+        Text(
+            if (lastOk.isBlank()) "Henüz çalışan bir adres yok"
+            else "Son çalışan adres: $lastOk",
+            color = HermesColors.TextMuted,
+            fontSize = 11.sp,
+        )
+        Spacer(Modifier.height(7.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SmallButton(
+                if (busy) "Deneniyor…" else "Şimdi dene",
+            ) {
+                if (busy) return@SmallButton
+                busy = true
+                scope.launch {
+                    val line = runCatching { onProbe() }.getOrElse { e ->
+                        e.message ?: "Ses ucuna ulaşılamadı"
+                    }
+                    result = line
+                    val base = Regex("· ([^ ]+)$").find(line)?.groupValues?.get(1)
+                    if (base != null && !base.contains("ulaşılamadı")) onBase(base)
+                    busy = false
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                result ?: "· /health ve motor durumu",
+                color = if (result == null) HermesColors.TextFaint else HermesColors.TextSecondary,
+                fontSize = 11.sp,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

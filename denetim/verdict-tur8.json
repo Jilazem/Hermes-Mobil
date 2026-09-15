@@ -1,0 +1,66 @@
+{
+  "verdict": "pass",
+  "gorev": "tur8",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman",
+  "dal": "feat/android-uzman-devralma",
+  "head": "4a9a8d3",
+  "aralik": "d2abbad..4a9a8d3",
+  "tarih": "2026-09-15T11:55:00Z",
+  "test_sonucu": "kendi koşum: ./gradlew clean testDebugUnitTest assembleDebug → BUILD SUCCESSFUL; JUnit XML sayımı (denetim/count_tests.py, 32 suite): 344 test / 0 failed / 0 errors / 0 skipped (325 + SessionRailTur8Test 18 + ChatScrollTest 1 = 344 tutuyor); emülatör smoke: adb install -r Success, am start OK, logcat -d -b crash → 0 satır.",
+  "sayilar": { "critical": 0, "high": 0, "medium": 1, "low": 2 },
+  "bulgular": [
+    {
+      "id": "tur8-M1",
+      "sev": "MEDIUM",
+      "baslik": "APK md5/bayt sayısı RAPOR'daki değerle yeniden üretilemedi",
+      "dosya": "app/build/outputs/apk/debug/app-debug.apk",
+      "satir": 158,
+      "neden": "RAPOR.md:158 iddiası md5 4a70f3c44fc2805412cd39515cfb3b0f / 24.713.050 bayt; benim temiz (clean) koşumum iki kez aynı değeri üretti: md5 01c3c9fe7247ab8414e496387b30e2a4 / 23.925.431 bayt. Gradle cache/kurulum sırası farkıyla açıklanır; tüm işlevsel kontroller (344 test, inset 21 px, ray birikimi, crash buffer boş) taze üretilen bu APK üzerinden geçtiği için sonuçları etkilemiyor."
+    },
+    {
+      "id": "tur8-L1",
+      "sev": "LOW",
+      "baslik": "Camera/Driving tam ekran dalları innerPadding'i consumeWindowInsets ile tüketmiyor",
+      "dosya": "app/src/main/java/com/hermes/mobile/MainActivity.kt",
+      "satir": 696,
+      "neden": "consumeWindowInsets(innerPadding) yalnız ana içerik Box'ında (satır 733); cameraFullScreen ve voice.driving dalları Scaffold'dan return@Scaffold ile çıkıyor. Tur-6'dan kalan aynı desen; klavye boşluğu ölçümümde (composer [268,1349][906,1496], klavye üstü 1517 → 21 px) ve crash buffer'da (0 satır) bozulma görülmedi. Bilgi amaçlı."
+    },
+    {
+      "id": "tur8-L2",
+      "sev": "LOW",
+      "baslik": "Kapatılan WH oturumunun yeniden açılma E2E'si sahada tekrarlanamadı (dürüst kalan)",
+      "dosya": "denetim/tur8/RAPOR.md",
+      "satir": 110,
+      "neden": "Üretici kendi raporunda belirtmiş: oturum sunucu tarafından kapatıldığı için saha E2E'si yinelenememiş. Karar birim testle kilitli — SessionRailTur8Test `yeniden acilan oturumun kapatma isareti silinir` (satır 273) geçiyor (344/0/0 içinde)."
+    }
+  ],
+  "dogrulamalar": {
+    "ray_birikimi": "SessionRailLogic.railEntries: sunucu açık listesi ∪ app-içi son açılanlar ∪ geçerli oturum; RAIL_LIMIT=6 tavan, RAIL_RECENT_MAX=12; dedupe önce liveId sonra dbId (boş liveId'de dbId eşlemesi — `uygulama kaydi ile sunucu kaydi ciftlenmez` testi); seen-damgası yalnız listedekilere; dismiss edilen hücre yeniden açılınca işareti siler. Sınır durumları: boş liste, tavan doluyken geçerli oturum dışarıda kalmaz (`tavan doluyken gecerli oturum disarida kalmaz`), iki canlı kayıt tek hücre.",
+    "sayacl_tek_kaynak": "LiveSessionsScreen.kt sayacı openSessionCount'tan (birleştirilmiş tekilleştirilmiş sayım); SONRA-ray-ozet.json: 4 hücre (HE,GR,AL,WH) + '0 çalışıyor · 4 açık oturum' — sayaç ile ray tutarlı; ONCE'te tek hücreydi (birikim hatası giderilmiş).",
+    "inset_duzeltmesi_kendi_olcumum": "Kendi uiautomator dump'larım (taze 4a9a8d3 APK, klavye kapalı→açık): EditText [268,1959][906,2106] → [268,1349][906,1496]; klavye üst kenarı y=1517 → boşluk 1517−1496 = 21 px (8 dp). RAPOR'un 294→21 px tablosu bağımsız ölçümüyle doğrulandı.",
+    "dibe_yaslama": "shouldPinToBottom(userPinnedBottom, scrolling, empty) = userPinnedBottom && !scrolling && !empty (ChatScreen.kt:776); snapshotFlow viewportSize.height + distinctUntilChanged; yukarıda okuyan konumu bozulmaz (ChatScrollTest +1 test, toplam 7).",
+    "test_sayimi": "32 XML sayıldı: 344/0/0/0 — RAPOR iddiasıyla birebir; SessionRailTur8Test 18 @Test, BridgeTakeoverTest 14 (tur-7), ChatScrollTest 7.",
+    "crash_buffer": "adb -s emulator-5554 logcat -d -b crash → 0 satır (iki kez: kurulumdan önce ve am start sonrası).",
+    "kamera_tam_ekran_iddiasi": "cameraFullScreen dalı Scaffold içinde ama kendi tam ekran Column'u; sekme çubuğu koşulu (satır 667) kamera açıkken bottomBar'ı da gizliyor — tur-6 davranışı korundu, bozulma sinyali yok."
+  },
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/SessionRailLogic.kt": "314103d3ccb73da38a3244566ef73e681948f401095bdd6b9e60836cedc23f91",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "85f7fffe476637dd40d237c800aacfcbea204f8b022c1410e6699a1adff90c0b",
+    "app/src/main/java/com/hermes/mobile/MainActivity.kt": "9745fc45706ca5a3918675d40f34fd8874919f801d3e24078de1cdc437a54b9f",
+    "app/src/test/java/com/hermes/mobile/SessionRailTur8Test.kt": "186936687600bddb92bcb0f7a426b6f0fa900b6806670161ba07f85f678a99c6",
+    "app/src/test/java/com/hermes/mobile/ChatScrollTest.kt": "b3a66d4ecf5d3e4b895e97d65d1f52ed80357643990e4a78495cbea413fbb183",
+    "denetim/tur8/RAPOR.md": "36409f907cdd00a0bbb53cd27eeec83fcbe93be022dc39d2f5dcfabda60db5ce",
+    "denetim/tur8/ONCE-ray-ozet.json": "bca93a5158995b49ba81aa7fb9d9798310f3069452da306eb41ca57e48cfdf6a",
+    "denetim/tur8/SONRA-ray-ozet.json": "86ebc29353e1da00fab9b3c3e796b402a718348e5653c000ebc5bc1344cf25d2",
+    "denetim/tur8/ONCE-pencere-dokumu.txt": "102469538954215f8e404fdc0a64397c338d16e806d016044fe0ea1f2bc7a8d0",
+    "denetim/tur8/SONRA-pencere-dokumu.txt": "903fbfe6080e484c85cf02e8635a0ae7fa380df35026e4b45ab6a43fa3f0f9d1",
+    "denetim/tur8/unit-test-sayimi.txt": "f078be86b037ec52ecd0aed1d429e9f6b56cf57c5e4ea2dc4fc72e9b11e636dc",
+    "app/build/outputs/apk/debug/app-debug.apk (denetmen temiz koşumu)": "a15852968e975c4436603695269381425e3b88390ed29ca475aea26b0858dc01"
+  },
+  "dogrulanamadi": [
+    "RAPOR'daki APK md5 4a70f3c4… / 24.713.050 bayt benim clean koşumda yeniden üretilemedi (bkz. tur8-M1); denetmen koşumu: 01c3c9fe… / 23.925.431 bayt — işlevsel testler bu taze APK üzerinde geçti.",
+    "vision_analyze ile PNG'ler okunamadı (model 404); yerine uiautomator dump'ları ve JSON özetleri çapraz kontrol edildi.",
+    "tur8/SONRA-pencere-dokumu.txt içinde RAPOR'daki [268,1349][906,1496]bounds dizisigrep'te doğrudan geçmiyor (doküm dumpsys window biçimli); değerler benim kendi uiautomator dump'ımla doğrulandı."
+  ],
+  "lesson": "İnset düzeltmesi consumeWindowInsets ile tek noktadan yapılınca composer-klavye boşluğu 294→21 px'a indi ve bu, rapordan bağımsız kendi uiautomator dump'ımla aynı sayılarla doğrulandı; ray birikimi birleşim+dedupe+tavan kurallarıyla 18 birim testte sınır durumları dahil kilitlendi. APK md5 deterministik yeniden üretilemediği için bayt+md5 tek başına değil, işlevsel ölçümle birlikte kanıt."
+}

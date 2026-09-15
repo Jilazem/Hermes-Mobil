@@ -1,0 +1,35 @@
+[
+ {
+  "adim": "liste",
+  "sayac": "0 çalışıyor · 4 açık oturum",
+  "kartlar": [
+   "Greeting",
+   "Altınkale 1956 ada 1 parsel değerleme",
+   "hermes-ustasi-devriye · Sep 15 10:46"
+  ]
+ },
+ {
+  "adim": 1,
+  "oturum": "Greeting",
+  "ray": [
+   "GR"
+  ],
+  "png": "t8-before-10-1.png"
+ },
+ {
+  "adim": 2,
+  "oturum": "Altınkale 1956 ada 1 parsel değerleme",
+  "ray": [
+   "AL"
+  ],
+  "png": "t8-before-10-2.png"
+ },
+ {
+  "adim": 3,
+  "oturum": "hermes-ustasi-devriye · Sep 15 10:46",
+  "ray": [
+   "HE"
+  ],
+  "png": "t8-before-10-3.png"
+ }
+]

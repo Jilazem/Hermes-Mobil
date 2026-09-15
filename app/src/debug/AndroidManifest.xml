@@ -20,5 +20,16 @@
             android:label="Tur6 Tohum"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
+
+        <!-- Tur-11: sesli mesaj öz-testi. Asset'teki kaydı gerçek istemci
+             koduyla uca yükler (/transcribe → metin), sentezleyip indirir
+             (/synthesize → ogg) ve MediaPlayer ile çalar. Token intent
+             extra'sıyla geçirilir; kaynakta/kalıcı depoda durmaz. -->
+        <activity
+            android:name=".ui.VoiceSelfTestActivity"
+            android:exported="true"
+            android:label="Sesli Mesaj Öz-Testi"
+            android:noHistory="true"
+            android:theme="@style/Theme.HermesMobile" />
     </application>
 </manifest>

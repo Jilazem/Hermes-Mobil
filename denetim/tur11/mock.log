@@ -1,0 +1,8 @@
+2026-09-15 21:39:18 mock voice_api basladi · port=8199 ogg=31774 bayt
+2026-09-15 21:39:39 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'kapali', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 21:39:39 http "GET /health HTTP/1.1" 200 -
+2026-09-15 21:39:39 200 POST /transcribe · multipart=True alan_audio=True dosya=kayit.ogg ogg_imza=True boyut=31976
+2026-09-15 21:39:39 http "POST /transcribe HTTP/1.1" 200 -
+2026-09-15 21:39:40 SOGUK sentez: 3.0 sn motor isitma taklidi (motor=kadin)
+2026-09-15 21:39:43 200 POST /synthesize · motor=kadin metin_uzunluk=31 oggg_bayt=31774
+2026-09-15 21:39:43 http "POST /synthesize HTTP/1.1" 200 -

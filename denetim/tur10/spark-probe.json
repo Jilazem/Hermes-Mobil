@@ -1,0 +1,68 @@
+[
+  {
+    "name": "gateway-local",
+    "url": "http://127.0.0.1:9150/api/sparks",
+    "code": 404,
+    "body": "{\"detail\":\"No such API endpoint: /api/sparks\"}"
+  },
+  {
+    "name": "gateway-local-sparkapi",
+    "url": "http://127.0.0.1:9150/spark-api/api/sparks",
+    "code": 403,
+    "body": "forbidden"
+  },
+  {
+    "name": "gateway-local-sparkpath",
+    "url": "http://127.0.0.1:9150/spark/api/sparks",
+    "code": 200,
+    "body": "<!doctype html> <html lang=\"en\">   <head>     <meta charset=\"UTF-8\" />     <link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.ico\" />     <meta       name=\"viewport\"       content=\"width=device-widt"
+  },
+  {
+    "name": "local-5555-direct",
+    "url": "http://127.0.0.1:5555/api/sparks",
+    "code": -1,
+    "body": "RemoteDisconnected: Remote end closed connection without response"
+  },
+  {
+    "name": "node1-5555",
+    "url": "http://192.168.1.99:5555/api/sparks",
+    "code": -1,
+    "body": "URLError: <urlopen error [Errno 65] No route to host>"
+  },
+  {
+    "name": "srv101-5555",
+    "url": "http://192.168.1.101:5555/api/sparks",
+    "code": 200,
+    "body": "{\"sparks\":[{\"id\":\"node1\",\"name\":\"GX10 Node1 (Head)\",\"kind\":\"spark\",\"lanIp\":\"192.168.1.99\",\"cx7Ip\":null,\"macAddress\":null,\"detectedMacAddress\":\"30:c5:99:bd:1f:d8\",\"isLocal\":true,\"ssh\":{\"host\":\"127.0.0."
+  },
+  {
+    "name": "srv101-9150",
+    "url": "http://192.168.1.101:9150/api/sparks",
+    "code": 404,
+    "body": "{\"detail\":\"No such API endpoint: /api/sparks\"}"
+  },
+  {
+    "name": "srv101-9150-status",
+    "url": "http://192.168.1.101:9150/api/status",
+    "code": 200,
+    "body": "{\"version\":\"0.21.3\",\"release_date\":\"2026.9.14\",\"config_version\":45,\"latest_config_version\":45,\"can_update_hermes\":true,\"gateway_running\":true,\"gateway_state\":\"running\",\"gateway_platforms\":{\"telegram\":"
+  },
+  {
+    "name": "ext-no-token",
+    "url": "https://hermes.winterfell07.keenetic.pro/api/sparks",
+    "code": 401,
+    "body": "{\"detail\":\"Unauthorized\"}"
+  },
+  {
+    "name": "ext-token",
+    "url": "https://hermes.winterfell07.keenetic.pro/api/sparks",
+    "code": 404,
+    "body": "{\"detail\":\"No such API endpoint: /api/sparks\"}"
+  },
+  {
+    "name": "ext-sparkapi",
+    "url": "https://hermes.winterfell07.keenetic.pro/spark-api/api/sparks",
+    "code": 403,
+    "body": "forbidden"
+  }
+]

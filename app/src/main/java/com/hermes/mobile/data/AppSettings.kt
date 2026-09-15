@@ -170,10 +170,33 @@ data class AppSettings(
 
     /**
      * sparkDash adresi. Boşsa Hermes sunucusunun adresinden 5555 portuyla
-     * türetilir. Ayrı tutuluyor çünkü sparkDash'in API'sinde kimlik doğrulama
-     * yok — internete açmak bilinçli bir karar olmalı.
+     * türetilir. Ayrı tutuluyor çünkü sparkDash'in API'sinde kimlik
+     * doğrulama yok — internete açmak bilinçli bir karar olmalı.
      */
     val sparkUrl: String = "",
+
+    // ── Sesli mesaj (tur-11) ─────────────────────────────────────────
+    /**
+     * Sesle yazılan metin kendiliğinden gönderilsin mi.
+     *
+     * Varsayılan **KAPALI** (görev şartı): yanlış anlaşılan bir cümle
+     * kendiliğinden ajana gitmesin — metin önce sohbet girdisine yazılır,
+     * kullanıcı gönderir.
+     */
+    val voiceAutoSend: Boolean = false,
+
+    /** Seslendirme motoru: `kahya` (varsayılan) · `chatterbox` · `kadin`. */
+    val voiceEngine: String = "kahya",
+
+    /**
+     * Ses ucu adresi. Boş bırakılırsa sunucu adresinden türetilir:
+     * ev ağında `http://<host>:8174`, dışarıda `<base>/voice-api`.
+     * Elle verilirse tek başına o denenir (yerel test ucu için).
+     */
+    val voiceUrl: String = "",
+
+    /** Son çalıştığı doğrulanan ses ucu — sonraki açılışta öne alınır. */
+    val voiceLastOk: String = "",
 
     // ── Gizlilik ─────────────────────────────────────────────────────
     val biometricLock: Boolean = false,
@@ -283,6 +306,25 @@ data class AppSettings(
             ?: BUILTIN_PERSONAS.firstOrNull { it.id == personaId }?.instruction
             ?: BUILTIN_PERSONAS.first().instruction
 }
+
+/** Sesli mesaj tercihleri — uygulama ayarlarından çözülür (saf veri). */
+data class VoicePrefs(
+    /** "Otomatik gönder" — varsayılan KAPALI. */
+    val autoSend: Boolean = false,
+    val engine: VoiceSpeakLogic.Engine = VoiceSpeakLogic.Engine.DEFAULT,
+    /** Elle verilen ses ucu adresi (boşsa adresler profilden türetilir). */
+    val url: String = "",
+    /** Son çalışan adres — ilk aday olur. */
+    val lastOk: String = "",
+)
+
+/** Ayarlardan ses tercihlerini çözer; bilinmeyen motor adı varsayılana düşer. */
+fun AppSettings.toVoicePrefs(): VoicePrefs = VoicePrefs(
+    autoSend = voiceAutoSend,
+    engine = VoiceSpeakLogic.Engine.fromId(voiceEngine),
+    url = voiceUrl,
+    lastOk = voiceLastOk,
+)
 
 private const val PREFS = "hermes_settings"
 private const val KEY_SETTINGS = "settings"

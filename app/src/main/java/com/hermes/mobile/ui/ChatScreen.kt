@@ -9,9 +9,11 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,8 +48,10 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -153,6 +157,23 @@ fun ChatScreen(
     onImprovePrompt: suspend (metin: String) -> String = { it },
     /** Yazma hızı göstergesi — ayrı StateFlow; ana `state` recomposition'ını tetiklemez. */
     speed: StateFlow<StreamMeter.Snapshot?> = MutableStateFlow(null),
+    /**
+     * Sesli mesaj (tur-11): kayıt fazı + seslendirme fazı.
+     *
+     * Ayrı bir StateFlow olarak geçirilir (`speed` deseni): kayıt sayacı her
+     * 120 ms'de bir güncellenir, ana sohbet state'ini yeniden çizdirmesi
+     * gerekmez.
+     */
+    voice: com.hermes.mobile.data.VoiceMessageController.UiState =
+        com.hermes.mobile.data.VoiceMessageController.UiState(),
+    /** Sesle yazılan metin — taslağa eklenir, sonra tüketilir (kapalıysa gönderilir). */
+    voicePrefill: String? = null,
+    onVoicePrefillConsumed: () -> Unit = {},
+    onVoiceHoldStart: () -> Unit = {},
+    onVoiceHoldRelease: () -> Unit = {},
+    onVoiceCancel: () -> Unit = {},
+    /** Asistan balonunu seslendir/durdur — (balon anahtarı, metin). */
+    onSpeak: (String, String) -> Unit = { _, _ -> },
 ) {
     // Sheet burada açılıyor: taslak `draft` bu kompozablda, "satıra dokun →
     // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
@@ -169,6 +190,14 @@ fun ChatScreen(
         // Yazmakta olduğu bir şey varsa üstüne yazma, altına ekle.
         draft = if (draft.isBlank()) incoming else draft + "\n" + incoming
         onSharedTextConsumed()
+    }
+
+    // Sesli mesajdan gelen metin: "otomatik gönder" KAPALIYKEN buraya düşer.
+    // Taslak doluysa üstüne yazmaz, altına ekler (paylaşılan metinle aynı kural).
+    LaunchedEffect(voicePrefill) {
+        val incoming = voicePrefill ?: return@LaunchedEffect
+        draft = if (draft.isBlank()) incoming else draft + "\n" + incoming
+        onVoicePrefillConsumed()
     }
     val listState = rememberLazyListState()
     var followBottom by remember { mutableStateOf(true) }
@@ -283,7 +312,15 @@ fun ChatScreen(
                 ) {
                     items(rows, key = { it.key }) { row ->
                         when (row) {
-                            is ChatRow.Single -> ChatItemView(row.item, onApproval, onOpenFile)
+                            is ChatRow.Single -> ChatItemView(
+                                row.item,
+                                onApproval,
+                                onOpenFile,
+                                onSpeak = onSpeak,
+                                speakKey = voice.speak.key,
+                                speakBusy = voice.speak.phase ==
+                                    com.hermes.mobile.data.VoiceSpeakLogic.Phase.Downloading,
+                            )
                             is ChatRow.Tools -> ToolActivityRow(
                                 row.entries,
                                 label = if (S.lang == Lang.TR) DETAIL_ROW_TR else DETAIL_ROW_EN,
@@ -334,6 +371,20 @@ fun ChatScreen(
         // collect SpeedRow içinde: her pencere yalnız bu satırı yeniden derler.
         SpeedRow(speed)
 
+        // Seslendirme satırı: indiriliyor (soğuk motor uyarısı 8 sn sonra) /
+        // çalıyor / son hata. Aynı satır balonun hoparlör ikonuna da bağlı.
+        com.hermes.mobile.data.VoiceSpeakLogic
+            .statusLine(voice.speak, ::tr)
+            ?.let { line ->
+                Text(
+                    line,
+                    color = if (voice.speak.phase == com.hermes.mobile.data.VoiceSpeakLogic.Phase.Idle)
+                        HermesColors.Danger else HermesColors.Midground,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 2.dp),
+                )
+            }
+
         ChatComposer(
             draft = draft,
             // Yazmak her zaman açık; kopukken mesaj kuyruğa giriyor.
@@ -342,6 +393,10 @@ fun ChatScreen(
             agentBusy = state.agentBusy,
             attachments = state.attachments,
             voiceMode = state.voiceMode,
+            voiceRecord = voice.record,
+            onVoiceHoldStart = onVoiceHoldStart,
+            onVoiceHoldRelease = onVoiceHoldRelease,
+            onVoiceCancel = onVoiceCancel,
             onDraftChange = { draft = it },
             onSend = {
                 onSend(draft)
@@ -850,6 +905,7 @@ private fun foldToolRuns(items: List<ChatItem>): List<ChatRow> {
     return rows
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChatItemView(
     item: ChatItem,
@@ -857,6 +913,14 @@ private fun ChatItemView(
     onOpenFile: (FileRef) -> Unit = {},
     onOpenProfiles: () -> Unit = {},
     activeProfileName: String = "",
+    /**
+     * Seslendirme (tur-11): balona **uzun basma** ya da hoparlör ikonu
+     * [onSpeak]'i çağırır; [speakKey] çalan/indirilen balonun anahtarıdır
+     * (aynı balona ikinci dokunuş durdurur), [speakBusy] indirme sürüyor.
+     */
+    onSpeak: (String, String) -> Unit = { _, _ -> },
+    speakKey: String? = null,
+    speakBusy: Boolean = false,
 ) {
     when (item) {
         is ChatItem.User -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -871,7 +935,16 @@ private fun ChatItemView(
             }
         }
 
-        is ChatItem.Assistant -> Column(Modifier.fillMaxWidth()) {
+        is ChatItem.Assistant -> Column(
+            Modifier
+                .fillMaxWidth()
+                // Uzun basma = seslendir/durdur (kopyalama jesti burada yok;
+                // metin seçimi MarkdownText içinde kendi yolunda).
+                .combinedClickable(
+                    onLongClick = { if (!item.streaming) onSpeak(item.key, item.text) },
+                    onClick = {},
+                ),
+        ) {
             MarkdownText(
                 markdown = item.text + if (item.streaming) " ▌" else "",
                 modifier = Modifier.fillMaxWidth(),
@@ -880,6 +953,45 @@ private fun ChatItemView(
             // tıklanabilir olan bağlantının mobil karşılığı.
             if (!item.streaming) {
                 FileRefRow(remember(item.text) { extractFileRefs(item.text) }, onOpenFile)
+                // Sesli okuma satırı: hoparlör ikonu + motor bilgisi.
+                val speaking = speakKey == item.key
+                Row(
+                    Modifier.padding(top = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(26.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onSpeak(item.key, item.text) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (speaking && speakBusy) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(13.dp),
+                                strokeWidth = 1.5.dp,
+                                color = HermesColors.Busy,
+                            )
+                        } else {
+                            Icon(
+                                when {
+                                    speaking -> Icons.Default.Stop
+                                    else -> Icons.Default.VolumeUp
+                                },
+                                contentDescription = if (speaking)
+                                    S.t2("Sesi durdur", "Stop the audio")
+                                else S.t2("Sesli oku", "Read aloud"),
+                                tint = if (speaking) HermesColors.Midground else HermesColors.TextFaint,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                    Text(
+                        if (speaking) S.t2("Çalıyor", "Playing") else S.t2("Sesli oku", "Read aloud"),
+                        color = HermesColors.TextFaint,
+                        fontSize = 10.sp,
+                    )
+                }
             }
         }
 

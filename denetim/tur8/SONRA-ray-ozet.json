@@ -1,0 +1,69 @@
+[
+ {
+  "adim": 1,
+  "sekme": "canli",
+  "oturum": "hermes-ustasi-devriye · Sep 15 10:46",
+  "sayac": "0 çalışıyor · 4 açık oturum",
+  "ray": [
+   "HE",
+   "GR",
+   "AL",
+   "WH"
+  ],
+  "png": "t8-after6-00-canli-0.png"
+ },
+ {
+  "adim": 2,
+  "sekme": "canli",
+  "oturum": "Altınkale 1956 ada 1 parsel değerleme",
+  "sayac": "0 çalışıyor · 4 açık oturum",
+  "ray": [
+   "AL",
+   "HE",
+   "GR",
+   "WH"
+  ],
+  "png": "t8-after6-01-canli-1.png"
+ },
+ {
+  "adim": 3,
+  "sekme": "gecmis",
+  "oturum": "Greeting",
+  "sayac": "27 oturum · 18 açık",
+  "ray": [
+   "GR",
+   "AL",
+   "HE",
+   "WH"
+  ],
+  "png": "t8-after6-02-gecmis-1.png"
+ },
+ {
+  "adim": 4,
+  "sekme": "gecmis",
+  "oturum": "Pavo Saglik Takibi · Sep 15 12:14",
+  "sayac": "27 oturum · 18 açık",
+  "ray": [
+   "PA",
+   "GR",
+   "AL",
+   "HE",
+   "WH"
+  ],
+  "png": "t8-after6-03-gecmis-2.png"
+ },
+ {
+  "adim": 5,
+  "sekme": "gecmis",
+  "oturum": "hermes-ustasi-devriye · Sep 15 10:46",
+  "sayac": "27 oturum · 18 açık",
+  "ray": [
+   "HE",
+   "PA",
+   "GR",
+   "AL",
+   "WH"
+  ],
+  "png": "t8-after6-04-gecmis-3.png"
+ }
+]

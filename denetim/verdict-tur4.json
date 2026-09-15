@@ -1,0 +1,63 @@
+{
+  "verdict": "pass",
+  "gorev": "tur4",
+  "tarih": "2026-09-14T21:35:00+03:00",
+  "test_sonucu": "252 passed / 0 failed / 0 errors / 0 skipped — 27 JUnit XML, --rerun-tasks taze koşum, denetmen tarafından bağımsız sayıldı (denetim/count_tests.py)",
+  "kabul_matrisi": {
+    "A_onizleme_ayiklama": "ui/SessionText.kt:75 isMachineNoise + :132 meaningfulPreview — canlı dump d3/a3: JSON/çit YOK, tek satır anlamlı önizleme (0 yasaklı eşleşme)",
+    "B_cron_sistem_metni": "SessionText.kt:75-103 noise çizgileri — canlı: 'Pavo Saglik Takibi · Sep 14 19:40' + 'Zamanlanmış görev' rozeti, [IMPORTANT...] yok",
+    "C_baslik_konu": "SessionsScreen.kt:205 readableTitle + SessionText.kt:142 topicFromPreview + :150 isGenericIdentityTitle — canlı: konu başlıkları, '. #2' yerine 'Sohbet · 14.09 21:09'; AppViewModel.openSession her açılışta resolved giydiriyor (diff teyitli)",
+    "D_sayac": "SessionText.kt:218 loadedMessageCount + SessionDetailScreen.kt:123-139 — canlı d6: kart '39 mesaj' == detay '39 mesaj' (birebir)",
+    "E_F_kart_anatomisi": "SessionText.kt:208 cardActions + SessionsScreen.kt:736/784/799 (satır=sohbet, Döküm sabit, alt satır kaynak+sayı) — canlı: buton yığını yok, kılavuz metni yok; SessionCardAnatomyTest 5/5",
+    "G_header_sadelestirme": "ChatScreen.kt:327 ChatHeader + :366 topic + ProfileChips.kt:60 visibleProfileChips — canlı: tek satır konu + ⋯ ('Model ve profiller'), 'bağlı'/model etiketi/default/ac/android yok",
+    "H_transcript_katlama": "SessionDetailScreen.kt:57 foldTranscript + ChatScreen.kt:648 foldToolRuns — canlı: '✓ Ayrıntı · Düşünme ×17, execute_code ×17' (detay) ve '✓ Ayrıntı · execute_code ×17, memory_search ×2' (sohbet)",
+    "P0_crash": "crash buffer tur başı VE sonu 0 (kendi okumam); süreç ayakta, mCurrentFocus=MainActivity",
+    "TR_EN_sizinti": "kendi EN turum (en1/en2/en3 dump): tümü İngilizce; TEK istisna SettingsScreen.kt:295 — bkz. MED-01"
+  },
+  "bulgular": [
+    {
+      "id": "MED-01",
+      "sev": "MEDIUM",
+      "baslik": "EN modunda 1 TR etiket sızıntısı (rapor '0 sızıntı' demişti)",
+      "dosya": "app/src/main/java/com/hermes/mobile/ui/SettingsScreen.kt",
+      "satir": 295,
+      "neden": "SwitchRow açıklaması sabit TR dizgi: 'Geri tuşuyla çıkarken \"Çıkılsın mı?\" diye sorulur' — S.t2() ile sarmalanmamış. Kendi EN dump'ımda (denetim/en3-genel.xml) İngilizce chrome içinde tek TR satır olarak göründü. P3 seviyesi, bloklayıcı değil."
+    },
+    {
+      "id": "LOW-01",
+      "sev": "LOW",
+      "baslik": "İskelet (skeleton) yükleme ekranları yok",
+      "dosya": "app/src/main/java/com/hermes/mobile/ui/SessionsScreen.kt",
+      "satir": 1,
+      "neden": "Büyük model direktifi madde 5 iskelet ekran ister; üretici bilinçli açık kapsam olarak声明 etmiş (rapor §4). Boş durum ekranları var. Kapıyı bloklamaz."
+    }
+  ],
+  "sayilar": { "critical": 0, "high": 0, "medium": 1, "low": 1 },
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/SessionText.kt": "5127046cf121cb91241557611344394b7e2fe94feffc16af6ca181df25bc6bd2",
+    "app/src/main/java/com/hermes/mobile/ui/SessionsScreen.kt": "8bef2c6f95b36adc46d3a1876507558195178a3d66859d207c78adca99b79442",
+    "app/src/main/java/com/hermes/mobile/ui/LiveSessionsScreen.kt": "daee743902e2266a6ecd3648cf98f03419d85dd33924f94f18fa511431edaa14",
+    "app/src/main/java/com/hermes/mobile/ui/SessionDetailScreen.kt": "b551417fa8de677a57d96e3a20c5c62b69c8118ceea2abf3e34056873f5a00af",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "f05577cb28c310888b64a0c9bd4dff500631ac3aabd34d2333638c4bf080b6b9",
+    "app/src/main/java/com/hermes/mobile/ui/ProfileChips.kt": "4149b01802cc5ee615c8f6bef4a4577463c1c19c1d41a7a1cfb92fdd0d429789",
+    "app/src/main/java/com/hermes/mobile/ui/LiveFeed.kt": "98600f75fcb4e79e95d378707b6efadf9992979e6d8fcfac3193c913033c88bb",
+    "app/src/main/java/com/hermes/mobile/MainActivity.kt": "557d79af1ac50c3cfa1bf3dc86c95b80f23077325e3806d4c958645a953e7271",
+    "000-TEMP/hermes-tur4-0b3dc92.apk": "6324dfa2e4559273e77d508008fd7fed6340e6bd44a1dc566ffb85d640f612d3"
+  },
+  "apk_dogrulama": {
+    "md5": "f225c65f1aeb74c1428d2323f7b894e7",
+    "kurulu_base_apk_md5": "f225c65f1aeb74c1428d2323f7b894e7 (adb pull ile birebir aynı baytlar)",
+    "apksigner": "Verifies — v2 şeması true, tek imzalayıcı (Android Debug, RSA 2048)",
+    "surum": "versionName=0.1.0, versionCode=1, lastUpdateTime 2026-09-14 21:16:54",
+    "crash_buffer": "0 (tur başı ve sonu)"
+  },
+  "canli_tur_kanitlari": [
+    "denetim/d1-sohbet.xml: 21 metin, 0 yasaklı (konu başlığı, ⋯, '✓ Ayrıntı' katlaması, Yönlendirici çipi)",
+    "denetim/d2-oturumlar.xml / d3-tumu.xml / a2 / a3: Canlı+Tümü 0 yasaklı; kaydırma çalışıyor (md5 değişimiyle teyitli)",
+    "denetim/d6-dokum.xml: '39 mesaj' kartla birebir; katlanır Ayrıntı",
+    "denetim/a8-ayarlar.xml: 0 yasaklı",
+    "denetim/en1/en2-gecmis: EN etiketler tam (Sessions/Live/All/History/Transcript/Desktop/Scheduled job), TR sızıntı yalnız SettingsScreen:295",
+    "kanıt klasörü sayıları: before=12 son=18 en=9 teslim=11 — görevle birebir"
+  ],
+  "lesson": "Sayaç ve katlama düzeltmeleri canlı dump'ta kart-detay birebirliğiyle doğrulandı; kalan tek sızıntı tek satırlık sabit TR dizi (S.t2 sarımıyla kapanır)."
+}

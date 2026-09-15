@@ -1,0 +1,21 @@
+/tmp/tur7/fake_clients.py:48: DeprecationWarning: parameter 'timeout' of type 'float' is deprecated, please use 'timeout=ClientWSTimeout(ws_close=...)'
+  self.ws = await self.session.ws_connect(WS_URL, heartbeat=None, timeout=10)
+PASS  1A aktif: /status device=A | A-emulator
+PASS  1B ilk baglantida last_takeover yok
+PASS  2A A'ya close cercevesi geldi | [('text', '{"event": "taken_over", "reason": "devralindi: yeni cihaz baglandi", "code": 4001, "device": "B-gercek-telefon"}'), ('close', 4001, 'devralindi: yeni cihaz baglandi'), ('end', '257')]
+PASS  2B close kodu 4001 | code=4001
+PASS  2C close reason devir metni | reason='devralindi: yeni cihaz baglandi'
+PASS  2D A'ya uygulama duzeyinde taken_over karesi geldi | [{'event': 'taken_over', 'reason': 'devralindi: yeni cihaz baglandi', 'code': 4001, 'device': 'B-gercek-telefon'}]
+PASS  2E yuva B'ye gecti | B-gercek-telefon
+PASS  2F /status last_takeover {from:A,to:B} | {'from': 'A-emulator', 'to': 'B-gercek-telefon', 'ts': 1789468072.320292}
+PASS  3A B'ye de 4001 gitti | code=4001
+PASS  3B yuva A2'de | A-emulator-yeniden
+PASS  3C bekleme penceresinde (5 sn) EK DEVIR YOK | oncesi=0 sonrasi=0
+PASS  3D yuva hala A2'de (kendiliginden dusme yok) | A-emulator-yeniden
+PASS  3E A2 hic devralinmadi (close olayi yok)
+PASS  3F devir sureleri: A2 baglandi -> aktif (5.36s)
+PASS  4A sessizce dusen soket sonrasi yeni baglanti yuva aldi | D-yeni
+PASS  4B devralma < 4 sn (kilit/zaman asimi yok) | 0.36s
+PASS  4C OLU soket icin sahte devir kaydi uretilmedi | {'from': 'A-emulator-yeniden', 'to': 'C-olu-soket', 'ts': 1789468078.0350878}
+
+=== OZET: 17/17 PASS

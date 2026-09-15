@@ -1,0 +1,11 @@
+Denetmen kendi kosumu (2026-09-15, JDK: 007-HERMES/20-ARACLAR/jdk/jdk-17)
+komut: ./gradlew testDebugUnitTest assembleDebug --rerun-tasks
+sonuc: BUILD SUCCESSFUL in 17s (exit 0, 41/41 task)
+JUnit XML sayimi (38 suite): TESTS: 442  FAILURES: 0  ERRORS: 0  SKIPPED: 0
+yeni testler (siniif bazinda, grep ile): AddressHealthTest 14, AwaitLifecycleTest 12,
+ConnectionJournalTest 12, SocketTuningTest 11, SparkEndpointsTest 15 => 64 yeni test.
+yeni APK: app/build/outputs/apk/debug/app-debug.apk 24.172.942 bayt
+md5: 9e235f72afd60a6ad0489ea303a68a88
+(RAPOR.md iddiasi: 25.008.564 / 2ef4a8d0e9d52e305640ff7c33e51818 -> eslesmedi, bkz. B-1)
+spark probe yeniden kosuldu (python3 denetim/tur10/probe_spark.py): spark-probe.json ile
+birebir ayni kodlar (404 / 403 / 200 / -1 / -1 / 200 / 404 / 200 / 401 / 404 / 403).

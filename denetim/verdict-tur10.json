@@ -1,0 +1,37 @@
+{
+  "verdict": "pass",
+  "gorev": "tur10",
+  "tarih": "2026-09-15T15:51:18Z",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman",
+  "aralik": "b1617a1..21ba0a3",
+  "test_sonucu": "Kendi kosum: ./gradlew testDebugUnitTest assembleDebug --rerun-tasks (JAVA_HOME=20-ARACLAR/jdk/jdk-17) -> BUILD SUCCESSFUL in 17s, exit 0, 41/41 task. JUnit XML sayimi (38 suite): 442 test / 0 failures / 0 errors / 0 skipped. Yeni 5 sinifin sayilari RAPOR ile birebir: AwaitLifecycleTest 12, AddressHealthTest 14, ConnectionJournalTest 12, SocketTuningTest 11, SparkEndpointsTest 15 (toplam 64 yeni; 378 -> 442, esik korundu). spark-probe.py yeniden kosuruldu: spark-probe.json ile birebir ayni kodlar (9150/api/sparks 404, 9150/spark-api 403, 9150/spark 200, 127.0.0.1:5555 -1, 192.168.1.99:5555 -1, 192.168.1.101:5555 200, ext: 401/404/403).",
+  "inceleme": {
+    "F1": "AwaitLifecycle.kt: onStartCommand'in ILK ifadesi kosulsuz startForeground (AwaitReplyService.kt:24-30, uzeri kod onayi atlayamiyor); pendingStop onay-oncesi-stop yarasini kapatiyor (AwaitLifecycle.kt:59-69, 89-95); stop sonrasi gec start Awaiting=false + pendingStop=false ile eski servis yeniden kurulmaz (satir 51-57); 3 sn watchdog onStartTimeout bayragi serbest birakir (satir 101-108, AwaitReplyService.kt:36-40). 12 birim testi bu dizilisleri dogruladi. fgs-yaris.sh: 20x start-foreground-service + aninda stopservice, crash tamponu + ForegroundServiceDidNotStartInTime sayimi 0 bekleniyor; crash-tamponu-bos.txt bos (0 bayt) — tutarli.",
+    "F3": "AddressHealth.kt COOLDOWN_LADDER_MS = [30sn, 120sn, 300sn, 900sn] tavanli merdiven (satir 25-26); plan() tek saglikli adres secimi + hepsi devre disi ise en erken acilacak tek adres (satir 41-56); aday listesi aynen doner — kullanici adresi silinmez (satir 35-37 dedupe/silme yok). HermesClient.kt:48,59,80,113,120,134,145 plan/noteFailure/noteSuccess entegrasyonu mevcut; ConnectScreen.kt:310,336 durum blogu + reset. AddressHealthTest 14 test merdiven/plan/izolasyon/reset dogruladi.",
+    "F2": "SocketTuning.kt: ping 15/20/45 + jitter +-25% (satir 75-77), hizli iyilesme tavanlari 5sn ws / 15sn kopru, FLAP_WINDOW 60sn (satir 79-91). Baglanti noktalari: GatewayWsClient.kt:59,63,364,438; PhoneBridgeService.kt:76,85,425,485; LiveVoiceClient.kt:78,90,504. ConnectionJournal.kt: 7 sinif + ring 40 + redact (token=***); DiagLog.kt:176 dumpSection gomuluyor. SocketTuningTest 11 + ConnectionJournalTest 12 (redact testi dahil) gecti.",
+    "F4": "SparkEndpoints.kt aday sirasi: LAN -> dogrudan :5555 (oncelik), dis -> /spark-api sonra apiBase (satir 34-48). SparkClient.kt:63-106 adaylari sirayla dener, calisanini hatirlar, hepsi basarisizsa describe() ile net hata. RAPOR.md F4 bolumunde 'Sunucu tarafi is (bu gorevde YAPILMADI)' listesi mevcut: Caddy'de SPARK_GATE_TOKEN tanimi, /spark-api vekil hedefi 192.168.1.99->192.168.1.101, Mac :5555 vekili. Uctan uca olcum yeniden uretildi (bkz. test_sonucu)."
+  },
+  "sayilar": {"critical": 0, "high": 0, "medium": 1, "low": 2},
+  "bulgular": [
+    {"id": "B-1", "sev": "MEDIUM", "baslik": "Yeni kosumdaki APK degerleri RAPOR.md ile eslesmedi", "dosya": "app/build/outputs/apk/debug/app-debug.apk", "satir": "N/A", "neden": "Kosum oncesi RAPOR: 25.008.564 bayt / md5 2ef4a8d0e9d52e305640ff7c33e51818. Denetmen --rerun-tasks sonrasi: 24.172.942 bayt / md5 9e235f72afd60a6ad0489ea303a68a88. Kod durumu ayni (21ba0a3, 442 test yesil, kullanimda olan tum siniflar ayni) — fark buyuk olasilikla build ortami/daemon farkindan (dex + siralama/zaman damgasi). Kanit zinciri test-XML + kaynak sha256 ile yine dogulanmis; sonraki turlarda APK md5'inin kosumla birlikte kaydedilmesi onerilir."},
+    {"id": "B-2", "sev": "LOW", "baslik": "F4 sunucu tarafi is kalemi acik (bilincli kapsam disi)", "dosya": "denetim/tur10/RAPOR.md", "satir": "F4 'Sunucu tarafi is' blogu", "neden": "Uygulama tarafi tamam (aday sirasi + net hata metinleri, 15 test). Dis yolun 200 donmesi icin Caddy:9150 bloğunda SPARK_GATE_TOKEN tanimi ve /spark-api vekil hedefinin 192.168.1.101:5555'e cekilmesi gerekiyor — canli sunucuya dokunma yasagi nedeniyle bekletiliyor, RAPOR'da net yazili."},
+    {"id": "B-3", "sev": "LOW", "baslik": "Olcum aninda gateway 502 dondurmustu (gecici)", "dosya": "denetim/tur10/uygulama-diag-son120.log", "satir": "17:38:36-17:38:58 satirlari", "neden": "Diag logda /api/status ve /api/cron/jobs 502 gorunuyor; 15:51'deki yeniden kosumde ayni uclar 200 dondu — gecici vekil durumu cozulmus. F2 ConnectionJournal'in 'kopma ozeti' satiri bu tipi gecici dagini ikili kanitla ayirt etmeye yariyor; izlemeye devam edilmeli."}
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/AwaitLifecycle.kt": "cf30fcf1e7c9fe45beab7ab1235c9bf16b358e07051736c4516ba32a2dadd6ca",
+    "app/src/main/java/com/hermes/mobile/data/AwaitReplyService.kt": "67f3c202cddadc76d8605db33c67d2b33c8259a4519df45cf64d48f3f803595d",
+    "app/src/main/java/com/hermes/mobile/data/AddressHealth.kt": "75fbbb4ca917a8353b66527d06a9d300e87e765c39a041ed6f8719694e0b9daf",
+    "app/src/main/java/com/hermes/mobile/data/SocketTuning.kt": "0a406e052a6ca568fefb4dd94f1846ac78693254d8a3101b2b2d117f8601a442",
+    "app/src/main/java/com/hermes/mobile/data/ConnectionJournal.kt": "ab3998329befd1325e0c39d612d2ae77fea72585da48196a0b6bcce8fa16df45",
+    "app/src/main/java/com/hermes/mobile/data/SparkEndpoints.kt": "41ec23cf9056793b00c5be65ab324c361543de8c1eda43914f8da6d33114dd1f",
+    "app/src/test/java/com/hermes/mobile/AwaitLifecycleTest.kt": "3a8b358b9555cd0c15ba554f58e7537e21d78addc2f6ca3d3ef6f438c77a218b",
+    "app/src/test/java/com/hermes/mobile/AddressHealthTest.kt": "b49af5124153e8b06c14d019348a35a42451d0cb845f1e05666594afbaddf63c",
+    "app/src/test/java/com/hermes/mobile/SocketTuningTest.kt": "bf93bcc1fe94b12f77068b683e88cb80c417eb8cf9290652f0ac526504fb7099",
+    "app/src/test/java/com/hermes/mobile/ConnectionJournalTest.kt": "a43116a53f592a0fa32a55d4e783a789196f5cf1da9a078bb1e7616d1ebbaa46",
+    "app/src/test/java/com/hermes/mobile/SparkEndpointsTest.kt": "400f5d5201655df028ff5de1c2fdf5bebaf6ca62f9408acd099eb47c42982b26",
+    "denetim/tur10/RAPOR.md": "8cf6cee2ab3224ba61434ddfd5c41f851c9d184bc1d6c97784e0cc03f71cd83e",
+    "denetim/tur10/spark-probe.json": "15f2db81d53e125796cdfa2560cce6986cb7c229dc8a3c7f7babdc6d44d7e1a1",
+    "app/build/outputs/apk/debug/app-debug.apk": "2eb7e74b1d002450480d529432c8c646098a35062dbcd21f2ad14d7a5a3f87e8"
+  },
+  "lesson": "Kapi denetimi uc bagimsiz sayimla kapandi: test-XML toplamindan 442/0/0/0, sinif bazli grep ile 5 yeni sinifin 64 testi, ve probe'un yeniden kosumu — APK md5'i gibi ortam-bagimli degerler ise kosumla birlikte kaydedilmeli ki izlersek farklarin izi surulebilsin."
+}

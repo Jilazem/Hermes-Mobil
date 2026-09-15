@@ -1,0 +1,34 @@
+{
+  "verdict": "pass",
+  "gorev": "tur9",
+  "tarih": "2026-09-15T13:13:15Z",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman",
+  "aralik": "4a9a8d3..b1617a1",
+  "test_sonucu": "Kendi koşum: ./gradlew testDebugUnitTest assembleDebug --rerun-tasks → BUILD SUCCESSFUL (exit 0). JUnit XML sayımı (probe_tur9.py): 33 suite / 378 test / 0 fail / 0 error / 0 skip; ArenaSceneTest 34/34. APK md5 = 6f3ea001936da1f06b2ddddc8ff7cdc8 (üretici 6f3ea001… ile birebir). APK içi 4 asset mevcut, three.min.js 607784 B.",
+  "durumlar": {
+    "donanim_cevrimdisi": "Doğrulandı: three.min.js r147 (MIT başlık telif 2010-2022, LICENSE-three.txt ayrı). WebView: javaScriptEnabled=true, blockNetworkLoads=false (yerel asset okuma), domStorageEnabled=false; shouldInterceptRequest yalnız file:///android_asset/arena/* — başka istek null (ArenaSceneView.kt:63-70, 97-104). logcat: 'boot arena3d-1', 'ready figur:0 yazilimGL=1', 'sayfa yuklendi', 'veri basiliyor (430 bayt)'.",
+    "kod_incelemesi": "escapeJson ASCII \\u genişletme + kaçışlar (Model:181-189); faz→durum→rozet eşlemesi kararlı kimliklerle (Model:66-121, test 206/221/246); fallback kararı sıralı 4 dal (Model:128-151); JS köprüsü ASCII (Model:164-178, test 254). ViewModel LinkedHashMap ile kararlı sıra + Durdur'da onlyUnfinished sakınma.",
+    "emulator": "adb: emulator-5554 device; pencere dokumu: class=android.webkit.WebView, text='Arena 3D', bounds [32,309][105...] (2 WebView = çift bağlanma tur-8 düzeltmesi sonrası tek görünür kutu, dokümanda index'li iki iç node); -b crash boş (0 satır, kendi okumam).",
+    "rapor_durustluk": "Kabul edilebilir: yazılım GL iddiası çift kanıtlı (kod ArenaSceneView.kt:63,85-88 + log yazilimGL=1). 'bitti' dalının Chromium'da görülmesi, emülatörde error dalının canlı gözlenmesiyle bütünleşik kanıt zinciri kuruyor; done eşlemesi ayrıca deterministik birim testli (ArenaSceneTest.kt:156). Parçalı ama tutarlı kanıt — dürüst."
+  },
+  "sayilar": {"critical": 0, "high": 0, "medium": 0, "low": 3},
+  "bulgular": [
+    {"id": "GEN-1", "sev": "LOW", "baslik": "Sahne yüksekliği 294dp ≈ %32 (hedef %35-40)", "dosya": "app/src/main/java/com/hermes/mobile/ui/ArenaSceneView.kt", "satir": "177-178", "neden": "screenHeightDp*0.35 istendi; pencere insetleri ölçülen kutuyu 294dp'ye çekti. Raporda şeffaf bildirildi; işlevsel etkisi yok, 0.40'a çekme önerisi duruyor."},
+    {"id": "GEN-2", "sev": "LOW", "baslik": "Aynı bot kapışmada iki figür (tur-1/tur-2)", "dosya": "app/src/main/java/com/hermes/mobile/ui/ArenaSceneModel.kt", "satir": "70-83", "neden": "Bilinçli tasarım: rozetle ayrım birim testli (ArenaSceneTest.kt:206). 4 botlu kapışmada 9 figüre kadar (8+1 sentez, boş sentez eleniyor Model:89) — sahne kalabalıklaşması izlenmeli."},
+    {"id": "KALAN-4", "sev": "LOW", "baslik": "Çökme şeridi Arena başlığıyla ~84px örtüşüyor", "dosya": "app/src/main/java/com/hermes/mobile/ui/ArenaScreen.kt", "satir": "54-57", "neden": "tur-8'den devir KALAN-4; kapsam dışı, değişmemiş. Şerit kapatılınca örtüşme kalkıyor — rapor doğru aktarmış."}
+  ],
+  "artifacts": {
+    "app/src/main/assets/arena/three.min.js": "f34446bf875b5fb0dcd93819ffe1d9e182d46634ee855f5d904c6c4ac7cdbc95",
+    "app/src/main/assets/arena/arena3d.html": "86d5c8436ead0cd9b228e9cabe47470c3c14cac44f00210150cdff564d03b8fc",
+    "app/src/main/assets/arena/arena3d.js": "cb62a01fc9dc4f64d3ec91de14646aec1eb9625353b952abf08ec62db0c76610",
+    "app/src/main/assets/arena/LICENSE-three.txt": "fbf3943930dacbf56aabb8dc5d816440bd16aa6f4cc78ddbdf12106ee1807832",
+    "app/src/main/java/com/hermes/mobile/ui/ArenaSceneModel.kt": "e99aaf6eaa1f35eec6a9111ab485e832935d270d6502286ab1b2efa6fe63953d",
+    "app/src/main/java/com/hermes/mobile/ui/ArenaSceneView.kt": "6a6d5ecd6db38ceaa48a27bf71cb8a4fb44e978619e100924b8c9469bfd5c03c",
+    "app/src/main/java/com/hermes/mobile/ui/ArenaScreen.kt": "d57431a86311665bb922a7f7cd18f5f0d16788de036a172f5ddba75f8961885a",
+    "app/src/main/java/com/hermes/mobile/ArenaViewModel.kt": "cff85a28f2578e2b3ab2dac3d434ed7a6adc3b4d26324c7718bf40e02b71c509",
+    "app/src/test/java/com/hermes/mobile/ArenaSceneTest.kt": "0cf369daae65201787ec7b9de3557f6e02468f0eedd210edd4bae33a711deb98",
+    "denetim/tur9/RAPOR.md": "96f4b9c1b638071a81da16176a98bb22fc05b207285a8d32c340e7a10f30fd04",
+    "denetim/tur9/gradle-kendi-kosum.log": "denetim/tur9/gradle-kendi-kosum.log (BUILD SUCCESSFUL, EXIT=0)"
+  },
+  "lesson": "Yazılım GL + parçalı (Chromium+birim+emülatör) kanıt zinciri, tek canlı yakalamaya sığmayan dallar için dürüst ve kabul edilebilir bir denetim deseni; sayımlar (378/0, md5, 607784 B) üçüncü tarafça yeniden üretilebilir durumda."
+}

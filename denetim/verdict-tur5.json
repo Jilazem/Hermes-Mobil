@@ -1,0 +1,60 @@
+{
+  "verdict": "pass",
+  "gorev": "tur5",
+  "tarih": "2026-09-15T11:40:00+03:00",
+  "test_sonucu": "Kendi kosum: ./gradlew testDebugUnitTest --rerun-tasks → BUILD SUCCESSFUL; 29 XML, 269 test / 0 failure / 0 error / 0 skipped (beklenen 269/0/0/0, 29 XML — birebir tutti)",
+  "dogrulamalar": [
+    "Diff araligi 0b3dc92..a028e43: 3 commit (74f0d04, 551a2fc, a028e43), 14 dosya — gorev listesiyle ayni",
+    "Kusur J: AwaitReplyService.kt:82-97 start()/stop() @Volatile 'running' bayragiyla tekrarli startForegroundService engelleniyor; onStartCommand runCatching + basarisizlikta aninda stopSelf (satir 36-42). Kendi logcat -d -b crash KOSUMUM BOŞ (0 satir)",
+    "Kusur I: SessionText.kt:260 visibleUserMessage; ChatViewModel.kt:1490 gecmis yuklemede uygulaniyor. son/f01-gecmis-son.xml: IMPORTANT=0, 'You are running as a scheduled cron job'=0 (search_files sayim)",
+    "KALAN-6 sayaç: son/f01-gecmis-son.txt satir 7 = '27 oturum · 14 açık' (tek ifade); sessionCounter SessionText.kt:238-244; Tur5KalanTest 5 test",
+    "KALAN-5 kaynak: son/f01'de 'Telegram'/'Zamanlanmış görev' artik View 32x32 (ikon, contentDescription) — metin rozeti yok; alt satir yalniz '15.09 10:20'. Onceki b03'te metin ikilemesi vardi, f01'de kalkmis",
+    "KALAN-2 menu: ChatMenu.kt chatMenuActions(agentBusy) → bosta [Model, Reasoning], mesgulde +[Intervene, Stop]; olu uç baglandi ChatScreen.kt:211 reasoningSheet=true ve :338-345 ReasoningSheet cizimi; :464 menude forEach; cihaz c01-menu-bosta.txt = 'Model ve profiller' + 'Düşünme'",
+    "KALAN-4: SettingsScreen.kt:142-159 'Profiller' satiri; MainActivity.kt:931-935 ayni ProfileSheet'e bagli; cihaz a08: 'Profiller' + 'Ajan kişiliği ve araç seti — şu an: default'",
+    "KALAN-1 iskelet: Skeleton.kt:38 skeletonRowCount saf kurali + Tur5KalanTest 2 test (cihaz karesi yok — raporda dürüstçe belirtilmis)",
+    "Locale: adb shell getprop persist.sys.locale → tr-TR; am get-config → ...-tr-rTR-... (ikisi de tr-TR)",
+    "APK: md5 fc0af41f71060bd19a6b7764094f0537 hem artefakt hem workspace app-debug.apk (ayni); apksigner verify → Verifies (v2 scheme, 1 signer)"
+  ],
+  "bulgular": [
+    {
+      "id": "genel-1",
+      "sev": "LOW",
+      "baslik": "Rapor ile XML sayimi farkli (28 vs 29)",
+      "dosya": "000-TEMP/android-tur5-rapor.md",
+      "satir": 43,
+      "neden": "Rapor '28 XML' diyor; kendi sayimim 29 XML dosyasi (toplam 269 test birebir ayni). Toplama etkisi yok, belge tutarsizligi."
+    },
+    {
+      "id": "genel-2",
+      "sev": "LOW",
+      "baslik": "running bayragi atomik check-then-act degil",
+      "dosya": "app/src/main/java/com/hermes/mobile/data/AwaitReplyService.kt",
+      "satir": 85,
+      "neden": "@Volatile gorunurluk saglar ama if(running) return / running=true ikilisi senkronize degil; cagrilari ana iplikte oldugu icin pratik risk dusuk — crash buffer 5 sicak acilista bos dogrulandi."
+    },
+    {
+      "id": "KALAN-2-3",
+      "sev": "LOW",
+      "baslik": "4 maddeli menu ve iskelet yalniz birim test kanitli (cihaz karesi yok)",
+      "dosya": "app/src/main/java/com/hermes/mobile/ui/Skeleton.kt",
+      "satir": 38,
+      "neden": "Ajan mesgul penceresi ve iskelet yukleme penceresi kisa oldugu icin ekrana yakalanamadi; kural testle sabit, raporda sartli olarak belirtilmis. Kabul edilebilir; izleyen turda kare alinabilirse kapatilir."
+    }
+  ],
+  "sayilar": {"critical": 0, "high": 0, "medium": 0, "low": 3},
+  "artefakt_sha256_ilk16": {
+    "ui/SessionText.kt": "b6a2b46710d14b0f",
+    "ui/SourceBadge.kt": "de099cc8f9882809",
+    "ui/Skeleton.kt": "93da4283a78b826e",
+    "ui/ChatMenu.kt": "dfcef62aa292d1e5",
+    "ui/SessionsScreen.kt": "6d5419fbae2ce4f7",
+    "ui/ChatScreen.kt": "d2a7152274f43f4e",
+    "ui/SettingsScreen.kt": "1f1dd2b7edbc91a4",
+    "ChatViewModel.kt": "0899d472cbb5b4f7",
+    "MainActivity.kt": "99c8e16d1dd0e1e2",
+    "data/AwaitReplyService.kt": "271b331ea2e6a26d",
+    "test/Tur5KalanTest.kt": "a4d7fd5ae708a9fd",
+    "test/ChatMenuTest.kt": "67e189e3f3bddc55",
+    "hermes-tur5-a028e43.apk.md5": "fc0af41f71060bd19a6b7764094f0537"
+  }
+}

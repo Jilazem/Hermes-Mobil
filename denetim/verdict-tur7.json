@@ -1,0 +1,64 @@
+{
+  "verdict": "pass",
+  "gorev": "tur7",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman",
+  "dal": "feat/android-uzman-devralma",
+  "head": "d2abbad",
+  "aralik": "5ce5f2b..d2abbad",
+  "tarih": "2026-09-15T11:55:00Z",
+  "test_sonucu": "kendi koşum: sandbox relay 9280/9281 üzerinde sahte-istemci testi (denetim/tur7/relay-test-sahte-istemciler.py) 17/17 PASS — 4001 close + taken_over karesi, last_takeover {from,to}, 5 sn pencerede ek devir 0, ölü sokete sahte kayıt yok; git checkout d2abbad + ./gradlew testDebugUnitTest --rerun-tasks → BUILD SUCCESSFUL, JUnit XML sayımı (denetim/count_tests.py): 325 test / 0 failed / 0 errors / 0 skipped; canlı relay PID 34512 aynı (ps + lsof 9180/9181), yeniden başlatılmadı.",
+  "sayilar": { "critical": 0, "high": 0, "medium": 1, "low": 2 },
+  "bulgular": [
+    {
+      "id": "tur7-M1",
+      "sev": "MEDIUM",
+      "baslik": "phone_bridge.py repo dışı — diff alınamadı, doğrulama sha256 + davranışla sınırlı",
+      "dosya": "007-HERMES/20-ARACLAR/phone_bridge.py",
+      "satir": 178,
+      "neden": "4001/taken_over/last_takeover davranışı kodda (TAKEOVER_CODE=4001 satır 71, last_takeover satır 157/178/204/338) ve benim 17/17 sandbox koşumuyla bağımsız doğrulandı; yine de git-diff olmadığı için sürüm karşılaştırması sha256 eebdda2f2466837044eb3675989addbe205196f426e3c7f0ac456159dc660040 + 14997 bayt ile sınırlı. İşlevsel sonuç etkilenmedi."
+    },
+    {
+      "id": "tur7-L1",
+      "sev": "LOW",
+      "baslik": "isTakeoverFrame bozuk karede sessizce false döner",
+      "dosya": "app/src/main/java/com/hermes/mobile/data/BridgePolicy.kt",
+      "satir": 70,
+      "neden": "runCatching{...}.getOrDefault(false) — istisna fırlatmıyor, bu yüzden bozuk bir taken_over karesi yutulursa istemci artan backoff'la (2-5-15-30-60 sn) yeniden dener; döngü 0'a iner. `bozuk ya da ilgisiz kare istisna firlatmaz` testiyle kilitli. Kayıt amaçlı."
+    },
+    {
+      "id": "tur7-L2",
+      "sev": "LOW",
+      "baslik": "Backoff merdiveni üssel değil, sabit basamaklı (2→60 sn)",
+      "dosya": "app/src/main/java/com/hermes/mobile/data/BridgePolicy.kt",
+      "satir": 38,
+      "neden": "Eski üssel (2·2^n, 300 sn tavan) yerine kısa merdiven; iki cihazlık ping-pong'da her başarılı bağlanma sayacı sıfırladığı için üssel büyüme işe yaramıyordu. Tavan 60 sn `merdiven 60 saniyede tavan yapar ve tasmaz` testiyle doğrulandı. Bilinçli tercih."
+    }
+  ],
+  "dogrulamalar": {
+    "devralma_kilidi": "onClosed→BridgePolicy.decision(code, takenOver, closedByUser): closedByUser→STOP, takenOver||4001→TAKEN_OVER, else→RETRY (BridgePolicy.kt:60-64); PhoneBridgeService.kt:377 tek karar noktası.",
+    "kendiginden_dusen_dongu_yok": "onOpen'da takenOver=false + attempt=0 + cancelPending (PhoneBridgeService.kt:289-293); onStartCommand idempotent: if (!live && socket == null && !takenOver) connect() (satır 261) — kilitli durumu delmiyor; zombi-soket: if (webSocket !== socket) cancel (satır 284).",
+    "sandbox_17_17": "Kendi başlattığım relay (9280/9281) + kendi koştuğum sahte-istemci betiği: 17 PASS / 0 FAIL, EXIT=0. 3C: beklemde ek devir oncesi=0 sonrasi=0; 4C: ölü soket için sahte kayıt yok.",
+    "canli_ortam_korundu": "ps -p 34512 → Sun Sep 13 11:25:16 2026 (aynı PID); lsof 9180 ve 9181 ona ait; 9280/9281 yalnız sandbox, işim bitince kapatıldı.",
+    "birim_test_325": "--rerun-tasks taze koşum, 325/0/0/0 — RAPOR.md iddiasıyla birebir; BridgeTakeoverTest 14 @Test XML'de tests=14 failures=0.",
+    "bildirim_yolunun_uci": "SettingsScreen.kt:1340/1376/1392 TAKEN_OVER durumu + 'Yeniden bağlan' düğmesi → ACTION_RECONNECT takenOver=false, attempt=0, connect() (PhoneBridgeService.kt:203-211)."
+  },
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/BridgePolicy.kt": "812d97b222f628a219780f9a5945bff750db02264fb89a48e967e510a357e1dd",
+    "app/src/main/java/com/hermes/mobile/data/PhoneBridgeService.kt": "b68b5b3b15ad2a0d663da4029fc28eb4126a377865ba6cf44c2a24db899fb2d6",
+    "app/src/main/java/com/hermes/mobile/data/ServerProfile.kt": "8753cd6e3804072d25808b920b98d256c98c4d0228782d02289bf417a1815785",
+    "app/src/main/java/com/hermes/mobile/ui/SettingsScreen.kt": "474541d4c3147bd7f38fcb37ddc7b13bb21d9707fb19b07773321efd350de585",
+    "app/src/test/java/com/hermes/mobile/BridgeTakeoverTest.kt": "fd20070257597ce28f251a1c0554dfa5920b1929378f731f1b339258d156469d",
+    "denetim/tur7/RAPOR.md": "743af1fa3d7c4a7b33453d42dd8d94f74aab62ec0dfbc25dc13cbfe63669ba2d",
+    "denetim/tur7/relay-test-cikti.txt": "50aa38b0b05036fe3b01d94a8a0d3293d521ed2abb806896d30a4da9be99b4ba",
+    "denetim/tur7/relay-test-sahte-istemciler.py": "f08d1dd09acb7edd2afe2e304df0aa785f1b9a3080272142830572943b9d9489",
+    "denetim/tur7/unit-test-sayimi.txt": "d32fd04d599b265ffc1b7f1497f2a74711b086caf28d1d56022ec9ffde48383d",
+    "denetim/tur7/sandbox-baslatma.log": "c02e64babff10a6952f158251642653672aed90b6ae83f360896f2242bbf4717",
+    "denetim/tur7/uygulama-diag-SONRA-sandbox.log": "98e7fcf6537fba9fc16eed19758a66331397fe3b085f572201c157c5171bf935",
+    "007-HERMES/20-ARACLAR/phone_bridge.py": "eebdda2f2466837044eb3675989addbe205196f426e3c7f0ac456159dc660040"
+  },
+  "dogrulanamadi": [
+    "denetim/tur7/uygulama-diag-ONCE-sandbox.log, sandbox-relay.log ve iki sandbox-dokum XML'i RAPOR'da anılıyor; shasum listesinde ONCE-dokum ve sandbox dokum XML'leri ayrı adla geçti — ONCE-canli-relay.log ile sandbox-relay.log diskte mevcut, içerikleri RAPOR alıntılarıyla tutarlı.",
+    "Emülatör E2E (OkHttp 4.12.0, md5 d9b60147…) tur-7 anında üretici tarafından koşulmuş; benim tur-8 sonrası taze kurulumum 4a9a8d3 APK'sı üzerine olduğu için tur-7 APK md5'i ayrıca karşılaştırılamadı — işlevsel zincir 344 test + tur-8 smoke ile kapalı."
+  ],
+  "lesson": "Devralma kilidi (takenOver) hem onClosed hem onStartCommand yolundan tek karar fonksiyonuyla (BridgePolicy.decision) verilince kendi kendine devir döngüsü 0'a indi; sandbox 9280/9281 koşumu 17 senaryoyu bağımsız doğruladı — sayım ve davranış iddiaları taze koşumla birebir."
+}

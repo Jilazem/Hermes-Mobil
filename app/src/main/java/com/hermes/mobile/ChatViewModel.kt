@@ -17,6 +17,14 @@ import com.hermes.mobile.data.ModelProvider
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.ShareUploadPlan
 import com.hermes.mobile.data.VoiceController
+import com.hermes.mobile.data.AndroidVoicePlayer
+import com.hermes.mobile.data.AndroidVoiceRecorder
+import com.hermes.mobile.data.HttpVoiceTransport
+import com.hermes.mobile.data.VoiceApiClient
+import com.hermes.mobile.data.VoiceApiEndpoints
+import com.hermes.mobile.data.VoiceMessageController
+import com.hermes.mobile.data.VoicePrefs
+import com.hermes.mobile.data.VoiceTransport
 import com.hermes.mobile.data.cleanupPaths
 import com.hermes.mobile.data.planShareUpload
 import com.hermes.mobile.data.settleShare
@@ -483,6 +491,90 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     val voice = VoiceController(app)
 
+    // ── Sesli mesaj (tur-11): kayıt → metin, metin → ses ──────────────
+    private val voiceRecorder = AndroidVoiceRecorder(app)
+    private val voicePlayer = AndroidVoicePlayer()
+    private var voiceClient: VoiceApiClient? = null
+    private var voiceClientKey = ""
+
+    /**
+     * Ses hattı denetleyicisi — kayıt durum makinesi + sentez akışı.
+     *
+     * Taşıyıcı **lambda** olarak veriliyor: profil ya da adres ayarı
+     * değiştiğinde istemci yeniden kurulur, ham soket yeniden bağlanmaz.
+     */
+    val voiceMsg = VoiceMessageController(
+        transport = ::voiceTransport,
+        cacheDir = { app.cacheDir },
+        scope = viewModelScope,
+        recorder = voiceRecorder,
+        player = voicePlayer,
+    )
+
+    /**
+     * Ayarlardan gelen ses tercihleri.
+     *
+     * "Otomatik gönder" varsayılan KAPALI: sesle yazılan metin önce sohbet
+     * girdisine düşer, gönderimi kullanıcı yapar.
+     */
+    var voicePrefs: VoicePrefs = VoicePrefs()
+        set(value) {
+            field = value
+            voiceMsg.autoSend = value.autoSend
+            voiceMsg.engine = value.engine
+        }
+
+    /** Çalışan ses ucu adresi hatırlandı — MainActivity ayarlara yazar. */
+    var onVoiceBase: (String) -> Unit = {}
+
+    /** Sesle yazılan metin; ChatScreen taslağa aktarır ve tüketir. */
+    private val _voicePrefill = MutableStateFlow<String?>(null)
+    val voicePrefill: StateFlow<String?> = _voicePrefill.asStateFlow()
+
+    private fun voiceTransport(): VoiceTransport? {
+        val p = profile ?: return null
+        val candidates = VoiceApiEndpoints.candidates(p, voicePrefs.url, voicePrefs.lastOk)
+        val key = "${p.id}|${p.token}|${candidates.joinToString(",")}"
+        val existing = voiceClient?.takeIf { voiceClientKey == key }
+        val client = existing ?: VoiceApiClient(candidates, p.token, p.id)
+            .also { voiceClient = it; voiceClientKey = key }
+        return HttpVoiceTransport(client)
+    }
+
+    init {
+        voiceMsg.onTranscript = { text ->
+            if (voiceMsg.autoSend) send(text) else _voicePrefill.value = text
+        }
+        // Hata sessiz kalmasın: sohbet akışına bildirim düşer (DiagLog'a da
+        // istemci içinden yazılıyor).
+        voiceMsg.onNotice = { msg ->
+            _state.update {
+                it.copy(items = it.items + ChatItem.Notice(nextKey("v"), msg, isError = true))
+            }
+        }
+        voiceMsg.onWorkingBase = { base -> onVoiceBase(base) }
+    }
+
+    /** Bas-konuş: parmak indi. */
+    fun voiceHoldStart() = voiceMsg.holdStart()
+
+    /** Bas-konuş: parmak kalktı (0,8 sn'den kısa basış atılır). */
+    fun voiceHoldRelease() = voiceMsg.holdRelease()
+
+    fun voiceCancel() = voiceMsg.cancelRecording()
+
+    /** Asistan balonunu seslendir/durdur (aynı balona ikinci dokunuş durdurur). */
+    fun speak(key: String, text: String) = voiceMsg.speak(key, text)
+
+    fun stopSpeaking() = voiceMsg.stopSpeaking()
+
+    fun consumeVoicePrefill() {
+        _voicePrefill.value = null
+    }
+
+    /** Ayarlar → Ses → "şimdi dene" satırı. */
+    suspend fun voiceHealthLine(): String = voiceMsg.healthLine()
+
     /**
      * Açılışta geri dönülecek oturum. `MainActivity` kayıtlı değeri buraya
      * koyar; bağlantı kurulunca bir kez denenir ve temizlenir.
@@ -624,6 +716,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         thinkingKey = null
         streamMeter.reset()
         _speed.value = null
+        // Sesli mesaj: profil değişince/bağlantı düşünce çalan ses ve süren
+        // kayıt kapatılır (yeni profile taşınan yarım kayıt olmasın).
+        runCatching { voiceMsg.stopSpeaking() }
+        runCatching { voiceMsg.cancelRecording() }
     }
 
     private fun nextKey(prefix: String) = "$prefix-${seq++}"

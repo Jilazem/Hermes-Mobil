@@ -1,0 +1,91 @@
+# Büyük model danışması — 2026-09-14 19:47
+
+########## gemini-pro ##########
+Bir kıdemli mobil ürün ve uygulama tasarım danışmanı olarak, Hermes Mobil uygulamasının mevcut durumunu ve hedeflenen kalite standartlarını değerlendirdiğimde tespitlerim ve çözüm önerilerim aşağıdadır.
+
+**1. Telegram Kalitesi İçin En Kritik 5 Ekleme:**
+*   **Temiz Kart Anatomisi:** Oturum kartlarında ham veri (JSON/sistem mesajı) yerine yalnızca bağlamı anlatan bir başlık, son mesajın düz metin önizlemesi ve sağ üstte zaman damgası yer almalıdır.
+*   **Sohbet Odaklı Mesaj Listesi:** Asistanın teknik "düşünme" adımları ve işlem logları varsayılan olarak tamamen gizlenmelidir. Sohbet ekranında sadece sizin talepleriniz ve asistanın nihai, temiz yanıtları görünmeli; detaylar istenirse katlanabilir bir ikonun ardına saklanmalıdır.
+*   **Bağlamsal Aksiyonlar ve Minimalizm:** Kartların altındaki uzun ve eğitici açıklama metinleri ("Müdahale yalnız ajan çalışırken...") arayüzden tamamen kaldırılmalıdır. Eylem butonları standardize edilmeli, metin yerine sezgisel ikonlara dönüştürülmeli ve yalnızca kullanılabilecekleri durumlarda ekranda belirmelidir.
+*   **Anlamlı Hiyerarşi ve İsimlendirme:** Üst şeritteki iç sistem terminolojisi ("default / ac / android" gibi) tamamen kaldırılmalıdır. Ekranın üst alanı yalnızca mevcut sohbetin konusuna ve net durumuna ayrılmalıdır.
+*   **Durum Bildirimleri ve Boş Ekranlar (Empty States):** Liste boş olduğunda veya arama sonucu bulunamadığında kullanıcıyı yönlendiren, tasarımla uyumlu "boş durum" ekranları eklenmeli; veri yüklenirken takılma hissini önlemek için iskelet ekranlar (skeleton screens) kullanılmalıdır.
+
+**2. Kusurların Düzeltilme Önceliği ve Nedenleri:**
+*   **Öncelik 1: Çökmeler (Şikayet 3) ve Ekran Sıkışması (Şikayet 1).**
+    *   *Neden:* Uygulama stabil değilse ve temel mesajlaşma alanı kullanılamıyorsa, görsel hiçbir iyileştirmenin değeri yoktur. Bloklayıcı olan bu teknik hatalar derhal onarılmalıdır.
+*   **Öncelik 2: İçerik Temizliği (Kusur A, B, H) ve Anlamlı Başlıklar (Kusur C, Şikayet 2).**
+    *   *Neden:* Kullanıcı okunmayan JSON çıktıları, sistem logları ve alakasız başlıklar (Telegram kullanıcı adı vb.) arasında kaybolmaktadır. Arayüzün bir "hata ayıklama paneli" olmaktan çıkarılıp "sohbet" formatına getirilmesi, kullanılabilirliği doğrudan artıracaktır.
+*   **Öncelik 3: Veri Tutarlılığı (Kusur D) ve Arayüz Sadeleştirme (Kusur E, F, G).**
+    *   *Neden:* Mesaj sayılarındaki uyuşmazlıklar, karmaşık buton yığınları ve çevrilmemiş etiketler kalite algısını düşürür. Temel işlevler sağlandıktan sonra, Telegram standartlarındaki o pürüzsüz hissiyatı (polish) bu aşama sağlayacaktır.
+
+**3. Durum Etiketleri ve Türkçe Yerelleştirme Önerilerim:**
+*   **Etiketler:** Makine durumları yerine kullanıcının anlayacağı net fiiller veya sıfatlar seçilmelidir.
+    *   "Boşta" yerine daha olumlu olan **"Bekliyor"** veya **"Hazır"**.
+    *   "Canlı" yerine süreci daha iyi anlatan **"Çalışıyor"** veya **"İşlemde"**.
+    *   "Bitti" yerine resmiyet katan **"Tamamlandı"**.
+*   **Yerelleştirme:** "Cron", "default", "session" gibi arka plan terimleri kullanıcı arayüzüne kesinlikle sızmamalıdır. Bunların yerine "Zamanlanmış", "Ana Profil", "Görüşme/Sohbet" gibi günlük dildeki, bağlama uygun karşılıklar kullanılmalıdır.
+
+**4. İstenen Hale Gelmek İçin En Kritik Tek Şey:**
+Uygulamanın mimari bir sistem izleme/log paneli (debugger) olmaktan acilen çıkarılıp; arka plandaki tüm karmaşanın gizlendiği, yalnızca nihai sonuçların ve net özetlerin sunulduğu sade bir mesajlaşma deneyimine dönüştürülmesidir.
+
+########## grok ##########
+Önce mevcut Hermes Mobil arayüzünü ve Telegram kalite hedefiyle çelişen somut kusurları tarayıp, ardından kısa ve uygulanabilir önerileri çıkaracağım.Uygulama bu çalışma klasöründe yok; Hermes Mobil kaynaklarını ve önceki değerlendirmeyi başka konumlarda arıyorum.Önceki tasarım notları ve mevcut ekran kodunu okuyup önerileri gerçek bileşenlere bağlayacağım.Asıl uygulama klonundaki oturum kartı, sohbet listesi ve yerelleştirme kodunu inceliyorum.Telegram kalitesinin ölçüsü şudur: listeye bakınca **konu** okunur, sohbete girince **konuşma** görünür. Bugünkü ekranlar kanal adı, ham JSON ve ajan günlüğü gösteriyor; bu yüzden uygulama Telegram gibi durmuyor.
+
+## 1. Telegram kalitesi için en kritik 5 ekleme
+
+1. **Konu başlığı (liste kimliği)**  
+   Kart başlığı kaynak/kanal olmaz. Sıra: kullanıcı adı → ilk anlamlı kullanıcı cümlesi (≈40 karakter) → cron iş adı + saat → `Sohbet · 14.09 18:22`. `"Gökhan Uzman"`, `"desktop telegram"`, ham `cron_…` yasak. Telegram’da kimlik kişidir; burada kimlik **iştir**.
+
+2. **Tek satır insan önizlemesi**  
+   Önizleme = son kullanıcı veya son **nihai asistan** metni. JSON, tool çıktısı, `[IMPORTANT:…]`, sistem promptu, markdown çiti atılır. Çalışırken önizleme yerine `çalışıyor…` yazılır. 1 satır, 14 sp, soluk; asla 3 satır ham döküm değil.
+
+3. **Sohbet = konuşma, günlük değil**  
+   Varsayılan görünür satırlar yalnız: sen / asistanın bitmiş yanıtı. `Düşünme`, araç, sistem, onay kuyruğu tek `Ayrıntı` satırına katlanır (canlıyken küçük `yazıyor…` göstergesi yeter). Telegram’da “yazıyor…” vardır; düşünce transkripti yoktur.
+
+4. **Kart anatomisi Telegram satırı**  
+   Sol durum noktası · başlık · sağ üstte saat. Altında 1 satır önizleme. **Liste kartında buton yok.** Satırın tamamı sohbeti açar. `Müdahale / Dur` yalnız ajan çalışırken, açık sohbetin taşma menüsünde veya alt çubukta. Kart altındaki 2 satırlık kullanım kılavuzu silinir.
+
+5. **Hiyerarşi ve boş durum**  
+   Üst şerit: konu başlığı + isteğe bağlı küçük durum. Model, `bağlı`, `default / ac / android` chrome’dan çıkar; Ayarlar veya `⋯` içine gider. Boş durum: bir cümle + bir eylem (`Yeni sohbet`). “Müdahale yalnız ajan çalışırken anlamlı…” paragrafı listeye yazılmaz.
+
+## 2. Kusur sırası (neden bu sıra)
+
+| Sıra | Kusur | Neden |
+|---|---|---|
+| **P0** | 3 — sık çökme / göçme | Telegram hissi, uygulama ayaktayken vardır. Çöken istemci “tasarım” sorununu örtmez. |
+| **P0** | C + 2 — başlık = kanal/kişi, konu değil | Liste her gün taranır. Konu yoksa uygulama kullanılamaz. |
+| **P1** | A + B — JSON / cron sistem metni önizleme | Kart okunmaz; Telegram’daki “son mesaj” sözleşmesi kırılır. |
+| **P1** | H — düşünme + araç satırları sohbeti basıyor | Açık ekranda konuşma yoksa Telegram kıyası imkânsız. |
+| **P1** | F + E — kart altı kılavuz + tutarsız buton seti | Liste bir kontrol paneli gibi; tarama ritmi bozulur. Tek bileşen, tek eylem kümesi. |
+| **P2** | D — kartta 39 mesaj, detayda 0 | Güven kırığı. Sayaç: yüklenen **konuşma** mesajı; tool/sistem sayılmaz. Yüklenemezse “0 mesaj” yazılmaz, “yüklenemedi”. |
+| **P2** | G — model + bağlı + profil çipleri | Gürültü. Bağlantı yalnız kopunca kırmızı yazılır. |
+| **P3** | 1 — sohbet üstü sıkışık | Chrome incelince çoğu kendiliğinden düzelir. Başlık tek satır konu; model orada durmaz. |
+
+P0 ikilisini aynı sprint’te bitirin: ayakta durmayan ve konusu okunmayan uygulama “Telegram kalitesi” iddiası taşıyamaz.
+
+## 3. Durum etiketleri ve Türkçe
+
+**Durum, cümle değil sinyaldir.** Boşta olanın etiketi olmaz; Telegram “idle” yazmaz.
+
+| İç durum | Kullanıcıya | Görünüm |
+|---|---|---|
+| `working` | `yazıyor…` | yeşil nokta, canlı |
+| `waiting` | `onay bekliyor` | sarı, yalnız onay varsa |
+| `starting` | `başlıyor` | sarı, kısa ömürlü |
+| `idle` | **etiket yok** | gri nokta veya hiç nokta; yalnız saat |
+| bitti / geçmiş | **etiket yok** | saat + arşivdeyse `Arşiv` |
+| `live` kelimesi | **kullanma** | “yazıyor…” zaten canlıyı anlatır |
+
+Yerelleştirme kuralı: kullanıcıya **iç ad** sızmaz.
+
+- `default` → gizle veya `Varsayılan`
+- `ac` / `android` → profilin insan adı; yoksa gizle
+- `telegram` / `desktop` / `cli` / `cron` → başlık değil, en fazla 10 sp kaynak ikonu
+- `Steer` / `Transcript` / `idle` / `connected` → `Yönlendir` / `Kayıt` / (yok) / (yalnız kopunca `bağlantı yok`)
+- `Konuşmaya devam et` ile `Devam` birleşir: listede yok; açık sohbette gerekmez (zaten oradasın). Çalışırken tek birincil eylem: `Dur`.
+
+Sekmeler: `Canlı / Tümü / Geçmiş` kalsın; alt metin `3 çalışıyor · 12 sohbet` gibi insanca sayılsın, `0 live · 0 sessions` asla.
+
+## 4. Tek cümle
+
+Bu uygulama, her kartın bir bakışta **konuyu** söylediği ve açık ekranın ajan günlüğü değil **konuşma** olduğu gün Telegram kalitesine yaklaşır.

@@ -1,0 +1,120 @@
+</body>
+</html>
+
+09-15 17:38:36.124 E [ws] failed http=502 — ProtocolException: Expected HTTP 101 response but was '502 Bad Gateway' · RealWebSocket.checkUpgradeSuccess$okhttp:224 ← RealWebSocket$connect$1.onResponse:170 ← RealCall$AsyncCall.run:519 ← ThreadPoolExecutor.runWorker:1145
+09-15 17:38:36.127 D [ws] reconnect #6 in 30000ms
+09-15 17:38:41.757 W [http] GET /api/status -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:38:42.828 W [http] GET /api/status -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:38:42.835 W [http] GET /api/cron/jobs -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:38:58.561 W [http] GET /api/status -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:38:59.663 W [http] GET /api/status -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:38:59.666 W [http] GET /api/cron/jobs -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:39:06.183 E [ws] failed http=502 — ProtocolException: Expected HTTP 101 response but was '502 Bad Gateway' · RealWebSocket.checkUpgradeSuccess$okhttp:224 ← RealWebSocket$connect$1.onResponse:170 ← RealCall$AsyncCall.run:519 ← ThreadPoolExecutor.runWorker:1145
+09-15 17:39:06.189 D [ws] reconnect #7 in 30000ms
+09-15 17:39:15.792 W [http] GET /api/status -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:39:16.651 W [http] GET /api/status -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:39:16.660 W [http] GET /api/cron/jobs -> 502 · <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>Web server</center>
+</body>
+</html>
+
+09-15 17:39:36.207 I [ws] reconnected
+09-15 17:39:36.210 I [chat] post-reconnect recovery · session=fb2e7567 · queued=0
+09-15 17:39:36.297 E [chat] could not re-attach to session — IllegalStateException: session not found · GatewayWsClient.handleFrame:324 ← GatewayWsClient.access$handleFrame:47 ← GatewayWsClient$Listener.onMessage:376 ← RealWebSocket.onReadMessage:333
+09-15 17:55:12.120 E [ws] failed http=- — SocketTimeoutException: sent ping but didn't receive pong within 20000ms (after 44 successful ping/pongs) · RealWebSocket.writePingFrame$okhttp:563 ← RealWebSocket$initReaderAndWriter$lambda$3$$inlined$schedule$1.runOnce:219 ← TaskRunner.runTask:116 ← TaskRunner.access$runTask:42
+09-15 17:55:12.429 D [ws] reconnect #1 in 300ms
+09-15 17:55:13.247 E [ws] failed http=- — UnknownHostException: Unable to resolve host "hermes.winterfell07.keenetic.pro": No address associated with hostname · Inet6AddressImpl.lookupHostByName:156 ← Inet6AddressImpl.lookupAllHostAddr:103 ← InetAddress.getAllByName:1152 ← Dns$Companion$DnsSystem.lookup:49
+09-15 17:55:13.281 D [ws] reconnect #2 in 4000ms
+09-15 17:55:16.189 W [http] GET /api/status · https://hermes.winterfell07.keenetic.pro unreachable: Unable to resolve host "hermes.winterfell07.keenetic.pro": No address associated with hostname
+09-15 17:55:16.288 E [http] GET /api/status - no address reachable
+09-15 17:55:16.438 W [http] GET /api/cron/jobs · https://hermes.winterfell07.keenetic.pro unreachable: Unable to resolve host "hermes.winterfell07.keenetic.pro": No address associated with hostname
+09-15 17:55:16.438 E [http] GET /api/cron/jobs - no address reachable
+09-15 17:55:16.439 W [http] GET /api/status · https://hermes.winterfell07.keenetic.pro unreachable: Unable to resolve host "hermes.winterfell07.keenetic.pro": No address associated with hostname
+09-15 17:55:16.440 E [http] GET /api/status - no address reachable
+09-15 17:55:17.473 E [ws] failed http=- — UnknownHostException: Unable to resolve host "hermes.winterfell07.keenetic.pro": No address associated with hostname · Inet6AddressImpl.lookupHostByName:124 ← Inet6AddressImpl.lookupAllHostAddr:103 ← InetAddress.getAllByName:1152 ← Dns$Companion$DnsSystem.lookup:49
+09-15 17:55:17.535 D [ws] reconnect #3 in 8000ms
+09-15 17:55:27.268 I [ws] reconnected
+09-15 17:55:27.555 I [chat] post-reconnect recovery · session=fb2e7567 · queued=0
+09-15 17:55:27.771 E [chat] could not re-attach to session — IllegalStateException: session not found · GatewayWsClient.handleFrame:324 ← GatewayWsClient.access$handleFrame:47 ← GatewayWsClient$Listener.onMessage:376 ← RealWebSocket.onReadMessage:333
+09-15 18:38:20.021 I [app] started · Android 34 · Google sdk_gphone64_arm64
+09-15 18:38:22.036 I [ws] connected
+09-15 18:38:23.052 W [http] GET /api/sessions/fb2e7567/messages -> 404 · {"detail":"Session not found"}
+09-15 18:38:52.016 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.066 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.115 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.164 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.218 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.273 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.321 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.369 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.421 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.468 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.512 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.561 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.607 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.655 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.707 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.762 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.819 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.866 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.914 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)
+09-15 18:38:52.960 D [await] gec start onaylandi ve durduruldu (yaris kapatildi)

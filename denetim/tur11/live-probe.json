@@ -1,0 +1,24 @@
+{
+  "base": "http://192.168.1.101:8174",
+  "token_present": true,
+  "health_tokensiz": {
+    "code": 403,
+    "ms": 32,
+    "body": "{\"error\": \"yetkisiz\"}"
+  },
+  "health_tokenli": {
+    "code": 200,
+    "ms": 13,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 102,
+    "body": "{\"ok\": true, \"stt\": \"acik\", \"engines\": {\"kahya\": \"kapali\", \"chatterbox\": \"kapali\", \"kadin\": \"kapali\"}}"
+  },
+  "transcribe_tokenli": {
+    "code": 200,
+    "ms": 3025,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 120,
+    "body": "{\"text\": \"Mesajınızı aldım. Şunu duydum.\\n Yalçın, çocukluğunun en güzel. Hemen ilgileniyorum.\", \"lang\": \"tr\"}"
+  },
+  "ogg_bytes": 31774
+}

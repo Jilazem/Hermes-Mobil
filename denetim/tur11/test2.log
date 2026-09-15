@@ -1,0 +1,41 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:checkDebugAarMetadata
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug
+> Task :app:processDebugManifestForPackage
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugResources
+> Task :app:processDebugResources
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/debug/java/com/hermes/mobile/ui/VoiceSelfTestActivity.kt:64:9 Unresolved reference. None of the following candidates is applicable because of a receiver type mismatch:
+val LifecycleOwner.lifecycleScope: LifecycleCoroutineScope
+e: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/debug/java/com/hermes/mobile/ui/VoiceSelfTestActivity.kt:72:25 Unresolved reference. None of the following candidates is applicable because of a receiver type mismatch:
+val LifecycleOwner.lifecycleScope: LifecycleCoroutineScope
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUİLD FAILED in 7s
+16 actionable tasks: 16 executed

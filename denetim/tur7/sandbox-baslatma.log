@@ -1,0 +1,6 @@
+pid=32284
+--- status
+{"online": false, "device": null, "android": null, "tools": [], "connected_at": null, "last_seen": null, "last_takeover": null}
+--- log
+2026-09-15 13:27:49,825 INFO köprü hazır: ws :9280/phone · http 127.0.0.1:9281
+2026-09-15 13:27:51,860 INFO 127.0.0.1 [15/Sep/2026:13:27:51 +0300] "GET /status HTTP/1.1" 200 287 "-" "curl/8.7.1"

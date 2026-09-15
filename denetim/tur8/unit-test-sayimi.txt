@@ -1,0 +1,2 @@
+XML dosya sayisi: 32
+GENEL: tests=344 failures=0 errors=0 skipped=0
