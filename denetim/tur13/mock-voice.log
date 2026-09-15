@@ -1,0 +1,10 @@
+2026-09-15 23:52:30 mock voice_api basladi · port=8199 ogg=11678 bayt
+2026-09-15 23:52:59 GET /health · token_any · sha8=8a544ad6 len=16
+2026-09-15 23:52:59 200 GET /health -> {'ok': True, 'stt': 'acik', 'engines': {'kahya': 'kapali', 'chatterbox': 'kapali', 'kadin': 'kapali'}}
+2026-09-15 23:52:59 http "GET /health HTTP/1.1" 200 -
+2026-09-15 23:53:01 POST /transcribe · token_any · sha8=8a544ad6 len=16
+2026-09-15 23:53:01 200 POST /transcribe · multipart=True alan_audio=True dosya=kayit.ogg ogg_imza=True boyut=31976
+2026-09-15 23:53:01 http "POST /transcribe HTTP/1.1" 200 -
+2026-09-15 23:53:01 POST /synthesize · token_any · sha8=8a544ad6 len=16
+2026-09-15 23:53:01 200 POST /synthesize · motor=kahya metin="Toplanti saat 14:00te basliyor." uzunluk=31 oggg_bayt=11678
+2026-09-15 23:53:01 http "POST /synthesize HTTP/1.1" 200 -

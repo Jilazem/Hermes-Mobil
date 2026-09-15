@@ -1,0 +1,21 @@
+telefon asistani oz-testi (tur-13)
+uc: http://10.0.2.2:8174
+token: var (43 karakter)
+motor: kahya
+1a gonderme asistan=true normal=false
+1b oto-okuma asistan=true normal=false ayar_kapali=false
+1c izin iste: true / izin var: false
+1d rol ipuclari=2 bizim=true
+1d rol durumu: Hermes · Hermes: varsayılan asistan ✓
+2 kayit fazlari: Idle->Recording->Transcribing islem=Upload
+2 asistan fazlari: hazir=Ready kayit=Recording ceviri=Transcribing kapali=Off
+2 serit ipucu: Dinliyorum… bırakınca yazıya çevirir
+3 OK health ok=true stt=acik motorlar={kahya=hazir, chatterbox=hazir, kadin=hazir}
+4 kayit.ogg okundu: 31774 bayt (ogg imza=true)
+4 OK metin (1341 ms): Mesajınızı aldım. Şunu duydum.
+ Yalçın, çocukluğunun en güzel. Hemen ilgileniyorum.
+5 oto-okuma karari=true (asistan modu + ayar acik)
+5 OK sentez+calma basladi=false sure=0 ms (300000 ms beklendi)
+5 calma bitti faz=Idle onbellek=2 dosya
+bildirimler: Ses ucuna ulaşılamıyor (ev ağında :8174, dışarıda /voice-api) · http://10.0.2.2:8174 (ulaşılamadı)
+SONUC: HATA

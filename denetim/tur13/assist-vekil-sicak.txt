@@ -1,0 +1,2 @@
+Starting: Intent { act=android.intent.action.ASSIST cmp=com.hermes.mobile.v2/com.hermes.mobile.AssistantAlias }
+Warning: Activity not started, its current task has been brought to the front

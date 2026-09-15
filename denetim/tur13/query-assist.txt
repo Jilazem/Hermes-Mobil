@@ -1,0 +1,87 @@
+2 activities found:
+  Activity #0:
+    priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true
+    ActivityInfo:
+      name=com.google.android.googlequicksearchbox.AssistGatewayInternal
+      packageName=com.google.android.googlequicksearchbox
+      labelRes=0x7f1526b0 nonLocalizedLabel=null icon=0x0 banner=0x0
+      processName=com.google.android.googlequicksearchbox:search
+      enabled=true exported=true directBootAware=false
+      taskAffinity=null targetActivity=com.google.android.googlequicksearchbox.LegacySearchActivity persistableMode=PERSIST_ROOT_ONLY
+      launchMode=LAUNCH_MULTIPLE flags=0x1102a0 privateFlags=0x2 theme=0x1030055
+      screenOrientation=-1 configChanges=0x3 softInputMode=0x0
+      lockTaskLaunchMode=LOCK_TASK_LAUNCH_MODE_DEFAULT
+      resizeMode=RESIZE_MODE_RESIZEABLE
+      knownActivityEmbeddingCerts={}
+      ApplicationInfo:
+        name=com.google.android.apps.gsa.binaries.satin.app.SatinRoot_Application
+        packageName=com.google.android.googlequicksearchbox
+        labelRes=0x7f150135 nonLocalizedLabel=null icon=0x7f11000f banner=0x0
+        className=com.google.android.apps.gsa.binaries.satin.app.SatinRoot_Application
+        processName=com.google.android.googlequicksearchbox
+        taskAffinity=null
+        uid=10132 flags=0x28dbbe45 privateFlags=0x8c080418 theme=0x7f160a95
+        requiresSmallestWidthDp=0 compatibleWidthLimitDp=0 largestWidthLimitDp=0
+        sourceDir=/product/priv-app/Velvet/Velvet.apk
+        resourceDirs=[/product/overlay/EmulationPixel7/EmulationPixel7Overlay.apk, /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk]
+        overlayPaths=[/product/overlay/EmulationPixel7/EmulationPixel7Overlay.apk, /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk]
+        seinfo=default:privapp:targetSdkVersion=33
+        seinfoUser=:complete
+        dataDir=/data/user/0/com.google.android.googlequicksearchbox
+        deviceProtectedDataDir=/data/user_de/0/com.google.android.googlequicksearchbox
+        credentialProtectedDataDir=/data/user/0/com.google.android.googlequicksearchbox
+        sharedLibraryFiles=[/system/framework/org.apache.http.legacy.jar, /system_ext/framework/androidx.window.extensions.jar, /system_ext/framework/androidx.window.sidecar.jar]
+        enabled=true minSdkVersion=29 targetSdkVersion=33 versionCode=301224140 targetSandboxVersion=1
+        manageSpaceActivityName=com.google.android.apps.gsa.managespace.VelvetManageSpaceActivity
+        supportsRtl=true
+        fullBackupContent=true
+        crossProfile=true
+        networkSecurityConfigRes=0x7f1900e4
+        HiddenApiEnforcementPolicy=2
+        usesNonSdkApi=false
+        allowsPlaybackCapture=true
+        nativeHeapZeroInitialized=0
+        localeConfigRes=0x7f1900e1
+        enableOnBackInvokedCallback=false
+        createTimestamp=704051
+  Activity #1:
+    priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true
+    ActivityInfo:
+      name=com.hermes.mobile.AssistantAlias
+      packageName=com.hermes.mobile.v2
+      labelRes=0x7f0d001f nonLocalizedLabel=null icon=0x0 banner=0x0
+      enabled=true exported=true directBootAware=false
+      taskAffinity=com.hermes.mobile.v2 targetActivity=com.hermes.mobile.MainActivity persistableMode=PERSIST_ROOT_ONLY
+      launchMode=LAUNCH_MULTIPLE flags=0x10200 privateFlags=0x2 theme=0x7f0e0113
+      screenOrientation=-1 configChanges=0x3 softInputMode=0x10
+      lockTaskLaunchMode=LOCK_TASK_LAUNCH_MODE_DEFAULT
+      resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+      knownActivityEmbeddingCerts={}
+      ApplicationInfo:
+        name=com.hermes.mobile.HermesApp
+        packageName=com.hermes.mobile.v2
+        labelRes=0x7f0d001e nonLocalizedLabel=null icon=0x7f0c0001 banner=0x0
+        className=com.hermes.mobile.HermesApp
+        processName=com.hermes.mobile.v2
+        taskAffinity=com.hermes.mobile.v2
+        uid=10192 flags=0x20c83e46 privateFlags=0x8c001000 theme=0x7f0e0113
+        requiresSmallestWidthDp=0 compatibleWidthLimitDp=0 largestWidthLimitDp=0
+        sourceDir=/data/app/~~qYT1JrA4NGl_XaD_MsM5nA==/com.hermes.mobile.v2-Cj6-YZM1ChlCIa5DDn9NCA==/base.apk
+        resourceDirs=[/product/overlay/EmulationPixel7/EmulationPixel7Overlay.apk, /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk]
+        overlayPaths=[/product/overlay/EmulationPixel7/EmulationPixel7Overlay.apk, /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk]
+        seinfo=default:targetSdkVersion=35
+        seinfoUser=:complete
+        dataDir=/data/user/0/com.hermes.mobile.v2
+        deviceProtectedDataDir=/data/user_de/0/com.hermes.mobile.v2
+        credentialProtectedDataDir=/data/user/0/com.hermes.mobile.v2
+        enabled=true minSdkVersion=26 targetSdkVersion=35 versionCode=1 targetSandboxVersion=1
+        supportsRtl=true
+        fullBackupContent=true
+        crossProfile=false
+        networkSecurityConfigRes=0x7f100002
+        HiddenApiEnforcementPolicy=2
+        usesNonSdkApi=false
+        allowsPlaybackCapture=true
+        nativeHeapZeroInitialized=0
+        enableOnBackInvokedCallback=false
+        createTimestamp=704051
