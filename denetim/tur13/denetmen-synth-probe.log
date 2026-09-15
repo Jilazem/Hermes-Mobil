@@ -1,0 +1,4 @@
+health: {"code": 200, "took_s": 0.0, "body": {"ok": true, "stt": "acik", "engines": {"kahya": "hazir", "chatterbox": "kapali", "kadin": "kapali"}}}
+synthesize: {"code": 200, "took_s": 57.6, "bytes": 11678, "ogg": true, "sha256_8": "e7ba15c2"}
+health(sonra): {"code": 200, "took_s": 0.0, "body": {"ok": true, "stt": "acik", "engines": {"kahya": "hazir", "chatterbox": "kapali", "kadin": "kapali"}}}
+SYNTH-PROBE-EXIT=0

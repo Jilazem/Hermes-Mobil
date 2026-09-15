@@ -1,0 +1,37 @@
+{
+  "verdict": "pass",
+  "gorev": "tur13",
+  "tarih": "2026-09-16T01:04:59+03:00",
+  "test_sonucu": "Kendi koşum: gradle-8.9/JDK-17, testDebugUnitTest assembleDebug --rerun-tasks -> BUILD SUCCESSFUL (52 sn, 41 task, exit 0). XML sayımı (46 dosya, kendi count_tests.py): tests=598 failures=0 errors=0 skipped=0 — 574+24 iddiası doğrulandı (AssistantModeTest'te 24 @Test). APK sha256=aafd07c26732f9363ab037b8d0bb3e427d6f6056ce7a526b64a915c433aefcf3. Canlı /synthesize yeniden testi (denetmen probe, salt-çağrı): /health 200 kahya=hazir -> POST /synthesize 200, 57.6 sn, 11678 bayt OggS (sha256_8=e7ba15c2) -> /health 200. Tur-13'teki sunucu arızası giderilmiş; uzun süreli ilk yanıt (~58 sn) motor yükleme maliyeti, uygulama kusuru değil — kanıtlar ayrı tutuldu.",
+  "findings": [
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "app/build/outputs/apk/debug/app-debug.apk:1 — Aynı HEAD (28e897a) için coder kanıtı 0a1077da…, denetmen rebuild aafd07c2…; zip-mtime farkı, kusur değil. Tek sha beklentisi için tekrarlanabilir derleme (reproducible build) kurulumu önerilir."
+    },
+    {
+      "sev": "LOW",
+      "id": "SC-13-5",
+      "bulgu": "app/src/test/java/com/hermes/mobile/VoiceSpeakLogicTest.kt:1 — Ses zinciri birim testleri ağ yolunu mock'lar (tasarım geregi); canlı uc davranışı denetmen probe koşumuyla ayrıca kanıtlandı (200/57.6 sn/OggS). Birim ve canlı kanıt ayrı katmanlarda tutuldu."
+    }
+  ],
+  "artifacts": {
+    "app/src/main/AndroidManifest.xml": "7db3dfda5c1ee72d33e9f8589770ab88970d50f5d3a64ef0a9eaf12b2539bf3a",
+    "app/src/main/java/com/hermes/mobile/data/AssistantMode.kt": "c60369621d5174db8987623e0838eae498d2a1e2e6adc535343229c10446687f",
+    "app/src/main/java/com/hermes/mobile/data/AssistantRole.kt": "fcd6c98d683878e2dd87765b412594c9c3e78278927560e1f8a0e9f9d892b378",
+    "app/src/main/java/com/hermes/mobile/ChatViewModel.kt": "e6f219e3966413b32c1cf47b21b574ff0cd706393c0cbb1ca47e120ab9b33126",
+    "app/src/main/java/com/hermes/mobile/MainActivity.kt": "344788dcaf0d95786b00bef706bb390936148f12cab4ba25685e6a8146857ed9",
+    "app/src/main/java/com/hermes/mobile/data/AppSettings.kt": "42f6947946d2e0599ff5fb383cd60332aab7b10e487ce74e2d1f112233c4838b",
+    "app/src/test/java/com/hermes/mobile/AssistantModeTest.kt": "9f58e9edeb4b3c500c0c519e4ccc23772552bea2fad286ca5e72394cf1f839dc",
+    "app/src/debug/java/com/hermes/mobile/ui/AssistantSelfTestActivity.kt": "6302ad85db82e9e431b866652bdf7c0efbb6f915f672e23736790bb837288f49",
+    "app/build/outputs/apk/debug/app-debug.apk": "aafd07c26732f9363ab037b8d0bb3e427d6f6056ce7a526b64a915c433aefcf3",
+    "denetim/tur13/RAPOR.md": "f03908e00d787c956e45605052d08e1ef3b9b717b410c73c18ae31ecb2c239bf",
+    "denetim/tur13/denetmen-gradle.log": "bc7c0d061e624ad57fbfb928113fd0aae3834798a4bdbc51d4a6deb940c87aed",
+    "denetim/tur13/denetmen-synth-probe.log": "4bd738f08a3a1dd85e8c83fcc6432274535efa779ccc87a1a7c21aa5de480f86",
+    "denetim/tur13/live-synth.json": "533eac0230a1fb5e80feb8fff899a4af69fb72cbed1c8af4d8df97ccce7ca962",
+    "denetim/tur13/live-synth-probe.ogg": "e7ba15c2d957da1de6ba4bf8ea60da4fdc7fed05e243d153620b52aef23917f7",
+    "denetim/tur13/denetmen-ozet.txt": "13d534bf972704e288db361d1a18fb6a93f3ab3ccbf5289940c00dbc504796f2",
+    "denetim/tur13/denetmen_kontrol.py": "73a7a35f0adc447324f47998f9be275a6c74bdd4ca5c1f7f122202a920cafacb"
+  },
+  "lesson": "Sunucu arızası ile uygulama kusurunu ayırt etmenin en kısa yolu canlı uç probe'u: /health + /synthesize yeniden koşumu tek kanıtla 'arıza giderilmiş, kod sağlıklı' hükmini verdi; kod okuması ve mock testler bu ayrımı veremez."
+}

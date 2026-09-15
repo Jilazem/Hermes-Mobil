@@ -1,0 +1,18 @@
+OK  f1 asistan-hazir
+OK  f1 yerel-hat
+OK  f2 asistan-hazir (ilik)
+OK  f3 voice-command asistan
+OK  rol-hermes satiri
+OK  rol-hermes dosya
+OK  rol-once google
+OK  vekil AssistantAlias
+OK  query-assist alias
+OK  query-voice alias
+OK  yonlendirme dijital-asistan
+OK  yonlendirme oncesi secure=assistant
+OK  selftest-mock BASARILI
+OK  selftest-mock oto-okuma
+OK  selftest-gercek health
+OK  selftest-gercek oto-okuma karari
+OK  mock synth 200
+OK  apk-sha256 dosya dolu 0a1077da0df6f40fd2e80aff96ab01a57c5a9df1fd412287b9dedfd938bcbc23
