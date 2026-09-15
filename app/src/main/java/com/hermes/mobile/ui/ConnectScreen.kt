@@ -294,6 +294,53 @@ fun ProfileEditorDialog(
                     fontSize = 10.sp,
                     lineHeight = 14.sp,
                 )
+                // Tur-10 (F3): "adres düzenleme netliği" — kullanıcı hangi
+                // adresin denendiğini, hangisinin art arda başarısız olduğu için
+                // KISA SÜRE devre dışı bırakıldığını ve ne zaman yeniden
+                // deneneceğini burada görür. Adresler SİLİNMEZ; "şimdi dene"
+                // düğmesi bekleyen süreyi sıfırlar.
+                var healthTick by remember { mutableStateOf(0) }
+                Text(
+                    S.t2("Adres deneme durumu", "Address attempt status"),
+                    color = HermesColors.TextSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                val statuses = remember(healthTick, initial.baseUrl, initial.remoteUrl) {
+                    com.hermes.mobile.data.AddressHealth.statuses(initial.id, initial.candidates)
+                }
+                if (statuses.isEmpty()) {
+                    Text(
+                        S.t2("Adres girilmedi", "No address entered"),
+                        color = HermesColors.TextFaint, fontSize = 10.sp, lineHeight = 14.sp,
+                    )
+                }
+                statuses.forEach { st ->
+                    val now = System.currentTimeMillis()
+                    val line = when {
+                        st.coolingDown(now) -> S.t2(
+                            "${st.url} — ${st.remainingMs(now) / 1000} sn devre dışı " +
+                                "(${st.failures} başarısız deneme)",
+                            "${st.url} — disabled for ${st.remainingMs(now) / 1000}s " +
+                                "(${st.failures} failed attempts)",
+                        )
+                        st.failures > 0 -> S.t2(
+                            "${st.url} — yeniden denenecek (${st.failures} hata)",
+                            "${st.url} — will be retried (${st.failures} errors)",
+                        )
+                        else -> S.t2("${st.url} — sağlıklı", "${st.url} — healthy")
+                    }
+                    Text(line, color = HermesColors.TextFaint, fontSize = 10.sp, lineHeight = 14.sp)
+                }
+                TextButton(onClick = {
+                    com.hermes.mobile.data.AddressHealth.reset(initial.id)
+                    healthTick++
+                }) {
+                    Text(
+                        S.t2("Adresleri şimdi dene", "Retry addresses now"),
+                        color = HermesColors.Midground,
+                    )
+                }
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },

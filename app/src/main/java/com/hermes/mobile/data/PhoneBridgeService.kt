@@ -73,13 +73,21 @@ class PhoneBridgeService : Service() {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(SocketTuning.BRIDGE_CONNECT_SECONDS, TimeUnit.SECONDS)
         // Sunucu 30 sn'de bir ping atıyor; istemci de atarak ölü bağlantıyı
         // erken yakalıyor. Uzun boşluklar bu bağlantının normal hali —
         // ajan günde bir kez de çağırabilir.
-        .pingInterval(40, TimeUnit.SECONDS)
+        //
+        // Tur-10 (F2): 40→20 sn. 40 sn bekleyen köprü, gerçekte ölü olduğu hâlde
+        // "bağlı" görünüyordu (saha logunda 19 pong zaman aşımı, 40 sn'lik
+        // pencere). Devralma koruması bu pencereye bağlı değil: ayrım
+        // metin karesi + close 4001 ile yapılıyor ([BridgePolicy]).
+        .pingInterval(SocketTuning.BRIDGE_PING_SECONDS, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
+
+    /** Son BAŞARILI bağlanma zamanı — sarsıntı tespiti için. */
+    private var lastConnectedAt = 0L
 
     private lateinit var settings: SettingsStore
     private lateinit var profiles: ServerProfileStore
@@ -291,6 +299,7 @@ class PhoneBridgeService : Service() {
             takenOver = false
             live = true
             attempt = 0
+            lastConnectedAt = System.currentTimeMillis()
             cancelPending()
             val list = advertised()
             DiagLog.i("bridge", "connected, advertising ${list.size} tools")
@@ -367,6 +376,7 @@ class PhoneBridgeService : Service() {
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             DiagLog.w("bridge", "closed code=$code reason=${reason.ifBlank { "-" }}")
+            journal("closed code=$code reason=${reason.ifBlank { "-" }}")
             // Yalnızca CANLI soket kapanırsa yeniden bağlan: sunucunun
             // "replaced" ile düşürdüğü eski soketin kapanışı yeni bir döngü
             // başlatırsa iki zombi sonsuza dek savaşıyor (2026-09-08
@@ -389,6 +399,7 @@ class PhoneBridgeService : Service() {
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             DiagLog.e("bridge", "failed http=${response?.code ?: "-"}", t)
+            journal(t.message ?: "bağlantı hatası", response?.code)
             if (webSocket !== socket) return
             live = false
             socket = null
@@ -397,6 +408,22 @@ class PhoneBridgeService : Service() {
             if (takenOver || closedByUser) return
             setState(BridgeState.RETRYING)
             scheduleReconnect()
+        }
+
+        /**
+         * Tur-10 (F2): kopmayı sınıflandır + son kopma nedenleri özetini tanı
+         * kaydına yaz. Devralma olayları ayrı tür olarak işaretlenir ki
+         * "devralındı" ile "ağ koptu" raporu karışmasın.
+         */
+        private fun journal(reason: String, httpCode: Int? = null) {
+            val taken = takenOver || reason.contains("${BridgePolicy.CODE_TAKEOVER}")
+            val r = when {
+                taken -> "taken_over $reason"
+                httpCode != null -> "HTTP $httpCode $reason"
+                else -> reason
+            }
+            ConnectionJournal.record("bridge", r, reason)
+            DiagLog.w("conn", ConnectionJournal.summary("bridge"))
         }
     }
 
@@ -445,11 +472,21 @@ class PhoneBridgeService : Service() {
      * Normal kopmalarda otomatik bağlanma sürer — bu bağlantının saniyeler
      * içinde geri gelmesi gerekmiyor ama pili boşaltan bir döngü de olmamalı.
      * Devralmada buraya hiç gelinmez.
+     *
+     * Tur-10 (F2): yakın zamanda bağlıydık (≤60 sn) ve sıra uzun basamağa
+     * gelmişse tavan [SocketTuning.BRIDGE_FLAP_CAP_MS] (15 sn) — kısa ağ
+     * sarsıntısından sonra 30/60 sn beklemek gereksiz. Merdivenin kendisi
+     * (devirme fırtınasını yavaşlatan kısım) korunur ve ±%25 jitter eklenir.
      */
     private fun scheduleReconnect() {
         if (closedByUser || takenOver) return
         attempt++
-        val delayMs = BridgePolicy.backoffMs(attempt)
+        val sinceOpen = if (lastConnectedAt > 0) System.currentTimeMillis() - lastConnectedAt else null
+        val delayMs = SocketTuning.bridgeReconnectMs(
+            attempt = attempt,
+            msSinceLastOpen = sinceOpen,
+            unit = kotlin.random.Random.nextDouble(),
+        )
         DiagLog.d("bridge", "reconnect #$attempt in ${delayMs}ms")
         cancelPending()
         val r = Runnable {

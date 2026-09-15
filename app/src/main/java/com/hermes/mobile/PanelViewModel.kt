@@ -139,9 +139,18 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                     // Tanılama ise tamamen cihazda, sunucudan çekilecek veri yok.
                     PanelSection.Status, PanelSection.Terminal, PanelSection.Diag -> Unit
                     PanelSection.Spark -> {
-                        // Artık her iki ağda da adres var (LAN'da 5555, dışarıda
-                        // /spark-api), o yüzden "yalnız yerel ağda" durumu kalktı.
-                        val spark = SparkClient(sparkBaseUrl(p), p.token)
+                        // Tur-10 (F4): aday listesi TEK kaynaktan (SparkEndpoints)
+                        // türetiliyor — LAN'da doğrudan :5555 (ölçüldü: 200 ✓),
+                        // dışarıda /spark-api (Caddy token kapısı). Uygulama
+                        // sırayla dener, çalışanı hatırlar; hepsi başarısızsa
+                        // mensajı SparkEndpoints.describe üretir.
+                        val candidates = com.hermes.mobile.data.SparkEndpoints.candidates(p, sparkUrl)
+                        if (candidates.isEmpty()) {
+                            throw com.hermes.mobile.data.SparkUnavailableException(
+                                com.hermes.mobile.data.SparkEndpoints.describe(emptyList(), ::panelTr)
+                            )
+                        }
+                        val spark = SparkClient(candidates, p.token)
                         // Ölçümler ayrı ayrı çekiliyor; biri (SSH ile okunan
                         // uzak makine) yavaşsa ya da düşmüşse diğeri yine gelsin.
                         val entries = spark.sparks()
@@ -202,39 +211,14 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Ayarda adres yoksa Hermes sunucusunun ana makinesinden türet.
-     *
-     * ⚠️ Yalnız **yerel ağ** adresleri için. Dışarıdan bağlanırken (bulut
-     * alan adı gibi) 5555'i denemek anlamsız: sparkDash'in API'sinde kimlik
-     * doğrulama yok, o yüzden o port internete açılmadı ve açılmamalı.
-     * Türetmeye kalkınca kullanıcı 8 saniyelik zaman aşımı + anlaşılmaz bir
-     * bağlantı hatası görüyordu; şimdi sebebini söylüyoruz.
+     * sparkDash taban adresleri artık [com.hermes.mobile.data.SparkEndpoints]
+     * tarafından üretiliyor (tur-10 F4). Buradaki eski türetme yalnız
+     * `activeUrl`e bakıyordu; aktif adres dış alan adı olduğunda telefon ev
+     * ağındayken bile `:5555` yerine `/spark-api` (403) deniyordu.
      */
-    private fun sparkBaseUrl(p: ServerProfile): String {
-        sparkUrl.takeIf { it.isNotBlank() }?.let { return it }
-        val base = p.activeUrl ?: p.normalizedUrl
-        val host = base.substringAfter("://").substringBefore("/").substringBefore(":")
-        // Ev ağında doğrudan 5555. Dışarıdan Hermes'in ters vekilindeki
-        // `/spark-api` yolundan: 5555 hâlâ internete kapalı, kapıyı Caddy
-        // tutuyor (token başlığı + yalnız GET). Böylece kimlik doğrulaması
-        // olmayan bir API dışarı açılmış olmuyor.
-        return if (isPrivateHost(host)) "http://$host:5555"
-        else base.trimEnd('/') + "/spark-api"
-    }
 
-    /** RFC1918 + localhost + .local — yani "aynı ağdayım" denebilecek adresler. */
-    private fun isPrivateHost(host: String): Boolean {
-        if (host.equals("localhost", true) || host.endsWith(".local", true)) return true
-        val o = host.split(".").mapNotNull { it.toIntOrNull() }
-        if (o.size != 4) return false
-        return when {
-            o[0] == 10 -> true
-            o[0] == 127 -> true
-            o[0] == 192 && o[1] == 168 -> true
-            o[0] == 172 && o[1] in 16..31 -> true
-            else -> false
-        }
-    }
+    /** Panelden gelen dil çözümü (saf katmana enjekte edilir). */
+    private fun panelTr(tr: String, en: String): String = com.hermes.mobile.ui.tr(tr, en)
 
     /** Ayarlardan gelen sparkDash adresi. */
     var sparkUrl: String = ""

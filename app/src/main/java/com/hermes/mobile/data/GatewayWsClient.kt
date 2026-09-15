@@ -56,14 +56,20 @@ class GatewayWsClient(private val profile: ServerProfile) {
     private val pendingLock = Any()
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .pingInterval(20, TimeUnit.SECONDS)
+        .connectTimeout(SocketTuning.GATEWAY_CONNECT_SECONDS, TimeUnit.SECONDS)
+        // Aynı zamanda "pong bütçesi": OkHttp, pong pingInterval içinde gelmezse
+        // bağlantıyı ölü sayar. Tur-10'da 20→15 sn: algılama gecikmesi ~5 sn
+        // kısaldı, yine de normal tur süresinin ~10 katı (yanlış kopma üretmez).
+        .pingInterval(SocketTuning.GATEWAY_PING_SECONDS, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
 
     private var socket: WebSocket? = null
     private var closedByUser = false
     private var reconnectAttempt = 0
+
+    /** Son BAŞARILI açılışın zamanı — sarsıntı (flap) tespiti için. */
+    private var lastOpenAt = 0L
 
     /**
      * Soket **yeniden** açıldığında çağrılır (ilk bağlantıda değil).
@@ -343,15 +349,23 @@ class GatewayWsClient(private val profile: ServerProfile) {
         }
     }
 
-    /** Kesintide üssel geri çekilmeyle yeniden bağlanır (en fazla 30 sn). */
+    /**
+     * Kesintide geri çekilmeyle yeniden bağlanır ([SocketTuning]).
+     *
+     * Tur-10 (F2): yakın zamanda bağlıydıysak (≤60 sn) tavan 5 sn'ye iner —
+     * ağ sarsıntısından sonra kullanıcı "Düşünüyor" ekranında beklemesin.
+     * Gecikmeye ±%25 jitter eklenir ki köprü ve röle ile aynı saniyede
+     * yeniden bağlanıp sunucuyu dalgalandırmasın.
+     */
     private fun scheduleReconnect() {
         if (closedByUser) return
         reconnectAttempt++
-        // İlk deneme hemen: kopmaların çoğu anlık (NAT, hücre-Wi-Fi geçişi) ve
-        // 2 saniye beklemek kullanıcıya "koptu" gibi görünüyor.
-        val backoffMs =
-            if (reconnectAttempt == 1) 300L
-            else minOf(30_000L, 1_000L * (1L shl minOf(reconnectAttempt, 5)))
+        val sinceOpen = if (lastOpenAt > 0) System.currentTimeMillis() - lastOpenAt else null
+        val backoffMs = SocketTuning.gatewayReconnectMs(
+            attempt = reconnectAttempt,
+            msSinceLastOpen = sinceOpen,
+            unit = kotlin.random.Random.nextDouble(),
+        )
         DiagLog.d("ws", "reconnect #$reconnectAttempt in ${backoffMs}ms")
         scope.launch {
             delay(backoffMs)
@@ -363,6 +377,7 @@ class GatewayWsClient(private val profile: ServerProfile) {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             val wasReconnect = reconnectAttempt > 0
             reconnectAttempt = 0
+            lastOpenAt = System.currentTimeMillis()
             _connection.value = ConnectionState.Open
             DiagLog.i("ws", if (wasReconnect) "reconnected" else "connected")
             if (wasReconnect) onReconnected?.invoke()
@@ -391,6 +406,7 @@ class GatewayWsClient(private val profile: ServerProfile) {
             // kayboldu, 1011 sunucu hatası. Bekleyen çağrı sayısı da önemli —
             // sıfır değilse kullanıcı "Düşünüyor"da takılı kalıyor demektir.
             DiagLog.w("ws", "closed code=$code reason=${reason.ifBlank { "-" }}")
+            journal("closed code=$code reason=${reason.ifBlank { "-" }}")
             failAllPending("bağlantı kapandı ($code)")
             scheduleReconnect()
         }
@@ -407,8 +423,20 @@ class GatewayWsClient(private val profile: ServerProfile) {
             }
             _connection.value = ConnectionState.Error(reason)
             DiagLog.e("ws", "failed http=${response?.code ?: "-"}", t)
+            journal(reason, response?.code)
             failAllPending(reason)
             scheduleReconnect()
+        }
+
+        /**
+         * Tur-10 (F2): kopmayı sınıflandırıp **son kopma nedenleri özetini**
+         * tanı kaydına yazar. Dağınık `closed/failed` satırları yerine tek
+         * bakışta "ne sıklıkta, hangi kanal, hangi tür" görünür.
+         */
+        private fun journal(reason: String, httpCode: Int? = null) {
+            val r = if (httpCode != null) "HTTP $httpCode $reason" else reason
+            ConnectionJournal.record("ws", r, reason)
+            DiagLog.w("conn", ConnectionJournal.summary("ws"))
         }
     }
 }

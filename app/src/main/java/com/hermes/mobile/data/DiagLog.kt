@@ -169,8 +169,12 @@ object DiagLog {
                     .joinToString("") { it.readText() }
             }.orEmpty()
         }.getOrDefault("")
-        return if (past.isNotBlank()) head + past
-        else head + synchronized(lock) { ring.joinToString("\n") { it.line() } }
+        if (past.isNotBlank()) return head + past
+        val memory = synchronized(lock) { ring.joinToString("\n") { it.line() } }
+        // Tur-10 (F2): bağlantı kopma defteri kayda gömülür — paylaşılan tanı
+        // metninde "kaç kez, hangi kanal, neden koptu" tek bakışta görünsün.
+        val journal = ConnectionJournal.dumpSection()
+        return if (journal.isBlank()) head + memory else head + memory + "\n" + journal
     }
 
     fun clear() {

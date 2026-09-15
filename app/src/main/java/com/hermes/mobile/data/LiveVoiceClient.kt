@@ -75,14 +75,19 @@ class LiveVoiceClient(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        
+        .connectTimeout(SocketTuning.RELAY_CONNECT_SECONDS, TimeUnit.SECONDS)
+
         // Röle zaten 20 sn'de bir ping atıyor. İstemci de 20 sn'de bir atıp
         // 20 sn'de pong bekleyince, uzun bir `hermes_ask` sırasında (ölçtük:
         // 60 sn) pong ses kareleri arasında sıkışıyor ve bağlantı ölü sayılıyor
         // — "sent ping but didn't receive pong within 20000ms" hatası buydu.
         // 45 sn hem araç çağrısını aşıyor hem ölü bağlantıyı yakalamaya yetiyor.
-        .pingInterval(45, TimeUnit.SECONDS)
+        //
+        // Tur-10 (F2): bu değer BİLEREK diğer kanallardan yüksek tutuldu
+        // ([SocketTuning.RELAY_PING_SECONDS] = 45); ws (15) ve köprü (20)
+        // kısaldı. Rölede ping penceresini kısaltmak, ölçülmüş tur-2 hatasını
+        // (uzun araç çağrısı sırasında yanlış "koptu") geri getirirdi.
+        .pingInterval(SocketTuning.RELAY_PING_SECONDS, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
 
@@ -473,6 +478,7 @@ class LiveVoiceClient(
                 return
             }
             DiagLog.w("live", "closed code=$code reason=${reason.ifBlank { "-" }}")
+            journal("closed code=$code reason=${reason.ifBlank { "-" }}")
             scheduleReconnect(describeClose(code, reason))
         }
 
@@ -483,7 +489,20 @@ class LiveVoiceClient(
             // Röle adresi yanlış türetildiğinde tek görünen belirti buydu.
             // Adres kaydı şart: sızıntı yok, buildUrl token'ı ayıklıyor.
             DiagLog.e("live", "failed url=${redactedUrl()} http=${response?.code ?: "-"}", t)
+            journal(t.message ?: "Bağlantı hatası", response?.code)
             scheduleReconnect(t.message ?: "Bağlantı hatası")
+        }
+
+        /**
+         * Tur-10 (F2): röle kopmasını da ortak deftere yaz — üç kanalın
+         * (ws/köprü/röle) kopmaları aynı saniyede oluyorsa sorun ağ yolundadır,
+         * tek kanalda oluyorsa o kanalın kendi sorunudur. Bu ayrım saha
+         * logunda yapılamıyordu.
+         */
+        private fun journal(reason: String, httpCode: Int? = null) {
+            val r = if (httpCode != null) "HTTP $httpCode $reason" else reason
+            ConnectionJournal.record("relay", r, reason)
+            DiagLog.w("conn", ConnectionJournal.summary("relay"))
         }
     }
 

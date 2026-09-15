@@ -78,14 +78,7 @@ data class ServerProfile(
         }
 
     /** RFC1918 + localhost + .local — "aynı ağdayım" denebilecek adresler. */
-    private fun isPrivateHost(host: String): Boolean {
-        if (host.equals("localhost", true) || host.endsWith(".local", true)) return true
-        val o = host.split(".").mapNotNull { it.toIntOrNull() }
-        if (o.size != 4) return false
-        return o[0] == 10 || o[0] == 127 ||
-            (o[0] == 192 && o[1] == 168) ||
-            (o[0] == 172 && o[1] in 16..31)
-    }
+    private fun isPrivateHost(host: String): Boolean = com.hermes.mobile.data.isPrivateHost(host)
 
     /**
      * Sondaki eğik çizgileri temizlenmiş taban adres.
@@ -177,6 +170,22 @@ data class ServerProfile(
 }
 
 private const val PREFS_FILE = "hermes_profiles"
+
+/**
+ * RFC1918 + localhost + .local — "aynı ağdayım" denebilecek adresler.
+ *
+ * Tek kaynak: [ServerProfile] ve [SparkEndpoints] aynı kuralı kullanmalı,
+ * yoksa biri "LAN" derken diğeri "dış" der ve Spark yanlış porta gider.
+ */
+internal fun isPrivateHost(host: String): Boolean {
+    if (host.equals("localhost", true) || host.endsWith(".local", true)) return true
+    val o = host.split(".").mapNotNull { it.toIntOrNull() }
+    if (o.size != 4) return false
+    return o[0] == 10 || o[0] == 127 ||
+        (o[0] == 192 && o[1] == 168) ||
+        (o[0] == 172 && o[1] in 16..31)
+}
+
 private const val KEY_PROFILES = "profiles"
 private const val KEY_ACTIVE = "active_id"
 

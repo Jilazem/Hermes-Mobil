@@ -34,15 +34,33 @@ class HermesClient(private val profile: ServerProfile) {
         .build()
 
     /**
-     * Denenecek adresler: son çalışan önce, sonra kalanlar.
+     * Denenecek adresler: son çalışan önce, sonra kalanlar — **ama artık
+     * sağlık süzgecinden geçerek**.
      *
-     * Ev dışındayken LAN adresi 15 sn zaman aşımına düşüyor; çalışan adresi
-     * hatırlayıp öne almak her isteği o kadar bekletmemizi önlüyor.
+     * Tur-10 (F3): eskiden her istek tüm adayları deniyordu; ölü LAN adresi
+     * (`192.168.101.10`, `192.168.1.10`) yüzünden saha logunda 140 kez
+     * "unreachable" + her seferinde 8 sn bekleme vardı. Artık art arda
+     * başarısız olan adres [AddressHealth] tarafından kısa süre devre dışı
+     * bırakılıyor ve deneme **tek sağlıklı adres** üzerinden yapılıyor.
+     * Kullanıcı adresleri silinmez — yalnızca akıllı sıralama.
      */
     private fun urlOrder(): List<String> {
-        val all = profile.candidates
-        val last = profile.activeUrl
-        return if (last != null) listOf(last) + all.filterNot { it == last } else all
+        val plan = AddressHealth.plan(profile.id, profile.candidates, profile.activeUrl)
+        if (plan.isEmpty()) {
+            DiagLog.w("http", "denenecek adres yok - profil adresleri bos")
+        } else if (plan.size == 1 && profile.candidates.size > 1) {
+            DiagLog.d("http", "tek saglikli adres secildi: ${plan.first()} (atlanan: ${profile.candidates.size - 1})")
+        }
+        return plan
+    }
+
+    /** Başarısız adresi işaretler ve nedeni okunur biçimde kaydeder. */
+    private fun noteUnreachable(path: String, base: String, e: IOException) {
+        val st = AddressHealth.noteFailure(profile.id, base, e.message)
+        DiagLog.w(
+            "http",
+            "GET $path · $base unreachable (${st.failures}. kez - ${AddressHealth.cooldownMs(st.failures) / 1000}sn devre disi): ${e.message}",
+        )
     }
 
     private fun request(base: String, path: String): Request.Builder =
@@ -59,6 +77,7 @@ class HermesClient(private val profile: ServerProfile) {
                     val body = res.body?.string().orEmpty()
                     // HTTP hatası adresin yanlış olduğu anlamına gelmez (401 gibi) —
                     // ulaşabildiysek bu adres çalışıyordur, diğerini denemeye gerek yok.
+                    if (res.isSuccessful) AddressHealth.noteSuccess(profile.id, base)
                     ServerProfile.remember(profile.id, base)
                     if (!res.isSuccessful) {
                         DiagLog.w("http", "GET $path -> ${res.code} · ${body.take(160)}")
@@ -71,7 +90,7 @@ class HermesClient(private val profile: ServerProfile) {
             } catch (e: IOException) {
                 // Hangi adresin denendiğini bilmek şart: LAN mı uzak mı
                 // düştüğünü ayırt etmenin başka yolu yok.
-                DiagLog.w("http", "GET $path · $base unreachable: ${e.message}")
+                noteUnreachable(path, base, e)
                 lastError = e
             }
         }
@@ -91,12 +110,14 @@ class HermesClient(private val profile: ServerProfile) {
                         .build()
                     http.newCall(req).execute().use { res ->
                         val body = res.body?.string().orEmpty()
+                        if (res.isSuccessful) AddressHealth.noteSuccess(profile.id, base)
                         ServerProfile.remember(profile.id, base)
                         if (!res.isSuccessful) throw HermesApiException(res.code, path, body.take(300))
                         return@withContext body
                     }
                 } catch (e: IOException) {
                     lastError = e
+                    AddressHealth.noteFailure(profile.id, base, e.message)
                 }
             }
             throw lastError ?: IOException("sunucuya ulaşılamadı")
@@ -110,6 +131,7 @@ class HermesClient(private val profile: ServerProfile) {
                     val body = jsonBody.toRequestBody(JSON_MEDIA)
                     http.newCall(request(base, path).post(body).build()).execute().use { res ->
                         val text = res.body?.string().orEmpty()
+                        if (res.isSuccessful) AddressHealth.noteSuccess(profile.id, base)
                         ServerProfile.remember(profile.id, base)
                         if (!res.isSuccessful) {
                             throw HermesApiException(res.code, path, text.take(300))
@@ -120,6 +142,7 @@ class HermesClient(private val profile: ServerProfile) {
                     throw e
                 } catch (e: IOException) {
                     lastError = e
+                    AddressHealth.noteFailure(profile.id, base, e.message)
                 }
             }
             ServerProfile.forget(profile.id)

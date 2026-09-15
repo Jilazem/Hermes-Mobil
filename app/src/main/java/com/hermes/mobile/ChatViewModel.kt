@@ -519,10 +519,18 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     init {
         // Yanıt beklenirken süreç arka planda dondurulmasın; yanıt gelince
         // servis kapansın. Gerekçe AwaitReplyService'in başında.
+        //
+        // Tur-10 (F1): her state değişiminde start/stop çağırmak, sistemin
+        // startForegroundService sayaçlarıyla yarışıyordu (gerçek cihazda
+        // ForegroundServiceDidNotStartInTime). Artık YALNIZ `agentBusy`
+        // değiştiğinde haber veriliyor; karar makinesi kalanı serileştiriyor.
         viewModelScope.launch {
+            var lastBusy = false
             _state.collect { st ->
-                if (st.agentBusy) AwaitReplyService.start(getApplication())
-                else AwaitReplyService.stop(getApplication())
+                if (st.agentBusy != lastBusy) {
+                    lastBusy = st.agentBusy
+                    AwaitReplyService.setAwaiting(getApplication(), lastBusy)
+                }
             }
         }
         voice.initTts()
