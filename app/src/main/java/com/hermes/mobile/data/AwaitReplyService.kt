@@ -27,8 +27,19 @@ class AwaitReplyService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(FG_ID, notification())
-        return START_NOT_STICKY
+        // Tur-5 bulgusu (crash buffer): nadiren
+        // `ForegroundServiceDidNotStartInTimeException — Context.startForegroundService()
+        // did not then call Service.startForeground()` görülüyordu. Sistem bu çağrıdan
+        // sonra 5 sn içinde `startForeground` bekliyor; bildirim/kanal kurulamazsa
+        // süreç ölüyor. Emniyet: kurulum başarısızsa HEMEN stopSelf — servisi
+        // ayakta tutmanın bir anlamı yok, sistemin zamanlayıcısı da düşer.
+        return runCatching {
+            startForeground(FG_ID, notification())
+            START_NOT_STICKY
+        }.getOrElse {
+            runCatching { stopSelf() }
+            START_NOT_STICKY
+        }
     }
 
     private fun notification(): Notification {
@@ -58,13 +69,30 @@ class AwaitReplyService : Service() {
         private const val CHANNEL = "hermes_await"
         private const val FG_ID = 4712
 
+        /**
+         * Aynı servis için TEKRARLI `startForegroundService` çağrısını engeller.
+         *
+         * Tur-5 bulgusu: ChatViewModel durumu her değiştiğinde (agentBusy true
+         * kaldıkça her token/olayda) bu fonksiyon çağrılıyordu. Sistem aynı anda
+         * stop/start isteklerini yarıştırınca
+         * `ForegroundServiceDidNotStartInTimeException` ile süreç ölebiliyordu.
+         * Bayrak süreç ömrüyle sınırlı; süreç ölürse sıfırlanır ve ilk start
+         * yine geçer.
+         */
+        @Volatile
+        private var running = false
+
         fun start(context: Context) {
+            if (running) return
             runCatching {
                 context.startForegroundService(Intent(context, AwaitReplyService::class.java))
+                running = true
             }
         }
 
         fun stop(context: Context) {
+            if (!running) return
+            running = false
             runCatching { context.stopService(Intent(context, AwaitReplyService::class.java)) }
         }
     }
