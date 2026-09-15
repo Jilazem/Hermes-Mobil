@@ -76,6 +76,19 @@ Sunucu tarafı günlüğü (`denetim/tur11/mock.log`):
 Ek: `denetim/tur11/emulator-sesli-mesaj.png` (ekran görüntüsü), crash tamponu **boş**
 (`adb logcat -d -b crash` boş), uygulama tanısında `calisan ses ucu: http://10.0.2.2:8199`.
 
+### 4b. Arayüz kanıtı (aynı APK, `denetim/tur11/ui_kanit.sh` + `ui_*.xml` dökümleri)
+
+| Yüzey | Dökümde görünen | Dosya |
+|---|---|---|
+| Sohbet ekranı | bas-konuş mikrofonu: `content-desc="Basılı tut, konuş"` | `ui-sohbet.xml` |
+| Ayarlar → Canlı ses ve görüntü → **Sesli mesaj (uygulama içi)** | "Seslendirme motoru" · `Kahya (önerilen)` · `Kadın` · `Chatterbox (deneysel)` · "Ana motor. İlk sentez motoru ısıtır: 2-3 dakika sürebilir." · "Metni otomatik gönder" (+ açıklaması) · `voice_api` adres satırı · "Ses ucu durumu / Henüz çalışan bir adres yok / Şimdi dene" | `ui-ses-ayarlari2.xml`, `emulator-ayarlar-sesli-mesaj.png` |
+
+Çökme denetimi (dürüst not): dökümün altındaki "⚠ Önceki açılış bir çökmeyle kapandı:
+ForegroundServiceDidNotStartInTimeException" şeridi **eski bir çökmeden** kalma —
+`files/diag.log`'daki kayıt `09-15 11:05` (tur-10 düzeltmesi kurulmadan önceki koşum).
+Bu turda kurulan APK'dan sonra (21:39+) hiç çökme kaydı yok, crash tamponu boş
+(`denetim/tur11/emulator-diag.log` içinde 21:39 sonrası `crash` satırı yok).
+
 ## 5. Canlı uca salt-okunur rozet (sözleşme gerçek sunucuda doğrulandı)
 
 `python3 denetim/tur11/live_probe.py` → `denetim/tur11/live-probe.json`
