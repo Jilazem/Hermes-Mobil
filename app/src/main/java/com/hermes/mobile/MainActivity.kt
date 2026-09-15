@@ -956,6 +956,9 @@ private fun HermesApp(
                     Tab.Arena -> ArenaScreen(
                         arenaViewModel = arenaViewModel,
                         gateway = chatViewModel.gateway.value,
+                        // Tur-9: Arena boştayken sahne sunucunun çalışan oturumlarını
+                        // gösterir (LiveSessions kaynağı, salt okuma).
+                        liveSessions = live.sessions,
                     )
                     Tab.Settings -> SettingsScreen(
                         shizukuState = shizukuState,

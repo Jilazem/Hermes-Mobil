@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Arena 3D</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0f13; }
+    /* Sahne kutusu WebView'i TAM doldurur; canvas boyutu ayrıca JS'te (setSize
+       updateStyle=true) satır içi yazılır — tur-9 ölçümü: yalnız CSS yüzde
+       zinciri emülatörde 0 yükseklik bırakıp sahneyi görünmez yapıyordu. */
+    #stage { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+    #stage canvas { display: block; width: 100%; height: 100%; }
+    /* WebGL yoksa gösterilen zarif yer tutucu — çökme yok. */
+    #fallback {
+      position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+      color: #7b8894; font: 13px -apple-system, "Roboto", sans-serif; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="fallback">3D sahne bu cihazda calismiyor</div>
+  <!-- three.js r147 (MIT) — uygulama asset'i, çalışma anında indirme YOK. -->
+  <script src="three.min.js"></script>
+  <script src="arena3d.js"></script>
+</body>
+</html>

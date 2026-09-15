@@ -10,6 +10,10 @@ import com.hermes.mobile.data.GatewayWsClient
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.data.ServerProfileStore
+import com.hermes.mobile.ui.ArenaFigure
+import com.hermes.mobile.ui.ArenaFigureState
+import com.hermes.mobile.ui.arenaFigureId
+import com.hermes.mobile.ui.arenaSynthFigureId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -52,6 +56,13 @@ data class ArenaState(
     val phase: ArenaPhase = ArenaPhase.Idle,
     val loadingProfiles: Boolean = false,
     val error: String? = null,
+    /**
+     * Sahne figürleri (tur-9): Arena 3D sahnesinde her bot bir figür.
+     * Kimlikler fazlar arasında kararlıdır (bkz. `ui/ArenaSceneModel.kt`).
+     */
+    val figures: List<ArenaFigure> = emptyList(),
+    /** "Durdur" ile mi bitti — sahne sakince beklemeye döner (animasyon donmaz). */
+    val stopped: Boolean = false,
 )
 
 /**
@@ -69,6 +80,40 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
     private var runningJob: Job? = null
     private var activeGw: GatewayWsClient? = null
     private var activeSessions = mutableListOf<String>()
+
+    /**
+     * Sahne figürleri (tur-9) — sıra korunur, kimlik kararlı.
+     *
+     * Not: yazımlar ana iş parçacığında (viewModelScope) yapılır; aynı bot
+     * kapışmada iki kez (tur 1 + tur 2) ve beyin fırtınasında ayrıca sentez
+     * figürü olarak yer alır → kimlikler tur ekiyle ayrılır.
+     */
+    private val figureStates = LinkedHashMap<String, ArenaFigure>()
+
+    private fun round1Badge() = com.hermes.mobile.ui.tr("Tur 1", "Round 1")
+
+    private fun round2Badge() = com.hermes.mobile.ui.tr("Tur 2", "Round 2")
+
+    private fun synthBadge() = com.hermes.mobile.ui.tr("Sentez", "Synthesis")
+
+    /** Figürün durumunu yazar ve state'e yayar (sahne bu listeden çizilir). */
+    private fun markFigure(id: String, name: String, state: ArenaFigureState, badge: String?) {
+        figureStates[id] = ArenaFigure(id = id, name = name, state = state, badge = badge)
+        val snapshot = figureStates.values.toList()
+        _state.update { it.copy(figures = snapshot) }
+    }
+
+    /** Tüm figürleri verilen duruma çeker (durdurma/kesinti). */
+    private fun markAll(state: ArenaFigureState, onlyUnfinished: Boolean = true) {
+        figureStates.keys.toList().forEach { k ->
+            val f = figureStates.getValue(k)
+            if (!onlyUnfinished || f.state != ArenaFigureState.DONE) {
+                figureStates[k] = f.copy(state = state)
+            }
+        }
+        val snapshot = figureStates.values.toList()
+        _state.update { it.copy(figures = snapshot) }
+    }
 
     init {
         refreshProfiles()
@@ -148,7 +193,20 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
 
         activeGw = gw
         activeSessions.clear()
-        _state.update { it.copy(phase = ArenaPhase.Running(st.mode), error = null) }
+        // Sahne: seçili botlar önce "bekliyor" olarak doğar (tur-9).
+        figureStates.clear()
+        st.selectedProfiles.forEach { bot ->
+            val fid = arenaFigureId(bot, 1)
+            figureStates[fid] = ArenaFigure(id = fid, name = bot, state = ArenaFigureState.WAITING, badge = round1Badge())
+        }
+        _state.update {
+            it.copy(
+                phase = ArenaPhase.Running(st.mode),
+                error = null,
+                figures = figureStates.values.toList(),
+                stopped = false,
+            )
+        }
 
         runningJob = viewModelScope.launch {
             runCatching {
@@ -158,6 +216,8 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
                     ArenaMode.BRAINSTORM -> runBrainstorm(gw, st.selectedProfiles, topic)
                 }
             }.onFailure { e ->
+                // Kesinti: bitmemiş figürler kırmızıya döner (sahne "hata" gösterir).
+                markAll(ArenaFigureState.ERROR)
                 _state.update {
                     it.copy(phase = ArenaPhase.Done(emptyList(), null, it.mode), error = e.message ?: "Bilinmeyen hata")
                 }
@@ -176,10 +236,14 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         runningJob?.cancel()
+        // Tur-9: sahne "sakince durur" — figürler SİLİNMEZ, beklemeye döner
+        // (animasyon donmaz, idle nefesine iner).
+        markAll(ArenaFigureState.WAITING, onlyUnfinished = false)
         _state.update {
             it.copy(
                 phase = ArenaPhase.Done(emptyList(), null, it.mode),
                 error = "Durduruldu",
+                stopped = true,
             )
         }
     }
@@ -187,6 +251,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
     fun clear() {
         runningJob?.cancel()
         activeSessions.clear()
+        figureStates.clear()
         _state.update { ArenaState(profiles = it.profiles, mode = it.mode) }
     }
 
@@ -196,9 +261,17 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun runSingle(gw: GatewayWsClient, bots: List<String>, topic: String) {
         val answers = mutableListOf<ArenaAnswer>()
         bots.forEach { bot ->
+            val fid = arenaFigureId(bot, 1)
+            markFigure(fid, bot, ArenaFigureState.WORKING, round1Badge())
             val sid = gw.createSession(bot)
             activeSessions += sid
-            val text = awaitAnswer(gw, sid, ArenaPrompts.round1(topic))
+            val text = try {
+                awaitAnswer(gw, sid, ArenaPrompts.round1(topic))
+            } catch (e: Throwable) {
+                markFigure(fid, bot, ArenaFigureState.ERROR, round1Badge())
+                throw e
+            }
+            markFigure(fid, bot, ArenaFigureState.DONE, round1Badge())
             answers += ArenaAnswer(bot, round = 1, text = text)
         }
         finish(answers)
@@ -209,12 +282,20 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         val r1 = runRound1(gw, bots, ArenaPrompts.round1(topic), topic)
         val r2 = mutableListOf<ArenaAnswer>()
         bots.forEach { bot ->
+            val fid = arenaFigureId(bot, 2)
+            markFigure(fid, bot, ArenaFigureState.WORKING, round2Badge())
             val self = r1.first { it.bot == bot }.text
             val others = r1.filter { it.bot != bot }.associate { it.bot to it.text }
             val prompt = ArenaPrompts.battleRound2(topic, self, others)
             val sid = gw.createSession(bot)
             activeSessions += sid
-            val text = awaitAnswer(gw, sid, prompt)
+            val text = try {
+                awaitAnswer(gw, sid, prompt)
+            } catch (e: Throwable) {
+                markFigure(fid, bot, ArenaFigureState.ERROR, round2Badge())
+                throw e
+            }
+            markFigure(fid, bot, ArenaFigureState.DONE, round2Badge())
             r2 += ArenaAnswer(bot, round = 2, text = text)
         }
         finish(r1 + r2)
@@ -225,9 +306,17 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         val ideas = runRound1(gw, bots, ArenaPrompts.brainstormIdeas(topic), topic)
         val synthBot = bots.first()
         val synthPrompt = ArenaPrompts.synthesis(topic, ideas.associate { it.bot to it.text })
+        val fid = arenaSynthFigureId(synthBot)
+        markFigure(fid, synthBot, ArenaFigureState.WORKING, synthBadge())
         val sid = gw.createSession(synthBot)
         activeSessions += sid
-        val synthText = awaitAnswer(gw, sid, synthPrompt)
+        val synthText = try {
+            awaitAnswer(gw, sid, synthPrompt)
+        } catch (e: Throwable) {
+            markFigure(fid, synthBot, ArenaFigureState.ERROR, synthBadge())
+            throw e
+        }
+        markFigure(fid, synthBot, ArenaFigureState.DONE, synthBadge())
         finish(ideas + ArenaAnswer(synthBot, round = 2, text = synthText))
     }
 
@@ -240,9 +329,17 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
     ): List<ArenaAnswer> = coroutineScope {
         bots.map { bot ->
             async {
+                val fid = arenaFigureId(bot, 1)
+                markFigure(fid, bot, ArenaFigureState.WORKING, round1Badge())
                 val sid = gw.createSession(bot)
                 activeSessions += sid
-                val text = awaitAnswer(gw, sid, prompt)
+                val text = try {
+                    awaitAnswer(gw, sid, prompt)
+                } catch (e: Throwable) {
+                    markFigure(fid, bot, ArenaFigureState.ERROR, round1Badge())
+                    throw e
+                }
+                markFigure(fid, bot, ArenaFigureState.DONE, round1Badge())
                 ArenaAnswer(bot, round = 1, text = text)
             }
         }.awaitAll()

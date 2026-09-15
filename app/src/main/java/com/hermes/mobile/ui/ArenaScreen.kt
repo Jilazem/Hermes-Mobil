@@ -31,10 +31,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,8 +47,10 @@ import com.hermes.mobile.ArenaViewModel
 import com.hermes.mobile.data.ArenaAnswer
 import com.hermes.mobile.data.ArenaMode
 import com.hermes.mobile.data.GatewayWsClient
+import com.hermes.mobile.data.LiveSession
 import com.hermes.mobile.ui.MarkdownText
 import com.hermes.mobile.ui.tr
+import kotlinx.coroutines.delay
 
 /**
  * Bot Arena — 5. sekme.
@@ -51,13 +58,33 @@ import com.hermes.mobile.ui.tr
  * Kurulum ekranı: konu girişi, 1-4 bot çipi (profil listesi),
  * kip seçimi (Tek bot / Kapışma / Beyin fırtınası),
  * sonuç: bot kartları (ad+t/s+Markdown cevap), tur rozetleri, 'Durdur'.
+ *
+ * Tur-9: en üstte ~%35 yükseklikte **three.js 3D sahnesi** (WebView, yerel asset).
+ * Sahne ekleniktir — kurulum/çipler/sonuç kartları/Durdur aynen korunur.
  */
 @Composable
 fun ArenaScreen(
     arenaViewModel: ArenaViewModel,
     gateway: GatewayWsClient?,
+    liveSessions: List<LiveSession> = emptyList(),
 ) {
     val st by arenaViewModel.state.collectAsState()
+
+    // Sahne durumu: JS 'ready'/'nowebgl'/'error' olayları + zaman aşımı kararı.
+    var sceneStatus by remember { mutableStateOf(ArenaSceneStatus.LOADING) }
+    val sceneStartedAt = remember { System.currentTimeMillis() }
+    var sceneCheckedAt by remember { mutableStateOf(sceneStartedAt) }
+    LaunchedEffect(sceneStatus) {
+        if (sceneStatus == ArenaSceneStatus.LOADING) {
+            delay(ARENA_SCENE_TIMEOUT_MS)
+            sceneCheckedAt = System.currentTimeMillis()
+        }
+    }
+    val sceneFallback = arenaSceneFallbackReason(sceneStatus, sceneCheckedAt - sceneStartedAt)
+
+    val sceneLabels = if (S.lang == Lang.EN) ArenaSceneLabels.EN else ArenaSceneLabels.TR
+    val sceneFigures = arenaSceneFigures(st, liveSessions, sceneLabels)
+    val sceneJson = ArenaSceneJson.encode(arenaScenePhase(st), sceneFigures)
 
     Column(
         modifier = Modifier
@@ -102,6 +129,36 @@ fun ArenaScreen(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(S.t2("Temizle", "Clear"), fontSize = 13.sp)
                 }
+            }
+        }
+
+        // 3D sahne — Arena alanının ~%35'i; WebGL yoksa zarif kart listesine düşer.
+        val sceneHeight = (LocalConfiguration.current.screenHeightDp * 0.35f)
+            .coerceIn(200f, 340f).dp
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(sceneHeight),
+        ) {
+            ArenaSceneHost(
+                json = sceneJson,
+                theme = ArenaSceneTheme.DARK,
+                modifier = Modifier.fillMaxSize(),
+            ) { type, _ ->
+                when (type) {
+                    "ready" -> sceneStatus = ArenaSceneStatus.READY
+                    "nowebgl" -> sceneStatus = ArenaSceneStatus.NO_WEBGL
+                    "error" -> sceneStatus = ArenaSceneStatus.ERROR
+                    else -> {}
+                }
+            }
+            when {
+                arenaUseCardFallback(sceneFallback) ->
+                    ArenaSceneFallback(sceneFigures, sceneFallback, Modifier.fillMaxSize())
+
+                sceneStatus == ArenaSceneStatus.LOADING -> ArenaSceneSkeleton(Modifier.fillMaxSize())
+
+                else -> {}
             }
         }
 
