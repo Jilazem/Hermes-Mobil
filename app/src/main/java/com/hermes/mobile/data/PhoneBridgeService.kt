@@ -65,12 +65,15 @@ class PhoneBridgeService : Service() {
     private lateinit var settings: SettingsStore
     private lateinit var profiles: ServerProfileStore
     private lateinit var tools: PhoneTools
+    /** Tam kontrol katmanı — erişilebilirlik servisine dayanan komutlar. */
+    private lateinit var fullTools: FullControlTools
 
     override fun onCreate() {
         super.onCreate()
         settings = SettingsStore(this)
         profiles = ServerProfileStore(this)
         tools = PhoneTools(this, ShizukuBridge())
+        fullTools = FullControlTools(this)
         startForeground(NOTIF_ID, buildNotification())
     }
 
@@ -94,12 +97,16 @@ class PhoneBridgeService : Service() {
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
         )
         val readOnly = settings.settings.value.agentReadOnly
+        val full = settings.settings.value.fullControl
         return androidx.core.app.NotificationCompat.Builder(this, BRIDGE_CHANNEL)
             .setSmallIcon(com.hermes.mobile.R.drawable.ic_stat_hermes)
             .setContentTitle(com.hermes.mobile.ui.tr("Ajan telefona bağlı", "Agent connected to phone"))
             .setContentText(
-                if (readOnly) com.hermes.mobile.ui.tr("yalnız okuma", "read-only")
-                else com.hermes.mobile.ui.tr("okuma ve eylem", "read and act")
+                when {
+                    full -> com.hermes.mobile.ui.tr("tam kontrol", "full control")
+                    readOnly -> com.hermes.mobile.ui.tr("yalnız okuma", "read-only")
+                    else -> com.hermes.mobile.ui.tr("okuma ve eylem", "read and act")
+                },
             )
             .setOngoing(true)
             .setContentIntent(open)
@@ -172,12 +179,19 @@ class PhoneBridgeService : Service() {
             (o[0] == 192 && o[1] == 168) || (o[0] == 172 && o[1] in 16..31)
     }
 
-    /** Ajana tanıtılacak araçlar — kullanıcının o anki ayarına göre. */
+    /**
+     * Ajana tanıtılacak araçlar — kullanıcının o anki ayarına göre.
+     *
+     * Tam kontrol araçları yalnız iki anahtar da açıkken duyuruluyor. Kapalı
+     * bir aracı duyurmak, modelin onu denemesine ve "yapamıyorum" demek
+     * zorunda kalmasına yol açardı.
+     */
     private fun advertised(): List<String> {
         val s = settings.settings.value
         if (!s.agentMayUsePhone) return emptyList()
         val read = PhoneTools.READ_TOOL_NAMES.toList()
-        return if (s.agentReadOnly) read else (read + PhoneTools.AGENT_WRITE_TOOLS).distinct()
+        val base = if (s.agentReadOnly) read else (read + PhoneTools.AGENT_WRITE_TOOLS).distinct()
+        return (base + FullControl.advertise(s.agentMayUsePhone, s.fullControl)).distinct()
     }
 
     private inner class Listener : WebSocketListener() {
@@ -213,13 +227,25 @@ class PhoneBridgeService : Service() {
             val args = frame["args"] as? JsonObject ?: JsonObject(emptyMap())
 
             val allowed = advertised()
+            val s = settings.settings.value
             if (tool !in allowed) {
                 // Reddi sebebiyle birlikte söylüyoruz: ajan "yapamadım" deyip
                 // geçmek yerine kullanıcıya neyi açması gerektiğini söyleyebilsin.
-                val why = when {
-                    !settings.settings.value.agentMayUsePhone -> "agent access is off"
-                    settings.settings.value.agentReadOnly -> "read-only mode is on"
-                    else -> "tool not enabled"
+                // Tam kontrol araçlarında sebep (kanal kapalı / tam kontrol
+                // kapalı / salt-okunur) FullControl'de tek yerde hesaplanıyor.
+                val why = if (FullControl.isFullControlTool(tool)) {
+                    FullControl.guardReason(
+                        mayUsePhone = s.agentMayUsePhone,
+                        readOnly = s.agentReadOnly,
+                        fullControl = s.fullControl,
+                        tool = tool,
+                    ) ?: "tool not enabled"
+                } else {
+                    when {
+                        !s.agentMayUsePhone -> FullControl.WHY_AGENT_OFF
+                        s.agentReadOnly -> FullControl.WHY_READ_ONLY
+                        else -> "tool not enabled"
+                    }
                 }
                 DiagLog.w("bridge", "denied $tool ($why)")
                 reply(webSocket, id, false, "denied: $why")
@@ -227,6 +253,15 @@ class PhoneBridgeService : Service() {
             }
 
             DiagLog.i("bridge", "agent called $tool")
+            if (fullTools.handles(tool)) {
+                // Ekran görüntüsü base64'ü log'a YAZILMAZ: kanıt değeri yok,
+                // günlüğü megabaytlarca şişirir.
+                DiagLog.i("a11y", "eylem $tool ${briefArgs(tool, args)}")
+                val out = fullTools.execute(tool, args)
+                DiagLog.i("a11y", "$tool → ${if (out.ok) "tamam" else "hata"}: ${out.text.take(200)}")
+                reply(webSocket, id, out.ok, out.text)
+                return
+            }
             val result = runCatching { tools.execute(tool, args) }
                 .getOrElse { e ->
                     DiagLog.e("bridge", "$tool failed", e)
@@ -255,6 +290,13 @@ class PhoneBridgeService : Service() {
             scheduleReconnect()
         }
     }
+
+    /** Log'a yazılacak kısa argüman özeti — büyük alanlar (base64) kırpılır. */
+    private fun briefArgs(tool: String, args: JsonObject): String =
+        args.entries.joinToString(" ") { (k, v) ->
+            val raw = (v as? JsonPrimitive)?.content.orEmpty()
+            if (raw.length > 60) "$k=${raw.take(40)}...(${raw.length})" else "$k=$raw"
+        }
 
     private fun reply(ws: WebSocket, id: String, ok: Boolean, payload: String) {
         ws.send(

@@ -10,6 +10,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Uygulama durdurma: erişilebilirlik API'si başka bir uygulamayı zorla
+         kapatamıyor (force-stop kabuk yetkisi ister). Bu izin yalnız arka
+         plan sürecini öldürmeye yarıyor; sonuç mesajı da bunu açıkça yazıyor. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <!-- Okuma tarafı. Hiçbiri zorunlu değil: izin verilmezse ilgili araç
          "izin yok, şuradan verebilirsin" diyor, uygulama çalışmaya devam
@@ -146,6 +150,26 @@
             android:name=".data.AwaitReplyService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- "Tam kontrol" — ekran okuma, dokunma, yazma, jest, ekran görüntüsü.
+             İzni kullanıcı Ayarlar → Erişilebilirlik'ten veriyor; uygulama bu
+             izni programatik olarak isteyemez (Android'in bilinçli kısıtı).
+             `exported="false"`: servisi yalnız sistem bağlıyor, üçüncü taraf
+             uygulamalar bağlayamıyor — BIND_ACCESSIBILITY_SERVICE zaten bunu
+             şart koşuyor (bildirim dinleyicisiyle aynı desen). -->
+        <service
+            android:name=".data.HermesAccessibilityService"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_full_control" />
+        </service>
+
 
         <!-- Hızlı Ayarlar döşemesi: perdeyi indir, dokun, konuş. -->
         <service

@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hermes.mobile.data.AppSettings
 import com.hermes.mobile.data.BUILTIN_PERSONAS
+import com.hermes.mobile.data.HermesAccessibilityService
 import com.hermes.mobile.data.LIVE_VOICES
 import com.hermes.mobile.ui.theme.BUILTIN_THEMES
 import com.hermes.mobile.ui.theme.HermesColors
@@ -470,6 +471,15 @@ fun SettingsScreen(
                         ),
                         settings.agentReadOnly,
                     ) { v -> onUpdate { it.copy(agentReadOnly = v) } }
+                }
+            }
+
+            if (settings.agentMayUsePhone) {
+                item {
+                    FullControlRow(
+                        on = settings.fullControl,
+                        onToggle = { v -> onUpdate { it.copy(fullControl = v) } },
+                    )
                 }
             }
 
@@ -1219,6 +1229,98 @@ private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
                 }
             },
         )
+    }
+}
+
+/**
+ * "Tam kontrol" anahtarı.
+
+ *
+ * İki katmanlı bir izin: buradaki anahtar ajanın niyetini kaydediyor,
+ * erişilebilirlik servisi ise gerçek yetkiyi veriyor. İkisi ayrı gösteriliyor
+ * çünkü uygulama erişilebilirlik iznini programatik olarak veremez — kullanıcı
+ * sistem ayar sayfasından açmak zorunda ve bunu görmezse "açtım ama
+ * çalışmıyor" durumuna düşer.
+ */
+@Composable
+private fun FullControlRow(
+    on: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var serviceOn by remember { mutableStateOf(false) }
+    // Ayarlar → Erişilebilirlik'ten dönüldüğünde durum tazelenmeli; her
+    // yeniden başlatmada değil, ekran öne geldiğinde okuyoruz.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        serviceOn = HermesAccessibilityService.isEnabled(context)
+        onPauseOrDispose { }
+    }
+
+    HermesCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    S.t2("Tam kontrol", "Full control"),
+                    color = HermesColors.TextPrimary,
+                    fontSize = 14.sp,
+                )
+                Text(
+                    S.t2(
+                        "Ekranı okur, dokunur, yazar, kaydırır, ekran görüntüsü alır",
+                        "Reads the screen, taps, types, swipes, takes screenshots",
+                    ),
+                    color = HermesColors.TextMuted,
+                    fontSize = 11.sp,
+                )
+            }
+            androidx.compose.material3.Switch(checked = on, onCheckedChange = onToggle)
+        }
+
+        if (on) {
+            Spacer(Modifier.height(10.dp))
+            val (label, color) = if (serviceOn) {
+                S.t2("erişilebilirlik izni verildi", "accessibility permission granted") to
+                    HermesColors.Online
+            } else {
+                S.t2("erişilebilirlik izni bekliyor", "accessibility permission missing") to
+                    HermesColors.Busy
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(7.dp)
+                        .background(color, RoundedCornerShape(4.dp)),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(label, color = color, fontSize = 11.sp)
+                Spacer(Modifier.weight(1f))
+                if (!serviceOn) {
+                    Text(
+                        S.t2("İzin ver", "Grant"),
+                        color = HermesColors.Midground,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                            .clickable { HermesAccessibilityService.openPermissionSettings(context) }
+                            .padding(horizontal = 11.dp, vertical = 6.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                S.t2(
+                    "Geri alınamaz eylemler bu katmanda yok: SMS gönderilmez, arama " +
+                        "başlatılmaz, uygulama kaldırılmaz, kilitli ekranda kod girilmez. " +
+                        "Açıkken kalıcı bir bildirim durur ve her eylem tanı günlüğüne yazılır.",
+                    "Nothing irreversible is included: no sending SMS, no placing calls, " +
+                        "no uninstalling apps, no entering codes on the lock screen. While " +
+                        "it is on a persistent notification stays up and every action is " +
+                        "written to the diagnostics log.",
+                ),
+                color = HermesColors.TextMuted,
+                fontSize = 11.sp,
+            )
+        }
     }
 }
 

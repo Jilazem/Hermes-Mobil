@@ -211,6 +211,21 @@ data class AppSettings(
     val agentReadOnly: Boolean = true,
 
     /**
+     * **Tam kontrol** — ekranı okuma, dokunma, yazma, jest ve ekran görüntüsü.
+     *
+     * Varsayılan **kapalı**: açıldığında ajan telefonu gerçekten kullanmaya
+     * başlıyor, bu yüzden açık bir kullanıcı kararı olmalı. Çalışması için
+     * Ayarlar → Erişilebilirlik'ten Hermes tam kontrol servisinin de
+     * açılmış olması gerekir; uygulama bu izni programatik olarak veremez.
+     *
+     * [agentMayUsePhone] ve [agentReadOnly] ile birlikte değerlendirilir:
+     * kanal kapalıysa ya da tam kontrol kapalıysa hiçbir yeni eylem çalışmaz;
+     * salt-okunur kipte yalnız okuma araçları (ekran dökümü, ekran görüntüsü,
+     * uygulama listesi) çalışır. Karar tek yerde: `FullControl.guardReason`.
+     */
+    val fullControl: Boolean = false,
+
+    /**
      * Denenip başarısız olan modeller — "sağlayıcı/model" biçiminde.
      *
      * Sunucunun `unavailable_models` listesi yalnız kredi sorununu biliyor;

@@ -11,5 +11,14 @@
             android:exported="true"
             android:label="Render Kanıtı"
             android:theme="@style/Theme.HermesMobile" />
+
+        <!-- Tur-6: "tam kontrol" zincirini kurmak için ayar tohumlayıcı.
+             Yalnız debug; token dosyadan okunur, komut satırına yazılmaz. -->
+        <activity
+            android:name=".ui.Tur6SeedActivity"
+            android:exported="true"
+            android:label="Tur6 Tohum"
+            android:noHistory="true"
+            android:theme="@style/Theme.HermesMobile" />
     </application>
 </manifest>

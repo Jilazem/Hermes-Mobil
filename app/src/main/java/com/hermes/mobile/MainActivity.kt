@@ -314,6 +314,13 @@ class MainActivity : ComponentActivity() {
             } else {
                 com.hermes.mobile.data.PhoneBridgeService.stop(this)
             }
+            // "Tam kontrol" kalıcı bildirimi ayara bağlı: açıkken durur,
+            // kapanınca kalkar. Ayarlar dışında her karede yeniden
+            // göndermemek için yalnız anahtarlar değiştiğinde çalışıyor —
+            // bu kanal gizli çalışmamalı.
+            LaunchedEffect(settings.fullControl, settings.agentMayUsePhone) {
+                com.hermes.mobile.data.HermesAccessibilityService.refreshNotice(this@MainActivity)
+            }
 
             HermesTheme(
                 palette = themeById(settings.themeId, customThemes),

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Hermes "tam kontrol" erişilebilirlik yapılandırması.
+
+  Neden bu kadar geniş: ajanın ekranı okuyabilmesi, düğüm kimliklerini
+  görebilmesi, jest yapabilmesi ve ekran görüntüsü alabilmesi gerekiyor.
+  Hepsi kullanıcının Ayarlar → Erişilebilirlik'ten açıkça verdiği tek bir
+  izinle oluyor; bu dosya o iznin sınırlarını yazıyor.
+
+  `canTakeScreenshot` Android 11+ alanı; eski sürümler bilinmeyen alanı
+  yok sayar, servis yine çalışır (ekran görüntüsü aracı sürüm kontrolüyle
+  dürüst bir hata döner).
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewFocused"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    android:description="@string/accessibility_full_control_description"
+    android:notificationTimeout="100"
+    android:summary="@string/accessibility_full_control_summary" />

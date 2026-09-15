@@ -5,4 +5,9 @@
     <string name="shortcut_driving">Sürüş kipi</string>
     <string name="shortcut_camera">Kamera</string>
     <string name="shortcut_new">Yeni sohbet</string>
+    <!-- Erişilebilirlik servisi: sistem ayar sayfasında görünen metinler.
+         Kullanıcı neyi açtığını burada okuyor, o yüzden sınırlar açıkça
+         yazılı — geri alınamaz eylem yok. -->
+    <string name="accessibility_full_control_summary">Ajan telefonu tam kontrol edebilsin</string>
+    <string name="accessibility_full_control_description">Hermes ajanının ekranı okumasını, dokunmasını, yazmasını, kaydırmasını, geri/ana ekran tuşlarını kullanmasını ve ekran görüntüsü almasını sağlar. Ajan yalnız uygulamada “Ajan telefonu kullanabilsin” ve “Tam kontrol” açıkken eylem yapabilir; her eylem uygulamanın tanı günlüğüne yazılır. SMS gönderme, arama başlatma, uygulama kaldırma ve kilitli ekranda kod girişi bu katmana dahil değildir.</string>
 </resources>
