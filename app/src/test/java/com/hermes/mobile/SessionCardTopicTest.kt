@@ -165,11 +165,13 @@ class SessionCardTopicTest {
         assertEquals("", previewLine("   "))
     }
 
-    /** Konu varsa alt satır "kaynak · damga"; yoksa null (yinelenmesin). */
+    /** Konu varsa alt satır yalnız DAMGA; yoksa null (yinelenmesin). */
     @Test
     fun subtitleYalnizKonuVarsa() {
         val withTopic = sess("20260914_202501_abc123", source = "tui", preview = "konu su")
-        assertEquals("TUI · 14.09 20:25", cardSubtitle(withTopic, SessionFlags(), emptyMap()))
+        // Tur-5 (KALAN-5): kaynak adı metin olarak TEKRARLANMAZ — kartta kaynak
+        // yalnız ikon; bu satır damgayı taşır.
+        assertEquals("14.09 20:25", cardSubtitle(withTopic, SessionFlags(), emptyMap()))
 
         val fallback = sess("20260914_202501_abc123", source = "tui")
         assertNull(cardSubtitle(fallback, SessionFlags(), emptyMap()))

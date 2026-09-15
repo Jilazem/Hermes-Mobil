@@ -48,15 +48,19 @@ class SessionSourceLabelLocalizationTest {
     }
 
     @Test
-    fun `kart ikincil satiri ingilizce`() {
-        // Başlık GERÇEK bir konu olmalı ki ikincil satır (kaynak) çizilsin.
+    fun `kart ikincil satiri yalniz damga tasir`() {
+        // Tur-5 (KALAN-5): kaynak adı kartın METNİNDE değil, ikonun okunur
+        // adında yaşar. Alt satır artık dilden bağımsız damgayı taşır.
         val s = HermesSession(
             id = "20260913_184051_52f76a",
             source = "desktop",
             serverTitle = "Uyap Giriş",
         )
-        assertEquals("Masaüstü · 13.09 18:40", cardSubtitle(s, SessionFlags(), emptyMap()))
-        assertEquals("Desktop · 13.09 18:40", cardSubtitle(s, SessionFlags(), emptyMap(), en = true))
+        assertEquals("13.09 18:40", cardSubtitle(s, SessionFlags(), emptyMap()))
+        assertEquals("13.09 18:40", cardSubtitle(s, SessionFlags(), emptyMap(), en = true))
+        // İkonun okunur adı dile göre (erişilebilirlik metni).
+        assertEquals("Masaüstü", feedSourceLabel(s.source))
+        assertEquals("Desktop", feedSourceLabel(s.source, en = true))
     }
 
     @Test

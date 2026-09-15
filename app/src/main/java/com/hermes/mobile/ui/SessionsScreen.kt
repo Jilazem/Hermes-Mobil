@@ -212,8 +212,14 @@ fun readableTitle(
 /**
  * Kart ikincil satırı: başlık GERÇEK bir konuysa (rename / sunucu başlığı /
  * canlı gateway başlığı / ilk kullanıcı cümlesi / cron iş adı) altında soluk
- * "kaynak · damga · mesaj" gösterilir; başlık zaten zaman damgası yedeğiyse
- * yinelenmesin diye null döner.
+ * DAMGA gösterilir; başlık zaten zaman damgası yedeğiyse yinelenmesin diye
+ * null döner.
+ *
+ * Tur-5 (KALAN-5): kaynak ADI bu satırdan ÇIKARILDI. Kaynak artık kartın
+ * solundaki tek 12 dp ikonla anlatılıyor; adı metin olarak da yazmak aynı
+ * bilgiyi iki kez veriyordu ("📅 Zamanlanmış görev", "✈ Telegram · 15.09 10:20")
+ * ve liste gürültülü görünüyordu. Ikonun okunur adı `contentDescription`'da
+ * kaldığı için erişilebilirlik kaybı yok.
  */
 fun cardSubtitle(
     session: HermesSession,
@@ -223,11 +229,7 @@ fun cardSubtitle(
 ): String? {
     val topic = sessionTopic(session, flags, cronNames, en)
     if (topic.kind == TopicKind.Fallback) return null
-    val parts = buildList {
-        sessionSourceLabel(session.source, en)?.let { add(it) }
-        stampFromRawId(session.id)?.let { add(it) }
-    }
-    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+    return stampFromRawId(session.id)
 }
 
 /**
