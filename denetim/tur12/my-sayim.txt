@@ -1,0 +1,13 @@
+--- DENETİM KOSUMU (kod-denetmen, 2026-09-15) ---
+Komut: JAVA_HOME=20-ARACLAR/jdk/jdk-17 + gradle 8.9 · testDebugUnitTest assembleDebug --rerun-tasks
+Sonuc: BUILD SUCCESSFUL in 22s · 41 actionable tasks: 41 executed · GRADLE-EXIT=0 (denetim/tur12/my-build.log)
+XML sayimi (45 suite, app/build/test-results/testDebugUnitTest/TEST-*.xml):
+  tests=574 failures=0 errors=0 skipped=0 · testcase etiketi toplam=574
+  VoiceApiClientTest 13 · VoiceApiEndpointsTest 23 · VoiceMessageFlowTest 27 · VoicePrefsTest 4
+  VoiceRecordLogicTest 20 · VoiceSpeakLogicTest 20 · VoiceStatusLogicTest 25
+Yeni 420 sn testleri XML'de: "sentez zaman asimi guvenlik payiyla 420 sn" (VoiceApiClientTest),
+"isitma tavani sentez zaman asimiyla ayni 420 sn" (VoiceStatusLogicTest) — ikisi de 0 fail.
+APK (kendi kosum): 24.303.218 bayt · sha256 fb8f52b6269901cf47ba22c372ef1e293a115a063c71d27321ac0d1afa70a2db
+  = bot derlemesiyle birebir (kanit.txt).
+DEX (kendi APK'dan): classes3.dex "bazen 5 dk" x3 + "Isıtma 420 sn'de tamamlanmad" var; eski "3 dakikaya kadar" 0.
+Sözleşme: docs/ses-api-sozlesmesi.md sha256 e5b3626e21cf11c426f5ec4ec562f8298fa918001a149567c012eb288346b16f (birebir).

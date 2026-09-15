@@ -1,0 +1,52 @@
+{
+  "verdict": "pass",
+  "gorev": "tur11",
+  "tarih": "2026-09-15T19:14:33Z",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman",
+  "aralik": "21ba0a3..558547b (a5967ee feat + 558547b docs)",
+  "test_sonucu": "Kendi kosum: denetim/tur11/derle.sh testDebugUnitTest assembleDebug --rerun-tasks (JAVA_HOME=20-ARACLAR/jdk/jdk-17) -> BUILD SUCCESSFUL in 20s, 41/41 task, exit 0, FAILED satiri yok. JUnit XML sayimi (44 suite, app/build/test-results/testDebugUnitTest): 543 test / 0 failures / 0 errors / 0 skipped. Esik: 543 > 442 (tur-10 tabani) — +101 yeni test, 6 yeni sinifin XML sayilari RAPOR ile birebir: VoiceApiEndpointsTest 23, VoiceRecordLogicTest 20, VoiceSpeakLogicTest 20, VoiceMessageFlowTest 21, VoiceApiClientTest 13, VoicePrefsTest 4 (toplam 101). APK: app/build/outputs/apk/debug/app-debug.apk 24.286.834 bayt, sha256 0f5a4d59... (kosumla birlikte kaydedildi).",
+  "inceleme": {
+    "F1-bas-konus": "Composer.kt:328,350,393 HoldToTalkButton + content-desc 'Basılı tut, konuş'; ui-sohbet.xml dökümünde aynı ad görünüyor (emülatör kanıtı). Kayıt: VoiceRecordLogic.kt:16 MAX_RECORD_MS=VoiceApiEndpoints.MAX_RECORD_MS, satır 29-35 tik döngüsü tavanı görünce parmak basılıyken holdRelease() ile kendiliginden durur ve yükler — 60 sn otomatik durma sözleşmeye (<=60 sn) uygun ve VoiceApiClientTest:276 + XML'de doğrulandı. Düşüş: VoiceAudioPorts.kt:29-43 API>=Q -> OGG/OPUS 16k mono 24kbps, API<29 -> MPEG_4/AAC 32kbps .m4a; mime eşlemesi satır 88-90 (audio/ogg / audio/mp4) — RAPOR risk maddesi 4 ile tutarlı.",
+    "F2-Ayarlar": "SettingsScreen.kt:283-330 'Sesli mesaj (uygulama içi)' bölümü: motor seçici (285-298), otomatik gönder (316-317), uç adresi (329-330), durum + 'Şimdi dene' (727-743). ui-ses-ayarlari2.xml dökümü bu başlıkları AYNEN içeriyor: 'Seslendirme motoru', 'Kahya (önerilen)', 'Kadın', 'Chatterbox (deneysel)', 'Metni otomatik gönder', 'voice_api', 'Ses ucu durumu', 'Şimdi dene'. AppSettings.kt:186-199 varsayılanlar: voiceAutoSend=false (KAPALI), voiceEngine='kahya', voiceUrl/voiceLastOk; toVoicePrefs() satır 322-327.",
+    "F3-zaman-asimlari": "300 sn sentez: VoiceApiEndpoints.kt:40 SYNTH_TIMEOUT_MS=300_000L; VoiceApiClient.kt:67-70 ayrı sentez istemcisi read=300 sn / call=330 sn, yükleme 60/90 sn. 60 sn kayıt: VoiceApiEndpoints.kt:31 MAX_RECORD_MS=60_000L. İkisi de birim testle bağlı (VoiceApiClientTest satır 276; VoiceRecordLogicTest/VoiceMessageFlowTest).",
+    "F4-sozlesme": "000-TEMP/ses-api-sozlesmesi.md ile birebir: uçlar /health /transcribe /synthesize (VoiceApiEndpoints.kt:90-92); kimlik X-Hermes-Session-Token (HermesClient.kt:442, her istekte satır 69); LAN :8174 (LAN_PORT=8174, satır 25) / dış /voice-api (EXTERNAL_PATH, satır 28); motorlar kahya|chatterbox|kadin, varsayılan kahya (VoiceSpeakLogic.kt:23-29, eksik/bilinmeyen -> kahya); /transcribe multipart alan adı 'audio' ve {text,lang} çözümlemesi (VoiceApiClient.kt:115-128; mock.log 'alan_audio=True ogg_imza=True'); /synthesize JSON {text,engine} -> audio/ogg baytları (satır 141-152, motor='kadin' mock günlüğünde); hata {\"error\":...} + 403/404 kullanıcı metni (VoiceApiEndpoints.kt:111-123). 403 fail-closed hem mock (gerçek soket, VoiceApiClientTest:236-242) hem canlı probe'da doğrulandı.",
+    "F5-kanit-butunlugu": "mock.log: health 200 + transcribe 200 (multipart, ogg imzası) + synthesize 200 (motor=kadin, 31774 bayt, 3 sn soğuk taklit) — RAPOR §4 alıntısıyla birebir. live-probe.json: tokensiz 403 {\"error\":\"yetkisiz\"}, tokenli 200 {ok,stt:acik,engines}, transcribe 200 gerçek metin (3025 ms), ogg 31774 bayt — üçü de sözleşme maddeleriyle tutarlı; token değeri dosyalarda basılmamış (token_present=true). emulator-diag.log: 21:39:39 'calisan ses ucu: http://10.0.2.2:8199', sonrası FATAL yok; 11:05 çökme şeridi RAPOR §4b'de açıklandığı gibi eski (11:05, tur-10 önceki) kayıt — açıklamayla birebir. İki PNG gerçek 1080x2400 ekran görüntüsü. gradle-kosum.log ile benim kosum logum aynı sha256 (d1c7b8f6...), test4.log ile de aynı — kayıtlar arası çelişki yok.",
+    "F6-selftest-notu": "RAPOR §4'teki uçtan uca oz-test transkripti (files/voice-selftest.txt, 'SONUC: BASARILI') tek parça dosya olarak denetim/tur11/ altında arşivlenmemiş; yalnız RAPOR.md içinde alıntılı + emulator-diag.log'daki [voice] satırı. Zincir yine de üçlü: mock.log (sunucu) + diag [voice] satırı (istemci) + PNG ekran görüntüleri."
+  },
+  "sayilar": {"critical": 0, "high": 0, "medium": 1, "low": 3},
+  "bulgular": [
+    {"id": "B-1", "sev": "MEDIUM", "baslik": "Canlı /synthesize ölçülmedi (bilincli, kabul edilmiş risk)", "dosya": "denetim/tur11/RAPOR.md", "satir": "§5 ve §8 madde 1", "neden": "Sentez yolu yalnız mock sunucu (3 sn soğuk taklidi) ve gerçek soket birim testiyle doğrulandı; gerçek motorun soğuk ilk çağrı süresi (173-187 sn iddiası) bu turda ölçülmedi — 300 sn tavanının sahada yeterliliği dolaylı kanıtlı. Görev kısıtı (motorları ısıtma yok) ile uyumlu; tur-12'de canlı ölçüm önerilir."},
+    {"id": "B-2", "sev": "LOW", "baslik": "Emülatör oz-test transkripti ayrı dosya olarak arşivlenmemiş", "dosya": "denetim/tur11/RAPOR.md", "satir": "§4 (files/voice-selftest.txt)", "neden": "Transkript yalnız RAPOR içinde alıntılı; cihazdaki files/ dizini denetim klasörüne kopyalanmamış. mock.log + emulator-diag.log [voice] satırı + PNG'ler aynı gerçeği desteklediği için zincir kopuk değil; sonraki turlarda ham transkriptin de denetim/ altına konması önerilir."},
+    {"id": "B-3", "sev": "LOW", "baslik": "Dış /voice-api rotası uygulamadan denenmedi", "dosya": "app/src/main/java/com/hermes/mobile/data/VoiceApiEndpoints.kt", "satir": "25-28 (LAN_PORT, EXTERNAL_PATH)", "neden": "Aday üretimi ve iki adresli düşüş birim testlerle (VoiceApiEndpointsTest, VoiceApiClientTest 'iki adresli istemci') doğrulandı; Caddy arkasındaki dış yol yalnız sözleşme metninde. Canlı relay'e dokunmama kısıtıyla uyumlu, tur-12 saha maddesi olarak RAPOR §8'de listeli."},
+    {"id": "B-4", "sev": "LOW", "baslik": "Sözleşme dosyası repo dışında (000-TEMP) yaşıyor", "dosya": "/Volumes/EX/007-HERMES-M4-LIVE/000-TEMP/ses-api-sozlesmesi.md", "satir": "1-8", "neden": "Kod başlıkları ve RAPOR bu dosyaya dizin göreli atıf veriyor; sha256'sı (e5b3626e...) verdict'a alındı ama dosya repoda kopya olarak durmuyor — worktree taşınırsa atıf kopar. Küçük bir kopya docs/ altına alınırsa zincir repoya kapanır."}
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/VoiceApiEndpoints.kt": "61cfbe68fa6ea744f8da2799f883799f7dfd5e4b3d29e88b3e3ffa57241d9df3",
+    "app/src/main/java/com/hermes/mobile/data/VoiceApiClient.kt": "4274cf7705c8031ad6869818dcdfe4c648737722e74ad1b8a47173e5368a8e51",
+    "app/src/main/java/com/hermes/mobile/data/VoiceRecordLogic.kt": "6d18ba8a21197de3e33fad57b2bdbe0d5b0e3a5ed81e2152746742802a1c53b3",
+    "app/src/main/java/com/hermes/mobile/data/VoiceSpeakLogic.kt": "df1c3a7247635c271f5de83e0b4445daf6da5f24cd46662f7996cb9ab10025ee",
+    "app/src/main/java/com/hermes/mobile/data/VoiceAudioPorts.kt": "80988da884bf4c296ae891fa11101774408b83900cb09886b4e15d1af743a599",
+    "app/src/main/java/com/hermes/mobile/data/VoiceMessageController.kt": "1c6aa696cc84e092f4215cbbcbb16c66542880e29088ebd02e6e5b413b105f54",
+    "app/src/test/java/com/hermes/mobile/VoiceApiClientTest.kt": "985313ea653035da530ca0ae0af047e5064235f81c71c20f76f6d8b0bd7991c7",
+    "app/src/test/java/com/hermes/mobile/VoiceApiEndpointsTest.kt": "899ba7b49f46b7d3f961b9c9c83fae9001daa42040c46f96234773dce58e6677",
+    "app/src/test/java/com/hermes/mobile/VoiceMessageFlowTest.kt": "504d23825a32890aef197ae25804972e936c806fa94f4b575d6b7e7ade7935f9",
+    "app/src/test/java/com/hermes/mobile/VoicePrefsTest.kt": "786f2697b36e59489321a1ab56fb6db47410dd94b423d695d1444b05aae06788",
+    "app/src/test/java/com/hermes/mobile/VoiceRecordLogicTest.kt": "c1d717c4e347921eb8adf577a03d4e399899fb45dc36ef71cc3a2a408298e656",
+    "app/src/test/java/com/hermes/mobile/VoiceSpeakLogicTest.kt": "83f1c3c605e31e644aebac9fb851f40c21e6833f19e34066f55590ac9ba87e15",
+    "denetim/tur11/RAPOR.md": "62f9bd7a892d001ab64b9744776bc80869af26b887c656f1dbaa6c765652c543",
+    "denetim/tur11/mock.log": "677731174aa4cbb8853b54760f3510a8f3a4e14ef287699ed66f347877ba5cbe",
+    "denetim/tur11/live-probe.json": "404e837fdab203ae1cc9f059c9d716615fe1880e4c25646842d5e699fb1f5bcd",
+    "denetim/tur11/emulator-diag.log": "f010cf4a000a4c8367e8b546846388a596f22bbc2ee9814b5a5851a3f5c021d1",
+    "denetim/tur11/emulator-sesli-mesaj.png": "6a6d10cddfbdb8c67e22681acbaa6e94270ba29fdf8d1ba95f2b699a58f0cf54",
+    "denetim/tur11/emulator-ayarlar-sesli-mesaj.png": "7fe03af7467e9f4d2e332ff3ab81683522d4b3fd85db6020c787044615735b6f",
+    "denetim/tur11/ui-sohbet.xml": "4864c5812f18bce31b0cf81be5e3444caf753b1caad0081face1bc0a5c5212cb",
+    "denetim/tur11/ui-ses-ayarlari.xml": "4bf56af1f1f8d00a00ecdac41ad9f4f6ddf556dc3bb11c599771b174f639b962",
+    "denetim/tur11/ui-ses-ayarlari2.xml": "59f6409b6c82b52c74d2b9e9cc3de121c97ec494a04c6339ecae57063514f443",
+    "denetim/tur11/ui-ayarlar2.xml": "b76d4a6c44e588b9cf5ca3dadad22cfd1b4f6548ae007b4f1d47106d92c83b57",
+    "denetim/tur11/test4.log": "d1c7b8f67005287046abda191306998b21312b29dd63f906aff55f22b994c1e5",
+    "tools/tur11/mock_voice_api.py": "2b9a89f3088159a1f5e266c88206b8971fb1b75267333c1d2b8de23672a7a185",
+    "app/build/outputs/apk/debug/app-debug.apk": "0f5a4d5962a0c26108f9f3ec3df6d603a092c013fddb3c51ee82c32aa0f2f49d",
+    "/Volumes/EX/007-HERMES-M4-LIVE/000-TEMP/ses-api-sozlesmesi.md": "e5b3626e21cf11c426f5ec4ec562f8298fa918001a149567c012eb288346b16f"
+  },
+  "lesson": "Kapi yine uc bagimsiz sayimla kapandi: JUnit XML toplamindan 543/0/0/0 (442 esigi +101 ile gecildi), sozlesme maddeleri koddaki sabitlerle (300_000L, 60_000L, :8174, /voice-api, X-Hermes-Session-Token, motor enum) satir bazinda eslesti, ve mock.log + live-probe.json + UI dokumleri uclu dogrulama verdi — tek acik kalan sentez yolu canli motor isi masrafina karsi mock+real-socket ile dolayli kapandi; bir sonraki turda canli synthesize olcumu ve transkriptin ham dosya arsivi bekleniyor."
+}

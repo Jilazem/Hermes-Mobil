@@ -19,3 +19,6 @@ captures/
 # Secrets — never commit
 .env
 *.token
+
+# Python onbellek (denetim betikleri)
+__pycache__/

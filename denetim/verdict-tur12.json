@@ -1,0 +1,48 @@
+{
+  "verdict": "pass",
+  "gorev": "tur12",
+  "tarih": "2026-09-15T23:55:00+03:00",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-android-uzman",
+  "aralik": "558547b..b2fe18b (0ac8296 feat + c6dff3d docs tur-12; 2f6ace8 fix + b2fe18b docs tur-12b; feat+docs ayrık teyitli)",
+  "test_sonucu": "Kendi kosum: JAVA_HOME=20-ARACLAR/jdk/jdk-17 + gradle 8.9, testDebugUnitTest assembleDebug --rerun-tasks -> BUILD SUCCESSFUL in 22s, 41/41 task executed, GRADLE-EXIT=0 (denetim/tur12/my-build.log). JUnit XML sayimi (45 suite, app/build/test-results/testDebugUnitTest/TEST-*.xml): tests=574 failures=0 errors=0 skipped=0; testcase etiketi toplam=574 (ham: denetim/tur12/my-sayim.txt). Esik >=574 KARSILANIYOR (tur-11 tabani 543 -> +31; VoiceStatusLogicTest 25 ve VoiceMessageFlowTest 27 dahil). Yeni 420 sn testleri XML'de 0 fail: 'sentez zaman asimi guvenlik payiyla 420 sn' (VoiceApiClientTest), 'isitma tavani sentez zaman asimiyla ayni 420 sn' (VoiceStatusLogicTest). Kendi APK: 24.303.218 bayt, sha256 fb8f52b6...a2db = bot derlemesiyle birebir.",
+  "inceleme": {
+    "F1-canli-durum": "REFRESH_MS=4500L (VoiceStatusLogic.kt:33) -> 4,5 sn, görevde istenen 4-5 sn araliginda. LaunchedEffect döngüsü SettingsScreen.kt:800-806 (kart ekrandayken delay(REFRESH_MS)); cikista iptal. probe() hata firlatmaz: VoiceMessageController.kt:304-326 Probe(health, base, error, atMs) döner, 403/ulasilamaz kirmizi satir. UI dump zinciri: ui-f1-durum1/2 + ui-f1b-durum1 'Metinleştirme: açık · Kahya: açık · Kadın: kapalı · Chatterbox: kapalı' satirini ve 'Çalışan adres' motor tablosunu iceriyor (gercek makinenin yaniti, B-1'deki kahya=hazir isitmasiyla tutarli).",
+    "F2-isit-makinesi": "kapali->Isitiliyor…(~2-3 dk)->Hazır ✓ akisi dump'larda birebir: ui-f2-isitiliyor 'Isıtılıyor… (~2-3 dk)', ui-f2b-hazir 'Hazır ✓' + 'Motor ısıtıldı (25 sn) — ilk ses artık hızlı'. Cift-tik korumasi iki katmanli ve kodda dogruladi: warmStart ayni nesneyi dondururse 'isitma zaten suruyor - ikinci istek yok sayildi' (VoiceMessageController.kt:338-346) + UI spinner. Birim testler: 'isitma surerken ikinci istek yok sayilir', 'basarili isitma hazir durumuna ve sure satirina gecer', 'motor degisince hazir isareti sifirlanir' (VoiceStatusLogicTest, 25 test 0 fail).",
+    "F3-simdi-dene": "ui-f3-once/deniyor/sonuc akisi: 'Simdi dene' -> spinner -> 'Kadın ses. Üretimde kadın ses için önerilen motor.'; 'Yenile' ve 'Simdi dene' ayni yenileme yolunu kullanir (inFlight kilidi) — netlik saglandi. Not: 'Yenile' ayrica ayri basilmadi, RAPOR §9'da acikca beyan (asagida LOW bulgu).",
+    "F4-420-sabiti": "SYNTH_TIMEOUT_MS=420_000L (VoiceApiEndpoints.kt:45) tek sabit; WARM_TIMEOUT_MS takma adi (VoiceStatusLogic.kt:40); okuma=420/cagri=450 sn (+30; VoiceApiClient.kt readHttp = SYNTH_TIMEOUT_MS+30_000L). UI metni 'bazen 5 dk'ya kadar' uc yerde (coldHint, statusLine, engineHint). KAYIT/TRANSCRIBE DEGISMEDI: MAX_RECORD_MS=60_000L (satir 31) + write 60/call 90 sn — testle bagli (VoiceApiClientTest:278, VoiceApiEndpointsTest:222). Kendi dex inceleme: classes3.dex 'bazen 5 dk' x3 + \"Isıtma 420 sn'de tamamlanmad\", eski '3 dakikaya kadar' 0.",
+    "B-1-kapanis": "live-synth.json: saglik 200 (105 ms), synth_1 200 297461 ms = 297,5 sn (OggS+Opus imzali 11678 bayt, sha256 18f0682c...), synth_2_sicak 200 5316 ms = 5,3 sn, health_sonra 200, tokensiz 403. OGG baytlari arsivde: denetim/tur12/live-kahya.ogg sha256 18f0682c...json ile birebir. 297,5 < 420 -> yeni tavan olcumle tutarli.",
+    "B-2-kapanis": "voice-selftest.txt ham dosya olarak arsivde (denetim/tur12/, sha256 b79280d9...): 5 adim SONUC: BASARILI; cihazdaki kopya ayrica duruyor (voice-selftest-cihazdaki.txt); mock.log sunucu tarafi 200'ler ve 403 fail-closed iceriyor; diag-tur12.log [voice] satirlari ayni saatlerde.",
+    "B-3-kapanis": "Dis rota uygulamadan 200: diag-tur12.log:2271,2284 'calisan ses ucu: https://hermes.winterfell07.keenetic.pro/voice-api' (22:28:21, 22:32:17) + ui-f1b-durum1.xml gercek motor tablosu; Mac'ten tokensiz salt GET 403 {yetkisiz} (ext-route.log) — fail-closed iki yandan dogruladi (benim kosumumda de 8174 tokensiz 403 dondu).",
+    "B-4-kapanis": "docs/ses-api-sozlesmesi.md sha256 = e5b3626e21cf11c426f5ec4ec562f8298fa918001a149567c012eb288346b16f — gorevde verilen degerle BIREBIR; atiflar guncellenmis (VoiceApiEndpoints.kt:8, VoiceApiEndpointsTest.kt:15).",
+    "Kisit-teyidi": "Kahya servisi ACIK: denetim/tur12b/health.txt 'KAHYA = ACIK' + health.json 200 {kahya:hazir}; kendi kosumumda da 8174 /health yanit veriyor. relay/gateway/caddy dosyalari degismedi (git show --stat'ta yalniz app/src + docs + denetim). Push yok: b2fe18b HEAD, 'upstream yok' notu son_teyit.txt'de. Emulator serbest kullanildi (50+ UI dump + 13 PNG)."
+  },
+  "sayilar": {"critical": 0, "high": 0, "medium": 1, "low": 3},
+  "bulgular": [
+    {"id": "S-1", "sev": "MEDIUM", "baslik": "420 sn tavani tek bir soğuk olcumle (297,5 sn) gerekcelendi; tekrar olcumu yok", "dosya": "denetim/tur12/live-synth.json", "satir": "synth_1 (297461 ms)", "neden": "Tur-12b isitma yasanmadigi icin ikinci bir soğuk ornek alinmadi (RAPOR §4.1 bunu beyan ediyor). 297,5 sn -> 420 sn ~%40 pay mantikli, ancak motor degisimi/gun icindeki ilk kullanimda sure degisken olabilir; bir sonraki sahada tekrar olcum onerilir. Derleme ve testler bu degerle bagli (0 fail), bu yuzden kapinin kendisi icin engel degil."},
+    {"id": "S-2", "sev": "LOW", "baslik": "Iki kanit dosyasi farkli gorunuyor: son_teyit.txt yeni_ui=0 vs dex_teyit.txt yeni_ui=3", "dosya": "denetim/tur12b/son_teyit.txt", "satir": "3-5", "neden": "son_teyit.sh yalniz classes.dex'e bakar (grep -c 'bazen 5 dk' classes.dex = 0), dizeler classes3.dex'te; dex_teyit.txt 9 dex'in tumunu tarar ve 3 sayar. Benim kendi kosumum (tum classes*.dex) 3 dogru — zincir kopuk degil, son_teyit.txt dar kapsami nedeniyle 0 veriyor; iki dosyanin ayari/basligi ayirt etmeyi guclastiriyor."},
+    {"id": "S-3", "sev": "LOW", "baslik": "'Yenile' dugmesi ayrica basilanmadi; ortaktan yola testle/otomatik donguyle dogrulandi", "dosya": "denetim/tur12/RAPOR.md", "satir": "§9 madde 2", "neden": "Otomatik 4,5 sn dongu (ui-f1-durum1/2 farki) ve 'Simdi dene' (ui-f3-*) kanitli; 'Yenile' ayni inFlight-yollu fonksiyonu cagirmasi kod okumasiyla teyitli, ayrica emulator dump'i yok. Dusul bulgu."},
+    {"id": "S-4", "sev": "LOW", "baslik": "UI dump'lari tur-12 APK'sindan; 12b metin degisikligi yalniz dex+birim testle bagli", "dosya": "denetim/tur12/ui-f2-isitiliyor.xml", "satir": "ipucu satiri '2-3 dakika sürebilir.' (eski kopya)", "neden": "12b'de 'bazen 5 dk'ya kadar' eklenen ipucu dump'larda eski haliyle gorunuyor — dump'lar 22:33-22:38 (tur-12 APK), 12b derlemesi 22:48. RAPOR §4.3 bunu beyan ediyor; benim kendi dex inceleme yeni kopyayi classes3.dex'te 3 kez gordu, tutarsizlik yok ama dump-yeni metin eslesmesi sonraki tura devrediyor."}
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/VoiceApiEndpoints.kt": "0eb150f9dc41e248e65885d834fc74efa4b668dbce879b9629a5add0eb0b9a11",
+    "app/src/main/java/com/hermes/mobile/data/VoiceStatusLogic.kt": "b67f6afc8fe29602fcba845817d8a6e4c8835a9bf5882868e231c57592a0fabc",
+    "app/src/main/java/com/hermes/mobile/data/VoiceSpeakLogic.kt": "ad99f7b0381a1f4e2225cecab9c33c1a89bcddaf9e1828c99426ccf2c1eb708a",
+    "app/src/main/java/com/hermes/mobile/data/VoiceApiClient.kt": "c45bf69e8fc8909285ae382fef29cfba672fdb1e6bb4128649d250b4f7c94350",
+    "app/src/main/java/com/hermes/mobile/data/VoiceMessageController.kt": "f9829571b12b629ad7c0dfbe58edf1b2bc45657043b32df1a8bf6c19fd429f97",
+    "docs/ses-api-sozlesmesi.md": "e5b3626e21cf11c426f5ec4ec562f8298fa918001a149567c012eb288346b16f",
+    "denetim/tur12/RAPOR.md": "074627183fab44f9988549c759192ce00b54b9d59845e9db53a28be2c6dc2877",
+    "denetim/tur12/live-synth.json": "55f528d626bfc1d7130d39e0e6b7ea1fed5e9e6c24dc525ff906b99ab0fc9633",
+    "denetim/tur12/live-kahya.ogg": "18f0682c1c693793ec2e3af1c2820e524461e3323537a9a0eb7368dd9d7f744b",
+    "denetim/tur12/ext-route.log": "b7ed94876c59d5007b5e4b328811c6b229f2e14f3bb6ee0807f4445ee2fdc4a6",
+    "denetim/tur12/mock.log": "1b2fbe8ee5b75b7e1f79cfad6fe175b61639dfc1007a8b7bccdc47254a046b2a",
+    "denetim/tur12/voice-selftest.txt": "b79280d94f1d76b6117a1ff5c7b4ccc60ad27ee719bbd1e1ba686ff35c92ffff",
+    "denetim/tur12/emulator-isitiliyor.png": "68a9da7ce4713da786fc88eb5e064e4c3a56fd69bc83dcc17d12cdb2aa7f362e",
+    "denetim/tur12/emulator-hazir.png": "d7da529e2f8c1989dfe263426d17b852bdbecd2d89c719b38f81eb9c18ba7f23",
+    "denetim/tur12/emulator-simdiden-dene.png": "d0d6de9ad9cc264dc729ac38e4cdf35c3e77e4ae96ea1b18b1e6babae4665c6c",
+    "denetim/tur12/my-build.log": "45eb718e594dbf79ab2247515295f85d21bb3d720bb02c99b72e3ba236f79c37",
+    "denetim/tur12b/kanit.txt": "976ad757c55cd98953fde9e59c4aec85c4b07cd45bf3ca277cd691c3e9127cbc",
+    "denetim/tur12b/test.log": "9841c569e77be9392ff8523596647495940b7575c44384b31bbb607fd550e0a7",
+    "denetim/tur12b/health.txt": "1f40845596558685c0624b0a9aad871841c773c939c12f145d15fe4ba06d9234"
+  },
+  "lesson": "Dex taramasi tum classes*.dex uzantilarini kapsamali; tek classes.dex'e bakan son_teyit dar kapsami iki kanit dosyasini gorunurde celistirdi (3 vs 0)."
+}
