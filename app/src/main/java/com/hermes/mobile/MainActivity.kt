@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bolt
@@ -70,6 +71,7 @@ import com.hermes.mobile.ui.TerminalScreen
 import com.hermes.mobile.ui.SessionDetailScreen
 import com.hermes.mobile.ui.SessionsScreen
 import com.hermes.mobile.ui.SessionRail
+import com.hermes.mobile.ui.RecentRailSession
 import com.hermes.mobile.ui.WorkScreen
 import com.hermes.mobile.ui.SettingsScreen
 import com.hermes.mobile.data.CrashGuard
@@ -333,6 +335,9 @@ class MainActivity : ComponentActivity() {
 
                 val gateway by chatViewModel.gateway.collectAsStateWithLifecycle()
                 val live by liveViewModel.state.collectAsStateWithLifecycle()
+                // Tur-8: ray'ın "son açılanlar" halkası ve kullanıcı kapatmaları.
+                val recentRail by chatViewModel.recentRail.collectAsStateWithLifecycle()
+                val railDismissed by chatViewModel.railDismissed.collectAsStateWithLifecycle()
 
                 // Aktif profil değiştiğinde sohbet soketi yeniden kurulur.
                 LaunchedEffect(state.active?.id, state.active?.token) {
@@ -395,12 +400,23 @@ class MainActivity : ComponentActivity() {
                     viewModel.loadProfiles()
                 }
 
+                // Tur-8: sunucunun açık listesi geldikçe ray kayıtları "görüldü"
+                // damgalanır — daha önce açıkken sonradan düşen oturum (sunucu
+                // kapattı) ray'dan iner; hiç görülmemiş kayıt kalır.
+                LaunchedEffect(live.sessions) {
+                    chatViewModel.observeLiveRail(
+                        live.sessions.flatMap { listOf(it.dbId, it.id) },
+                    )
+                }
+
                 HermesApp(
                     onFinish = { finish() },
                     state = state,
                     detail = detail,
                     chat = chat,
                     live = live,
+                    recentRail = recentRail,
+                    railDismissed = railDismissed,
                     viewModel = viewModel,
                     chatViewModel = chatViewModel,
                     liveViewModel = liveViewModel,
@@ -481,6 +497,9 @@ private fun HermesApp(
     detail: SessionDetailState?,
     chat: ChatState,
     live: LiveState,
+    /** Tur-8: ray'da "son açılanlar" (en yeni önce) + kullanıcı kapatmaları. */
+    recentRail: List<RecentRailSession> = emptyList(),
+    railDismissed: Set<String> = emptySet(),
     viewModel: AppViewModel,
     chatViewModel: ChatViewModel,
     liveViewModel: LiveSessionsViewModel,
@@ -704,6 +723,14 @@ private fun HermesApp(
                 .fillMaxSize()
                 .background(HermesColors.Background)
                 .padding(innerPadding)
+                // Tur-8 klavye düzeltmesi: Scaffold'un alt çubuğu (NavigationBar
+                // + sistem çubuğu) burada padding olarak UYGULANDI. Tüketilmezse
+                // içerideki `imePadding()` aynı yüksekliği İKİNCİ kez ekliyordu:
+                // klavye açılınca composer klavyenin 122dp yukarısında asılı
+                // kalıyor (ölçüm: composer alt kenarı y=1195, klavye üstü
+                // y=1517) ve sohbet alanı 122dp kısalıyordu. Bu satır iç
+                // inset sorgularından düşüyor → composer tam klavye üstüne oturur.
+                .consumeWindowInsets(innerPadding)
         ) {
             if (serversScreen) {
                 // İlk kurulum yolu: sunucu + token tek ekrandan (2026-09-14
@@ -765,14 +792,23 @@ private fun HermesApp(
                             currentSessionId = chat.sessionId,
                             live = live,
                             titleOf = liveTitleOf,
+                            recent = recentRail,
+                            dismissed = railDismissed,
+                            // "Sunucuda yok" hükmü yalnız liste en az bir kez
+                            // geldiyse verilir (tur-7 ağ sarsıntısı dersi).
+                            liveLoaded = live.fetched,
                             onNewChat = { backToSessions = false; chatViewModel.newSession() },
                             onSelect = { s ->
                                 chatViewModel.continueSession(
-                                    liveId = s.id,
+                                    // Geçmiş (sunucuda açık olmayan) kayıtta
+                                    // süreç içi id yoktur: REST yoluna düşer.
+                                    liveId = s.liveId.ifBlank { s.dbId },
                                     dbId = s.dbId,
-                                    title = liveTitleOf(s),
+                                    title = s.title,
                                 )
                             },
+                            // Uzun basma = hücreyi ray'dan indir (tur-8).
+                            onDismiss = { s -> chatViewModel.dismissRailEntry(s.key) },
                         )
                         ChatScreen(
                         sharedText = sharedText,

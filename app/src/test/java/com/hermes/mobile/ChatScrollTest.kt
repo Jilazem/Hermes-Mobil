@@ -1,5 +1,6 @@
 package com.hermes.mobile
 
+import com.hermes.mobile.ui.shouldPinToBottom
 import com.hermes.mobile.ui.streamSignature
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -72,5 +73,30 @@ class ChatScrollTest {
         val sig = streamSignature(items)
         // İmza son balonu (Assistant) içermeli; scroll hedefi katlanmış indekstir.
         assertEquals(true, sig.contains("a1"))
+    }
+
+    /**
+     * Tur-8 klavye: görünür alan kısalınca (klavye açılınca) dibe yaslama
+     * kararı YALNIZ kullanıcı dipteyse ve kaydırma sürerken verilmez —
+     * yukarıda okuyan kullanıcının konumu bozulmaz.
+     */
+    @Test
+    fun `klavye acilinca yalnizca dipteki kullanici yaslanir`() {
+        assertEquals(true, shouldPinToBottom(userPinnedBottom = true, scrolling = false, empty = false))
+        assertEquals(
+            "yukarıda okuyan kullanıcının konumu bozulmaz",
+            false,
+            shouldPinToBottom(userPinnedBottom = false, scrolling = false, empty = false),
+        )
+        assertEquals(
+            "kullanıcı kaydırırken araya girilmez",
+            false,
+            shouldPinToBottom(userPinnedBottom = true, scrolling = true, empty = false),
+        )
+        assertEquals(
+            "boş listede hedef yok",
+            false,
+            shouldPinToBottom(userPinnedBottom = true, scrolling = false, empty = true),
+        )
     }
 }

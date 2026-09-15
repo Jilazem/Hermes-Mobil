@@ -100,10 +100,12 @@ fun LiveSessionsScreen(
                     )
                     Text(
                         S.t2(
+                            // Tur-8: sayac ray ile AYNI kümeyi saysın diye tek
+                            // kaynak — openSessionCount (SessionRailLogic.kt).
                             "${state.sessions.count { it.isWorking }} çalışıyor · " +
-                                "${state.sessions.size} açık oturum",
+                                "${openSessionCount(state.sessions)} açık oturum",
                             "${state.sessions.count { it.isWorking }} working · " +
-                                "${state.sessions.size} open sessions",
+                                "${openSessionCount(state.sessions)} open sessions",
                         ),
                         color = HermesColors.TextMuted,
                         fontSize = 12.sp,

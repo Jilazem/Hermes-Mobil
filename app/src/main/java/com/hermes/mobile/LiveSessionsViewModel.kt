@@ -22,6 +22,14 @@ data class LiveState(
     /** Müdahale sayfası açık olan oturum. */
     val intervening: LiveSession? = null,
     val sending: Boolean = false,
+    /**
+     * `session.active_list` en az bir kez BAŞARIYLA geldi mi (tur-8).
+     *
+     * Ray "sunucuda görülmüş ama artık yok" hükmünü yalnız bu bayrak true
+     * iken verir: ağ sarsıntısında liste boş/eksik gelirse açık oturumlar
+     * ray'dan düşmesin (tur-7'de emülatör ağında yaşandı).
+     */
+    val fetched: Boolean = false,
 )
 
 /** Müdahale biçimi — sunucudaki iki ayrı RPC'ye karşılık gelir. */
@@ -84,7 +92,9 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
                     if (distinct.size != list.size) {
                         DiagLog.w("live", "active_list tekrarli: ${list.size} -> ${distinct.size}")
                     }
-                    _state.update { it.copy(sessions = distinct, loading = false, error = null) }
+                    _state.update {
+                        it.copy(sessions = distinct, loading = false, error = null, fetched = true)
+                    }
                 }
                 .onFailure { e ->
                     _state.update {

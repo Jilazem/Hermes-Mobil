@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,9 +59,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.size
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,6 +91,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.hermes.mobile.data.DemoMask
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
     state: ChatState,
@@ -168,6 +173,15 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     var followBottom by remember { mutableStateOf(true) }
 
+    // Tur-8 klavye düzeltmesi: klavye açılınca görünür alan kısalıyor;
+    // LazyColumn konumu İLK görünür öğeye göre koruduğu için en alttaki
+    // satırlar görünmez oluyordu ("metin yutulmuş"). Bu bayrak KULLANICI
+    // NİYETİDİR: yalnız kullanıcı kaydırırken güncellenir, yerleşimin
+    // kısalması niyeti bozmaz.
+    var userPinnedBottom by remember { mutableStateOf(true) }
+    // Klavye görünür mü (imePadding ile aynı inset kaynağı).
+    val imeVisible = WindowInsets.isImeVisible
+
     // Ardışık araç çağrıları tek satıra katlanır; ham liste bozulmadan yalnız
     // görüntüleme katmanında gruplanır. RENDER EDİLEN liste budur — kaydırma
     // hedefi de bundan hesaplanır (tur-2 K1: eski kod ham items.lastIndex'i
@@ -183,8 +197,31 @@ fun ChatScreen(
             val info = listState.layoutInfo
             val total = info.totalItemsCount
             val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-            total <= 1 || lastVisible >= total - 2
-        }.collect { near -> followBottom = near }
+            val near = total <= 1 || lastVisible >= total - 2
+            // Tur-8: kullanıcı niyeti — kaydırma sürerken "dipte" kararı
+            // güncellenir; yerleşim değişimi (klavye) niyeti bozmaz.
+            Triple(total, near, listState.isScrollInProgress)
+        }.collect { (total, near, scrolling) ->
+            followBottom = near
+            if (total <= 1 || near) userPinnedBottom = true
+            else if (scrolling) userPinnedBottom = false
+        }
+    }
+
+    // Tur-8: görünür alan KISALDIĞINDA (klavye açıldı) kullanıcı dipteyse dibe
+    // yasla — LazyColumn konumu ilk görünür öğeye göre korunduğu için en
+    // alttaki satırlar aksi hâlde görünmez oluyordu ("metin yutulmuş").
+    // Ölçüt IME animasyonunun kaç kare sürdüğü DEĞİL, yerleşimin kendisidir:
+    // viewportSize değişimi layoutInfo'dan (yerleşim sonrası) okunur, yani
+    // yeni yüksekliğe göre hesaplanır. Kullanıcı yukarıdaysa dokunulmaz.
+    val currentRows by rememberUpdatedState(rows)
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.viewportSize.height }
+            .distinctUntilChanged()
+            .collect {
+                if (!shouldPinToBottom(userPinnedBottom, listState.isScrollInProgress, currentRows.isEmpty())) return@collect
+                listState.scrollToItem(currentRows.lastIndex)
+            }
     }
 
     // Tur-2 K1: akışta izleme her mesaj türünde güncellenmeli — eski efekt
@@ -279,12 +316,18 @@ fun ChatScreen(
 
         // Bot (profil) ataması: SpeedLine'ın ÜSTÜNDE yatay çipler —
         // "Yönlendirici" (varsayılan) + profiller. Mevcut oturumda kilitli.
-        ProfileChipsRow(
-            profiles = profiles,
-            selectedProfile = selectedProfile,
-            currentProfile = currentProfile,
-            onChipClick = onProfileChipClick,
-        )
+        // Tur-8 kararı (GİZLE): klavye açıkken bu çip satırı gizlenir. Bot
+        // seçimi oturum BAŞINDA yapılan bir karar; yazarken mesaj alanına
+        // ~36dp kazandırmak daha değerli (kullanıcı şikâyeti: klavye açıkken
+        // içerik sıkışıyor). Klavye kapanınca satır aynı yerine döner.
+        if (!imeVisible) {
+            ProfileChipsRow(
+                profiles = profiles,
+                selectedProfile = selectedProfile,
+                currentProfile = currentProfile,
+                onChipClick = onProfileChipClick,
+            )
+        }
 
         // Yazma hızı: tek satır + akan shimmer. message.complete'te değerler
         // donar; satır 600 ms sönüşle kalkar. Akış AYNI sayfada toplanıyor ama
@@ -724,6 +767,17 @@ private sealed interface ChatRow {
 /** "Ayrıntı" satırının etiketi — katlanmış ajan günlüğü (tur-4 H). */
 const val DETAIL_ROW_TR = "Ayrıntı"
 const val DETAIL_ROW_EN = "Details"
+
+/**
+ * Ray/sohbet kaydırıcısı: yerleşim değişiminde (klavye açılması) dibe yaslama
+ * kararı — tur-8. Kullanıcı NİYETİ (dipte mi) korunur; kaydırma sürüyorsa ya
+ * da liste boşsa dokunulmaz. Saf — JVM testi (ChatScrollTest).
+ */
+internal fun shouldPinToBottom(
+    userPinnedBottom: Boolean,
+    scrolling: Boolean,
+    empty: Boolean,
+): Boolean = userPinnedBottom && !scrolling && !empty
 
 /**
  * Akış imzası (tur-2 K1) — sohbet kaydırıcısının "yeni içerik var" sinyalini

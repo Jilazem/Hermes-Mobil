@@ -6,9 +6,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,35 +39,53 @@ import com.hermes.mobile.LiveState
 import com.hermes.mobile.data.LiveSession
 
 /**
- * Oturum rayı: sohbet ekranının solunda 44dp'lik kalıcı ikon şeridi.
+ * Oturum rayı: sohbet ekranının solunda 48dp'lik kalıcı ikon şeridi.
  *
  * Amaç oturumlar arası geçişi panel açmadan bir dokunuşa indirmek. Ray iki
- * grup taşır: şu anki sohbet (tek, `onNewChat` yeni oturum açar) ve gateway
- * üzerinden görülen ÇALIŞAN canlı oturumlar. Bitmiş oturumlar rayda yığılmasın
- * diye listelenmez — hepsine Oturumlar panelinden erişiliyor.
+ * grup taşır: yeni sohbet (`onNewChat` — "+" hücresi) ve AÇIK oturumlar.
  *
- * Bildirim tepsisindeki 3-5 eşzamanlı iş gözlemi: 6+ canlı oturum pratikte
- * seyrek; sınır yine de 6 ile kesilir, fazlası Oturumlar'a bırakılır.
+ * Tur-8 düzeltmesi: ray artık yalnız `working` oturumları değil, sunucunun
+ * AÇIK saydığı TÜM oturumları (idle dahil) gösterir ve uygulama içi "son
+ * açılanlar" ile birleştirir. Eski süzgeç (`isWorking || isWaiting ||
+ * isStarting || current`) yüzünden 2. oturuma geçildiği anda 1. oturum
+ * düşüyordu: üst başlık "4 açık oturum" derken ray tek hücre kalıyordu.
+ * Birleştirme/dedupe/sıra/tavan kararı `railEntries` (SessionRailLogic.kt)
+ * içinde ve birim testlidir.
+ *
+ * Hücre kapanışı: UZUN BAS → hücre ray'dan iner (kullanıcı kapatana kadar).
+ * Sunucu oturumu kapatırsa (açık listesinden düşerse) hücre kendiliğinden
+ * iner; geçerli oturum ise her koşulda görünür.
  */
 @Composable
 fun SessionRail(
     currentSessionId: String?,
     live: LiveState,
     onNewChat: () -> Unit,
-    onSelect: (LiveSession) -> Unit,
+    onSelect: (RailEntry) -> Unit,
+    /** Uzun basma: hücreyi ray'dan indirir (kullanıcı kapatana kadar). */
+    onDismiss: (RailEntry) -> Unit = {},
+    /** Uygulama içi son açılanlar (en yeni önce) — ChatViewModel tutar. */
+    recent: List<RecentRailSession> = emptyList(),
+    /** Kullanıcının kapattığı hücre anahtarları. */
+    dismissed: Set<String> = emptySet(),
+    /** `active_list` en az bir kez başarıyla geldi mi (kanıt yoksa "kapandı"
+     *  hükmü verilmez). */
+    liveLoaded: Boolean = true,
     /** FR-001: hücre etiketi/erişilebilirlik adı ham id OLMAMALI — çağıran
      *  `liveSessionTitle` zincirini geçirir; boş gelirse "?" gösterilir. */
     titleOf: (LiveSession) -> String = { it.title },
     modifier: Modifier = Modifier,
 ) {
-    // Ray ÇALIŞAN oturumları gösterir; bitmişleri listelemez. Tek istisna:
-    // kullanıcı şu an bir idle oturuma bağlıysa (ChatViewModel'in tuttuğu
-    // süreç içi id ya da dbId eşleşmesi) o hücre rayda kalmalı — yoksa aktif
-    // konuşmanın kabarcığı bir anda kayboluyor.
-    val shown = live.sessions.filter { s ->
-        s.isWorking || s.isWaiting || s.isStarting ||
-            (currentSessionId != null && (currentSessionId == s.id || currentSessionId == s.dbId))
-    }.take(6)
+    // Tur-8: birleşim + dedupe (liveId VE dbId) + sıra + tavan tek saf
+    // fonksiyonda (test: SessionRailTur8Test).
+    val shown = railEntries(
+        live = live.sessions,
+        recent = recent,
+        currentSessionId = currentSessionId,
+        liveLoaded = liveLoaded,
+        dismissed = dismissed,
+        titleOf = titleOf,
+    )
     Column(
         modifier = modifier
             .width(48.dp)
@@ -81,6 +101,7 @@ fun SessionRail(
             label = "+",
             contentDescription = null,
             onClick = onNewChat,
+            onLongClick = null,
         )
         if (shown.isNotEmpty()) {
             Box(
@@ -93,17 +114,14 @@ fun SessionRail(
                 // FR-001: etiket ve erişilebilirlik adı çözümlenmiş başlıktan
                 // gelir (titleOf = liveSessionTitle zinciri) — ham süreç içi id
                 // ya da dbId asla ray etiketi olmaz.
-                val resolved = titleOf(s)
                 RailItem(
-                    // ChatViewModel sessionId olarak gateway'in SÜREÇ İÇİ id'sini
-                    // tutuyor; dbId (session key) ayrı. İkisine göre de kıyasla —
-                    // tek kıyas yanıltıcı seçime yol açıyordu.
-                    selected = currentSessionId != null &&
-                        (currentSessionId == s.id || currentSessionId == s.dbId),
+                    selected = s.current,
                     working = s.isWorking,
-                    label = railLabel(resolved),
-                    contentDescription = resolved,
+                    waiting = s.isWaiting || s.isStarting,
+                    label = railLabel(s.title),
+                    contentDescription = s.title,
                     onClick = { onSelect(s) },
+                    onLongClick = { onDismiss(s) },
                 )
             }
         }
@@ -132,7 +150,9 @@ private val RAW_SESSION_ID = Regex(
 
 /** Ray hücresi: 48dp dokunma alanı (spec erişilebilirlik asgari), 40dp görsel
  *  hap, aktifken dolgu, çalışırken nabız. clickable padding'den ÖNCE: dokunma
- *  bölgesi tüm 48dp'yi kapsar. */
+ *  bölgesi tüm 48dp'yi kapsar. Uzun basma hücreyi ray'dan indirir (yeni sohbet
+ *  "+" hücresinde uzun basma yok). */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RailItem(
     selected: Boolean,
@@ -140,6 +160,8 @@ private fun RailItem(
     label: String,
     contentDescription: String?,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    waiting: Boolean = false,
 ) {
     val transition = rememberInfiniteTransition(label = "rail-pulse")
     val alpha by transition.animateFloat(
@@ -152,10 +174,22 @@ private fun RailItem(
     Box(
         modifier = Modifier
             .size(48.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { onClick() }
+            // combinedClickable: uzun basma = hücreyi kapat (tur-8).
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onLongClick = onLongClick,
+                        onClick = onClick,
+                    )
+                } else {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onClick() }
+                },
+            )
             .padding(4.dp)
             .clip(shape)
             .background(
@@ -165,7 +199,7 @@ private fun RailItem(
                 },
             )
             .then(
-                if (working) {
+                if (working || waiting) {
                     Modifier.border(
                         1.5.dp,
                         MaterialTheme.colorScheme.tertiary.copy(alpha = alpha),
@@ -194,6 +228,7 @@ private fun RailItem(
                 overflow = TextOverflow.Ellipsis,
                 color = when {
                     working -> MaterialTheme.colorScheme.tertiary
+                    waiting -> MaterialTheme.colorScheme.tertiary
                     selected -> MaterialTheme.colorScheme.onSecondaryContainer
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
