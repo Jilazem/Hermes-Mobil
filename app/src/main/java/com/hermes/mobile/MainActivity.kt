@@ -530,6 +530,8 @@ private fun HermesApp(
     // kapsamda (setContent lambda'sındaki val'lar burada görünmez).
     val voiceMsgState by chatViewModel.voiceMsg.state.collectAsStateWithLifecycle()
     val voicePrefillState by chatViewModel.voicePrefill.collectAsStateWithLifecycle()
+    // Tur-12: "Isıt" durumu — bölümden çıkılsa da ısıtma sürer, dönünce "Hazır ✓".
+    val voiceWarmState by chatViewModel.voiceWarmState.collectAsStateWithLifecycle()
     val panel by panelViewModel.state.collectAsStateWithLifecycle()
 
     // FR-001: canlı oturum başlık zinciri TEK kaynaktan — liveSessionTitle
@@ -1002,7 +1004,12 @@ private fun HermesApp(
                         },
                         activeHermesProfile = activeHermesProfile,
                         // Tur-11: ses hattı sağlık denemesi (GET /health).
-                        onVoiceProbe = { chatViewModel.voiceHealthLine() },
+                        // Tur-12: yapılandırılmış dönüş (motor motor durum) +
+                        // canlı yenileme aynı yolu kullanır; "Isıt" ayrı akış.
+                        onVoiceProbe = { chatViewModel.voiceProbe() },
+                        onVoiceWarm = { engine -> chatViewModel.voiceWarm(engine) },
+                        onVoiceWarmReset = { engine -> chatViewModel.voiceWarmReset(engine) },
+                        voiceWarmState = voiceWarmState,
                     )
                 }
             }

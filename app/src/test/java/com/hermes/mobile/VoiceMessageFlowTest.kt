@@ -6,15 +6,18 @@ import com.hermes.mobile.data.VoiceHealth
 import com.hermes.mobile.data.VoiceMessageController
 import com.hermes.mobile.data.VoiceRecordLogic
 import com.hermes.mobile.data.VoiceSpeakLogic
+import com.hermes.mobile.data.VoiceStatusLogic
 import com.hermes.mobile.data.VoiceTransport
 import com.hermes.mobile.data.VoiceApiException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -42,9 +45,16 @@ class VoiceMessageFlowTest {
         var lastEngine: VoiceSpeakLogic.Engine? = null
         var lastSynthesized: String? = null
         var fail: Exception? = null
-
-        override suspend fun health(): VoiceHealth =
+        /** Doluysa sentez bu kapı açılana kadar bekler (ısıtma sürerken test). */
+        var synthGate: CompletableDeferred<Unit>? = null
+        var healthResult: VoiceHealth =
             VoiceHealth(ok = true, stt = "acik", engines = mapOf("kahya" to "acik"))
+        var healthFail: Exception? = null
+
+        override suspend fun health(): VoiceHealth {
+            healthFail?.let { throw it }
+            return healthResult
+        }
 
         override suspend fun transcribe(audio: ByteArray, fileName: String, mime: String): String {
             transcribeCalls++
@@ -59,6 +69,7 @@ class VoiceMessageFlowTest {
             synthCalls++
             lastEngine = engine
             lastSynthesized = text
+            synthGate?.await()
             fail?.let { throw it }
             return ByteArray(64) { 7 }
         }
@@ -411,5 +422,92 @@ class VoiceMessageFlowTest {
         assertEquals(VoiceSpeakLogic.Engine.KAHYA, c.engine)       // varsayılan motor kahya
         assertEquals(VoiceRecordLogic.Phase.Idle, c.state.value.record.phase)
         assertNull(c.state.value.speak.message)
+    }
+
+    // ── Canlı durum + ısıtma (tur-12) ─────────────────────────────────
+
+    @Test
+    fun `probe health durumunu yapilandirilmis doner`() = runBlocking {
+        transport.healthResult = VoiceHealth(
+            ok = true,
+            stt = "acik",
+            engines = mapOf("kahya" to "kapali", "kadin" to "acik"),
+        )
+        val p = controller().probe()
+        assertTrue(p.ok)
+        assertEquals("http://192.168.1.101:8174", p.base)
+        assertNull(p.error)
+        val tr: (String, String) -> String = { tr, _ -> tr }
+        assertEquals(
+            "Metinleştirme: açık · Kahya: kapalı · Kadın: açık · Chatterbox: bilinmiyor",
+            VoiceStatusLogic.line(VoiceStatusLogic.chips(p.health!!, tr), tr),
+        )
+    }
+
+    @Test
+    fun `probe hata firlatmaz hata satirini doldurur`() = runBlocking {
+        transport.healthFail = VoiceApiException("ses ucuna ulaşılamıyor", -1, "/health")
+        val p = controller().probe()
+        assertFalse(p.ok)
+        assertTrue(p.error!!.contains("ulaşılamıyor"))
+        val p2 = controller(transportProvider = { null }).probe()
+        assertFalse(p2.ok)
+        assertTrue(p2.error!!.contains("Sunucu bağlı değil"))
+    }
+
+    @Test
+    fun `isitma sabit cumleyi sentezler ve hazir olur`() {
+        val c = controller()
+        c.warmEngine(VoiceSpeakLogic.Engine.KADIN)
+        assertTrue("ıstma hemen 'ısıtılıyor' durumuna geçmeli", c.warm.value.busy)
+        waitUntil { c.warm.value.ready }
+        assertEquals(1, transport.synthCalls)
+        assertEquals(VoiceStatusLogic.WARM_SENTENCE, transport.lastSynthesized)
+        assertEquals(VoiceSpeakLogic.Engine.KADIN, transport.lastEngine)
+        assertEquals("kadin", c.warm.value.engineId)
+        assertTrue(VoiceStatusLogic.warmReadyFor(c.warm.value, VoiceSpeakLogic.Engine.KADIN))
+    }
+
+    @Test
+    fun `isitma surerken ikinci tik ikinci istek uretmez`() {
+        val gate = CompletableDeferred<Unit>()
+        transport.synthGate = gate
+        val c = controller()
+        c.warmEngine()
+        waitUntil { transport.synthCalls == 1 }
+        c.warmEngine()
+        c.warmEngine()
+        Thread.sleep(200)
+        assertEquals("çift tık koruması: tek istek", 1, transport.synthCalls)
+        assertTrue(c.warm.value.busy)
+        gate.complete(Unit)
+        waitUntil { c.warm.value.ready }
+        assertEquals(1, transport.synthCalls)
+        transport.synthGate = null
+    }
+
+    @Test
+    fun `isitma hatasi duruma ve bildirime duser`() {
+        transport.fail = VoiceApiException("motor yüklenemedi", 500, "/synthesize")
+        val c = controller()
+        c.warmEngine()
+        waitUntil { c.warm.value.phase == VoiceStatusLogic.WarmPhase.Failed }
+        assertTrue(c.warm.value.message!!.contains("motor yüklenemedi"))
+        assertTrue(notices.any { it.contains("motor yüklenemedi") })
+        // Hata sonrası yeniden denenebilir (düğme "Yeniden dene").
+        transport.fail = null
+        c.warmEngine()
+        assertTrue(c.warm.value.busy)
+        waitUntil { c.warm.value.ready }
+    }
+
+    @Test
+    fun `motor degisince hazir isareti sifirlanir`() {
+        val c = controller()
+        c.warmEngine(VoiceSpeakLogic.Engine.KAHYA)
+        waitUntil { c.warm.value.ready }
+        c.resetWarm(VoiceSpeakLogic.Engine.KADIN)
+        assertEquals(VoiceStatusLogic.WarmPhase.Idle, c.warm.value.phase)
+        assertEquals("Isıt", VoiceStatusLogic.warmLabel(c.warm.value, VoiceSpeakLogic.Engine.KADIN) { tr, _ -> tr })
     }
 }

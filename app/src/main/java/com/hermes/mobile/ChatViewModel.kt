@@ -24,6 +24,8 @@ import com.hermes.mobile.data.VoiceApiClient
 import com.hermes.mobile.data.VoiceApiEndpoints
 import com.hermes.mobile.data.VoiceMessageController
 import com.hermes.mobile.data.VoicePrefs
+import com.hermes.mobile.data.VoiceSpeakLogic
+import com.hermes.mobile.data.VoiceStatusLogic
 import com.hermes.mobile.data.VoiceTransport
 import com.hermes.mobile.data.cleanupPaths
 import com.hermes.mobile.data.planShareUpload
@@ -574,6 +576,21 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Ayarlar → Ses → "şimdi dene" satırı. */
     suspend fun voiceHealthLine(): String = voiceMsg.healthLine()
+
+    /**
+     * Tur-12: yapılandırılmış `/health` durumu (canlı satır + "Şimdi dene").
+     * Hata fırlatmaz — [VoiceStatusLogic.Probe.error] doldurulur.
+     */
+    suspend fun voiceProbe(): VoiceStatusLogic.Probe = voiceMsg.probe()
+
+    /** Tur-12: `Isıt` — seçili motoru kısa sabit cümleyle ön-yükler. */
+    fun voiceWarm(engine: VoiceSpeakLogic.Engine) = voiceMsg.warmEngine(engine)
+
+    /** Tur-12: motor seçimi değişti — eski "Hazır ✓" işareti sıfırlanır. */
+    fun voiceWarmReset(engine: VoiceSpeakLogic.Engine) = voiceMsg.resetWarm(engine)
+
+    /** Tur-12: `Isıt` durumu (bölümden çıkılsa da sürer). */
+    val voiceWarmState: StateFlow<VoiceStatusLogic.WarmState> = voiceMsg.warm
 
     /**
      * Açılışta geri dönülecek oturum. `MainActivity` kayıtlı değeri buraya

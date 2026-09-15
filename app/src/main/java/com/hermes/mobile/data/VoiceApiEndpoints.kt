@@ -3,7 +3,7 @@ package com.hermes.mobile.data
 /**
  * Ses hattı (voice_api) uç noktaları — hangi adres denenecek, URL nasıl kurulur.
  *
- * Sözleşme (15.09.2026, `000-TEMP/ses-api-sozlesmesi.md`):
+ * Sözleşme (15.09.2026, repo kopyası `docs/ses-api-sozlesmesi.md`):
  *  - Yerel: `http://<host>:8174` · Dış: `https://<host>/voice-api`
  *  - Kimlik: `X-Hermes-Session-Token` başlığı (yanlış/eksikse 403 — fail-closed)
  *  - `GET /health` · `POST /transcribe` (multipart `audio`, <=60 sn, döner

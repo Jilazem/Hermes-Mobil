@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -44,13 +45,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hermes.mobile.data.AppSettings
 import com.hermes.mobile.data.BUILTIN_PERSONAS
 import com.hermes.mobile.data.HermesAccessibilityService
 import com.hermes.mobile.data.LIVE_VOICES
+import com.hermes.mobile.data.VoiceStatusLogic
 import com.hermes.mobile.ui.theme.BUILTIN_THEMES
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.HermesPalette
@@ -65,7 +70,9 @@ import com.hermes.mobile.data.VoiceSpeakLogic
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.LogResponse
 import com.hermes.mobile.data.MaintenanceStatusResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -109,8 +116,18 @@ fun SettingsScreen(
      *
      * Askıya alınabilir (suspend) çünkü soğuk motor uyarısı olan bir kanal:
      * düğmeye basınca sonuç satırı dolar; ağ işi UI iş parçacığında koşmaz.
+     *
+     * Tur-12: dönüş **yapılandırılmış** ([VoiceStatusLogic.Probe]) — durum
+     * satırı motor motor renklendirilir, canlı yenileme aynı yolu kullanır ve
+     * "Şimdi dene" motor kapalıysa 'Isıt' ipucunu gösterir.
      */
-    onVoiceProbe: suspend () -> String = { "" },
+    onVoiceProbe: suspend () -> VoiceStatusLogic.Probe = { VoiceStatusLogic.Probe() },
+    /** Tur-12: `Isıt` — seçili motoru kısa sabit cümleyle ön-yükler. */
+    onVoiceWarm: (VoiceSpeakLogic.Engine) -> Unit = {},
+    /** Tur-12: motor seçimi değişti — eski "Hazır ✓" işareti sıfırlanır. */
+    onVoiceWarmReset: (VoiceSpeakLogic.Engine) -> Unit = {},
+    /** Tur-12: `Isıt` durum makinesi (MainActivity'den akış olarak gelir). */
+    voiceWarmState: VoiceStatusLogic.WarmState = VoiceStatusLogic.WarmState(),
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
@@ -289,7 +306,11 @@ fun SettingsScreen(
                     S.t2("Seslendirme motoru", "Speech engine"),
                     VoiceSpeakLogic.engineOptions(::tr),
                     VoiceSpeakLogic.Engine.fromId(settings.voiceEngine).id,
-                ) { v -> onUpdate { it.copy(voiceEngine = v) } }
+                ) { v ->
+                    onUpdate { it.copy(voiceEngine = v) }
+                    // Tur-12: motor değişti — eski motora ait "Hazır ✓" kalmasın.
+                    onVoiceWarmReset(VoiceSpeakLogic.Engine.fromId(v))
+                }
             }
 
             item {
@@ -331,9 +352,12 @@ fun SettingsScreen(
             }
 
             item {
-                VoiceProbeRow(
-                    lastOk = settings.voiceLastOk,
+                // Tur-12: canlı durum (4,5 sn) + "Yenile" + "Şimdi dene" + "Isıt".
+                VoiceStatusCard(
+                    engine = VoiceSpeakLogic.Engine.fromId(settings.voiceEngine),
+                    warm = voiceWarmState,
                     onProbe = onVoiceProbe,
+                    onWarm = onVoiceWarm,
                 ) { base -> onUpdate { it.copy(voiceLastOk = base) } }
             }
 
@@ -714,47 +738,198 @@ private fun SwitchRow(title: String, detail: String?, value: Boolean, onChange: 
     }
 }
 
+/**
+ * Tur-12 — "Ses ucu durumu" kartı: **canlı** durum + `Yenile` + `Şimdi dene` + `Isıt`.
+ *
+ * Kullanıcı bildirimi: durum sabit kalıyordu; motor kapalıyken "kapalı" yazıyor,
+ * yükleme süreci / ne zaman hazır olacağı görünmüyordu. Çözüm:
+ *  - Kart **ekranda görünürken** `/health` [VoiceStatusLogic.REFRESH_MS] (4,5 sn)
+ *    aralıkla yenilenir; kart LazyColumn'dan düşünce (bölüm kapanınca ya da
+ *    aşağı kaydırılınca) canlı döngü kendiliğinden durur — görünmeyen bölüm
+ *    için boşuna soket açılmaz.
+ *  - Durum satırı **yapılandırılmış ve renkli**:
+ *    `Metinleştirme: açık · Kahya: kapalı · Kadın: kapalı · Chatterbox: kapalı`
+ *    (açık = yeşil [HermesColors.Online], kapalı = gri [HermesColors.Offline]).
+ *  - `Isıt` yalnız seçili motor KAPALIYSA görünür; kısa sabit cümleyle
+ *    `/synthesize` çağırıp motoru ön-yükler (durum: `Isıt → Isıtılıyor… (~2-3 dk)
+ *    → Hazır ✓`; tavan [VoiceStatusLogic.WARM_TIMEOUT_MS] = 300 sn).
+ *  - Isıtma durumu **denetleyicide** yaşar ([warm]): kullanıcı bölümden çıksa da
+ *    yükleme sürer, geri döndüğünde "Hazır ✓" görünür.
+ */
 @Composable
-private fun VoiceProbeRow(
-    lastOk: String,
-    onProbe: suspend () -> String,
+private fun VoiceStatusCard(
+    engine: VoiceSpeakLogic.Engine,
+    warm: VoiceStatusLogic.WarmState,
+    onProbe: suspend () -> VoiceStatusLogic.Probe,
+    onWarm: (VoiceSpeakLogic.Engine) -> Unit,
     onBase: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    var result by remember { mutableStateOf<String?>(null) }
-    var busy by remember { mutableStateOf(false) }
+    var probe by remember { mutableStateOf<VoiceStatusLogic.Probe?>(null) }
+    /** Hangi düğme koşuyor: "" (canlı) · "yenile" · "dene". */
+    var busy by remember { mutableStateOf("") }
+    /** Üst üste istek olmasın (canlı döngü + elle düğme). */
+    var inFlight by remember { mutableStateOf(false) }
+    /** "Şimdi dene" en az bir kez basıldı mı — kapalı motor ipucu için. */
+    var probed by remember { mutableStateOf(false) }
+    var probes by remember { mutableStateOf(0) }
+
+    suspend fun refresh(which: String) {
+        if (inFlight) return
+        inFlight = true
+        busy = which
+        val p = try {
+            onProbe()
+        } catch (e: CancellationException) {
+            busy = ""; inFlight = false
+            throw e
+        } catch (e: Exception) {
+            VoiceStatusLogic.Probe(
+                error = e.message ?: tr("Ses ucuna ulaşılamadı", "Voice endpoint unreachable"),
+            )
+        }
+        probe = p
+        probes++
+        if (p.base.isNotBlank()) onBase(p.base)
+        if (which == "dene") probed = true
+        busy = ""
+        inFlight = false
+    }
+
+    // Canlı yenileme: kart ekranda olduğu sürece 4,5 sn'de bir.
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            refresh("")
+            delay(VoiceStatusLogic.REFRESH_MS)
+        }
+    }
+
+    // Isıtma bitti: durum satırı hemen tazelenir (motor artık "açık" görünür).
+    LaunchedEffect(warm.phase, warm.engineId) {
+        if (warm.phase == VoiceStatusLogic.WarmPhase.Ready) refresh("")
+    }
+
+    val onColor = HermesColors.Online
+    val offColor = HermesColors.Offline
+    val labelColor = HermesColors.TextMuted
+    val sepColor = HermesColors.TextFaint
+    val chips = probe?.health?.let { VoiceStatusLogic.chips(it, ::tr) }
+    val knownClosed = probe?.health != null && !VoiceStatusLogic.engineOpen(probe?.health, engine)
+    val warmReady = VoiceStatusLogic.warmReadyFor(warm, engine)
+
     HermesCard(Modifier.fillMaxWidth()) {
-        Text("Ses ucu durumu", color = HermesColors.TextPrimary, fontSize = 14.sp)
-        Text(
-            if (lastOk.isBlank()) "Henüz çalışan bir adres yok"
-            else "Son çalışan adres: $lastOk",
-            color = HermesColors.TextMuted,
-            fontSize = 11.sp,
-        )
-        Spacer(Modifier.height(7.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SmallButton(
-                if (busy) "Deneniyor…" else "Şimdi dene",
-            ) {
-                if (busy) return@SmallButton
-                busy = true
-                scope.launch {
-                    val line = runCatching { onProbe() }.getOrElse { e ->
-                        e.message ?: "Ses ucuna ulaşılamadı"
-                    }
-                    result = line
-                    val base = Regex("· ([^ ]+)$").find(line)?.groupValues?.get(1)
-                    if (base != null && !base.contains("ulaşılamadı")) onBase(base)
-                    busy = false
-                }
-            }
-            Spacer(Modifier.width(10.dp))
             Text(
-                result ?: "· /health ve motor durumu",
-                color = if (result == null) HermesColors.TextFaint else HermesColors.TextSecondary,
-                fontSize = 11.sp,
+                "Ses ucu durumu",
+                color = HermesColors.TextPrimary,
+                fontSize = 14.sp,
                 modifier = Modifier.weight(1f),
             )
+            if (inFlight) {
+                CircularProgressIndicator(
+                    Modifier.size(11.dp),
+                    strokeWidth = 1.5.dp,
+                    color = HermesColors.Midground,
+                )
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(
+                if (probes == 0) "yoklanıyor…"
+                else "canlı · ${probes}. yoklama · 4,5 sn",
+                color = HermesColors.TextFaint,
+                fontSize = 10.sp,
+            )
+        }
+
+        if (chips != null) {
+            val line = buildAnnotatedString {
+                chips.forEachIndexed { i, c ->
+                    if (i > 0) withStyle(SpanStyle(color = sepColor)) { append(" · ") }
+                    withStyle(SpanStyle(color = labelColor)) { append("${c.label}: ") }
+                    withStyle(
+                        SpanStyle(
+                            color = if (c.on) onColor else offColor,
+                            fontWeight = if (c.on) FontWeight.Medium else FontWeight.Normal,
+                        ),
+                    ) { append(VoiceStatusLogic.valueText(c, ::tr)) }
+                }
+            }
+            Text(
+                line,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        } else if (probe == null) {
+            Text(
+                "Motor durumu okunuyor…",
+                color = HermesColors.TextMuted,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+
+        probe?.base?.takeIf { it.isNotBlank() }?.let {
+            Text("Çalışan adres: $it", color = HermesColors.TextMuted, fontSize = 11.sp)
+        }
+        probe?.error?.let {
+            Text(it, color = HermesColors.Danger, fontSize = 11.sp, lineHeight = 15.sp)
+        }
+        // "Şimdi dene" kapalı motor gördüyse: ısıtma ipucu (görev maddesi 3).
+        if (probed && knownClosed && !warmReady && !warm.busy) {
+            Text(
+                VoiceStatusLogic.coldHint(::tr),
+                color = HermesColors.Busy,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
+        }
+        warm.message?.let {
+            Text(
+                it,
+                color = if (warm.phase == VoiceStatusLogic.WarmPhase.Failed) HermesColors.Danger
+                else HermesColors.TextSecondary,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
+        }
+
+        Spacer(Modifier.height(7.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SmallButton(if (busy == "yenile") "Yenileniyor…" else S.t2("Yenile", "Refresh")) {
+                scope.launch { refresh("yenile") }
+            }
+            Spacer(Modifier.width(8.dp))
+            SmallButton(if (busy == "dene") "Deneniyor…" else S.t2("Şimdi dene", "Test now")) {
+                scope.launch { refresh("dene") }
+            }
+            // Isıt: yalnız motor kapalıyken görünür; ısıtma sürerken spinner
+            // (düğme yok → çift tıklama imkânsız), bitince yeşil "Hazır ✓".
+            if (warm.busy) {
+                Spacer(Modifier.width(8.dp))
+                CircularProgressIndicator(
+                    Modifier.size(12.dp),
+                    strokeWidth = 1.5.dp,
+                    color = HermesColors.Midground,
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    VoiceStatusLogic.warmLabel(warm, engine, ::tr),
+                    color = HermesColors.TextSecondary,
+                    fontSize = 12.sp,
+                )
+            } else if (warmReady) {
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    VoiceStatusLogic.warmLabel(warm, engine, ::tr),
+                    color = HermesColors.Online,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            } else if (knownClosed || VoiceStatusLogic.warmVisible(probe, engine)) {
+                Spacer(Modifier.width(8.dp))
+                SmallButton(VoiceStatusLogic.warmLabel(warm, engine, ::tr)) { onWarm(engine) }
+            }
         }
     }
 }

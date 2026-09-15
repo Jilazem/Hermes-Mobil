@@ -11,7 +11,7 @@ import org.junit.Test
 /**
  * Tur-11 — `voice_api` adres adayları, URL kurulumu ve hata metinleri.
  *
- * Sözleşme (`000-TEMP/ses-api-sozlesmesi.md`): yerel `http://<host>:8174`,
+ * Sözleşme (`docs/ses-api-sozlesmesi.md` — repodaki kopya): yerel `http://<host>:8174`,
  * dış `https://<host>/voice-api`, kimlik `X-Hermes-Session-Token`, uçlar
  * `/health`, `/transcribe`, `/synthesize`.
  */

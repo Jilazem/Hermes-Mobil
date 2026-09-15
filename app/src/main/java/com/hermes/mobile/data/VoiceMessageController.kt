@@ -1,13 +1,16 @@
 package com.hermes.mobile.data
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.io.File
 
 /**
@@ -284,6 +287,119 @@ class VoiceMessageController(
         val h = t.health()
         rememberWorking()
         return "${VoiceApiEndpoints.healthLine(h, lang)} · ${t.working ?: "?"}"
+    }
+
+    // ── Canlı durum + ısıtma (tur-12) ─────────────────────────────────
+
+    /** `Isıt` durum makinesi — bölümden çıkılsa da ısıtma sürer ([warm]). */
+    private val _warm = MutableStateFlow(VoiceStatusLogic.WarmState())
+    val warm: StateFlow<VoiceStatusLogic.WarmState> = _warm.asStateFlow()
+
+    /**
+     * `/health` — canlı durum satırı (4,5 sn'de bir yenilenir) ve "Şimdi dene".
+     *
+     * **Hata fırlatmaz**: uç yoksa/403/ulaşılamazsa [VoiceStatusLogic.Probe.error]
+     * doldurulur, UI hata satırını gösterir ve canlı döngü düşmez.
+     */
+    suspend fun probe(): VoiceStatusLogic.Probe {
+        val t = transport() ?: return VoiceStatusLogic.Probe(
+            error = lang(
+                "Sunucu bağlı değil — ses ucu için önce sunucu ekle",
+                "No server connected — add a server before using the voice endpoint",
+            ),
+            atMs = now(),
+        )
+        return try {
+            val h = t.health()
+            rememberWorking()
+            VoiceStatusLogic.Probe(health = h, base = t.working.orEmpty(), atMs = now())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            VoiceStatusLogic.Probe(
+                error = e.message
+                    ?: lang("Ses ucuna ulaşılamadı", "Voice endpoint unreachable"),
+                atMs = now(),
+            )
+        }
+    }
+
+    /**
+     * Seçili motoru kısa sabit cümleyle ısıtır (`POST /synthesize`).
+     *
+     * Motor **gerçekten** yüklenir: soğukken 173-187 sn sürer, bu yüzden tavan
+     * [VoiceStatusLogic.WARM_TIMEOUT_MS] = 300 sn. **Çift tık koruması**
+     * [VoiceStatusLogic.warmStart]tadır — ısıtma sürerken ikinci çağrı hiçbir
+     * istek üretmez. Isıtma işi [scope] içinde koşar: kullanıcı bölümden
+     * çıksa da motor yüklenmeye devam eder.
+     */
+    fun warmEngine(engine: VoiceSpeakLogic.Engine = this.engine) {
+        val next = VoiceStatusLogic.warmStart(_warm.value, engine, now())
+        if (next === _warm.value) {
+            diag("isitma zaten suruyor - ikinci istek yok sayildi (motor=${engine.id})")
+            return
+        }
+        _warm.value = next
+        diag("isitma basladi motor=${engine.id} cumle=\"${VoiceStatusLogic.WARM_SENTENCE}\" tavan=${VoiceStatusLogic.WARM_TIMEOUT_MS} ms")
+        scope.launch {
+            val started = now()
+            var timedOut = false
+            var failure: String? = null
+            val bytes: ByteArray? = try {
+                withTimeout(VoiceStatusLogic.WARM_TIMEOUT_MS) {
+                    requireTransport().synthesize(VoiceStatusLogic.WARM_SENTENCE, engine)
+                }
+            } catch (e: TimeoutCancellationException) {
+                timedOut = true
+                null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failure = e.message
+                null
+            }
+            rememberWorking()
+            val took = (now() - started).coerceAtLeast(0L)
+            _warm.value = when {
+                bytes != null && bytes.isNotEmpty() -> {
+                    diag("isitma tamam motor=${engine.id} · ${bytes.size} bayt · ${took} ms")
+                    VoiceStatusLogic.warmDone(_warm.value, took, now(), lang)
+                }
+                timedOut -> {
+                    val msg = VoiceStatusLogic.warmTimeoutMsg(lang)
+                    diag("isitma zaman asimi motor=${engine.id} (${took} ms)")
+                    onNotice(msg)
+                    VoiceStatusLogic.warmFail(_warm.value, msg, now())
+                }
+                bytes != null -> {
+                    val msg = lang(
+                        "Isıtma boş yanıt aldı — motor yüklenemedi",
+                        "Warming up returned an empty body — the engine could not load",
+                    )
+                    diag("isitma bos yanit motor=${engine.id}")
+                    onNotice(msg)
+                    VoiceStatusLogic.warmFail(_warm.value, msg, now())
+                }
+                else -> {
+                    val msg = failure ?: lang(
+                        "Isıtma başarısız: ses ucu yanıt vermedi",
+                        "Warming up failed: the voice endpoint did not respond",
+                    )
+                    diag("isitma hata motor=${engine.id}: $msg")
+                    onNotice(msg)
+                    VoiceStatusLogic.warmFail(_warm.value, msg, now())
+                }
+            }
+        }
+    }
+
+    /**
+     * Motor seçimi değişti — eski motora ait "Hazır ✓" işareti sıfırlanır.
+     * Isıtma SÜRERKEN dokunulmaz (iş kaybolmasın).
+     */
+    fun resetWarm(engine: VoiceSpeakLogic.Engine) {
+        val next = VoiceStatusLogic.warmReset(_warm.value, engine)
+        if (next !== _warm.value) _warm.value = next
     }
 
     fun clearMessages() {
