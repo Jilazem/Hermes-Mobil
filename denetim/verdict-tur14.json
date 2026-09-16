@@ -1,0 +1,52 @@
+{
+  "verdict": "pass",
+  "gorev": "tur14",
+  "tarih": "2026-09-16T05:40:00+03:00",
+  "test_sonucu": "Kendi koşumum: gradle 8.9 / JDK-17 (20-ARACLAR), testDebugUnitTest assembleDebug --rerun-tasks -> BUILD SUCCESSFUL. XML sayımı (49 dosya, denetim/tur14/denetmen_count.py — bot logu değil): tests=617 failures=0 errors=0 skipped=0. Coder iddiası 598+19=617 birebir doğrulandı; yeni sınıf dökümü ChatDaySeparatorTest=7, RelativeTimeTur14Test=5, SessionCardTur14Test=7 (toplam 19). APK app-debug.apk 24.352.890 bayt, md5=4f246715b82dd922c1d5495738d4eab4 (RAPOR ile aynı), denetmen sha256=3cda46c3fbb78badb55f0a5c625687a39d0f1219503762be29ed2e24178cc5d0. UI kanıtı: emülatör-5554 canlıydı; denetmen uiautomator dökümünde '19 dk önce'/'4 sa önce' (ek'siz format düzeltmesi canlı doğrulandı) ve ICRA kartına dokunuşla gerçek sohbet ekranı (balonlar + 'Mesaj yaz…' girişi) kendi probe'umla kanıtlandı.",
+  "findings": [
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:351 — F2 gün ayracının canlı UI kanıtı yok: denetmen probe dökümünde (denetim/tur14/denetmen-sohbet-dokun.xml, 54 mesajlık ICRA oturumu geçmişi yüklü, '— buradan devam —' görünür) hiçbir 'Bugün/Dün/gg.aa.yyyy' ayracı metni bulunamadı. Saf mantık (needsDaySeparator) ve birim testi sağlam; muhtemel neden geçmiş mesajlarda timestamp null akışı (needsDaySeparator(null,*)=false ayraç basmaz). UI entegrasyonunun gerçek veriyle ayracı bastığı ayrıca kanıtlanmalı."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "denetim/tur14/RAPOR.md:45 — 'SessionCardTur14Test (8)' dağılımı hatalı: XML'de ve kaynak dosyada 7 test var (toplam 19 doğru, 8+7+... diye okuyan yanılgılır). Toplam iddia etkilenmiyor."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "denetim/tur13 LOW'u (reproducible build) bu turda çözülmedi: APK sha yine mtime duyarlı, denetmen sha (3cda46c3…) ile coder tarafında kayıtlı sha karşılaştırması yapılamadı (RAPOR yalnız md5 veriyor). Tekrarlanan öneri: tekrarlanabilir derleme kurulumu."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "Hermes config auxiliary.vision.model='qwen3.8-flash-next-S' node1 :8888'de 404 dönüyor (registry'de yalnız qwen3.8-flash-next var); denetmen vision_analyze iki denemede de 404 ile döndü, PNG içerik kanıtı UI dökümüyle tazmin edildi. Uygulama koduyla ilgisiz ortam bulgusu; config düzeltmesi ayrı görev."
+    }
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/SessionsScreen.kt": "50db8275b2dac43418806d23230a0e7304aa3a5ed115039c7a91b7870794418e",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "711fd5cf73776b71138f441e586c18eca49cb1b3c5b90904c31a8d1e5220b189",
+    "app/src/main/java/com/hermes/mobile/ui/Common.kt": "54919e4d5cf26262d5406db118733068085cb686390dd985044a8462fd727ec0",
+    "app/src/main/java/com/hermes/mobile/ui/SessionText.kt": "b6a2b46710d14b0fb224d82353b049a367b4efa912173c73f5523e2eb879476e",
+    "app/src/main/java/com/hermes/mobile/ChatViewModel.kt": "a494599127515b8cfa409b33a46a10e16f931bfc8dd2e27b93050150ae064b81",
+    "app/src/test/java/com/hermes/mobile/ChatDaySeparatorTest.kt": "983ef48bd1d30f6c75315f1de13121779535cb346c01f757a5f1e0d686da80e6",
+    "app/src/test/java/com/hermes/mobile/SessionCardTur14Test.kt": "1c274b1f87fc81b2f93833565758bcb13dae492272431eec9144e1b0a49a2b4f",
+    "app/src/test/java/com/hermes/mobile/RelativeTimeTur14Test.kt": "883178078b5cc05293ac96ecc8b63058322c343e3d6e4c866e34d10ff7264574",
+    "app/build/outputs/apk/debug/app-debug.apk": "3cda46c3fbb78badb55f0a5c625687a39d0f1219503762be29ed2e24178cc5d0",
+    "denetim/tur14/RAPOR.md": "e2a41543500759df23595e2e89ca1480692841520553791389a6efff77ab1189",
+    "denetim/tur14/kanit/01-ana-ekran.png": "bfe77f11b361e60a0cd90d59b4fba8e0237e10031c7fd661c08d7b2404da5f67",
+    "denetim/tur14/kanit/02-uygulama-acilis.png": "dd220dbc183110a015a2d36ed9b77ac974e19164f42fd81ff00793cfb2f2a997",
+    "denetim/tur14/kanit/03-oturumlar-sonra.png": "07555eb33b7eb1c1f090f417907e85d074a02e580f4a0778e2dbf5f631e53504",
+    "denetim/tur14/kanit/04-karta-dokun-sohbet.png": "f0956049c561b790d4e4bd03691c5d9baec707cacde391c88e34baff06a0eb11",
+    "denetim/tur14/kanit/05-oturumlar-final.png": "edd458e3ae78ac05573ab4886c58c43921656f2982dfdf3dabc6c817042a2177",
+    "denetim/tur14/denetmen_count.py": "2509f0cdc3db706716e39302701a6bcc69d2cfd409edf8b2229f2fd1cc6ccd0d",
+    "denetim/tur14/denetmen_ui_probe.py": "38f3df06470384d7f788f28a732d435362b49a45485546388f436dc19334aa48",
+    "denetim/tur14/denetmen_ui_probe2.py": "2162077575810b4d469e70c9e7eaba8539a468376fcf91509eacf292abdd7426",
+    "denetim/tur14/denetmen-ui-dump.xml": "c7f6abbcb952fda5b90a8857e3056ff5823148f655774f1dd35e78f9361b76e5",
+    "denetim/tur14/denetmen-tab-oturumlar.xml": "2c74831f07972f60d29b56d1c6cfa5b3dd5a1a651170fc98817f5f1b0b3041ef",
+    "denetim/tur14/denetmen-sohbet-dokun.xml": "384640fd29f9ae4dc31391a4c5ef5ecae6f252c9f188c6028dd3f2e28c09a998"
+  },
+  "lesson": "Birim kanıt ile canlı UI kanıtı ayrı katmanlardır: ayraç kodu ve testleri kusursuzdu ama 54 mesajlık gerçek oturum dökümünde tek ayracı görünmedi — 'testleri geçiyor' iddiası UI davranışını kanıtlamaz, uiautomator dökümü kanıtlar."
+}
