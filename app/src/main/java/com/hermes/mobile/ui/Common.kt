@@ -82,8 +82,16 @@ fun formatRelative(epochSeconds: Double?): String {
     // cagriliyor; `tr()` ayni secimi serviceLang uzerinden yapiyor.
     return when {
         deltaSec < 60 -> tr("az önce", "just now")
-        deltaSec < 3_600 -> "${deltaSec / 60} " + tr("dk", "min")
-        deltaSec < 86_400 -> "${deltaSec / 3_600} " + tr("sa", "h")
-        else -> "${deltaSec / 86_400} " + tr("g", "d")
+        deltaSec < 3_600 -> "${deltaSec / 60} " + tr("dk önce", "min ago")
+        deltaSec < 86_400 -> "${deltaSec / 3_600} " + tr("sa önce", "h ago")
+        deltaSec < 7 * 86_400 -> "${deltaSec / 86_400} " + tr("g önce", "d ago")
+        // Bir haftadan eski oturumda göreli zaman bulanıklaşır; tarih daha okunur.
+        else -> {
+            val d = java.time.Instant.ofEpochSecond(epochSeconds.toLong())
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            "%02d.%02d".format(d.monthValue, d.dayOfMonth) +
+                if (d.year != java.time.LocalDate.now().year)
+                    ".${d.year}" else ""
+        }
     }
 }

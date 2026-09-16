@@ -56,12 +56,13 @@ import com.hermes.mobile.ui.visibleUserMessage
 sealed interface ChatItem {
     val key: String
 
-    data class User(override val key: String, val text: String) : ChatItem
+    data class User(override val key: String, val text: String, val ts: Double? = null) : ChatItem
 
     data class Assistant(
         override val key: String,
         val text: String,
         val streaming: Boolean = false,
+        val ts: Double? = null,
     ) : ChatItem
 
     /**
@@ -1715,9 +1716,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     // Kusur I (tur-5): sistem/cron istemi `isUser` olarak dönüyor;
                     // ham hâliyle balon basılıyordu — sohbet değildir, çizilmez.
                     m.isUser && !m.content.isNullOrBlank() && visibleUserMessage(m.content) ->
-                        ChatItem.User(nextKey("u"), m.content)
+                        ChatItem.User(nextKey("u"), m.content, m.timestamp)
                     m.isAssistant && !m.content.isNullOrBlank() ->
-                        ChatItem.Assistant(nextKey("a"), m.content)
+                        ChatItem.Assistant(nextKey("a"), m.content, ts = m.timestamp)
                     m.isTool ->
                         ChatItem.Tool(nextKey("t"), m.toolName ?: "araç", ToolState.Done, m.content)
                     else -> null

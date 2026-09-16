@@ -248,6 +248,51 @@ fun visibleSessions(
                 .thenByDescending { it.startedAt ?: 0.0 },
         )
 
+/**
+ * Boş/kırık kart eşiği (tur-14). "yalnız kaynak chip'i taşıyan contentsiz kart"
+ * şikâyeti: ne başlığı ne önizlemesi olan, mesajı olmayan ve asla canlı olmamış
+ * oturum listeyi doldurur ama hiçbir bilgi taşımaz. Böyle bir kart ya ANLAMLI
+ * gösterilmeli ya gizlenmeli — karar: gizle (yedek başlık "Sohbet · gg.AA"
+ * zaten zaman veriyor; yine de içeriksizse kart tıklanabilir boşluk olur).
+ *
+ * Saf — JVM testi (SessionCardAnatomyTest).
+ */
+fun isPlaceholderSession(s: HermesSession): Boolean {
+    val title = s.serverTitle ?: s.displayName
+    // Ham id ile aynı "başlık" başlık değildir (sunucu çoğu oturumda id basar);
+    // "Session 11" kalıbı da DemoMask'sız generic sayaç başlığıdır.
+    val titleReal = title?.takeIf { it.isNotBlank() && it != s.id && !isGenericIdentityTitle(it) }
+    val hasTitle = titleReal != null
+    val hasPreview = meaningfulPreview(s.preview).isNotBlank()
+    val hasMessages = s.messageCount > 0
+    return !hasTitle && !hasPreview && !hasMessages && !s.isActive
+}
+
+/** [visibleSessions] sonrası ikinci süzgeç: içeriksiz kartları ele. */
+fun visibleSessionsFiltered(
+    sessions: List<HermesSession>,
+    flags: SessionFlags,
+    showArchived: Boolean,
+): List<HermesSession> = visibleSessions(sessions, flags, showArchived).filter { !isPlaceholderSession(it) }
+
+/**
+ * Kaynak chip'i — kart alt satırında insan-okur etiket. Ham iç ad (api_server,
+ telegram_dm) kısaltılır; tanınmayan ad olduğu gibi kısa gösterilir, boşsa null.
+ */
+fun sourceChipLabel(source: String?): String? {
+    val t = source?.trim().orEmpty()
+    if (t.isEmpty()) return null
+    return when (t.lowercase()) {
+        "tui", "cli" -> "TUI"
+        "telegram", "telegram_dm", "tg" -> "Telegram"
+        "whatsapp", "wa" -> "WhatsApp"
+        "cron", "scheduler" -> "Zamanlanmış"
+        "api", "api_server" -> "API"
+        "web" -> "Web"
+        else -> t.take(12)
+    }
+}
+
 /** Zaman grubu — test edilebilir, UI'dan bağımsız saf fonksiyon. */
 enum class TimeGroup(val labelTr: String, val labelEn: String) {
     Bugun("Bugün", "Today"),
@@ -339,7 +384,7 @@ fun SessionsScreen(
 
     // İki aşama: başlıklar için taban liste, arama için süzülmüş hâli.
     val base = remember(state.sessions, flags, showArchived) {
-        visibleSessions(state.sessions, flags, showArchived)
+        visibleSessionsFiltered(state.sessions, flags, showArchived)
     }
     val shown = remember(base, query, cronNames) {
         val q = query.trim()
@@ -799,10 +844,17 @@ private fun SessionRow(
 
         // Alt satır: kaynak ikonu + mesaj sayısı (KALAN-5: metin rozeti yerine
         // TEK 12 dp ikon; tanınmayan iç kaynak adı hiç çizilmez).
+        // Tur-14: kaynak ADI da chip olarak okunur — "yalnız TUI çipi" kartının
+        // ne olduğunu kullanıcı anlamalı; chip isPlaceholder filtresiyle birlikte
+        // içeriksiz kart sorununu kapatır.
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (sourceIcon(session.source) != null) {
                 SourceBadgeIcon(session.source, en = S.lang == Lang.EN)
                 Spacer(Modifier.width(6.dp))
+            }
+            sourceChipLabel(session.source)?.let { chip ->
+                Meta(chip)
+                Spacer(Modifier.width(8.dp))
             }
             Meta("${session.messageCount} ${S.t2("mesaj", "messages")}")
             subtitle?.let {

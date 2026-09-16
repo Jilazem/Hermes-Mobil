@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -314,26 +315,57 @@ fun ChatScreen(
                 )
             } else {
                 // rows yukarıda hesaplandı (render + kaydırma tek kaynak).
+                // Tur-14: her satırın üstüne gün ayırıcı gerekir mi — önceki
+                // damgalı mesajın tarihine bakılır (saf needsDaySeparator).
+                val prevTsByKey = remember(rows) {
+                    val m = HashMap<String, Double?>()
+                    var last: Double? = null
+                    rows.forEach { r ->
+                        val ts = (r as? ChatRow.Single)?.item?.let { o ->
+                            when (o) {
+                                is ChatItem.User -> o.ts
+                                is ChatItem.Assistant -> o.ts
+                                else -> null
+                            }
+                        }
+                        m[r.key] = last
+                        if (ts != null) last = ts
+                    }
+                    m
+                }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
-                    items(rows, key = { it.key }) { row ->
-                        when (row) {
-                            is ChatRow.Single -> ChatItemView(
-                                row.item,
-                                onApproval,
-                                onOpenFile,
-                                onSpeak = onSpeak,
-                                speakKey = voice.speak.key,
-                                speakBusy = voice.speak.phase ==
-                                    com.hermes.mobile.data.VoiceSpeakLogic.Phase.Downloading,
-                            )
-                            is ChatRow.Tools -> ToolActivityRow(
-                                row.entries,
-                                label = if (S.lang == Lang.TR) DETAIL_ROW_TR else DETAIL_ROW_EN,
-                            )
+                    itemsIndexed(rows, key = { _, r -> r.key }) { _, row ->
+                        Column {
+                            val prevTs = prevTsByKey[row.key]
+                            val ts = (row as? ChatRow.Single)?.item?.let { o ->
+                                when (o) {
+                                    is ChatItem.User -> o.ts
+                                    is ChatItem.Assistant -> o.ts
+                                    else -> null
+                                }
+                            }
+                            if (needsDaySeparator(prevTs, ts)) {
+                                DaySeparatorRow(daySeparatorLabel(ts))
+                            }
+                            when (row) {
+                                is ChatRow.Single -> ChatItemView(
+                                    row.item,
+                                    onApproval,
+                                    onOpenFile,
+                                    onSpeak = onSpeak,
+                                    speakKey = voice.speak.key,
+                                    speakBusy = voice.speak.phase ==
+                                        com.hermes.mobile.data.VoiceSpeakLogic.Phase.Downloading,
+                                )
+                                is ChatRow.Tools -> ToolActivityRow(
+                                    row.entries,
+                                    label = if (S.lang == Lang.TR) DETAIL_ROW_TR else DETAIL_ROW_EN,
+                                )
+                            }
                         }
                     }
                     item { Spacer(Modifier.height(6.dp)) }
@@ -882,6 +914,66 @@ internal fun streamSignature(items: List<ChatItem>): String =
             is ChatItem.Approval -> "K:${item.key}:${item.answered ?: ""}"
         }
     }
+
+// ── Tur-14: tarih-saat ayraçları ─────────────────────────────────────────────
+// Claude/ChatGPT/Grok düzeni: mesajlar gün bölümlerinde çizilir; gün içinde
+// damga balonun altında küçük yazıyla durur.
+
+/** Ayraç başlığı: bugün/dün → isim, daha eskisi tarih, saat dilimi safe. */
+internal fun daySeparatorLabel(epochSeconds: Double?, nowMs: Long = System.currentTimeMillis()): String? {
+    if (epochSeconds == null || epochSeconds <= 0) return null
+    val d = java.time.Instant.ofEpochSecond(epochSeconds.toLong())
+        .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+    val today = java.time.Instant.ofEpochMilli(nowMs)
+        .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+    return when (d) {
+        today -> tr("Bugün", "Today")
+        today.minusDays(1) -> tr("Dün", "Yesterday")
+        else -> "%02d.%02d.%04d".format(d.dayOfMonth, d.monthValue, d.year)
+    }
+}
+
+/** Balon altı saat damgası — "14:32". */
+internal fun clockLabel(epochSeconds: Double?): String? {
+    if (epochSeconds == null || epochSeconds <= 0) return null
+    val t = java.time.Instant.ofEpochSecond(epochSeconds.toLong())
+        .atZone(java.time.ZoneId.systemDefault())
+    return "%02d:%02d".format(t.hour, t.minute)
+}
+
+/**
+ * Bu satırın üstüne GÜN ayırıcı çizilmeli mi? Sıralı listede gün değişimini
+ * bulan saf geçit — kullanıcı/askistan bağımsız çalışır, ilk öğe daima ayracı alır.
+ * Saf — JVM testi (ChatDaySeparatorTest).
+ */
+internal fun needsDaySeparator(prevTs: Double?, ts: Double?): Boolean {
+    if (ts == null || ts <= 0) return false
+    if (prevTs == null || prevTs <= 0) return true
+    val zone: java.time.ZoneId = java.time.ZoneId.systemDefault()
+    val a = java.time.Instant.ofEpochSecond(prevTs.toLong()).atZone(zone).toLocalDate()
+    val b = java.time.Instant.ofEpochSecond(ts.toLong()).atZone(zone).toLocalDate()
+    return a != b
+}
+
+/** Satır çiftleri: (önceki ts, öğe) — ayraç kararının girdisi. */
+internal data class TimedRow(val item: ChatItem, val prevTs: Double?)
+
+/** Gün ayırıcı satırı — "Bugün" / "Dün" / "12.09.2026" ortalanmış ince etiket. */
+@Composable
+internal fun DaySeparatorRow(label: String?) {
+    if (label.isNullOrBlank()) return
+    Row(
+        Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 1.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            label,
+            color = HermesColors.TextFaint,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
 
 /**
  * Ajan günlüğünü tek satıra katlar (tur-4 H): ardışık `Tool` öğeleri + bitmiş
