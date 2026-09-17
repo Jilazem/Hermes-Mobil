@@ -209,6 +209,15 @@ data class AppSettings(
      */
     val assistantAutoRead: Boolean = true,
 
+    // ── Arena (tur-15) ───────────────────────────────────────────────
+    /**
+     * Arena sahne kipi: `work` = İş sahnesi (varsayılan) · `outrun` = Outrun yarış.
+     *
+     * Kimlik metni `ArenaSceneKind.id`; bilinmeyen değer iş sahnesine düşer
+     * (`ArenaSceneKind.fromId`), eski kayıtta alan yoksa varsayılan geçerli.
+     */
+    val arenaSceneMode: String = "work",
+
 
     // ── Gizlilik ─────────────────────────────────────────────────────
     val biometricLock: Boolean = false,

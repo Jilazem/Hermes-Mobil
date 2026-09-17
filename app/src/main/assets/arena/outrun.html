@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0416">
+<title>Outrun Arena</title>
+<style>
+  /* ── Outrun Arena HUD — synthwave palet, WebView uyumlu ───────────────── */
+  :root {
+    --bg: #0b0416;
+    --mag: #ff2d95;
+    --cyan: #29f0ff;
+    --sun: #ffd76f;
+    --ink: #f4ecff;
+    --dim: rgba(244, 236, 255, .62);
+    --font: system-ui, -apple-system, "Roboto", "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: var(--font);
+    -webkit-user-select: none; user-select: none;
+    overscroll-behavior: none; touch-action: none;
+  }
+  /* Sahne kutusu WebView'i TAM doldurur; canvas boyutu JS'te setSize(...,true)
+     ile satır içi yazılır (arena3d tur-9 ölçümü: yalnız CSS % zinciri emülatörde
+     0 yükseklik bırakıyordu). */
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+
+  /* Dokunmatik direksiyon katmanı: butonların ALTINDA kalır (steering yüzeyi). */
+  #touch { position: fixed; inset: 0; touch-action: none; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #topbar {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    display: flex; gap: clamp(10px, 4vw, 26px); align-items: flex-start;
+  }
+  .stat { display: flex; flex-direction: column; line-height: 1.05; }
+  .stat .k { font-size: clamp(8px, 2.1vw, 11px); letter-spacing: .18em; color: var(--dim); }
+  .stat .v {
+    font-family: var(--mono); font-weight: 700;
+    font-size: clamp(15px, 4.6vw, 26px); font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px rgba(41, 240, 255, .55);
+  }
+  #dist .v { color: var(--cyan); }
+  #best .v { color: var(--sun); font-size: clamp(12px, 3.4vw, 19px); }
+  #spd .v { color: var(--mag); }
+  #spd .u { font-size: .5em; color: var(--dim); margin-left: 2px; }
+
+  #rightbar {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    right: calc(env(safe-area-inset-right, 0px) + 12px);
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  }
+  #fps {
+    font-family: var(--mono); font-size: 11px; color: var(--dim);
+    letter-spacing: .06em; text-align: right;
+  }
+  #pauseBtn {
+    pointer-events: auto; width: 42px; height: 42px; border-radius: 12px;
+    border: 1px solid rgba(41, 240, 255, .5); background: rgba(11, 4, 22, .55);
+    color: var(--cyan); font-size: 15px; line-height: 1; cursor: pointer;
+    backdrop-filter: blur(2px);
+  }
+  #boostBtn {
+    position: absolute; pointer-events: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 16px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+    width: clamp(74px, 22vw, 108px); height: clamp(74px, 22vw, 108px);
+    border-radius: 50%;
+    border: 2px solid var(--mag); background: rgba(255, 45, 149, .12);
+    color: var(--mag); font-weight: 800; letter-spacing: .12em;
+    font-size: clamp(11px, 3.2vw, 15px);
+    box-shadow: 0 0 22px rgba(255, 45, 149, .35), inset 0 0 18px rgba(255, 45, 149, .18);
+    opacity: .9;
+  }
+  #boostBtn.on { background: rgba(255, 45, 149, .4); color: #fff; opacity: 1; }
+
+  /* ── ekranlar (başlangıç / duraklat / bitiş) ──────────────────────────── */
+  .scrim {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: clamp(10px, 2.4vh, 20px);
+    padding: 24px; text-align: center;
+    background: radial-gradient(120% 80% at 50% 62%, rgba(255, 45, 149, .18), rgba(11, 4, 22, .93) 62%),
+                linear-gradient(180deg, rgba(11, 4, 22, .96), rgba(24, 2, 48, .96));
+    z-index: 5;
+  }
+  .scrim.hidden { display: none; }
+  .title {
+    font-size: clamp(30px, 11vw, 74px); font-weight: 900; letter-spacing: .04em;
+    line-height: .95; margin: 0;
+    background: linear-gradient(180deg, #fff 6%, var(--sun) 38%, var(--mag) 78%, #7a0b52 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(255, 45, 149, .5));
+  }
+  .sub {
+    font-size: clamp(10px, 3.2vw, 15px); letter-spacing: .42em;
+    color: var(--cyan); text-transform: uppercase; margin: 0;
+  }
+  .rule { width: min(72vw, 380px); height: 1px; background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+  .hint { font-size: clamp(11px, 3vw, 14px); color: var(--dim); line-height: 1.7; max-width: 34ch; margin: 0; }
+  .hint b { color: var(--ink); font-weight: 600; }
+  .btn {
+    pointer-events: auto; cursor: pointer;
+    padding: clamp(12px, 3.4vw, 17px) clamp(28px, 9vw, 54px);
+    border-radius: 16px; border: 2px solid var(--cyan);
+    background: rgba(41, 240, 255, .1); color: var(--ink);
+    font-family: inherit; font-weight: 800; font-size: clamp(15px, 4.6vw, 22px);
+    letter-spacing: .22em; text-transform: uppercase;
+    box-shadow: 0 0 26px rgba(41, 240, 255, .3), inset 0 0 20px rgba(41, 240, 255, .12);
+  }
+  .btn.mag { border-color: var(--mag); background: rgba(255, 45, 149, .12); box-shadow: 0 0 26px rgba(255, 45, 149, .32), inset 0 0 20px rgba(255, 45, 149, .12); }
+  .btn:active { transform: translateY(1px) scale(.99); }
+  .kbd {
+    display: inline-block; padding: 1px 7px; border-radius: 6px; margin: 0 2px;
+    border: 1px solid rgba(244, 236, 255, .3); background: rgba(255, 255, 255, .06);
+    font-family: var(--mono); font-size: .92em;
+  }
+  #scoreBig {
+    font-family: var(--mono); font-weight: 800; font-size: clamp(30px, 11vw, 62px);
+    color: var(--cyan); text-shadow: 0 0 18px rgba(41, 240, 255, .5); margin: 0;
+  }
+  #overSub { color: var(--mag); letter-spacing: .3em; font-size: clamp(10px, 3vw, 14px); text-transform: uppercase; }
+
+  /* Sol/sağ dokunma ipucu — 6 sn sonra söner */
+  #touchHint {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    display: flex; gap: clamp(40px, 34vw, 260px);
+    font-size: clamp(9px, 2.4vw, 12px); letter-spacing: .2em; color: var(--dim);
+    transition: opacity .8s ease;
+  }
+  #touchHint.off { opacity: 0; }
+
+  #fallback {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    color: #7b8894; font: 13px var(--font); text-align: center; padding: 24px; z-index: 9;
+  }
+  /* rapor: headless kanıt çıktısı (görünmez ama --dump-dom'da okunur) */
+  #report { position: absolute; left: -9999px; top: 0; white-space: pre; }
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="touch"></div>
+
+  <div id="hud">
+    <div id="topbar">
+      <div class="stat" id="dist"><span class="k">MESAFE</span><span class="v" id="distV">0</span></div>
+      <div class="stat" id="best"><span class="k">EN İYİ</span><span class="v" id="bestV">0</span></div>
+      <div class="stat" id="spd"><span class="k">HIZ</span><span class="v" id="spdV">0<span class="u">km/s</span></span></div>
+    </div>
+    <div id="rightbar">
+      <div id="fps">--</div>
+      <button id="pauseBtn" title="Duraklat">❚❚</button>
+    </div>
+    <button id="boostBtn">GAZ</button>
+    <div id="touchHint"><span>◀ SOL YARI</span><span>SAĞ YARI ▶</span></div>
+  </div>
+
+  <div class="scrim" id="screenStart">
+    <p class="sub">Arena · Neon Yarış</p>
+    <h1 class="title">OUTRUN</h1>
+    <div class="rule"></div>
+    <p class="hint">
+      <b>Dokunmatik:</b> sol/sağ yarıya basılı tut = direksiyon, sürükleyerek doz ayarı.<br>
+      <b>Klavye:</b> <span class="kbd">←</span><span class="kbd">→</span> direksiyon ·
+      <span class="kbd">↑</span> gaz · <span class="kbd">↓</span> fren · <span class="kbd">P</span> duraklat
+    </p>
+    <button class="btn" id="startBtn">Başla</button>
+    <p class="hint">Dokun-geç · otomatik gaz · en iyi: <b id="startBest">0</b> m</p>
+  </div>
+
+  <div class="scrim hidden" id="screenPause">
+    <p class="sub">Duraklatıldı</p>
+    <p class="hint">Mesafe <b id="pauseDist">0</b> m · en iyi <b id="pauseBest">0</b> m</p>
+    <button class="btn" id="resumeBtn">Devam</button>
+    <button class="btn mag" id="restartBtn">Yeniden</button>
+  </div>
+
+  <div class="scrim hidden" id="screenOver">
+    <p id="overSub">Şeritten çıktın</p>
+    <p id="scoreBig">0</p>
+    <p class="hint">En iyi: <b id="overBest">0</b> m · çarpışma: <b id="overCrash">0</b></p>
+    <button class="btn mag" id="againBtn">Tekrar</button>
+  </div>
+
+  <div id="fallback">3D sahne bu cihazda calismiyor</div>
+  <pre id="report"></pre>
+
+  <!-- three.js r147 (MIT) — yerel asset, çalışma anında ağ erişimi YOK. -->
+  <script src="three.min.js"></script>
+  <script src="outrun.js"></script>
+</body>
+</html>

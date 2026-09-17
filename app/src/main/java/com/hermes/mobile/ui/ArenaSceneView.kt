@@ -1,6 +1,7 @@
 package com.hermes.mobile.ui
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -33,6 +35,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,18 +65,98 @@ import java.io.ByteArrayInputStream
  *  - `allowFileAccess = false`, `allowContentAccess = false`: cihaz dosya sistemi kapalı.
  *  - WebView konsolu logcat'e düşer (JS hatası sahada görünür kalır).
  *
+ * Tur-15: aynı sözleşme Outrun yarış sahnesine de uygulanır ([ArenaOutrunHost]).
+ *
  * Köprü: Kotlin → JS `window.arenaScene.setData(json)` / `setActive(bool)`;
  * JS → Kotlin `__ArenaBridge.onSceneEvent(type, detail)`.
  */
 private const val ARENA_SCENE_TAG = "ArenaScene"
 
 /** Sahne sayfası — uygulama asset'i (çalışma anında indirme yok). */
-const val ARENA_SCENE_URL = "file:///android_asset/arena/arena3d.html"
+val ARENA_SCENE_URL = arenaSceneUrl(ArenaSceneKind.WORK)
 
-/** İzin verilen tek kaynak kökü. */
-private const val ARENA_ASSET_PREFIX = "file:///android_asset/arena/"
+/** Outrun sayfasının zemin rengi (outrun.html `--bg`) — ilk karede beyaz parlama olmasın. */
+private const val OUTRUN_BACKGROUND = "#0b0416"
 
+/**
+ * Tek WebView fabrikası — iki sahne (iş sahnesi, Outrun) AYNI güvenlik sözleşmesiyle doğar.
+ *
+ * Tek fark: Outrun en iyi skoru `localStorage`da tuttuğu için DOM depolaması açık
+ * (depo uygulamanın kendi WebView profilinde; ağ/dosya erişimi yine kapalı).
+ * `onEvent` her zaman ana iş parçacığında çağrılır.
+ */
 @SuppressLint("SetJavaScriptEnabled")
+private fun createArenaWebView(
+    ctx: Context,
+    kind: ArenaSceneKind,
+    background: String,
+    onEvent: (String, String) -> Unit,
+): WebView {
+    val handler = Handler(Looper.getMainLooper())
+    return WebView(ctx).apply {
+        setBackgroundColor(Color.parseColor(background))
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = kind == ArenaSceneKind.OUTRUN
+        settings.allowFileAccess = false
+        settings.allowContentAccess = false
+        settings.blockNetworkLoads = true
+        settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        settings.setSupportZoom(false)
+        settings.builtInZoomControls = false
+        settings.displayZoomControls = false
+        settings.mediaPlaybackRequiresUserGesture = true
+
+        addJavascriptInterface(
+            object {
+                @JavascriptInterface
+                fun onSceneEvent(type: String, detail: String) {
+                    // Köprü çağrısı UI dışı iş parçacığından gelir → ana iş parçacığına taşı.
+                    handler.post { onEvent(type, detail) }
+                }
+            },
+            "__ArenaBridge",
+        )
+
+        webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                Log.i(ARENA_SCENE_TAG, "sayfa yuklendi: $url")
+            }
+
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?,
+            ): WebResourceResponse? {
+                val url = request?.url?.toString().orEmpty()
+                if (arenaAssetAllowed(url)) return null // yerel asset: normal akış
+                Log.w(ARENA_SCENE_TAG, "engellendi (yerel asset degil): $url")
+                DiagLog.w("arena3d", "engellendi: $url")
+                return WebResourceResponse(
+                    "text/plain",
+                    "utf-8",
+                    ByteArrayInputStream(ByteArray(0)),
+                )
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: android.webkit.WebResourceError?,
+            ) {
+                Log.w(ARENA_SCENE_TAG, "yukleme hatasi: ${error?.description}")
+                handler.post { onEvent("error", error?.description?.toString().orEmpty()) }
+            }
+        }
+
+        webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(msg: ConsoleMessage?): Boolean {
+                val line = "konsol: ${msg?.message()} @${msg?.sourceId()}:${msg?.lineNumber()}"
+                Log.i(ARENA_SCENE_TAG, line)
+                return true
+            }
+        }
+    }
+}
+
 @Composable
 fun ArenaSceneHost(
     json: String,
@@ -81,7 +165,6 @@ fun ArenaSceneHost(
     onEvent: (String, String) -> Unit = { _, _ -> },
 ) {
     val ctx = LocalContext.current
-    val handler = remember { Handler(Looper.getMainLooper()) }
     val latestEvent by rememberUpdatedState(onEvent)
     val lifecycleOwner = LocalLifecycleOwner.current
     var sceneReady by remember { mutableStateOf(false) }
@@ -89,78 +172,17 @@ fun ArenaSceneHost(
     // WebView BİR KEZ doğar (remember): her recomposition'da yeniden yaratılıp
     // eskisinin yok edilmesi sahneyi öldürüyordu (tur-9 ölçümü: destroy + JS hiç koşmadı).
     val web = remember {
-        WebView(ctx).apply {
-            setBackgroundColor(Color.parseColor(theme.background))
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = false
-            settings.allowFileAccess = false
-            settings.allowContentAccess = false
-            settings.blockNetworkLoads = true
-            settings.cacheMode = WebSettings.LOAD_NO_CACHE
-            settings.setSupportZoom(false)
-            settings.builtInZoomControls = false
-            settings.displayZoomControls = false
-            settings.mediaPlaybackRequiresUserGesture = true
-
-            addJavascriptInterface(
-                object {
-                    @JavascriptInterface
-                    fun onSceneEvent(type: String, detail: String) {
-                        // Köprü çağrısı UI dışı iş parçacığından gelir → ana iş parçacığına taşı.
-                        handler.post {
-                            when (type) {
-                                "ready" -> sceneReady = true
-                                "nowebgl" -> sceneReady = false
-                                "error" -> sceneReady = false
-                                else -> {}
-                            }
-                            latestEvent(type, detail)
-                        }
-                    }
-                },
-                "__ArenaBridge",
-            )
-
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    Log.i(ARENA_SCENE_TAG, "sayfa yuklendi: $url")
-                }
-
-                override fun shouldInterceptRequest(
-                    view: WebView?,
-                    request: WebResourceRequest?,
-                ): WebResourceResponse? {
-                    val url = request?.url?.toString().orEmpty()
-                    if (url.startsWith(ARENA_ASSET_PREFIX)) return null // yerel asset: normal akış
-                    Log.w(ARENA_SCENE_TAG, "engellendi (yerel asset degil): $url")
-                    DiagLog.w("arena3d", "engellendi: $url")
-                    return WebResourceResponse(
-                        "text/plain",
-                        "utf-8",
-                        ByteArrayInputStream(ByteArray(0)),
-                    )
-                }
-
-                override fun onReceivedError(
-                    view: WebView?,
-                    request: WebResourceRequest?,
-                    error: android.webkit.WebResourceError?,
-                ) {
-                    Log.w(ARENA_SCENE_TAG, "yukleme hatasi: ${error?.description}")
-                    handler.post { latestEvent("error", error?.description?.toString().orEmpty()) }
-                }
+        createArenaWebView(ctx, ArenaSceneKind.WORK, theme.background) { type, detail ->
+            when (type) {
+                "ready" -> sceneReady = true
+                "nowebgl" -> sceneReady = false
+                "error" -> sceneReady = false
+                else -> {}
             }
-
-            webChromeClient = object : WebChromeClient() {
-                override fun onConsoleMessage(msg: ConsoleMessage?): Boolean {
-                    val line = "konsol: ${msg?.message()} @${msg?.sourceId()}:${msg?.lineNumber()}"
-                    Log.i(ARENA_SCENE_TAG, line)
-                    return true
-                }
-            }
-
+            latestEvent(type, detail)
+        }.also {
             Log.i(ARENA_SCENE_TAG, "sahne yukleniyor: $ARENA_SCENE_URL")
-            loadUrl(ARENA_SCENE_URL)
+            it.loadUrl(ARENA_SCENE_URL)
         }
     }
 
@@ -200,6 +222,123 @@ fun ArenaSceneHost(
             (web.parent as? ViewGroup)?.removeView(web)
             web.destroy()
         }
+    }
+}
+
+/**
+ * Tur-15: Outrun WebView'inin sahibi — sekme değişimini SAĞ atlatır.
+ *
+ * İş sahnesi veri güdümlüdür, sekmeye dönüşte yeniden doğması zararsız. Yarış ise
+ * durum taşır (mesafe, konum): WebView sekme kompozisyonunun dışında (HermesApp
+ * kapsamında) yaşar; sekme gizlenince yarış duraklatılır + render durur + WebView
+ * `onPause`, dönüşte aynı sayfa kaldığı yerden (duraklatma ekranında) sürer.
+ * Kip "İş sahnesi"ne alınınca [release] ile yok edilir (GPU bağlamı tutulmaz).
+ *
+ * Tüm geçiş kararları saf [arenaSceneReduce] / [arenaSceneCommands]'dadır.
+ */
+@Stable
+class ArenaOutrunHolder {
+    private var web: WebView? = null
+
+    var run by mutableStateOf(ArenaSceneRun())
+        private set
+
+    /** Son sayfa yüklemesinin başladığı an (zaman aşımı kararı için); 0 = yüklenmedi. */
+    var loadStartedAt by mutableLongStateOf(0L)
+        private set
+
+    internal var listener: (String, String) -> Unit = { _, _ -> }
+
+    fun dispatch(e: ArenaSceneEvent) {
+        val prev = run
+        val next = arenaSceneReduce(prev, e)
+        run = next
+        val w = web ?: return
+        arenaSceneCommands(ArenaSceneKind.OUTRUN, prev, next).forEach { w.evaluateJavascript(it, null) }
+    }
+
+    internal fun obtain(ctx: Context): WebView = web ?: createArenaWebView(
+        ctx, ArenaSceneKind.OUTRUN, OUTRUN_BACKGROUND,
+    ) { type, detail ->
+        arenaSceneEventOf(type)?.let(::dispatch)
+        listener(type, detail)
+    }.also {
+        web = it
+        run = ArenaSceneRun()
+        loadStartedAt = System.currentTimeMillis()
+        val url = arenaSceneUrl(ArenaSceneKind.OUTRUN)
+        Log.i(ARENA_SCENE_TAG, "outrun yukleniyor: $url")
+        it.loadUrl(url)
+    }
+
+    fun release() {
+        val w = web ?: return
+        Log.i(ARENA_SCENE_TAG, "outrun kapaniyor")
+        web = null
+        (w.parent as? ViewGroup)?.removeView(w)
+        w.destroy()
+        run = ArenaSceneRun()
+        loadStartedAt = 0L
+    }
+}
+
+/** Outrun sahnesi — WebView [holder]'dan alınır; bu composable yalnız takar/söker. */
+@Composable
+fun ArenaOutrunHost(
+    holder: ArenaOutrunHolder,
+    modifier: Modifier = Modifier,
+    onEvent: (String, String) -> Unit = { _, _ -> },
+) {
+    val ctx = LocalContext.current
+    val latestEvent by rememberUpdatedState(onEvent)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val web = remember(holder) { holder.obtain(ctx) }
+
+    AndroidView(
+        factory = {
+            // Önceki sekme ziyaretinden kalan ebeveyn varsa önce ayır (tek ebeveyn kuralı).
+            (web.parent as? ViewGroup)?.removeView(web)
+            web
+        },
+        modifier = modifier,
+    )
+
+    // Sekme/ekran görünürlüğü: gizlenince önce JS (duraklat + render kapat), sonra WebView.onPause.
+    DisposableEffect(holder, web) {
+        holder.listener = { t, d -> latestEvent(t, d) }
+        web.onResume()
+        holder.dispatch(ArenaSceneEvent.TAB_SHOWN)
+        onDispose {
+            holder.listener = { _, _ -> }
+            holder.dispatch(ArenaSceneEvent.TAB_HIDDEN)
+            web.onPause()
+            (web.parent as? ViewGroup)?.removeView(web)
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, web) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    holder.dispatch(ArenaSceneEvent.APP_PAUSED)
+                    web.onPause()
+                }
+
+                Lifecycle.Event.ON_RESUME -> {
+                    web.onResume()
+                    holder.dispatch(ArenaSceneEvent.APP_RESUMED)
+                }
+
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Geri tuşu: koşan yarışta ÖNCE duraklat; duraklatılmışken kabuğun çıkış akışı işler.
+    BackHandler(enabled = arenaBackConsumed(ArenaSceneKind.OUTRUN, holder.run)) {
+        holder.dispatch(ArenaSceneEvent.BACK)
     }
 }
 

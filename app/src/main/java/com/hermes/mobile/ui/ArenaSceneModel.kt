@@ -274,8 +274,7 @@ object ArenaSceneJson {
     }
 
     /** Sahne duraklatma/aktiflik komutu — ekran görünmezken render döngüsü durur. */
-    fun jsActive(active: Boolean): String =
-        "window.arenaScene&&window.arenaScene.setActive($active)"
+    fun jsActive(active: Boolean): String = arenaJsActive(ArenaSceneKind.WORK, active)
 }
 
 // ── Fallback kararı ─────────────────────────────────────────────────────────
