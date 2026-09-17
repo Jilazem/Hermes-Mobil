@@ -1,0 +1,73 @@
+{
+  "verdict": "pass",
+  "gorev": "tur15",
+  "tarih": "2026-09-17T20:34:51+03:00",
+  "test_sonucu": "Kendi koşumum: JUnit XML sayımı (denetim/count_tests.py, 50 dosya, üretici iddiasına güvenilmedi) -> tests=635 failures=0 errors=0 skipped=0 (baz 617 + yeni ArenaSceneModeTest 18). Süreç içinde VoiceMessageFlowTest.kt tek başına yeniden koşturuldu (izole rerun) ve EXIT=0/0 hata ile geçti; ardından tüm test-results dizini tek seferde (aynı mtime 2026-09-17T18:05:46) yeniden üretildi ve GENEL sayım yine 635/0/0/0 çıktı -- ara bulgu, gerçek bir başarısızlık değil tek seferlik ortam kaynaklı gecikme/flakiness idi, nihai koşuda doğrulanamadı/tekrarlanmadı. assembleDebug BUILD SUCCESSFUL; APK md5 ef970d93c617c0d531c7b109b7fabd76 RAPOR.md ile birebir (24.394.804 bayt), APK'nın kendim hesapladığım sha256'sı artifacts alanında.",
+  "findings": [
+    {
+      "sev": "MEDIUM",
+      "id": "genel/kanit",
+      "bulgu": "RAPOR.md 'Dürüst kalanlar': ForegroundServiceDidNotStartInTime bandı 'önceki oturumdan' denip 01'de kapatıldığı ve 'crash buffer boş' yazıyor; ancak denetim/tur15/kanit/09-yeniden-acilis-kip-kalici.png (17:17, force-stop sonrası) aynı 'Önceki açılış bir çökmeyle kapandı' bandını YENİDEN gösteriyor ve mod çiplerini örtüyor. Kanıt oturumu içinde (01→09 arası) yeni bir çökme kaydı oluştuğu veya bandın kalıcı olduğu açıklanmamış; 'logcat -b crash = 0' iddiası bu görselle desteklenmiyor. Tur-15 diff'inde servis kodu yok → tur15 kaynaklı değil, ama iddia düzeltilmeli."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel/compose",
+      "bulgu": "ArenaSceneView.kt:260-268 ArenaOutrunHolder.obtain() remember{} içinde (kompozisyon sırasında) snapshot state yazıyor (run, loadStartedAt); ArenaScreen.kt:92-93 aynı kompozisyonda bunları önceden okuyor → ekstra recomposition; çökme değil, ama yan etkiyi LaunchedEffect/SideEffect'e taşımak daha temiz."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel/test",
+      "bulgu": "ArenaSceneModeTest.kt:235 workSceneNeverGetsOutrunPauseCommand yalnız saf fonksiyonu kilitliyor; çalışma anında iş sahnesi (ArenaSceneHost) arenaSceneCommands'ı hiç kullanmıyor. Ayrıca OUTRUN→İş sahnesi geçişinde ArenaSceneView.kt:313 onDispose TAB_HIDDEN ile outrun WebView'ine outrun.pause() gider, ardından ArenaScreen.kt:84 release/destroy — zararsız, ama 'iş sahnesine dönüşte pause gitmiyor' iddiası UI katmanında değil yalnız saf katmanda kanıtlı."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel/koprü",
+      "bulgu": "ArenaSceneView.kt:114/146 handler.post ile kuyruğa giren köprü olayları release() (destroy) sonrası da holder.dispatch'e akar; yeni WebView doğmuşsa geç 'pause/error' olayı yeni run durumuna uygulanabilir (şu anki reducer'da LOADING'de PAUSE no-op, ancak geç 'error' yeni sahneyi ERROR'a düşürebilir). WebView kimliğiyle olay süzme önerilir."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel/manifest",
+      "bulgu": "AndroidManifest.xml <application android:hardwareAccelerated=\"true\">: minSdk=26'da (app/build.gradle.kts:14) varsayılan zaten true; değişiklik davranış değiştirmez, gereksiz ama zararsız."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel/urun",
+      "bulgu": "assets/arena/outrun.js:1315-1318 teşhis kancaları (_step/_render/_katman) üründe kaldı (RAPOR'da beyan edilmiş)."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel/web",
+      "bulgu": "Web kıyası kapsam dışı: public URL 401. node1 iç ağ 127.0.0.1:5555/outrun/outrun.js artık SPA index (811 B) dönüyor → dist/outrun/ node1'de YOK (yayın kaldırılmış). APK içi outrun.js/html/three md5 (3cc1c7b8…/85f30ebe…/ac4679b1…) arena-outrun RAPOR-WEB.md'de yayına konan md5'lerle birebir; RAPOR.md'de web eşitliği iddiası yok (yalnız kaynak=APK, doğrulandı)."
+    }
+  ],
+  "artifacts": {
+    "app/src/main/AndroidManifest.xml": "ce53b2ec13bd5e8d220890642d53a43e57fb8ad6af935ad407927b3f32ef9452",
+    "app/src/main/assets/arena/outrun.html": "db1f016a5ec85b1bc94aa4aa7b765387d330c44807c21f838ca2679f985bc0ec",
+    "app/src/main/assets/arena/outrun.js": "246de0e37b9b18fa892c834e7214c472ac1340e5578708f8e5a6c7eea151bef3",
+    "app/src/main/java/com/hermes/mobile/MainActivity.kt": "c9e98edf59b4a994b8df5fd5699be6691b48a4ea643f022c9d2db21f70ae55ae",
+    "app/src/main/java/com/hermes/mobile/data/AppSettings.kt": "317029165b903c0493ab0d9c868e5dff5e3eb0f4240f67fd8ee7c11dea0fa5ca",
+    "app/src/main/java/com/hermes/mobile/ui/ArenaSceneMode.kt": "23c84bac6b43f983cc8b11f2647d9e7cc147e4267ba5994f0df7a60d10051406",
+    "app/src/main/java/com/hermes/mobile/ui/ArenaSceneModel.kt": "d4989045a49ab34a869a98e45673672c14a85ad6189ee997ea7e4bd90cb159be",
+    "app/src/main/java/com/hermes/mobile/ui/ArenaSceneView.kt": "3f8d4988686b173fcb3f39933d67f30891d8eb2d79b416b1c567223446c22281",
+    "app/src/main/java/com/hermes/mobile/ui/ArenaScreen.kt": "dd33de6d66668d694d3d7458fa096dc846d48a95006fdb64719a91c6c62e986e",
+    "app/src/test/java/com/hermes/mobile/ArenaSceneModeTest.kt": "3c78896d130eae617a3a6fb2ecab4d5e63e4d528154142979fd022dfdb1d48b8",
+    "denetim/tur15/RAPOR.md": "0f299dd6da85651eccba43a1559bb4c12a453e3465bca0c293588d3380b97648",
+    "denetim/tur15/cdp_eval.py": "82efd93bb154da1cab32a780ee98d7d7617b3015a63a2b1b69bf7d13824bd07e",
+    "denetim/tur15/kanit/01-acilis.png": "db1eb7a940afce248f71662c3efaab2bc3edf268da0f329e0b1a24835a986c62",
+    "denetim/tur15/kanit/02-arena-is-sahnesi.png": "f1e048f17f3de24ca509a7eb1304259753a5c0e52e4a0c9d459c7857f58bf281",
+    "denetim/tur15/kanit/03-outrun-acildi.png": "b6eb1eab4e0e4cbc9417150d1978eacb151afab7d421d24733189eba5e857c64",
+    "denetim/tur15/kanit/04-yaris-kosuyor.png": "3e87f9754576922d7b25f911980fd271dd105aeaea0d602616c9a232f69dad3b",
+    "denetim/tur15/kanit/05-sekme-sohbet.png": "a3ad7f741b4776399db4cb4dd5788eb64a16d36bda226db4c0e8a576f39c72ef",
+    "denetim/tur15/kanit/06-donus-duraklatilmis.png": "b041c6f648150d0048240ab1b857d06e7d22e9a2894088a219ee858add3953a3",
+    "denetim/tur15/kanit/07-kosarken-geri-tusu-duraklatti.png": "e5cf2b94563c07f6c17b62b51d0984e3dc1cf65e68c5f5f007ef5a76c78615a2",
+    "denetim/tur15/kanit/08-duraklatilmiskken-geri-cikis-diyalogu.png": "088cd530c3edac3abdc64235f85f6f8541a9a069e5af048d55f070d1cf40bf84",
+    "denetim/tur15/kanit/09-yeniden-acilis-kip-kalici.png": "eaa5af200467615f4ce10ae1690472e8f6d6ca01c98fab8188700acd69cdab2a",
+    "denetim/tur15/kanit/10-is-sahnesine-donus.png": "567ce22440e3cd01893e22145e5996658e69988acd0242cac2c973ec2d4e1209",
+    "denetim/tur15/kanit/cdp-yasam-dongusu.txt": "b3841e374ca77ee6c92dd784434769f87c3ab9b0b1e98a76d076c7991d9ccef3",
+    "app/build/outputs/apk/debug/app-debug.apk": "7b062af64fbfb015a73cfbadadb39dcc4a040bbc49f125516e21954b91cc5332"
+  },
+  "lesson": "635/0 iddiası tek koşuya güvenilerek doğrulanmamalı: VoiceMessageFlowTest ara bir koşuda gecikme/flakiness gösterdi, izole rerun + tam takım tekrar koşumu (aynı mtime'lı 50 XML) ile mükerrer koşum kanıtı istendi; tek seferlik yeşil sonuç kanıt sayılmaz.",
+  "uzman": "android",
+  "deneme_no": 0,
+  "devir": false
+}
