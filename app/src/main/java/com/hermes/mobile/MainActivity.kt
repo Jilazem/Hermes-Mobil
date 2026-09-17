@@ -648,6 +648,12 @@ private fun HermesApp(
     onMakeDefaultAssistant: () -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(Tab.Chat) }
+    // Tur-15: Outrun yarış WebView'i sekme kompozisyonunun DIŞINDA yaşar (sekme
+    // değişince duraklar, dönüşte kaldığı yerden sürer); HermesApp kapanınca yok edilir.
+    val outrunHolder = remember { com.hermes.mobile.ui.ArenaOutrunHolder() }
+    androidx.compose.runtime.DisposableEffect(outrunHolder) {
+        onDispose { outrunHolder.release() }
+    }
     // Tur-11: sesli mesaj durumu (kayıt sayacı + seslendirme fazı) ve sesle
     // yazılan metin. HermesApp gövdesinde toplanıyor: ChatScreen çağrısı bu
     // kapsamda (setContent lambda'sındaki val'lar burada görünmez).
@@ -1120,6 +1126,13 @@ private fun HermesApp(
                         // Tur-9: Arena boştayken sahne sunucunun çalışan oturumlarını
                         // gösterir (LiveSessions kaynağı, salt okuma).
                         liveSessions = live.sessions,
+                        // Tur-15: sahne kipi kalıcı (AppSettings) + Outrun WebView sekme
+                        // değişiminden sağ çıksın diye HermesApp kapsamında tutulur.
+                        sceneMode = settings.arenaSceneMode,
+                        onSceneModeChange = { m ->
+                            viewModel.settingsStore.update { it.copy(arenaSceneMode = m) }
+                        },
+                        outrunHolder = outrunHolder,
                     )
                     Tab.Settings -> SettingsScreen(
                         shizukuState = shizukuState,

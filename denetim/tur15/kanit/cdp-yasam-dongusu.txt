@@ -1,0 +1,11 @@
+[kosuyor] "{\"durum\":\"running\",\"mesafe\":667,\"en_iyi\":0,\"hiz_kmh\":329,\"carpisma\":0,\"serit_x\":-0.87,\"direksiyon\":0,\"serit_disi\":0,\"fps\":2.1,\"kare\":784,\"cizim\":17,\"ucgen\":6480}"
+[sohbet sekmesi] "{\"durum\":\"paused\",\"mesafe\":690,\"en_iyi\":0,\"hiz_kmh\":329,\"carpisma\":0,\"serit_x\":-0.99,\"direksiyon\":0,\"serit_disi\":0,\"fps\":0.4,\"kare\":789,\"cizim\":17,\"ucgen\":6480}" kare_6sn_once=789 kare_simdi=789 hidden=true
+[arena donus] "{\"durum\":\"paused\",\"mesafe\":690,\"en_iyi\":0,\"hiz_kmh\":329,\"carpisma\":0,\"serit_x\":-0.99,\"direksiyon\":0,\"serit_disi\":0,\"fps\":0.6,\"kare\":832,\"cizim\":17,\"ucgen\":6480}"
+[devam dokunusu] durum="paused"
+[geri tusu 1] durum="paused" odak= topResumedActivity=ActivityRecord{31ae7e4 u0 com.hermes.mobile.v2/com.hermes.mobile.MainActivity t124}
+[geri tusu, oyun duraklatilmisken] kabuk 'Cikilsin mi?' diyalogu acti (sahne geri tusunu tuketmedi)
+[devam dokunusu] durum="running" mesafe=1007
+[geri tusu, oyun kosarken] durum="paused" mesafe=1048 odak= mCurrentFocus=Window{3f91379 u0 com.hermes.mobile.v2/com.hermes.mobile.MainActivity}
+[force-stop + yeniden acilis] pid=7705 Arena sekmesi Outrun kipinde acildi (09)
+[once] "url": "file:///android_asset/arena/outrun.html" 
+[is sahnesi secildi] "url": "file:///android_asset/arena/arena3d.html" 

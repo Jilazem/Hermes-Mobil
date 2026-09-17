@@ -61,26 +61,46 @@ import kotlinx.coroutines.delay
  *
  * Tur-9: en üstte ~%35 yükseklikte **three.js 3D sahnesi** (WebView, yerel asset).
  * Sahne ekleniktir — kurulum/çipler/sonuç kartları/Durdur aynen korunur.
+ *
+ * Tur-15: sahne kipi seçici — "İş sahnesi" (varsayılan) | "Outrun yarış".
+ * Seçim [sceneMode] ile AppSettings'te kalıcıdır; Outrun WebView'i [outrunHolder]
+ * içinde sekme değişiminden sağ çıkar.
  */
 @Composable
 fun ArenaScreen(
     arenaViewModel: ArenaViewModel,
     gateway: GatewayWsClient?,
     liveSessions: List<LiveSession> = emptyList(),
+    sceneMode: String = ArenaSceneKind.DEFAULT.id,
+    onSceneModeChange: (String) -> Unit = {},
+    outrunHolder: ArenaOutrunHolder = remember { ArenaOutrunHolder() },
 ) {
     val st by arenaViewModel.state.collectAsState()
+    val sceneKind = ArenaSceneKind.fromId(sceneMode)
+
+    // İş sahnesine geçilince yarış WebView'i yok edilir (GPU bağlamı arka planda tutulmaz).
+    // LaunchedEffect: Outrun host'unun onDispose'u (söküm) BUNDAN önce koşar.
+    LaunchedEffect(sceneKind) {
+        if (sceneKind != ArenaSceneKind.OUTRUN) outrunHolder.release()
+    }
 
     // Sahne durumu: JS 'ready'/'nowebgl'/'error' olayları + zaman aşımı kararı.
-    var sceneStatus by remember { mutableStateOf(ArenaSceneStatus.LOADING) }
-    val sceneStartedAt = remember { System.currentTimeMillis() }
-    var sceneCheckedAt by remember { mutableStateOf(sceneStartedAt) }
-    LaunchedEffect(sceneStatus) {
+    // İş sahnesi durumu kip başına yerel; Outrun durumu holder'da (sekme dönüşünde READY kalır).
+    var workStatus by remember(sceneKind) { mutableStateOf(ArenaSceneStatus.LOADING) }
+    val workStartedAt = remember(sceneKind) { System.currentTimeMillis() }
+    val sceneStatus = if (sceneKind == ArenaSceneKind.OUTRUN)
+        arenaSceneStatusOf(outrunHolder.run.game) else workStatus
+    val sceneStartedAt = if (sceneKind == ArenaSceneKind.OUTRUN) outrunHolder.loadStartedAt else workStartedAt
+    var sceneCheckedAt by remember(sceneKind) { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(sceneKind, sceneStatus, sceneStartedAt) {
         if (sceneStatus == ArenaSceneStatus.LOADING) {
-            delay(ARENA_SCENE_TIMEOUT_MS)
+            sceneCheckedAt = System.currentTimeMillis()
+            delay(sceneKind.timeoutMs)
             sceneCheckedAt = System.currentTimeMillis()
         }
     }
-    val sceneFallback = arenaSceneFallbackReason(sceneStatus, sceneCheckedAt - sceneStartedAt)
+    val sceneElapsed = if (sceneStartedAt == 0L) 0L else (sceneCheckedAt - sceneStartedAt).coerceAtLeast(0L)
+    val sceneFallback = arenaSceneFallbackReason(sceneStatus, sceneElapsed, sceneKind.timeoutMs)
 
     val sceneLabels = if (S.lang == Lang.EN) ArenaSceneLabels.EN else ArenaSceneLabels.TR
     val sceneFigures = arenaSceneFigures(st, liveSessions, sceneLabels)
@@ -132,25 +152,50 @@ fun ArenaScreen(
             }
         }
 
-        // 3D sahne — Arena alanının ~%35'i; WebGL yoksa zarif kart listesine düşer.
-        val sceneHeight = (LocalConfiguration.current.screenHeightDp * 0.35f)
-            .coerceIn(200f, 340f).dp
+        // Tur-15: sahne kipi seçici (kalıcı).
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            modeChip(ArenaSceneKind.WORK, S.t2("İş sahnesi", "Work scene"), sceneKind, {
+                onSceneModeChange(arenaSceneModeValue(ArenaSceneKind.WORK))
+            })
+            modeChip(ArenaSceneKind.OUTRUN, S.t2("Outrun yarış", "Outrun race"), sceneKind, {
+                onSceneModeChange(arenaSceneModeValue(ArenaSceneKind.OUTRUN))
+            })
+        }
+
+        // 3D sahne — iş sahnesi Arena alanının ~%35'i, yarış oynanabilir olsun diye ~%50'si;
+        // WebGL yoksa zarif kart listesine düşer.
+        val screenH = LocalConfiguration.current.screenHeightDp.toFloat()
+        val sceneHeight = if (sceneKind == ArenaSceneKind.OUTRUN)
+            (screenH * 0.5f).coerceIn(260f, 520f).dp
+        else
+            (screenH * 0.35f).coerceIn(200f, 340f).dp
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(sceneHeight),
         ) {
-            ArenaSceneHost(
-                json = sceneJson,
-                theme = ArenaSceneTheme.DARK,
-                modifier = Modifier.fillMaxSize(),
-            ) { type, _ ->
-                when (type) {
-                    "ready" -> sceneStatus = ArenaSceneStatus.READY
-                    "nowebgl" -> sceneStatus = ArenaSceneStatus.NO_WEBGL
-                    "error" -> sceneStatus = ArenaSceneStatus.ERROR
-                    else -> {}
+            when (sceneKind) {
+                ArenaSceneKind.WORK -> ArenaSceneHost(
+                    json = sceneJson,
+                    theme = ArenaSceneTheme.DARK,
+                    modifier = Modifier.fillMaxSize(),
+                ) { type, _ ->
+                    when (type) {
+                        "ready" -> workStatus = ArenaSceneStatus.READY
+                        "nowebgl" -> workStatus = ArenaSceneStatus.NO_WEBGL
+                        "error" -> workStatus = ArenaSceneStatus.ERROR
+                        else -> {}
+                    }
                 }
+
+                // Durum holder'da (arenaSceneReduce) tutulur; olay dinleyicisi gerekmez.
+                ArenaSceneKind.OUTRUN -> ArenaOutrunHost(
+                    holder = outrunHolder,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
             when {
                 arenaUseCardFallback(sceneFallback) ->
@@ -340,10 +385,10 @@ fun ArenaScreen(
 }
 
 @Composable
-private fun RowScope.modeChip(
-    mode: ArenaMode,
+private fun <T> RowScope.modeChip(
+    mode: T,
     label: String,
-    active: ArenaMode,
+    active: T,
     onClick: () -> Unit,
 ) {
     val isActive = mode == active
