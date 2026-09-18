@@ -1,0 +1,32 @@
+TUR-15 DUZELTME — banner kaynagi teshisi (kanit)
+Tarih: 2026-09-18 13:06:19 +0300  Cihaz: emulator-5554 (hermes-v2)  Paket: com.hermes.mobile.v2
+APK md5: ef970d93c617c0d531c7b109b7fabd76 (kurulu base.apk ile birebir dogrulandi)
+
+== 1) Android sistem crash tamponu: adb logcat -b crash -d ==
+satir sayisi = 0  (BOS)
+
+== 2) Uygulamanin kendi kalici gunlugu: files/diag.log ==
+toplam satir =      497
+' C [crash]' (banner kaynagi) satirlari:
+  403:09-18 12:50:00.000 C [crash] on thread main: TESTKAYDI.SentetikDogrulama: tur15 duzeltme teshis satiri
+
+  NOT: cok sayidaki ' E [ws] failed http=403' satirlari ERROR seviyesidir,
+  CrashGuard.recoverFromDiagLog SADECE ' C [crash]' iceren satiri alir -> banner'i tetiklemez.
+
+== 3) ApplicationExitInfo (dumpsys activity exit-info) — son cikislar ==
+          process=com.hermes.mobile.v2 reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          process=com.hermes.mobile.v2 reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          process=com.hermes.mobile.v2 reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          process=com.hermes.mobile.v2 reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          process=com.hermes.mobile.v2 reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+
+== SONUC ==
+- logcat -b crash = 0 satir: Android sistem crash tamponu GERCEKTEN bostur (native/tombstone cokme YOK).
+- Banner metni ise files/diag.log'un SON ' C [crash]' satirindan uretilir (CrashGuard.recoverFromDiagLog,
+  HermesApp.onCreate'te cagrilir). Bu iki kaynak AYRIDIR; biri digerinin kaniti degildir.
+- force-stop app files/ dizinini SILMEZ; diag.log kalicidir. Her SOGUK acilista son crash satiri yeniden
+  okunur -> banner yeniden gorunur. Kanit 09 (17:17, force-stop sonrasi) bu davranistir, celiski degil.
+- Banner'i dokunarak kapatma (kanit 01) yalnizca bellekteki CrashGuard.lastCrash=null yapar; force-stop
+  sureci oldurunce bir sonraki acilista disk'ten tekrar okunur -> tekrar gorunur (kalici kapatma degil).
+- Kanit 11: diag.log'daki tek ' C [crash]' satiri (bu duzeltme oturumunda kontrollu eklenen sentetik satir)
+  logcat -b crash 0 iken banner olarak yeniden acilista goruldu -> banner kaynagi kesin olarak diag.log'dur.

@@ -68,10 +68,27 @@ okundu: `denetim/tur15/cdp_eval.py`; ham kayıt `cdp-yasam-dongusu.txt`.
 | 06-donus-duraklatilmis.png | Arena'ya dönüş: "DURAKLATILDI, Mesafe 690 m" — durum korunmuş, kaldığı yerde |
 | 07-kosarken-geri-tusu-duraklatti.png | Koşarken geri tuşu → `paused` (mesafe 1048), uygulama önde kaldı, diyalog yok |
 | 08-duraklatilmiskken-geri-cikis-diyalogu.png | Duraklatılmışken geri tuşu → kabuğun "Çıkılsın mı?" diyalogu (sahne tüketmedi); "Kal" seçildi |
-| 09-yeniden-acilis-kip-kalici.png | force-stop + yeniden açılış → Arena doğrudan Outrun kipinde (kalıcılık) |
+| 09-yeniden-acilis-kip-kalici.png | force-stop + yeniden açılış → Arena doğrudan Outrun kipinde (kalıcılık). Üst kısımda çökme-kurtarma bandı yeniden görünüyor ve başlık + kip çiplerinin üstünü örtüyor (bkz. 09b ve aşağıdaki band notu) |
+| 09b-yeniden-acilis-band-kapali-kip-okunur.png | 2026-09-18 düzeltmesi: band dokununca kapatıldıktan sonra aynı yeniden-açılış durumu — "Bot Arena" başlığı ve kip çipleri açıkça okunur, "Outrun yarış" çipi seçili, WebView OUTRUN sahnesi → Outrun kipi kalıcılığı örtüşmeden doğrulanıyor |
 | 10-is-sahnesine-donus.png | "İş sahnesi"ne dönüş; DevTools sayfa listesinde outrun.html yok, yalnız arena3d.html (WebView yok edildi) |
+| 11a-sentetik-kayit-bandi.png | 2026-09-18: soğuk açılış anında (12:50) diag.log'a kontrollü eklenen sentetik `C [crash]` satırı band olarak ilk kez görünürken (Sohbet ekranı) |
+| 11-banner-diaglog-kaynakli-logcat-crash-bos.png | 2026-09-18: `logcat -b crash` = 0 iken, `files/diag.log`'daki son `C [crash]` satırı yeniden açılışta band olarak görünüyor → bandın kaynağı sistem crash tamponu değil, uygulamanın kendi kalıcı günlüğüdür |
+| 11-crash-kaynak-teshisi.txt | Yukarıdaki teşhisin ham komut çıktıları: `logcat -b crash -d` (0 satır), diag.log `C [crash]` satırları, `dumpsys activity exit-info` (çıkışlar FORCE STOP, çökme değil) |
 
-`logcat -b crash` = 0 satır (tüm adımlar sonunda).
+Çökme-kurtarma bandı ve crash tamponu (2026-09-18 düzeltmesi): Android sistem
+crash tamponu `adb logcat -b crash -d` = **0 satır** (native/tombstone çökme yok,
+canlı olarak doğrulandı). Üstteki "Önceki açılış bir çökmeyle kapandı" bandı bu
+tampondan DEĞİL, uygulamanın kendi kalıcı `files/diag.log` dosyasının son
+`C [crash]` satırından üretilir (`CrashGuard.recoverFromDiagLog`, `HermesApp.onCreate`).
+İki kaynak ayrıdır; biri diğerinin kanıtı değildir. `force-stop` uygulama
+`files/` dizinini silmediği için diag.log kalıcıdır: her soğuk açılışta son çökme
+satırı yeniden okunur ve band yeniden görünür — bu nedenle 09 (17:17, force-stop
+sonrası) bandı yeniden gösterir; çelişki değil, beklenen davranıştır. Bandı
+dokunarak kapatma (kanıt 01) yalnızca bellekteki `CrashGuard.lastCrash` alanını
+sıfırlar; force-stop süreci öldürünce sonraki açılışta disk'ten tekrar okunur.
+Kanıt 11 bunu doğrudan gösterir. Bandın kaynağı olan çökme (önceki oturumdaki
+`ForegroundServiceDidNotStartInTime`) tur-15 diff'inde yer almaz — servis kodu bu
+turda değişmedi.
 
 ## Kısıtlara uyum
 
@@ -89,9 +106,17 @@ Commit'ler ayrık: feat (kod+varlık+test) ve docs (rapor+kanıt).
   `cdp-yasam-dongusu.txt`teki ilk "[devam dokunusu] durum=paused" / "[geri tusu 1]"
   satırları bu tutmayan denemedir (oyun zaten duraklatılmışken). Gerçek cihazda
   donanım GL ile tekrar denenmeli — canlı telefon yok.
-- Uygulama açılışında önceki bir oturumdan kalan "Önceki açılış bir çökmeyle kapandı
-  (ForegroundServiceDidNotStartInTime)" bandı göründü; bu tur kodu ile ilgisiz
-  (emülatör yavaşlığında ön plan servis zaman aşımı), dokunarak kapatıldı. Bu koşuda
-  crash buffer boş.
+- Uygulama açılışında "Önceki açılış bir çökmeyle kapandı
+  (ForegroundServiceDidNotStartInTime)" bandı göründü. Bu bandın kaynağı ÖNEMLİ
+  ve ilk raporda yanlış özetlenmişti; 2026-09-18'de canlı olarak düzeltildi:
+  band, Android sistem crash tamponundan (`logcat -b crash`, gerçekten 0 satır)
+  DEĞİL, uygulamanın kendi kalıcı `files/diag.log` dosyasının son `C [crash]`
+  satırından üretilir (`CrashGuard.recoverFromDiagLog`). diag.log force-stop'ta
+  silinmediği için her soğuk açılışta band yeniden okunur; bu yüzden 09'da
+  (force-stop sonrası) band tekrar görünmüştür — "01'de kapatıldı, bir daha
+  görünmez" ifadesi hatalıydı, dokunarak kapatma yalnızca bellekte geçerlidir.
+  Çökmenin kendisi önceki bir oturumdan kalmadır ve tur-15 kodu ile ilgisizdir
+  (servis kodu bu turda değişmedi). Ayrıntı: yukarıdaki "Çökme-kurtarma bandı"
+  notu ve kanıt 09b + 11.
 - Dokunmatik direksiyon (basılı tut/sürükle) emülatörde ayrıca ölçülmedi; yalnız
   buton dokunuşları kanıtlandı.
