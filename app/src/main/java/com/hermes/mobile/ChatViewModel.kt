@@ -43,11 +43,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import com.hermes.mobile.ui.clearRailDismissal
 import com.hermes.mobile.ui.createSessionProfileArg
-import com.hermes.mobile.ui.markSeenLive
-import com.hermes.mobile.ui.pushRecent
-import com.hermes.mobile.ui.RecentRailSession
 import com.hermes.mobile.ui.ROUTER_CHIP
 import com.hermes.mobile.ui.tr
 import com.hermes.mobile.ui.visibleUserMessage
@@ -264,55 +260,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _pendingShareText = MutableStateFlow<String?>(null)
     val pendingShareText: StateFlow<String?> = _pendingShareText.asStateFlow()
 
-    /**
-     * Sol ray için uygulama içi "son açılanlar" (tur-8).
-     *
-     * Kullanıcı hangi yoldan bir oturuma bağlanırsa (ray hücresi, Oturumlar
-     * paneli, paylaşım hedefi) buraya EN YENİ ÖNCE yazılır. Böylece sunucunun
-     * açık listesinden düşen bir oturum bile — kullanıcı kapatana kadar —
-     * ray'da kalır; sıra "son etkileşim" olur.
-     */
-    private val _recentRail = MutableStateFlow<List<RecentRailSession>>(emptyList())
-    val recentRail: StateFlow<List<RecentRailSession>> = _recentRail.asStateFlow()
-
-    /**
-     * Kullanıcının ray'da UZUN BASIP kapattığı hücre anahtarları (dbId ya da
-     * süreç içi id). Oturum yeniden açılırsa işaret silinir; geçerli oturum
-     * zaten her koşulda görünür.
-     */
-    private val _railDismissed = MutableStateFlow<Set<String>>(emptySet())
-    val railDismissed: StateFlow<Set<String>> = _railDismissed.asStateFlow()
-
-    /** Ray hücresini kapat (uzun basma). */
-    fun dismissRailEntry(key: String) {
-        if (key.isBlank()) return
-        _railDismissed.update { it + key }
-    }
-
-    /**
-     * Uygulama içi halkaya bir oturum yazar (en yeni önce, tekilleştirilmiş).
-     * Sıra/sayım kararı `railEntries`'te; burada yalnız kayıt tutulur.
-     */
-    private fun noteRecentRail(liveId: String, dbId: String, title: String) {
-        if (liveId.isBlank() && dbId.isBlank()) return
-        val stamp = System.currentTimeMillis()
-        _recentRail.update { old ->
-            pushRecent(old, liveId = liveId, dbId = dbId, title = title, openedAt = stamp)
-        }
-        _railDismissed.update { clearRailDismissal(it, liveId = liveId, dbId = dbId) }
-    }
-
-    /**
-     * Sunucunun açık listesi her tazelendiğinde çağrılır: kayıtlar "görüldü"
-     * damgası alır. Görülmüş bir kayıt listeden düşerse sunucu kapatmıştır →
-     * ray'dan iner (`railEntries`). Hiç görülmemiş kayıt (REST'ten açılan
-     * geçmiş oturum) kanıt yokluğunda ray'da kalır.
-     */
-    fun observeLiveRail(ids: List<String>) {
-        val set = ids.filter { it.isNotBlank() }.toHashSet()
-        if (set.isEmpty()) return
-        _recentRail.update { old -> markSeenLive(old, set) }
-    }
+    // Tur-16: sol ray (tur-8) KALDIRILDI — oturum listesi artık sohbetin sol
+    // çekmecesinde (SessionDrawer); ray durum akışları ve helper'ları ölüydü.
 
     /**
      * Vekilin staging kopyasından türeyen YÜKLEME PLANI (HIGH-1 teli).
@@ -1627,9 +1576,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val p = profile ?: return
         val gw = client ?: return
         onSessionChanged?.invoke(liveId)
-        // Tur-8: sol ray "son açılanlar" halkası — hangi yoldan gelinirse gelinsin
-        // (ray, Oturumlar paneli, paylaşım hedefi) tek yerde kaydedilir.
-        noteRecentRail(liveId = liveId, dbId = dbId, title = title)
+        // Tur-16: sol ray kaldırıldı — son açık oturum kalıcılığı artık
+        // settings.lastSession + çekmece (lastSessionToRestore) üzerinden.
 
         streamingKey = null
         thinkingKey = null
