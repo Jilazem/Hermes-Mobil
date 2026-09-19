@@ -1,0 +1,40 @@
+{
+  "verdict": "pass",
+  "gorev": "tur17",
+  "tur": "2 (ikinci denetim — tur17-duzeltme, commit 41755c3)",
+  "tarih": "2026-09-19T23:05:00+03:00",
+  "denetmen": "kod-denetmen",
+  "uzman": "android",
+  "deneme_no": 1,
+  "devir": false,
+  "mercek": "Execution (tur2): diff okundu, testler --rerun-tasks ile KOSULDU, 15x4 matris harici WCAG sayilariyla sifirdan yeniden hesaplandi, ekran goruntuleri piksel-bazli icerik-dogrulamasindan gecti.",
+  "test_sonucu": "Kendi kosumum (--rerun-tasks, 22 gorev gercekten 22 calisti): 643 test / 0 fail / 0 error / 0 skip, 65 XML sinif, BUILD SUCCESSFUL 1m2s. ThemeTur17Test 15/15 yesil.",
+  "dal": "feat/tur17-tasarim-b1b2 @ 41755c3 (taban 85f2e25 tur17 FAIL, onceki verdict: verdict-tur17.json)",
+  "onceki_bulgularin_durumu": {
+    "B2-CTA-4-sutun (HIGH)": "COZULDU — resolveOnAccent (ThemeLogic.kt:91) + onColorFor (ThemeLogic.kt:67) gercek algoritma olarak bagli; Themes.kt preset'lerinde sabit onAccent kalmadi (grep: kalan FFFFFF eslesmeleri surface degeri, onAccent degil); ChatScreen.kt CTA metni colors.OnAccent kullaniyor. Bagimsiz 15/15 AA dogrulandi.",
+    "B2-matris (HIGH)": "COZULDU — denetim/tur17/15x4-matris-ciktisi.txt 15 satir x 4 sutun + 15 onAccent hex, test uretimi + icerik assertion'i. Denetmen tarafindan harici Python WCAG implementasyonuyla sifirdan yeniden hesaplandi: 60/60 oran 0.011 toleransla, 15/15 onAccent hex birebir ayni, 0 uyusmazlik.",
+    "GORUNTU-kopya (MEDIUM)": "COZULDU — 9 PNG 9 ayri md5; 06 icerik-farki kanitli (amber #FFB454 dolgulu gonder butonu, F8FAFB acik zemin; 03/09'da amber 0 piksel). 07/08 gercek Ayarlar tema seridi: 07 F8FAFB zemin + #0E836C secili kenarlik, 08 #04171A zemin + #4FD8C0 secili kenarlik (piksel sayimlariyla ayirt edildi). 09'da #4FD8C0 dolgulu CTA 41089 piksel.",
+    "onColorFor-belgesiz (LOW)": "COZULDU — ThemeLogic.kt:60-70 aciklama blogu + 3 test (ThemeTur17Test 'onColorFor koyu temada koyu-on-acik veriyor, acik temada beyaz').",
+    "test-derleme-uyarisi (LOW)": "KISMEN — ThemeTur17Test.kt:325:29 'Java type mismatch: String? vs String' uyarisi derleme logunda hala var. Test geciyor; tur18 temizligi."
+  },
+  "bagimsiz_dogrulamalar": [
+    "Matris harici yeniden hesap: 15 satirin 4 sutunu + onAccent hex'leri denetmenin sifirdan yazdigi Python WCAG koduyla bulundu — 0 uyusmazlik (60/60 oran, 15/15 hex).",
+    "8 fixture satiri Themes.kt skin deserialize akisina uyarlanabilir (ThemeTur17Test fixture'lari Desktop apps/desktop + web presets.ts kaynakli; 111 testte 15x15 tutarlilik assertion'i).",
+    "Ekran goruntusu icerik-dogrulama: baskin-renk profileri her iddiayi dogruladi; 2 kopya iddiasinin kaynagi (01/02, 04/05 md5 eslesmeleri) artik yok.",
+    "OnAccent tuketicisi main/src'te mevcut (ChatScreen CTA); resolveOnAccent varsayilan 4.5 esik, 20 adimlik koyulastirma, geri-donus taban-deger.",
+    "Kapsam: diff yalniz theme/ + ChatScreen 2 satir + test + denetim/ — protokol/state/oturum mantigina dokunulmamis, yeni bagimlilik yok."
+  ],
+  "kalan_low_bulgular": [
+    {"sev": "LOW", "id": "ROL-TUKETICI", "bulgu": "SurfaceCard/SurfaceOverlay/Focus/Skeleton'in main/src tuketicisi yok (tur18 B3-B5'e ayrilmis, uzman beyaninda var) — derleme kirigi riski yok, tanim-butunlugu korunuyor."},
+    {"sev": "LOW", "id": "DERLEME-UYARISI", "bulgu": "ThemeTur17Test.kt:325:29 String? -> String derleme uyarisi — davranis degil, tur18'de temizlenebilir."},
+    {"sev": "LOW", "id": "MIDGROUND", "bulgu": "Markdown.kt L202 kod-blogu dolgusu Midground (=aksan) — tur17 finding #5 olarak tur18 task 14'e tasinmis, bu turun degisikligi degil."}
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/theme/ThemeLogic.kt": "abe6629e29c10924 (ilk16)",
+    "app/src/main/java/com/hermes/mobile/ui/theme/Themes.kt": "6b2629a3b2d04876 (ilk16)",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "bce1d55139d2ae7f (ilk16)",
+    "app/src/test/java/com/hermes/mobile/ThemeTur17Test.kt": "c00c172efdf8b9f3 (ilk16)",
+    "denetim/tur17/15x4-matris-ciktisi.txt": "test kosumuyla yeniden uretildi, icerik assertion'i yesil"
+  },
+  "lesson": "Gorsel kanit icerik-farki ile dogrulanir: md5-farkliligi tek basina yetmez, baskin-renk profileri (iddia edilen dolgularin piksel sayimi) ekran goruntusunun gercek cihaz durumunu kanitlar; matris iddiasini harici ikinci implementasyonla yeniden hesaplamak tek guvenilir kanit."
+}
