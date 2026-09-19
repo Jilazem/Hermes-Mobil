@@ -1,0 +1,32 @@
+{
+  "verdict": "fail",
+  "gorev": "tur17",
+  "tarih": "2026-09-19T09:30:00Z",
+  "denetmen": "kod-denetmen",
+  "dal": "feat/tur17-tasarim-b1b2 @ 85f2e25 (taban bb375d9 tur16 PASS)",
+  "test_sonucu": "Kendi kosumum (--rerun, zorlanmis): 639 test / 0 fail / 0 skip (app/build/test-results/testDebugUnitTest XML toplami). assembleDebug EXIT=0, APK 000-TEMP/hermes-mobile-tur17-tasarim-260919-1104.apk 33.947.202 bayt.",
+  "dogrulanan_gecikler": [
+    "B1: Theme.kt L72-104 light/dark schema dallanmasi + resolveIsLight (ThemeLogic, luminance esik 0.20, isLight null→otomatik, eski yaml uyumlu). Pikrot kontrolu: 01-acik-tema-sohbet.png baskin #F8FAFB (gercekten ACIK), 03-koyu #04171A, 06-sage #F8FAF9 — B1 cihazda calisiyor.",
+    "B2 kod: 6 yeni semantik rol (SurfaceCard/SurfaceOverlay/Focus/OnAccent/Skeleton/BubbleUser) Themes.kt + ThemeLogic.kt saf fonksiyonlari + 24 yeni test (ThemeTur17Test). 4 sabit renk (F5F1E6/041C1C/0A2B2A/3B5BDB) ui/ altinda artik YOK (grep 0 eslesme, Color(0x) sayimi theme-disi=0).",
+    "Gorev kapsami: diff yalniz theme/ + ChatScreen 2 satir + test + denetim/ — protokol/state/oturum mantigina dokunulmamis, yeni bagimlilik yok.",
+    "Kendi 15x4 matris kosumum: textP/bg 15/15 >=4.5 (min 13.06); acc/bg 15/15 >=3.0 (min 3.24); aksan-govde luminans farki 15/15 >=0.2 (min 0.266)."
+  ],
+  "findings": [
+    {"sev": "HIGH", "id": "B2-CTA", "bulgu": "15x4 matrisin 4. sutunu (CTA metin/dolgu = onAccent/acc) 6/15 temada AA altı: midnight 3.26, ember 3.36, mono 1.82, copper 3.29, rose 3.10, amber 3.43. Tek tuketici ChatScreen L1269-1274 ('Onayla': Midground=accent dolgu + OnAccent=FFFFFF metin) — mono temada CTA metni fiilen okunaksiz (1.82). resolveOnAccent() cozucusu ThemeLogic'te TANIMLI ama 6 sunucu-preset'i onu cagirmadan onAccent='#FFFFFF' hardcode ediyor (Themes.kt). Gorev kabul kritiginin kendi sutunu karsilanmadi."},
+    {"sev": "HIGH", "id": "B2-matris", "bulgu": "Soz verilen 'denetim/tur17/15x4-matris-ciktisi.txt' YOK (find/git log 0 sonuc). RAPOR.md yalniz gecen 3 sutunu raporlamis, dorduncu sutunu ve 6 temanin AA-alti durumunu sessizce dusmus — kanitsiz 'WCAG AA' iddiasi."},
+    {"sev": "MEDIUM", "id": "GORUNTU", "bulgu": "6 ekran goruntusu sozu: 6 dosya var ama 02, 01 ile; 05, 04 ile BAYT-AYN (md5: 0104343c... / 48d28254...). 'Ayarlar tema seridi on/sonra' aslinda hic cekilmemis — 4 farkli goruntu var, 2'si kopya. tur16 goruntu-deli kaniti kurali ihlali."},
+    {"sev": "LOW", "id": "ROL-TUKETICI", "bulgu": "6 yeni rolden 5'i (SurfaceCard/SurfaceOverlay/Focus/Skeleton/BubbleUser) app/src/main'de 0 tuketici — tanimlandi ama hicbir yuzey tasimadi. OnAccent tek tuketici (ChatScreen L1274)."},
+    {"sev": "LOW", "id": "MIDGROUND", "bulgu": "Markdown.kt L202 kod-bloğu dolgusu Midground (=aksan) — Markdown.kt L192 yorumu 'Background tonu (SurfaceDim'den koyu)' diyor ama kod aksan tonunu ciziyor; yoruma aykiri gorusme. Bu turun degisikligi degil, B2 aksan-ayrimiyle anlam kaymasi buyudu; ayri is olarak izlenmeli."}
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/theme/Theme.kt": "60a0cb9dce51c3093dfe73aeff5a00a9bab46123d0fff6694f2976471731feda",
+    "app/src/main/java/com/hermes/mobile/ui/theme/ThemeLogic.kt": "6cc24b61dc1b2a2b5020e32c80c99b82b577ac085c8dd3f09df90cf9b2babc5b",
+    "app/src/main/java/com/hermes/mobile/ui/theme/Themes.kt": "bccb9c5ad34ecf92ac9c6701873ced12d88044ab68b256c19d653fe02a5cdfa0",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "9e952df63ac9e3cafde806df30912120ccafe5a65585633dbaff3f3e3178d93e",
+    "app/src/test/java/com/hermes/mobile/ThemeTur17Test.kt": "b410311a235b59553daedca37c65c80086b24daca49c8e85b27c83f3084d19dc"
+  },
+  "lesson": "Kontrast 'ispat' iddiasinda butun matrisi kos ve dosyaya yaz; eksik sutunu sessizce dusmek, cozucusu olan bir rolu hardcode degerle bozmaktan daha buyuk hatadir.",
+  "uzman": "android-uzman",
+  "deneme_no": "1",
+  "devir": false
+}
