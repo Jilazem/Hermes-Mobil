@@ -77,6 +77,35 @@ fun onColorFor(fillArgb: Long, backgroundArgb: Long): Long {
     return if (contrastRatio(fillArgb, darkGround) >= contrastRatio(fillArgb, white)) darkGround else white
 }
 
+/** WCAG AA başlık-dışı metin eşiği (§3.1). */
+const val WCAG_AA_NORMAL_TEXT = 4.5
+
+/**
+ * B2 dolgulu CTA çözücüsü (tur-17 denetim 1/3 bulgu B2-CTA): [onColorFor] iki
+ * adaydan (koyu zemin / beyaz) iyi kontrastlısını seçer; ancak parlak dolgulu
+ * (özellikle açık tema) skin'lerde iki aday da AA'nın altında kalabilir —
+ * örn. soluk yeşil aksana beyaz 1.8:1, koyu zemin 2.2:1. Bu çözücü o durumda
+ * kazanan adayyı doldurunun [target] (siyah/beyaz) ucuna kademeli karıştırarak
+ * AA'yı geçen TON türetir; taban aday AA'yı geçiyorsa ona dokunmaz (piksel
+ * regresyonu yok — 7 BUILTIN preset'te taban zaten ≥4.5).
+ *
+ * Sunucudan gelen kullanıcı skin'leri (customThemes) da bu yoldan geçer:
+ * aksan hex'ine dokunulmaz, yalnız dolgulu CTA ÜSTÜ metin düzeltilir.
+ */
+fun resolveOnAccent(fillArgb: Long, backgroundArgb: Long): Long {
+    val base = onColorFor(fillArgb, backgroundArgb)
+    if (contrastRatio(fillArgb, base) >= WCAG_AA_NORMAL_TEXT) return base
+    // Kazanan aday her iki senaryoda da koyulaştırılabilir: beyaz aday AA geçmiyorsa
+    // dolgu açık-gri aralıktadır → siyaha karıştır; koyu-zemin aday AA geçmiyorsa
+    // paletin zemini dolguya görece yakındır → yine siyaha (kontrast artar).
+    val target = 0xFF000000L
+    for (i in 1..20) {
+        val candidate = mixArgb(base, target, i / 20.0)
+        if (contrastRatio(fillArgb, candidate) >= WCAG_AA_NORMAL_TEXT) return candidate
+    }
+    return base // kurtarılamaz en iyi aday döner; çağıran test patlar, sessizlik yok
+}
+
 /** ARGB'nin alfa kanalını değiştir. */
 fun argbWithAlpha(argb: Long, alpha: Int): Long =
     ((alpha.coerceIn(0, 255).toLong()) shl 24) or (argb and 0x00FFFFFFL)

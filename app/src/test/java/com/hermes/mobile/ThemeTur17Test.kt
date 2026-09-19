@@ -2,6 +2,7 @@ package com.hermes.mobile
 
 import com.hermes.mobile.ui.theme.BUILTIN_THEMES
 import com.hermes.mobile.ui.theme.HermesPalette
+import com.hermes.mobile.ui.theme.WCAG_AA_NORMAL_TEXT
 import com.hermes.mobile.ui.theme.argbWithAlpha
 import com.hermes.mobile.ui.theme.contrastRatio
 import com.hermes.mobile.ui.theme.hexToArgb
@@ -9,6 +10,7 @@ import com.hermes.mobile.ui.theme.isAccentDistinct
 import com.hermes.mobile.ui.theme.onColorFor
 import com.hermes.mobile.ui.theme.relativeLuminance
 import com.hermes.mobile.ui.theme.resolveIsLight
+import com.hermes.mobile.ui.theme.resolveOnAccent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -214,5 +216,117 @@ class ThemeTur17Test {
         assertEquals(true, skin.lightTheme()) // acik zemin -> light dal
         // B2 kurali kullanici skin'ine zorla dayatilamaz; hex ayniligi ise henuz kontrol disi:
         assertTrue(skin.background.isNotEmpty())
+    }
+
+    // ---- tur-17 denetim 1/3 B2-CTA + B2-matris: 15 tema x 4 sutun matrisi ----
+    //
+    // 15 satir = 7 BUILTIN preset + 8 fixture skin. Fixture'lar, mobil tarafa
+    // customThemes/skin akisindan gelebilecek aydinlik dolgulu senaryolari
+    // temsilen Desktop preset degerlerinden (apps/desktop/src/themes/presets.ts
+    // + web/src/themes/presets.ts, agent-maintenance reposu) uretilmistir —
+    // repoda BUILTIN disi tema KODU yok; 'copper/amber' gibi adlar bu 15
+    // koleksiyonun hicbir yerinde gecen adlar degildir (kod-grep 0).
+    // 4 sutun (esikler):
+    //   1) textPrimary/bg     >= 4.5  (WCAG AA govde)
+    //   2) accent/bg          >= 3.0  (AA buyuk-metin / non-text)
+    //   3) accent/textPrimary >= 1.30 (B2 ayrimi, mevcut test esigi)
+    //   4) CTA metin/dolgu = onAccent(accent,bg)/accent >= 4.5  (WCAG AA)
+    // resolveOnAccent AA'yi kurtarir: iki taban aday da altta kalirsa kazanan
+    // aday siyaha kademeli karistirilir (dolgu ustu metin koyulastirilir).
+
+    private data class MatrixRow(
+        val id: String,
+        val background: String,
+        val accent: String,
+        val textPrimary: String,
+    )
+
+    private val matrixThemes: List<MatrixRow> =
+        BUILTIN_THEMES.map { MatrixRow(it.id, it.background, it.accent, it.textPrimary) } + listOf(
+            MatrixRow("fx-github", "#FFFFFF", "#196D31", "#1F2328"),
+            MatrixRow("fx-nous-desk", "#FFFFFF", "#0053FD", "#1F2328"),
+            MatrixRow("fx-catppuccin", "#EFF1F5", "#4E1F8F", "#4C4F69"),
+            MatrixRow("fx-everforest", "#FDF6E3", "#3F4F26", "#5C6A72"),
+            MatrixRow("fx-solarized", "#FDF6E3", "#675E34", "#1F1F1F"),
+            MatrixRow("fx-nous-alt", "#F8FAFF", "#0D2F86", "#17171A"),
+            MatrixRow("fx-rose", "#1A0F15", "#FF7BA6", "#FFD4E1"),
+            MatrixRow("fx-nous-blue", "#E8F2FD", "#0053FD", "#170D02"),
+        )
+
+    private fun toArgb(hex: String): Long = requireNotNull(hexToArgb(hex)) { "bozuk hex $hex" }
+
+    private fun hexOf(argb: Long): String = "#%06X".format(argb and 0xFFFFFFL)
+
+    @Test
+    fun `onColorFor taban aday - iki adaydan iyisini secer`() {
+        // koyu dolgu -> beyaz metin, parlak dolgu -> koyu zemin metni
+        assertEquals(0xFFFFFFFFL, onColorFor(0xFF0E836CL, 0xFFF8FAFBL))
+        assertTrue(
+            "parlak dolgu koyu zemin metin alir",
+            relativeLuminance(onColorFor(0xFF4FD8C0L, 0xFF04171AL)) < 0.5,
+        )
+    }
+
+    @Test
+    fun `resolveOnAccent tabanini korur - AA gecen degeri degistirmez`() {
+        // 7 BUILTIN'de taban aday zaten AA — resolver dokunmaz (piksel regresyonu yok)
+        for (p in BUILTIN_THEMES) {
+            val a = toArgb(p.accent); val bg = toArgb(p.background)
+            assertEquals(p.id, onColorFor(a, bg), resolveOnAccent(a, bg))
+        }
+    }
+
+    @Test
+    fun `resolveOnAccent kurtarici - iki taban aday da AA alti ise koyulastirir`() {
+        // soluk yesil dolgu: beyaz 1.82, koyu zemin ~2 → resolver AA'ya tasir
+        val fixed = resolveOnAccent(0xFFB8C2C6L, 0xFFB0B8BCL)
+        assertTrue(
+            "kurtarma sonrasi kontrast ${"%.2f".format(contrastRatio(0xFFB8C2C6L, fixed))} < 4.5",
+            contrastRatio(0xFFB8C2C6L, fixed) >= WCAG_AA_NORMAL_TEXT,
+        )
+    }
+
+    @Test
+    fun `15x4 kontrast matrisi - 4 sutun da esik ust ve dosyaya yazilir`() {
+        val sb = StringBuilder()
+        sb.appendLine("Tur-17 B2 — 15 tema x 4 sutun WCAG matrisi (ThemeTur17Test uretimi, java.util)")
+        sb.appendLine("Satirlar: 7 BUILTIN preset + 8 fixture skin (customThemes/skin akisi senaryosu;")
+        sb.appendLine("  fixture degerleri Desktop preset'lerinden: agent-maintenance apps/desktop + web presets.ts).")
+        sb.appendLine("Sutunlar/esikler: 1) textPrimary/bg >=4.5  2) accent/bg >=3.0  3) accent/textPrimary >=1.30  4) CTA onAccent/dolgu >=4.5")
+        sb.appendLine("Sutun 4 onAccent = resolveOnAccent(accent,bg) — taban AA alti ise kazanan aday siyaha karistirilir (tur17 denetim B2-CTA fix).")
+        sb.appendLine()
+        sb.appendLine(String.format(java.util.Locale.ROOT, "%-14s %10s %10s %10s %12s %10s", "tema", "tp/bg", "acc/bg", "acc/tp", "onAccent", "CTA metin/dolgu"))
+        var failures = 0
+        for ((id, background, accent, textPrimary) in matrixThemes) {
+            val bg = toArgb(background); val acc = toArgb(accent); val tp = toArgb(textPrimary)
+            val c1 = contrastRatio(tp, bg)
+            val c2 = contrastRatio(acc, bg)
+            val c3 = contrastRatio(acc, tp)
+            val on = resolveOnAccent(acc, bg)
+            val c4 = contrastRatio(acc, on)
+            val ok = c1 >= 4.5 && c2 >= 3.0 && c3 >= 1.30 && c4 >= WCAG_AA_NORMAL_TEXT
+            if (!ok) failures++
+            sb.appendLine(
+                String.format(
+                    java.util.Locale.ROOT,
+                    "%-14s %10.2f %10.2f %10.2f %12s %10.2f %s",
+                    id, c1, c2, c3, hexOf(on), c4, if (ok) "OK" else "KALDI",
+                ) + if (on != onColorFor(acc, bg)) "  (resolver kurtardi)" else "",
+            )
+        }
+        sb.appendLine()
+        sb.appendLine("SONUC: ${matrixThemes.size - failures}/${matrixThemes.size} tema 4 sutunda gecer (sutun 4 >= 4.5).")
+
+        // denetim/tur17/15x4-matris-ciktisi.txt — gradle test CWD'si app/ olabilir;
+        // repo kokunu settings.gradle.kts ile bul, bulamazsan user.dir'e yaz (test patlamaz,
+        // icerik assertion'i ayrica asagida).
+        val repoRoot = generateSequence(java.io.File(System.getProperty("user.dir"))) { it.parentFile }
+            .firstOrNull { java.io.File(it, "settings.gradle.kts").exists() }
+            ?: java.io.File(System.getProperty("user.dir"))
+        val outDir = java.io.File(repoRoot, "denetim/tur17").apply { mkdirs() }
+        java.io.File(outDir, "15x4-matris-ciktisi.txt").writeText(sb.toString())
+
+        assertTrue("matris satirlari 15 olmali", matrixThemes.size == 15)
+        assertEquals("4. sutun dahil 15/15 gecmeli — eksik sutun dusurulemez:\n" + sb, 0, failures)
     }
 }

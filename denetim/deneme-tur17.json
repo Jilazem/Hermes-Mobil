@@ -1,0 +1,13 @@
+{
+  "fail_sayisi": 1,
+  "devir": false,
+  "turlar": [
+    {
+      "tarih": "2026-09-19T15:35:07",
+      "yapan": "android",
+      "sonuc": "fail"
+    }
+  ],
+  "uzman": "android",
+  "slug": "tur17"
+}

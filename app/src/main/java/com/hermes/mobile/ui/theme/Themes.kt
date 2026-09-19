@@ -68,7 +68,7 @@ data class HermesPalette(
             surfaceCard = surfaceColor,
             surfaceOverlay = Color(argbWithAlpha(bgArgb, 0xB3)),
             focus = accent.toColorOrNull() ?: Color(FALLBACK_ACCENT_ARGB),
-            onAccent = Color(onColorFor(accentArgb, bgArgb)),
+            onAccent = Color(resolveOnAccent(accentArgb, bgArgb)),
             skeleton = Color(
                 mixArgb(
                     hexToArgb(surfaceDim) ?: FALLBACK_SURFACE_DIM_ARGB,

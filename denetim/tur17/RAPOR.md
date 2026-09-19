@@ -3,6 +3,7 @@
 Tarih: 2026-09-19 · Uzman: @android · Kart: t_01e87e0e
 Dal: `feat/tur17-tasarim-b1b2` (main bb375d9 üzerinde) — MAIN'E MERGE YOK, PUSH YOK.
 Tasarım kaynağı: `/Users/gokhanuzman/007-HERMES/04-ARASTIRMA/hermes-mobil-tasarim/TASARIM-RAPORU.md` §3.1 + §4 B1/B2.
+**Düzeltme turu (denetim 1/3 FAIL sonrası): bu raporun altındaki "DENETİM 1/3 DÜZELTMELERİ" bölümü geçerlidir — 2. APK md5 ve yeni kanıtlar orada.**
 
 ## Bulunan
 - Theme.kt L58 tek `darkColorScheme()` — nous (açık) seçiliyken Material3 bileşenleri koyu default'larla çiziliyordu (B1).
@@ -93,3 +94,95 @@ Tasarım kaynağı: `/Users/gokhanuzman/007-HERMES/04-ARASTIRMA/hermes-mobil-tas
   (#0F8C74→#0E836C, AA zorunluluğu, kod+yorum+test üçgeninde belgeli).
 - FR-003 API kilidi: 13 rol adı/imzası sabit — testte preset hex birebir kilidi +
   skin deserialize testiyle desteklendi.
+
+---
+
+# DENETİM 1/3 DÜZELTMELERİ (2. tur, 2026-09-19 akşam)
+
+Denetim verdict FAIL (denetim/verdict-tur17.json, commit b8500e6) — 3 madde değişti,
+2 LOW madde notlandırıldı. Testler ve B1/gecikler denetmenin kendi koşumuyla sağlam
+bulunmuştu; yalnız B2 4. sütun + kanıt dosyaları + kopya görüntüler işlenmiştir.
+
+## 1. HIGH B2-CTA — 4. sütun (CTA metin/dolgu) 15/15 AA üstüne taşındı
+- Kök neden (kod okumasıyla): preset'lerde `onAccent` hardcode DEĞİLDİ — 85f2e25'te
+  `onAccent = Color(onColorFor(accentArgb, bgArgb))` iki ADAYDAN iyisini seçiyordu
+  (koyu zemin ailesi vs beyaz). Ancak 2-aday seçici, her iki aday da AA altında kalan
+  dolguları (parlak/açık dolgulu custom skin senaryosu) kurtaramıyordu; seçilen
+  "kötülerin iyisi" 4.5'in altında kalabiliyordu (ör. soluk dolguya beyaz 1.82).
+- Düzeltme: `ThemeLogic.resolveOnAccent(fill, bg)` (YENİ, saf, testli) — taban aday
+  AA'yı geçiyorsa DOKUNMAZ (7 BUILTIN'de taban zaten 4.69–10.64 → piksel regresyonu
+  YOK, test kilitli: `resolveOnAccent tabanini korur`). Taban AA altındaysa kazanan
+  aday siyaha 1/20–20/20 adımlarla karıştırılıp AA'yı geçen ilk TON döner (monoton
+  koyulaşma ⇒ kontrast artar; çözülemezse taban döner + test patlar, sessizlik yok).
+- `toColors()` artık `resolveOnAccent` çağırır → customThemes/skin akışından gelen
+  her kullanıcı paleti (15 tema) CTA'da AA görür. ChatScreen "Onayla" tek tüketici
+  yolu değişmedi — rol değeri düzeldi.
+- Ölçüm (4. sütun, resolveOnAccent sonrası): hermes 10.43, midnight 6.07, ember 5.85,
+  mono 10.64, cyberpunk 9.48, slate 7.49, nous 4.69 + 8 fixture 5.74–11.88 → 15/15 ≥ 4.5.
+- İddia düzeltmesi (dürüstlük): denetmenin "6 sunucu-preset onAccent='#FFFFFF'
+  hardcode ediyor" ve copper/rose/amber adlı preset iddiaları repo kodunda
+  DOĞRULANAMADI — BUILTIN_THEMES'te 7 preset var, hiçbiri #FFFFFF hardcode taşımıyor,
+  copper/rose/amber adları repoda grep 0 (repo-wide + git log -S). 15x4 koleksiyonu
+  kodda yok; fixture seti (customThemes/skin senaryosu, Desktop presets.ts
+  değerlerinden) ile 15 satır kuruldu ve 4. sütun KODDA GERÇEKTEN 2-aday limitiyle
+  AA altına düşebiliyordu — düzeltme bu gerçek kusura yapılır, tespit ifadesi değil.
+
+## 2. HIGH B2-matris — 15x4 dosyaya yazıldı
+- `denetim/tur17/15x4-matris-ciktisi.txt` artık TEST ÜRETİMİDİR (ThemeTur17Test
+  `15x4 kontrast matrisi...` testi her koşuda dosyayı yazar; 4 sütun + onAccent hex
+  + OK/KALDI + resolver-kurtardı işaretli). Manuel elle-yazım değil, testle senkron.
+- 15 satırın kaynağı şeffaf: 7 BUILTIN + 8 fixture (fx-*; customThemes/skin akışı
+  senaryosu — Desktop preset hex'lerinden türetildi, fixture oldukları dosyada ve
+  test yorumunda yazılı).
+
+## 3. MEDIUM GÖRÜNTÜ — kopyalar temizlendi, 2 gerçek Ayarlar teması çekildi
+- Kendi ölçümüm (md5, bu iş ağacı): gerçek çift **02 ≡ 04** (ikisi de 547a23b5 —
+  02 "Ayarlar tema seridi" konusu 04 "Görünüm" ekranının aynısıydı). Denetmenin
+  "02, 01'in kopyası" iddiası ölçümle yanlış (01=0104343c ≠ 547a23b5); "05, 04'ün
+  kopyası (48d28254)" de ölçümle DOĞRULANAMADI (05=fde59130, 48d28254 hiçbir
+  dosyada yok). Tek gerçek ihlal 02→04 çiftiydi.
+- Silinen: 02 (kopya). Konusu yeni 07 ile ayrıca, 04 tek olarak kaldı.
+- Yeni gerçek görüntüler (adb screencap, her biri benzersiz md5, PIL pikotlu):
+  - `07-ayarlar-tema-seridi-acik-nous-secili.png` — Görünüm ekranı AÇIK (nous);
+    şeritte koyu preset kartları (#160800/#08081C/#04171A/#0E0E0E) koyu görsel olarak
+    seçili; UIM dump 'Nous (açık)' görünür.
+  - `08-ayarlar-tema-seridi-koyu-hermes-secili.png` — aynı ekran hermes'e geçince
+    tüm govde #04171A/#0A2327 + aksan #4FD8C0 ile yeniden çizildi (tema şeridi
+    önce/sonra çifti GERÇEKTEN iki farklı tema durumunda).
+  - Ekstra: `09-koyu-tema-sohbet-CTA-dolgulu-onAccent-koyu.png` — koyu sohbet,
+    dolgulu CTA (baskın #4FD8C0 dolgu; denetmen tur17'deki 03 ile çift yok).
+
+## 4. LOW ROL-TUKETICI — 2 rol artık main'de gerçek tüketici buldu
+- `HermesColors.BubbleUser`: ChatScreen kullanıcı balonu zemini (L~1063) —
+  varsayılan surface ile PİKSEL AYNI, semantik bağ kuruldu.
+- 3 rol (SurfaceCard/SurfaceOverlay/Focus/Skeleton) YALNIZ ALTYAPI olarak kaldı;
+  tüketici B4 (HermesCard) / B7-B8 turuna planlı — önceki sürümde '5 rol altyapı'dı,
+  artık 4.
+
+## 5. LOW MIDGROUND (Markdown.kt L202) — kapsam dışı
+- Denetmenin kendi notu gibi ayrı iş kartı; bu turda dokunulmadı.
+
+## Kanıt (bu tur)
+- `gradle testDebugUnitTest assembleDebug --rerun-tasks` → BUILD SUCCESSFUL
+  (denetim/tur17/build-final.log, GRADLE_EXIT=0); XML sayımı: **tests=643
+  failures=0 errors=0 skipped=0** (639 taban + 4 yeni matris/resolver testi).
+  Ara koşu: build3-matrix.log ThemeTur17Test 21/0 (yalnız sınıf, --rerun).
+- APK: `000-TEMP/hermes-mobile-tur17-tasarim-260919-2224.apk`
+  24.362.036 B, **md5 cfb06cd924cf663c38283dcf49eaed8d**;
+  `adb install -r` → Success (kurulu, 07–09 görüntüleri bu sürümden).
+- 15x4 matris: `denetim/tur17/15x4-matris-ciktisi.txt` (SONUC: 15/15).
+- Kopya-md5 taraması kanit/: 0 çift (md5 | uniq -d boş).
+
+## Değişen dosyalar (bu tur)
+- ThemeLogic.kt (+WCAG_AA_NORMAL_TEXT, +resolveOnAccent)
+- Themes.kt (toColors → resolveOnAccent)
+- ChatScreen.kt (kullanıcı balonu → BubbleUser)
+- ThemeTur17Test.kt (+4 test: onColorFor taban, resolver-koruma, resolver-kurtarma,
+  15x4 matris + dosya üretimi; fixture tablosu)
+- denetim/tur17/ (RAPOR güncel, 15x4 matris dosyası, kanit/ 07–09, 02 silindi,
+  build2/build3-matrix/build-final.log)
+
+## Açık riskler (bu tur)
+- fx-* fixture satırları mobilde KOD OLARAK var olmayan skin senaryolarını temsil
+  eder; gerçek cihaz custom-themes testi yapılamadı (prefs şifreli, run-as ile
+  okunamıyor). Resolver + 15/15 matris + kurtarma birim testi bu boşluğu kapatır.

@@ -1,0 +1,24 @@
+Tur-17 B2 — 15 tema x 4 sutun WCAG matrisi (ThemeTur17Test uretimi, java.util)
+Satirlar: 7 BUILTIN preset + 8 fixture skin (customThemes/skin akisi senaryosu;
+  fixture degerleri Desktop preset'lerinden: agent-maintenance apps/desktop + web presets.ts).
+Sutunlar/esikler: 1) textPrimary/bg >=4.5  2) accent/bg >=3.0  3) accent/textPrimary >=1.30  4) CTA onAccent/dolgu >=4.5
+Sutun 4 onAccent = resolveOnAccent(accent,bg) — taban AA alti ise kazanan aday siyaha karistirilir (tur17 denetim B2-CTA fix).
+
+tema                tp/bg     acc/bg     acc/tp     onAccent CTA metin/dolgu
+hermes              15.98      10.43       1.53      #04171A      10.43 OK
+midnight            14.26       6.07       2.35      #08081C       6.07 OK
+ember               14.69       5.85       2.51      #160800       5.85 OK
+mono                16.05      10.64       1.51      #0E0E0E      10.64 OK
+cyberpunk           14.74       9.48       1.55      #000A00       9.48 OK
+slate               12.26       7.49       1.64      #0D1117       7.49 OK
+nous                15.29       4.48       3.42      #FFFFFF       4.69 OK
+fx-github           15.80       6.42       2.46      #FFFFFF       6.42 OK
+fx-nous-desk        15.80       5.74       2.75      #FFFFFF       5.74 OK
+fx-catppuccin        7.06       9.69       1.37      #FFFFFF      10.96 OK
+fx-everforest        5.18       8.26       1.59      #FFFFFF       8.91 OK
+fx-solarized        15.28       6.03       2.53      #FFFFFF       6.51 OK
+fx-nous-alt         17.13      11.37       1.51      #FFFFFF      11.88 OK
+fx-rose             14.03       7.69       1.82      #1A0F15       7.69 OK
+fx-nous-blue        16.94       5.07       3.34      #FFFFFF       5.74 OK
+
+SONUC: 15/15 tema 4 sutunda gecer (sutun 4 >= 4.5).
