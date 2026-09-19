@@ -1138,6 +1138,8 @@ private fun HermesApp(
                             viewModel.settingsStore.update { it.copy(assistantAutoRead = v) }
                         },
                         onExitAssistantMode = chatViewModel::exitAssistantMode,
+                        // Tur-16: ☰ — oturum çekmecesini açar (FR-001).
+                        onOpenDrawer = { drawerScope.launch { drawerState.open() } },
                         )
                     }
                     // Tur-16: Work/Oturumlar sekmesi sekme çubuğunda çizilmez
