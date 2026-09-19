@@ -1,6 +1,5 @@
 package com.hermes.mobile
 
-import com.hermes.mobile.ui.railLabel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -142,21 +141,7 @@ class SpeedMeterTest {
         assertEquals("1.2k", SpeedFormat.rate(1208.0, '.'))
     }
 
-    @Test
-    fun `ray etiketi ilk iki karakter`() {
-        assertEquals("ME", railLabel("merhaba dünya"))
-        assertEquals("AN", railLabel("  Ankara Projesi "))
-        assertEquals("?", railLabel(""))
-        assertEquals("?", railLabel("   "))
-    }
-
-    @Test
-    fun `ray etiketi yerelden bagimsiz buyutur`() {
-        // Character.uppercaseChar (Char.uppercaseChar) yerel ayardan
-        // bağımsız tek anlamlı Unicode eşlemesidir — String.uppercase()
-        // Türkçe 'i'yi locale'e göre "I" ya da "İ" yapabiliyordu.
-        val label = railLabel("istanbul")
-        assertEquals("IS", label)
-        assertEquals("İS", railLabel("İstanbul"))
-    }
+    // Tur-16: `ray etiketi` testleri KALDIRILDI — railLabel SessionRail ile
+    // birlikte silindi (oturum listesi artık çekmecede; etiket filtresi
+    // displayLabel ve SessionDrawerTur16Test altında).
 }

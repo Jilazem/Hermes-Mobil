@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Stop
@@ -132,6 +133,11 @@ fun ChatScreen(
     showLiveThinking: Boolean = true,
     onShowLiveThinking: (Boolean) -> Unit = {},
     activeProfileName: String = "",
+    /**
+     * Tur-16: üst çubuktaki ☰ ikonu — oturum çekmecesini açar (ModalNavigationDrawer,
+     * sohbet arkada kalır; ayrı sayfa yok).
+     */
+    onOpenDrawer: () -> Unit = {},
     /**
      * Bot (profil) ataması — Composer üstündeki yatay çipler.
      *
@@ -288,6 +294,7 @@ fun ChatScreen(
             onIntervene = { interventionOpen = true },
             onStop = onStop,
             activeProfileName,
+            onOpenDrawer = onOpenDrawer,
         )
 
         Box(Modifier.weight(1f)) {
@@ -559,6 +566,7 @@ private fun ChatHeader(
     onIntervene: () -> Unit,
     onStop: () -> Unit,
     activeProfileName: String,
+    onOpenDrawer: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     // Tur-4 (P2 #7): model etiketi ve "bağlı" rozeti üst şeritten ÇIKTI.
@@ -579,6 +587,14 @@ private fun ChatHeader(
             .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Tur-16: ☰ — oturum çekmecesi (Claude/Grok/Gemini: menü solda).
+        IconButton(onClick = onOpenDrawer) {
+            Icon(
+                Icons.Default.Menu,
+                contentDescription = S.t2("Oturumlar", "Sessions"),
+                tint = HermesColors.TextMuted,
+            )
+        }
         StatusDot(if (problem == null) HermesColors.Online else HermesColors.Danger)
         Spacer(Modifier.width(8.dp))
         Column(

@@ -1,0 +1,51 @@
+{
+  "verdict": "pass",
+  "gorev": "tur16",
+  "tarih": "2026-09-19T07:44:00+03:00",
+  "test_sonucu": "Kendi koşumum: JUnit XML sayımı (denetim/count_tests.py, 49 dosya, üretici iddiasına güvenilmedi) -> tests=622 failures=0 errors=0 skipped=0 (--rerun-tasks ile tam takım yeniden koşturuldu; 10 yeni SessionDrawerTur16Test birim testi dahil). assembleDebug doğrulaması: /Volumes/EX/007-HERMES-M4-LIVE/000-TEMP/hermes-mobile-tur16-oturum-20260918.apk mevcut, boyutu 24.362.036 bayt, md5 d9ef6cf08cbccac14da655ad44e1bf3b RAPOR.md ile birebir; apksigner verify ile APK Signature Scheme v2 imzası doğrulandı. Emülatör ekran kanıtları (5 görsel) incelendi.",
+  "findings": [
+    {
+      "sev": "LOW",
+      "id": "FR-008/compose",
+      "bulgu": "app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:224 Icons.Filled.Undo kullanımı deprecated uyarısı veriyor; Icons.AutoMirrored.Filled.Undo tercih edilmeli."
+    },
+    {
+      "sev": "LOW",
+      "id": "FR-007/ui",
+      "bulgu": "app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:306-324 ve SessionDrawerLogic.kt:240-248: drawerListItems içinde liveOnly mantığı bulunmasına karşın, UI tarafında Canlı sekmesi doğrudan liveSessions listesi üzerinden ayrı LazyColumn ile çiziliyor; test edilebilir mantık korunmuş ancak UI yolu ikiye ayrılmış durumda."
+    },
+    {
+      "sev": "LOW",
+      "id": "FR-004/ui",
+      "bulgu": "denetim/tur16/RAPOR.md satır 33-35: Arşivlenen oturumlar drawer'dan çıkıp 5 sn'lik geri-al çubuğuyla kurtarılabiliyor; ancak daha önce arşivlenmiş oturumları toplu listelemek için kalıcı bir 'Arşiv' sekmesi/filtresi drawer'a dahil edilmemiş (kapsam genişletmeme amacıyla sonraki tura bırakıldığı beyan edilmiş)."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel/kanit",
+      "bulgu": "denetim/tur16/kanit/ dizininde yer alan 01-deneme.png ve 03-uzun-basma.png, onOpenDrawer düzeltmesi öncesine ait başarısız deneme görselleridir; RAPOR.md'de açıklandığı üzere hata teşhis kaydı olarak tutulmuştur."
+    }
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ChatViewModel.kt": "3c035e3564bc18cb6ebef8a4947f6f5d7449fcf10b89a4ec78efe98f5389ae3a",
+    "app/src/main/java/com/hermes/mobile/MainActivity.kt": "cec8fc5139752f9de388e4edb59ef447da2689d2a743d15726fde004a7024930",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "2c7ab2b7e72401bd0e432b5fa2c2b6f6e2f375c2f9b858eabd8daa2776dbbb24",
+    "app/src/main/java/com/hermes/mobile/ui/InterventionDialog.kt": "07a08562cbde69b3d7ce4150779f99be61428499bf2fb3d7eec7948ac1144434",
+    "app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt": "1081d0d5cc9957870e486b1519584bf1ce16b4b82e016256852da36fb6b7a964",
+    "app/src/main/java/com/hermes/mobile/ui/SessionDrawerLogic.kt": "f1245f55918e3b99936493d8e821e057c97710100a6c381a4f469e15764ab691",
+    "app/src/main/java/com/hermes/mobile/ui/SessionsScreen.kt": "eb34bff07cd82634b16617829dcda945d486296741e3755db5095c88c47f3564",
+    "app/src/test/java/com/hermes/mobile/SessionDrawerTur16Test.kt": "20b8d41aad3fab5821b4ad249f35142bc0e1941d1d227f501794002896b1a731",
+    "app/src/test/java/com/hermes/mobile/SpeedMeterTest.kt": "00f7f1c9735ecddc12d5e169414516c7c6b13738565c3f5c8090b8563b45f832",
+    "denetim/tur16/RAPOR.md": "c94f360eba33a87e5467df7f351cd696844d3aaf7dfb02b25a2bd8fec7ef146c",
+    "denetim/tur16/kanit/00-acilis.png": "bf171a39d5a894b112035c1693d26b8c00a7120ec0b0da9ab44c8257aa747967",
+    "denetim/tur16/kanit/01-cekmece-acik.png": "dd0ccf032db479c2e1a7c678a7930ac5c7d5efed5c12db99acc4af1463434d76",
+    "denetim/tur16/kanit/02-arama.png": "d1446f3bd82f61ade1c2f23436b520e7404beaa5cb51208347d60768170c57e4",
+    "denetim/tur16/kanit/03-uzun-basma-alt-sayfa.png": "4366f2611fc60b06181e3613ab01803fb40082c2becad1196f16b3f8ce6c5150",
+    "denetim/tur16/kanit/04-secim-sonrasi-sohbet.png": "51b8fc6b8247f47d4aeadff88d461790232a431d5d15aa786cf13b3b3f7c77e5",
+    "denetim/tur16/kanit/05-back-cekmece-kapatir.png": "51b8fc6b8247f47d4aeadff88d461790232a431d5d15aa786cf13b3b3f7c77e5",
+    "/Volumes/EX/007-HERMES-M4-LIVE/000-TEMP/hermes-mobile-tur16-oturum-20260918.apk": "b97eb8c91c6ff0f7f60efd6073b023b766d52d697b9aa2092c7a1883e3984fc7"
+  },
+  "lesson": "Ölü kod temizliği (FR-007) ve mimari sadeleşme yeni testlerle tam kilitlenmeli: SessionRail ve WorkScreen kaldırılırken 21 eski ray testi silindi, yerine saf SessionDrawerLogic'i tüm yönleriyle (zaman grupları, arama, sabitleme sırası, arşiv/geri-al, son oturum kalıcılığı, ham id kalkanı) sınayan 10 yeni test yazılarak 622/0 sıfır regresyon sağlandı.",
+  "uzman": "android",
+  "deneme_no": 0,
+  "devir": false
+}
