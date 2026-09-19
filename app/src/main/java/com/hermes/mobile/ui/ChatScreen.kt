@@ -1062,7 +1062,9 @@ private fun ChatItemView(
             Box(
                 Modifier
                     .widthIn(max = 300.dp)
-                    .background(HermesColors.Surface, RoundedCornerShape(12.dp))
+                    // tur-17 B rol-tuketici: bubbleUser = kullanici balonu zemini
+                    // (§3; varsayilan surface — piksel ayni, semantik bag).
+                    .background(HermesColors.BubbleUser, RoundedCornerShape(12.dp))
                     .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(12.dp))
                     .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
@@ -1271,7 +1273,7 @@ private fun ApprovalCard(item: ChatItem.Approval, onApproval: (String, Boolean) 
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Text("Onayla", color = HermesColors.Background, fontSize = 13.sp)
+                    Text("Onayla", color = HermesColors.OnAccent, fontSize = 13.sp)
                 }
                 Row(
                     Modifier
