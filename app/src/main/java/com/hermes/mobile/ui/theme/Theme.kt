@@ -3,6 +3,7 @@ package com.hermes.mobile.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
@@ -37,6 +38,15 @@ object HermesColors {
     val Busy: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.busy
     val Offline: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.textFaint
     val Danger: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.danger
+
+    // --- tur-17 (B1, TASARIM-RAPORU.md §3): 6 yeni semantik rol proxy'si ---
+    val SurfaceCard: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.surfaceCard
+    val SurfaceOverlay: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.surfaceOverlay
+    val Focus: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.focus
+    /** Dolgulu aksan CTA üstü metin (koyu zemin; WCAG AA hesabı Themes.kt'de). */
+    val OnAccent: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.onAccent
+    val Skeleton: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.skeleton
+    val BubbleUser: Color @Composable @ReadOnlyComposable get() = LocalHermesColors.current.bubbleUser
 }
 
 val MonoTextStyle: TextStyle
@@ -55,9 +65,30 @@ fun HermesTheme(
 ) {
     val colors = palette.toColors()
 
-    val scheme = darkColorScheme(
+    // Tur-17 B1 (TASARIM-RAPORU.md §4-B1): tek darkColorScheme kırıldı —
+    // palet isLight işareti ya da arka plan luminansına göre dallanır.
+    // nous (açık) seçiliyken Material3 bileşenleri (DropdownMenu, TextField,
+    // dialog, ripple) artık koyu default'larla çizilmez.
+    val isLight = palette.lightTheme()
+    val scheme = if (isLight) lightColorScheme(
         primary = colors.midground,
-        onPrimary = colors.background,
+        onPrimary = colors.onAccent,
+        secondary = colors.borderStrong,
+        onSecondary = colors.textPrimary,
+        background = colors.background,
+        onBackground = colors.textPrimary,
+        surface = colors.surface,
+        onSurface = colors.textPrimary,
+        surfaceVariant = colors.surfaceDim,
+        onSurfaceVariant = colors.textSecondary,
+        outline = colors.border,
+        outlineVariant = colors.border,
+        error = colors.danger,
+        onError = colors.background,
+    ) else darkColorScheme(
+        primary = colors.midground,
+        // B2: dolgulu aksan üstü metin artik on-accent (eski: background).
+        onPrimary = colors.onAccent,
         secondary = colors.borderStrong,
         onSecondary = colors.textPrimary,
         background = colors.background,
@@ -78,6 +109,20 @@ fun HermesTheme(
         bodyMedium = base.bodyMedium.copy(fontSize = 14.sp * fontScale),
         labelSmall = base.labelSmall.copy(fontSize = 11.sp * fontScale),
     )
+
+    // B1 çağdaşı: enableEdgeToEdge kullanılıyor — sistem ikonları yalnız
+    // cihaz koyu/acık ayarına bakıyor. Uygulama ici tema ACIK ise (nous)
+    // durum/gezinme cubugu ikonlari koyuya cevrilir; koyuda eski hali.
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        val window = (view.context as? android.app.Activity)?.window
+        if (window != null) {
+            androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = isLight
+                isAppearanceLightNavigationBars = isLight
+            }
+        }
+    }
 
     CompositionLocalProvider(LocalHermesColors provides colors) {
         MaterialTheme(colorScheme = scheme, typography = typography, content = content)

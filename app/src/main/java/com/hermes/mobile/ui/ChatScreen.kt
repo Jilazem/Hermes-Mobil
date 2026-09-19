@@ -1271,7 +1271,7 @@ private fun ApprovalCard(item: ChatItem.Approval, onApproval: (String, Boolean) 
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Text("Onayla", color = HermesColors.Background, fontSize = 13.sp)
+                    Text("Onayla", color = HermesColors.OnAccent, fontSize = 13.sp)
                 }
                 Row(
                     Modifier
