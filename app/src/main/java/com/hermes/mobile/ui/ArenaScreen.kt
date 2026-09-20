@@ -51,6 +51,7 @@ import com.hermes.mobile.data.LiveSession
 import com.hermes.mobile.ui.MarkdownText
 import com.hermes.mobile.ui.tr
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 /**
  * Bot Arena — 5. sekme.
@@ -65,6 +66,11 @@ import kotlinx.coroutines.delay
  * Tur-15: sahne kipi seçici — "İş sahnesi" (varsayılan) | "Outrun yarış".
  * Seçim [sceneMode] ile AppSettings'te kalıcıdır; Outrun WebView'i [outrunHolder]
  * içinde sekme değişiminden sağ çıkar.
+ *
+ * Tur-20: üçüncü kip "Kafes dövüşü" — botların görev koşusu RINGDE hareketli
+ * dövüş olarak canlanır (cage.html + cage-engine.js, deterministik). Veri
+ * güdümlü olduğundan iş sahnesiyle aynı host'u kullanır; sahne seçici ve ortak
+ * WebView fabrikası aynen korunur.
  */
 @Composable
 fun ArenaScreen(
@@ -82,6 +88,28 @@ fun ArenaScreen(
     // LaunchedEffect: Outrun host'unun onDispose'u (söküm) BUNDAN önce koşar.
     LaunchedEffect(sceneKind) {
         if (sceneKind != ArenaSceneKind.OUTRUN) outrunHolder.release()
+    }
+
+    // Tur-20: yarış veri sürücüsü — arena koşarken 250 ms'de bir nabız örnekle,
+    // hız/şerit/geçiş komutunu outrun'a gönder (saf karar: raceDriveJs).
+    LaunchedEffect(sceneKind, st.phase) {
+        if (sceneKind != ArenaSceneKind.OUTRUN) return@LaunchedEffect
+        var driving = false
+        while (isActive) {
+            if (st.phase !is com.hermes.mobile.ArenaPhase.Running) break
+            val now = System.currentTimeMillis()
+            val pulses = arenaViewModel.sampleRace(now)
+            val cmd = raceDriveJs(pulses, now)
+            if (cmd != null) {
+                driving = true
+                outrunHolder.eval(cmd)
+            } else if (driving) {
+                // çalışan bot kalmadı: sürücüyü bırak, klasik oynanışa düş
+                driving = false
+                outrunHolder.eval("window.outrun&&window.outrun.setDrive(null)")
+            }
+            delay(250)
+        }
     }
 
     // Sahne durumu: JS 'ready'/'nowebgl'/'error' olayları + zaman aşımı kararı.
@@ -163,6 +191,9 @@ fun ArenaScreen(
             modeChip(ArenaSceneKind.OUTRUN, S.t2("Outrun yarış", "Outrun race"), sceneKind, {
                 onSceneModeChange(arenaSceneModeValue(ArenaSceneKind.OUTRUN))
             })
+            modeChip(ArenaSceneKind.CAGE, S.t2("Kafes dövüşü", "Cage fight"), sceneKind, {
+                onSceneModeChange(arenaSceneModeValue(ArenaSceneKind.CAGE))
+            })
         }
 
         // 3D sahne — iş sahnesi Arena alanının ~%35'i, yarış oynanabilir olsun diye ~%50'si;
@@ -170,6 +201,8 @@ fun ArenaScreen(
         val screenH = LocalConfiguration.current.screenHeightDp.toFloat()
         val sceneHeight = if (sceneKind == ArenaSceneKind.OUTRUN)
             (screenH * 0.5f).coerceIn(260f, 520f).dp
+        else if (sceneKind == ArenaSceneKind.CAGE)
+            (screenH * 0.42f).coerceIn(240f, 420f).dp
         else
             (screenH * 0.35f).coerceIn(200f, 340f).dp
         Box(
@@ -196,6 +229,21 @@ fun ArenaScreen(
                     holder = outrunHolder,
                     modifier = Modifier.fillMaxSize(),
                 )
+
+                // Tur-20: kafes dövüşü — veri güdümlü, aynı host (kind=CAGE).
+                ArenaSceneKind.CAGE -> ArenaSceneHost(
+                    json = sceneJson,
+                    theme = ArenaSceneTheme.DARK,
+                    kind = ArenaSceneKind.CAGE,
+                    modifier = Modifier.fillMaxSize(),
+                ) { type, _ ->
+                    when (type) {
+                        "ready" -> workStatus = ArenaSceneStatus.READY
+                        "nowebgl" -> workStatus = ArenaSceneStatus.NO_WEBGL
+                        "error" -> workStatus = ArenaSceneStatus.ERROR
+                        else -> {}
+                    }
+                }
             }
             when {
                 arenaUseCardFallback(sceneFallback) ->

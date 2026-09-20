@@ -226,6 +226,50 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         return null
     }
 
+    // ── Tur-20: yarış nabız ölçümü (Outrun veri sürücüsü) ────────────────────
+    // awaitAnswer'ın 250 ms'lik örnekleme pencereleri: delta karakter sayacı +
+    // tool.start geçiş zamanı. UI 250 ms'de bir sampleRace() çağırır; saf
+    // kararlar RaceDriveModel'de (testli).
+    private class RaceWindow {
+        @Volatile var count: Long = 0
+        @Volatile var since: Long = System.currentTimeMillis()
+        @Volatile var passUntilMs: Long = 0L
+    }
+
+    private val raceWindows = java.util.concurrent.ConcurrentHashMap<String, RaceWindow>()
+
+    private fun raceNote(fid: String, chars: Int) {
+        raceWindows.getOrPut(fid) { RaceWindow() }.count += chars.coerceAtLeast(0)
+    }
+
+    private fun racePass(fid: String) {
+        raceWindows.getOrPut(fid) { RaceWindow() }.passUntilMs =
+            System.currentTimeMillis() + 240L
+    }
+
+    /**
+     * Şu an ÇALIŞAN figürlerin yarış nabzı (karakter/s, pencere ortalaması).
+     * Pencere her örneklemede döner (UI 250 ms'de bir çağırır).
+     */
+    fun sampleRace(nowMs: Long): List<com.hermes.mobile.ui.RaceBotPulse> =
+        figureStates.values.filter { it.state == ArenaFigureState.WORKING }.map { f ->
+            val w = raceWindows[f.id]
+            val elapsed = ((nowMs - (w?.since ?: nowMs)) / 1000.0).coerceAtLeast(0.2)
+            val count = w?.count ?: 0L
+            if (w != null) { w.count = 0; w.since = nowMs }
+            com.hermes.mobile.ui.RaceBotPulse(
+                id = f.id,
+                charsPerSec = count / elapsed,
+                working = true,
+                passUntilMs = w?.passUntilMs ?: 0L,
+            )
+        }
+
+    /** Tur 2 / sentez / durdur: eski pencereleri temizle (sıfır nabız kalmasın). */
+    private fun raceReset() {
+        raceWindows.clear()
+    }
+
     /** Tüm aktif oturumlara interrupt gönderir ve state'i Done'a çeker. */
     fun stop() {
         activeGw?.let { gw ->
@@ -252,6 +296,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         runningJob?.cancel()
         activeSessions.clear()
         figureStates.clear()
+        raceReset()
         _state.update { ArenaState(profiles = it.profiles, mode = it.mode) }
     }
 
@@ -266,7 +311,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
             val sid = gw.createSession(bot)
             activeSessions += sid
             val text = try {
-                awaitAnswer(gw, sid, ArenaPrompts.round1(topic))
+                awaitAnswer(gw, sid, ArenaPrompts.round1(topic), raceFid = fid)
             } catch (e: Throwable) {
                 markFigure(fid, bot, ArenaFigureState.ERROR, round1Badge())
                 throw e
@@ -290,7 +335,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
             val sid = gw.createSession(bot)
             activeSessions += sid
             val text = try {
-                awaitAnswer(gw, sid, prompt)
+                awaitAnswer(gw, sid, prompt, raceFid = fid)
             } catch (e: Throwable) {
                 markFigure(fid, bot, ArenaFigureState.ERROR, round2Badge())
                 throw e
@@ -311,7 +356,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         val sid = gw.createSession(synthBot)
         activeSessions += sid
         val synthText = try {
-            awaitAnswer(gw, sid, synthPrompt)
+            awaitAnswer(gw, sid, synthPrompt, raceFid = fid)
         } catch (e: Throwable) {
             markFigure(fid, synthBot, ArenaFigureState.ERROR, synthBadge())
             throw e
@@ -334,7 +379,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
                 val sid = gw.createSession(bot)
                 activeSessions += sid
                 val text = try {
-                    awaitAnswer(gw, sid, prompt)
+                    awaitAnswer(gw, sid, prompt, raceFid = fid)
                 } catch (e: Throwable) {
                     markFigure(fid, bot, ArenaFigureState.ERROR, round1Badge())
                     throw e
@@ -350,6 +395,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         sid: String,
         prompt: String,
         timeoutMs: Long = 90_000,
+        raceFid: String? = null,
     ): String {
         val buf = StringBuilder()
         val done = CompletableDeferred<String>()
@@ -357,7 +403,15 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
             gw.events.collect { e ->
                 if (e.sessionId != sid) return@collect
                 when (e.type) {
-                    "message.delta" -> buf.append(e.text.orEmpty())
+                    "message.delta" -> {
+                        val t = e.text.orEmpty()
+                        buf.append(t)
+                        // Tur-20: yarış nabzı — delta karakterleri sayaçlanır.
+                        raceFid?.let { raceNote(it, t.length) }
+                    }
+                    "tool.start" ->
+                        // Tur-20: araç çağrısı = geçiş anı (sol şeride geçiş sembolü).
+                        raceFid?.let { racePass(it) }
                     "message.complete" ->
                         done.complete(buf.toString().ifBlank { e.text.orEmpty() })
                     "error" ->
