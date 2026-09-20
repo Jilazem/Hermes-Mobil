@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
@@ -684,6 +685,27 @@ private fun DrawerSessionRow(
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     Spacer(Modifier.width(8.dp))
+                    // Tur-21: JEV rozeti — gateway alanı gelmiyorsa HİÇ çizilmez
+                    // (yer tutucu yok, uydurma yok). Renkler paletten:
+                    // Online/Yedek2/BadgeWarn tur-17 palet eşlemesiyle sabit.
+                    when (val badge = com.hermes.mobile.data.JevBadgeLogic.parse(row.jev)) {
+                        com.hermes.mobile.data.JevBadgeLogic.Badge.None -> Unit
+                        else -> {
+                            Box(
+                                Modifier
+                                    .size(7.dp)
+                                    .background(
+                                        when (badge) {
+                                            com.hermes.mobile.data.JevBadgeLogic.Badge.Green -> HermesColors.Online
+                                            com.hermes.mobile.data.JevBadgeLogic.Badge.Yellow -> HermesColors.Busy
+                                            else -> HermesColors.Danger
+                                        },
+                                        CircleShape,
+                                    )
+                            )
+                            Spacer(Modifier.width(5.dp))
+                        }
+                    }
                     Text(
                         formatRelative(row.epochSeconds),
                         color = HermesColors.TextFaint,

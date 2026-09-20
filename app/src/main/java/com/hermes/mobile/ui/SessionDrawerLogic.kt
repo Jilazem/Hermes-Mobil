@@ -60,6 +60,11 @@ data class DrawerRow(
     val current: Boolean,
     /** Canlı liste kaydı (canlı sekmesi süzmesi için). */
     val liveSession: LiveSession?,
+    /**
+     * Tur-21 JEV ham alanı (REST `HermesSession.jev`) — boş = rozet yok.
+     * Renk çözümü [com.hermes.mobile.data.JevBadgeLogic.parse] ile çizim tarafında.
+     */
+    val jev: String = "",
 )
 
 /** Çekmece satırı türleri (LazyColumn key'leri çakışmasın diye ayrı önek). */
@@ -179,6 +184,9 @@ fun drawerRows(
                     current = currentSessionId != null &&
                         (currentSessionId == s.id || currentSessionId == l?.id),
                     liveSession = l,
+                    // Tur-21: gateway alanı göndermiyorsa null/boş kalır →
+                    // rozet çizilmez (uydurma yok).
+                    jev = s.jev.orEmpty(),
                 ),
             )
         }

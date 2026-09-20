@@ -78,6 +78,9 @@ object VoiceStatusLogic {
     /** Motorun kısa görünen adı (durum satırında kullanılır). */
     fun engineShort(engine: VoiceSpeakLogic.Engine, t: (String, String) -> String): String =
         when (engine) {
+            // Tur-21: yerel motor — "/health" bulut ucunun motoru DEĞİL;
+            // kısa ad cihaz içi motoru anlatır.
+            VoiceSpeakLogic.Engine.YEREL -> t("Yerel", "Local")
             VoiceSpeakLogic.Engine.KAHYA -> t("Kahya", "Kahya")
             VoiceSpeakLogic.Engine.KADIN -> t("Kadın", "Female")
             VoiceSpeakLogic.Engine.CHATTERBOX -> t("Chatterbox", "Chatterbox")

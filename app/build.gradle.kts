@@ -16,6 +16,12 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         vectorDrawables { useSupportLibrary = true }
+
+        // Tur-21: yerel TTS motoru (sherpa-onnx, app/libs AAR) yalnız bu iki
+        // ABI'yi taşıyor — telefon arm64, emülatör x86_64. Diğerleri paketlenmez.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {
@@ -91,6 +97,11 @@ dependencies {
     val shizuku = "13.1.5"
     implementation("dev.rikka.shizuku:api:$shizuku")
     implementation("dev.rikka.shizuku:provider:$shizuku")
+
+    // Tur-21: yerel (çevrimdışı) TTS motoru — sherpa-onnx 1.13.8 (Apache-2.0).
+    // MavenCentral'da POM'u olmadığı için resmî GitHub sürüm AAR'ı depoya
+    // alındı (app/libs, sha256 633c24321e06b1fe... — RAPOR'da tam değer).
+    implementation(files("libs/sherpa-onnx-1.13.8.aar"))
 
     testImplementation("junit:junit:4.13.2")
 

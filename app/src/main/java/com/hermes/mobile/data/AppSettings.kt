@@ -85,7 +85,19 @@ data class AppSettings(
     val compact: Boolean = false,
 
     // ── Canlı ses ────────────────────────────────────────────────────
+    /**
+     * Sesli asistan beyni (tur-21 model seçici): `gemini` (varsayılan, mevcut
+     * canlı ses hattı) ya da `yerel` (node1 OpenAI-uyumlu uç — LAN).
+     * Çözümleyici: [com.hermes.mobile.data.LiveModelLogic.Provider.fromId].
+     */
     val liveProvider: String = "gemini",
+    /**
+     * Yerel LLM adresi (tur-21) — node1 varsayılanı; ağ değişirse buradan
+     * düzeltilir. Boşsa yerel seçenek "adres girilmedi" hatası verir.
+     */
+    val localLlmUrl: String = "http://192.168.1.99:8888",
+    /** Yerel model adı (registry boşlukları için elle düzeltme kapısı). */
+    val localLlmModel: String = "Qwen/Qwen3.8-Flash-Next",
     /**
      * Canlı ses modeli.
      *
@@ -185,8 +197,15 @@ data class AppSettings(
      */
     val voiceAutoSend: Boolean = false,
 
-    /** Seslendirme motoru: `kahya` (varsayılan) · `chatterbox` · `kadin`. */
-    val voiceEngine: String = "kahya",
+    /**
+     * Seslendirme motoru: `yerel` (varsayılan, tur-21) · `kahya` · `kadin` ·
+     * `chatterbox`.
+     *
+     * Tur-21 gizlilik kararı: telefon verisi buluta çıkmasın diye varsayılan
+     * YEREL Piper (kadın, fettah) — model indirilmemişse seslendirme açık
+     * hatayla uyarır, sessiz buluta geçmez.
+     */
+    val voiceEngine: String = "yerel",
 
     /**
      * Ses ucu adresi. Boş bırakılırsa sunucu adresinden türetilir:

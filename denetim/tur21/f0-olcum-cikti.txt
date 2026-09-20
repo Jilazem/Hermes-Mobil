@@ -1,0 +1,5 @@
+ab-fettah.wav: median=188.5 Hz  p25=180  p75=196  (pencereler=151)
+val-irina.wav: median=168.3 Hz  p25=154  p75=186  (pencereler=369)
+val-dfki.wav: median=98.0 Hz  p25=92  p75=107  (pencereler=498)
+val-ryan.wav: median=123.2 Hz  p25=106  p75=142  (pencereler=460)
+tarih: 2026-09-20 21:05 +0300
