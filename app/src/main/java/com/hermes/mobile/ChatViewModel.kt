@@ -8,6 +8,13 @@ import com.hermes.mobile.data.AwaitReplyService
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
+import com.hermes.mobile.data.LiveModelLogic
+import com.hermes.mobile.data.LocalModelClient
+import com.hermes.mobile.data.LocalModelLogic
+import com.hermes.mobile.data.LocalTtsDownloader
+import com.hermes.mobile.data.LocalTtsEngine
+import com.hermes.mobile.data.LocalTtsLogic
+import com.hermes.mobile.data.AndroidLocalSynth
 import com.hermes.mobile.data.PhoneIntent
 import com.hermes.mobile.data.PhoneTools
 import com.hermes.mobile.data.ShizukuBridge
@@ -34,6 +41,7 @@ import com.hermes.mobile.data.settleShare
 import com.hermes.mobile.data.resolveShareTarget
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,6 +50,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import com.hermes.mobile.ui.createSessionProfileArg
 import com.hermes.mobile.ui.ROUTER_CHIP
@@ -460,6 +469,35 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private var voiceClientKey = ""
 
     /**
+     * Tur-21 yerel ses motoru + indirme yöneticisi (Piper/sherpa-onnx).
+     * Motor TEMBEL: yalnız yerel sentez istenirse yüklenir (Dispatchers.IO).
+     */
+    private val localTtsEngine = LocalTtsEngine(app)
+
+    /**
+     * Tur-21 yerel LLM istemcisi — Ayarlar'daki adrese göre KURULUR (null =
+     * adres yok). Sessiz geçiş yok: hata kullanıcıya gösterilir, Gemini'ye
+     * düşmez (model kilidi).
+     */
+    @Volatile
+    var localModelClient: LocalModelClient? = null
+
+    /**
+     * Tur-21: sesli asistanda seçili beyin (`AppSettings.liveProvider`
+     * çözümlemesi). VARSAYILAN gemini — eski davranış bozulmaz.
+     */
+    @Volatile
+    var liveProvider: LiveModelLogic.Provider = LiveModelLogic.Provider.GEMINI
+
+    /** Son yerel sağlık okuması (Ayarlar durum noktası). */
+    private val _liveLocalHealth = MutableStateFlow(LiveModelLogic.Health.Unknown)
+    val liveLocalHealth: StateFlow<LiveModelLogic.Health> = _liveLocalHealth.asStateFlow()
+
+    /** Yerel TTS indirme durum akışı (Ayarlar kartı). */
+    private val _localTts = MutableStateFlow(LocalTtsLogic.State())
+    val localTts: StateFlow<LocalTtsLogic.State> = _localTts.asStateFlow()
+
+    /**
      * Ses hattı denetleyicisi — kayıt durum makinesi + sentez akışı.
      *
      * Taşıyıcı **lambda** olarak veriliyor: profil ya da adres ayarı
@@ -471,6 +509,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         scope = viewModelScope,
         recorder = voiceRecorder,
         player = voicePlayer,
+        localSynth = AndroidLocalSynth(localTtsEngine),
     )
 
     /**
@@ -590,6 +629,173 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Tur-12: `Isıt` durumu (bölümden çıkılsa da sürer). */
     val voiceWarmState: StateFlow<VoiceStatusLogic.WarmState> = voiceMsg.warm
+
+    // ── Tur-21: yerel TTS + yerel asistan (node1) ─────────────────────
+
+    /**
+     * Yerel TTS disk durumunu tarar ve indirme durum akışını günceller
+     * (Ayarlar kartı açılırken çağrılır; hash taraması IO'da, ~1 sn).
+     */
+    fun refreshLocalTtsState() {
+        viewModelScope.launch {
+            val disk = withContext(Dispatchers.IO) {
+                runCatching {
+                    val dir = LocalTtsLogic.modelDir(getApplication<Application>().filesDir)
+                    LocalTtsLogic.filesPresent(dir) &&
+                        LocalTtsLogic.firstShaMismatch(dir) { sha ->
+                            com.hermes.mobile.data.LocalTtsDownloader.Companion.sha256Of(sha)
+                        } == null
+                }.getOrDefault(false)
+            }
+            _localTts.value = LocalTtsLogic.startState(disk, _localTts.value.message.takeIf {
+                _localTts.value.phase == LocalTtsLogic.Phase.Failed
+            }.orEmpty())
+        }
+    }
+
+    /** Yerel TTS modelini indirir (eksik parçalar); ilerleme StateFlow'a akar. */
+    fun downloadLocalTts() {
+        if (_localTts.value.phase == LocalTtsLogic.Phase.Downloading) {
+            diagLocal("yerel tts indirme zaten suruyor - ikinci istek yok")
+            return
+        }
+        _localTts.value = LocalTtsLogic.progress(0L, "hazirlaniyor")
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val downloader = LocalTtsDownloader(app) { done, cur ->
+                _localTts.value = LocalTtsLogic.progress(done, cur)
+            }
+            runCatching { downloader.ensureModel() }
+                .onSuccess {
+                    diagLocal("yerel tts modeli tamam (63.4 MB, sha hepsi dogrulandi)")
+                    _localTts.value = LocalTtsLogic.downloaded()
+                }
+                .onFailure { e ->
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    diagLocal("yerel tts indirme hatasi: ${e.message}")
+                    _localTts.value = LocalTtsLogic.failed(
+                        e.message ?: tr("Yerel ses indirilemedi", "Local voice download failed"),
+                    )
+                }
+        }
+    }
+
+    /** Yerel TTS dosyalarını Ayarlar'dan siler (spec: silme kapısı). */
+    fun deleteLocalTts() {
+        viewModelScope.launch {
+            val n = withContext(Dispatchers.IO) {
+                runCatching {
+                    LocalTtsLogic.deleteModel(
+                        LocalTtsLogic.modelDir(getApplication<Application>().filesDir),
+                    )
+                }.getOrDefault(0)
+            }
+            diagLocal("yerel tts silindi: $n dosya")
+            _localTts.value = LocalTtsLogic.startState(false)
+        }
+    }
+
+    private fun diagLocal(msg: String) = DiagLog.i("localtts", msg)
+
+    /**
+     * Yerel LLM sağlık kontrolü (Ayarlar durum noktası) — hata fırlatmaz,
+     * [LiveModelLogic.Health] döner ve akışa yazılır.
+     */
+    suspend fun probeLocalHealth(): LiveModelLogic.Health {
+        val c = localModelClient
+        if (c == null || !c.isConfigured()) {
+            _liveLocalHealth.value = LiveModelLogic.Health.Unknown
+            return LiveModelLogic.Health.Unknown
+        }
+        return try {
+            val ok = c.healthModel() != null
+            _liveLocalHealth.value = if (ok) LiveModelLogic.Health.Ok else LiveModelLogic.Health.Down
+            _liveLocalHealth.value
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            DiagLog.w("localllm", "saglik kontrolu: ${e.message}")
+            _liveLocalHealth.value = LiveModelLogic.Health.Down
+            LiveModelLogic.Health.Down
+        }
+    }
+
+    /**
+     * Yerel asistan turu (node1) — mesaj göster, yanıtla, seslendir.
+     *
+     * Hata halinde: Notice (kırmızı) + Yerel'de kal; otomatik Gemini geçişi
+     * YOK. Başarıda: asistan balonu + (asistan modu + otomatik okuma açıksa)
+     * seslendirme mevcut yerel TTS zincirinden geçer.
+     */
+    private fun sendLocalAssistant(label: String) {
+        val client = localModelClient
+        _state.update {
+            it.copy(
+                items = it.items + ChatItem.User(nextKey("u"), label),
+                sending = true,
+                agentBusy = true,
+                attachments = emptyList(),
+            )
+        }
+        if (client == null || !client.isConfigured()) {
+            _state.update {
+                it.copy(
+                    sending = false,
+                    agentBusy = false,
+                    items = it.items + ChatItem.Notice(
+                        nextKey("n"),
+                        LiveModelLogic.resolveActive(
+                            LiveModelLogic.Provider.YEREL,
+                            _liveLocalHealth.value,
+                            false,
+                            ::tr,
+                        ).error.orEmpty(),
+                        isError = true,
+                    ),
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            val started = System.currentTimeMillis()
+            runCatching { client.chat(label, settings_localModelName) }
+                .onSuccess { answer ->
+                    DiagLog.i("localllm", "yanıt ${answer.length} kr · ${System.currentTimeMillis() - started} ms")
+                    val key = nextKey("a")
+                    _state.update {
+                        it.copy(
+                            sending = false,
+                            agentBusy = false,
+                            items = it.items + ChatItem.Assistant(key, answer, streaming = false),
+                        )
+                    }
+                    Notifier.agentReply(getApplication(), answer, sessionId = _state.value.sessionId)
+                }
+                .onFailure { e ->
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    DiagLog.e("localllm", "tur basarisiz: ${e.message}")
+                    _state.update {
+                        it.copy(
+                            sending = false,
+                            agentBusy = false,
+                            items = it.items + ChatItem.Notice(
+                                nextKey("n"),
+                                e.message ?: tr(
+                                    "Yerel node yanıt vermedi",
+                                    "The local node did not respond",
+                                ),
+                                isError = true,
+                            ),
+                        )
+                    }
+                    _liveLocalHealth.value = LiveModelLogic.Health.Down
+                }
+        }
+    }
+
+    /** Ayarlardan gelen model adı (boşsa sözleşme varsayılanı). */
+    @Volatile
+    var settings_localModelName: String = LocalModelLogic.DEFAULT_MODEL
 
     /**
      * Açılışta geri dönülecek oturum. `MainActivity` kayıtlı değeri buraya
@@ -780,6 +986,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             ready.forEach { appendLine("[${it.label}]") }
             append(body)
         }.trim()
+
+        // ── Tur-21: yerel asistan (node1) — model kilidi ─────────────────
+        // Kullanıcı Ayarlar'da "Yerel (node1)"i seçtiği sürece her tur yerel
+        // uçtan geçer. Hata olursa AÇIK gösterilir ve YEREL'de kalınır —
+        // sessiz Gemini'ye geçiş YOK (kullanıcı onaylı geçiş, D-04/d-06
+        // disiplini: hata yutulmaz, kullanıcı formatlı mesaj üretilir).
+        if (liveProvider == LiveModelLogic.Provider.YEREL) {
+            sendLocalAssistant(label)
+            return
+        }
 
         // Bağlantı yoksa mesajı kaybetme: ekranda göster, kuyruğa al, bağlanınca
         // gönder. Yeniden bağlanma zaten kendiliğinden deneniyor.
