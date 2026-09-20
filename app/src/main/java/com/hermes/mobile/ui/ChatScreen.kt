@@ -1329,25 +1329,20 @@ private fun SpeedRow(speed: StateFlow<StreamMeter.Snapshot?>) {
         visible = shown != null && shown.active && !shown.finished
     }
 
+    val reduced = LocalReducedMotion.current
     AnimatedVisibility(
         visible = visible && line.isNotBlank(),
-        enter = fadeIn(tween(120)),
-        exit = fadeOut(tween(600)),
+        enter = HermesMotion.fadeSwap(reduced),
+        // Akış bitişi sönüşü tur-13'den 600ms'ti — davranış korunur, yalnız
+        // reduced-motion'da anlığa iner.
+        exit = fadeOut(HermesMotion.tweenSpec(HermesMotion.FADE_OUT_SLOW_MS, reduced)),
     ) {
         // Donmuş (finished) anda shimmer dursun: çizgi tek tona döner.
         val frozen = snap?.finished == true
         val base = HermesColors.BorderStrong
         val hot = HermesColors.Midground
-        val transition = rememberInfiniteTransition(label = "speed-shimmer")
-        val shift by transition.animateFloat(
-            initialValue = 0f,
-            targetValue = if (frozen) 0f else 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1100, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-            label = "speed-shimmer-shift",
-        )
+        // Tur22: shimmer kayması + reduced-motion saygısı merkezi Motion'dan.
+        val shift = HermesMotion.shimmerShift(reduced = reduced, frozen = frozen)
         Column {
             Text(
                 line,

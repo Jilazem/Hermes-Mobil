@@ -208,6 +208,11 @@ fun HermesTheme(
     // Tur18 FR-001: 3 rollük yarımda kalmış ölçek yerine 6 adımlık tam ölçek.
     val typography = hermesTypography(fontScale)
 
+    // Tur22 madde-6: cihaz animasyon ölçeği (Ayarlar → Animasyon = 0) tek
+    // noktadan okunup CompositionLocal ile tüm ağaca verilir; Motion.kt'deki
+    // her geçiş bu bayrağa bakınca prefers-reduced-motion'a uyar.
+    val reducedMotion = com.hermes.mobile.ui.rememberPrefersReducedMotion()
+
     // B1 çağdaşı: enableEdgeToEdge kullanılıyor — sistem ikonları yalnız
     // cihaz koyu/acık ayarına bakıyor. Uygulama ici tema ACIK ise (nous)
     // durum/gezinme cubugu ikonlari koyuya cevrilir; koyuda eski hali.

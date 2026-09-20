@@ -1,10 +1,5 @@
 package com.hermes.mobile.ui
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -42,13 +36,8 @@ fun skeletonRowCount(loading: Boolean, loadedItems: Int, placeholder: Int = 3): 
 /** Sönüp yanan yer tutucu blok. */
 @Composable
 fun SkeletonBox(width: Dp?, height: Dp, modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "iskelet")
-    val alpha by transition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "iskelet-alfa",
-    )
+    // Tur22 nabız alfası
+    val alpha = HermesMotion.pulseAlpha()
     val base = modifier.alpha(alpha).height(height)
     androidx.compose.foundation.layout.Box(
         (if (width != null) base.width(width) else base.fillMaxWidth())
