@@ -151,7 +151,8 @@ fun SessionDrawerContent(
             .background(HermesColors.Background)
             .padding(top = 14.dp),
     ) {
-        // Sekmeler (FR-002): Oturumlar · Canlı
+        // Sekmeler (FR-002): Oturumlar · Canlı · Arşiv (tur22 madde-4: 3.
+        // sekme — boş arşiv boş-durumu artık erişilebilir; tab 2 = arşiv).
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -168,6 +169,11 @@ fun SessionDrawerContent(
                 selected = tab == 1,
                 modifier = Modifier.weight(1f),
             ) { onTab(1) }
+            DrawerTab(
+                S.t2("Arşiv", "Archive"),
+                selected = tab == 2,
+                modifier = Modifier.weight(1f),
+            ) { onTab(2) }
         }
 
         Spacer(Modifier.height(10.dp))
@@ -235,7 +241,9 @@ fun SessionDrawerContent(
             }
         }
 
-        if (tab == 0) {
+        // tab 0 = oturumlar, tab 2 = arşiv (aynı liste, farklı showArchived —
+        // satırları MainActivity türetiyor); tab 1 = canlı.
+        if (tab != 1) {
             LazyColumn(
                 Modifier
                     .weight(1f)
@@ -264,9 +272,15 @@ fun SessionDrawerContent(
                                     menuRow = entry.row
                                 },
                                 onArchiveSwipe = {
-                                    onSetArchived(entry.row, true)
-                                    undoRow = entry.row
+                                    if (tab == 2) {
+                                        // Arşiv görünümü: kaydır = arşivden çıkar.
+                                        onSetArchived(entry.row, false)
+                                    } else {
+                                        onSetArchived(entry.row, true)
+                                        undoRow = entry.row
+                                    }
                                 },
+                                archivedMode = tab == 2,
                             )
                         }
                     }
@@ -282,38 +296,36 @@ fun SessionDrawerContent(
                         )
                     }
                 }
+                // Tur22 madde-4: boş durumlar TEK BİLEŞENDEN — ikon + tek
+                // cümle + öneri aksiyonu (uydurma veri yok).
                 if (rows.isEmpty() && query.isBlank() && !loading) {
                     item(key = "empty") {
-                        Text(
-                            S.t2(
-                                "Henüz oturum yok.\nYeni sohbet ile başla.",
-                                "No sessions yet.\nStart a new chat.",
-                            ),
-                            color = HermesColors.TextMuted,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
+                        if (tab == 2) {
+                            EmptyState(
+                                icon = EmptyStateIcons.ArchiveEmpty,
+                                message = emptyStateArchiveEmpty(),
+                                modifier = Modifier.padding(20.dp),
+                            )
+                        } else {
+                            EmptyState(
+                                icon = EmptyStateIcons.NoSessions,
+                                message = emptyStateNoSessions(),
+                                modifier = Modifier.padding(20.dp),
+                                actionLabel = S.t2("Yeni sohbet", "New chat"),
+                                onAction = onNewChat,
+                            )
+                        }
                     }
                 }
                 if (query.isNotBlank() && items.none { it is DrawerItem.RowItem }) {
                     item(key = "no-result") {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(
-                                S.t2("\"$query\" için oturum yok", "No sessions for \"$query\""),
-                                color = HermesColors.TextSecondary,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            TextButton(
-                                onClick = { onQuery("") },
-                                contentPadding = PaddingValues(start = 0.dp, top = 4.dp, end = 8.dp, bottom = 4.dp),
-                            ) {
-                                Text(
-                                    S.t2("Aramayı temizle", "Clear search"),
-                                    color = HermesColors.Midground,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                        }
+                        EmptyState(
+                            icon = EmptyStateIcons.NoResults,
+                            message = emptyStateNoResults(query),
+                            modifier = Modifier.padding(20.dp),
+                            actionLabel = S.t2("Aramayı temizle", "Clear search"),
+                            onAction = { onQuery("") },
+                        )
                     }
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(12.dp)) }
@@ -604,10 +616,13 @@ private fun DrawerSessionRow(
     onPick: () -> Unit,
     onLongPress: () -> Unit,
     onArchiveSwipe: () -> Unit,
+    /** Tur22 madde-4: true = arşiv görünümü — satır Settled başlar (bayraklı
+     * olmak burada normal); swipe ARŞİVDEN ÇIKARIR (çağıran tersini uygular). */
+    archivedMode: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
     val dismissState = rememberSwipeToDismissBoxState(
-        initialValue = if (row.archived) {
+        initialValue = if (row.archived && !archivedMode) {
             SwipeToDismissBoxValue.StartToEnd
         } else {
             SwipeToDismissBoxValue.Settled
@@ -650,25 +665,30 @@ private fun DrawerSessionRow(
         backgroundContent = {
             // Tur22 madde-2: arkadan görünen renk+ikon+etiket — sürüklerken
             // "ne olacak" net okunsun (Claude/ChatGPT arşiv jesti).
+            // archivedMode'da jest TERS çalışır: kaydır = arşivden çıkar.
             Row(
                 Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .background(HermesColors.Danger.copy(alpha = 0.16f))
+                    .background(
+                        if (archivedMode) HermesColors.Online.copy(alpha = 0.16f)
+                        else HermesColors.Danger.copy(alpha = 0.16f),
+                    )
                     .padding(end = 20.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    S.t2("Arşivle", "Archive"),
-                    color = HermesColors.Danger,
+                    if (archivedMode) S.t2("Arşivden çıkar", "Unarchive")
+                    else S.t2("Arşivle", "Archive"),
+                    color = if (archivedMode) HermesColors.Online else HermesColors.Danger,
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Spacer(Modifier.width(8.dp))
                 Icon(
-                    Icons.Default.Archive,
+                    if (archivedMode) Icons.Default.Undo else Icons.Default.Archive,
                     contentDescription = S.t2("Arşivlendi", "Archived"),
-                    tint = HermesColors.Danger,
+                    tint = if (archivedMode) HermesColors.Online else HermesColors.Danger,
                     modifier = Modifier.size(18.dp),
                 )
             }

@@ -666,11 +666,12 @@ private fun HermesApp(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var drawerQuery by rememberSaveable { mutableStateOf("") }
     var drawerTab by rememberSaveable { mutableStateOf(0) }
-    var drawerArchived by rememberSaveable { mutableStateOf(false) }
     val drawerScope = rememberCoroutineScope()
     // Tur-16: çekmece satırları — karar mantığı SessionDrawerLogic'te (testli).
+    // Tur22 madde-4: 3. sekme (tab==2) = arşiv görünümü — showArchived sekmeden
+    // gelir (drawerArchived state'i KULLANILMIYORDU, ölüydü: grep 0 set yeri).
     val drawerRowList = remember(
-        state.sessions, live.sessions, state.flags, state.cronNames, drawerArchived, chat.sessionId,
+        state.sessions, live.sessions, state.flags, state.cronNames, drawerTab, chat.sessionId,
     ) {
         drawerRows(
             sessions = state.sessions,
@@ -678,7 +679,7 @@ private fun HermesApp(
             liveByDbId = drawerLiveByDbId,
             flags = state.flags,
             cronNames = state.cronNames,
-            showArchived = drawerArchived,
+            showArchived = drawerTab == 2,
             currentSessionId = chat.sessionId,
         )
     }
@@ -748,7 +749,9 @@ private fun HermesApp(
     val shareWarning by chatViewModel.shareWarning.collectAsStateWithLifecycle()
     LaunchedEffect(shareWarning) {
         val w = shareWarning ?: return@LaunchedEffect
-        android.widget.Toast.makeText(toastContext, w, android.widget.Toast.LENGTH_LONG).show()
+        // Tur22 madde-2: hata anında NET toast — kısa, özürsüz, net (uzun bant
+        // ekranı kilitliyordu; LENGTH_SHORT + tüketim aynı).
+        android.widget.Toast.makeText(toastContext, w, android.widget.Toast.LENGTH_SHORT).show()
         chatViewModel.clearShareWarning()
     }
 

@@ -761,23 +761,29 @@ private fun EmptyChatHint(
     ) {
         Text(S.emptyTitle, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(6.dp))
-        Text(
-            when (connection) {
-                is ConnectionState.Open -> S.emptyHint
-                is ConnectionState.Error -> connection.reason
-                else -> S.t2("Gateway bağlantısı bekleniyor…", "Waiting for the gateway…")
-            },
-            color = HermesColors.TextMuted,
-            style = MaterialTheme.typography.bodySmall,
-        )
-        // İlk kurulum yolu (emülatör denetimi bulgu-1, 2026-09-14): bağlantı
-        // yokken kullanıcı "nereye token gireceğini" bulamıyordu — CTA doğrudan
-        // Sunucular ekranına götürür (≤2 dokunuş: CTA → Sunucu ekle).
         if (connection !is ConnectionState.Open) {
-            Spacer(Modifier.height(14.dp))
-            androidx.compose.material3.Button(onClick = onOpenServers) {
-                Text(S.t2("Sunucu ekle", "Add server"))
+            // Tur22 madde-4 (4. sahne): bağlantı yok — tek cümle + ikon + CTA.
+            EmptyState(
+                icon = EmptyStateIcons.NoConnection,
+                message = emptyStateNoConnection(),
+                actionLabel = S.t2("Sunucu ekle", "Add server"),
+                onAction = onOpenServers,
+            )
+            // D-04 kuralı: hata kodu yutulmaz — neden varsa altta tek satır.
+            (connection as? ConnectionState.Error)?.reason?.let { why ->
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    why,
+                    color = HermesColors.Danger,
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
+        } else {
+            Text(
+                S.emptyHint,
+                color = HermesColors.TextMuted,
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
         if (connection is ConnectionState.Open) {
             Spacer(Modifier.height(18.dp))
