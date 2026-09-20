@@ -98,6 +98,16 @@ data class HermesSession(
     @SerialName("input_tokens") private val inputTokensRaw: Long? = null,
     @SerialName("output_tokens") private val outputTokensRaw: Long? = null,
     val cwd: String? = null,
+    /**
+     * Tur-21 JEV rozeti — masaüstü `jev_gate`/`jev_guard` kararının oturum
+     * bazlı görünümü. **Gateway şu an bu alanı göndermiyor**; JSON'da yoksa
+     * null kalır ve rozet ÇİZİLMEZ (uydurma yok — sözleşme notu
+     * `denetim/tur21/JEV-BACKEND-SOZLESMES.md`).
+     *
+     * Kabul: "gec"→yeşil · "gozlem"/"log-only"→sarı · "iade"→kırmızı
+     * (çözümleyici: [com.hermes.mobile.data.JevBadgeLogic.parse]).
+     */
+    val jev: String? = null,
 ) {
     val isActive: Boolean get() = endedAt == null
     val title: String get() = displayName?.takeIf { it.isNotBlank() } ?: id
