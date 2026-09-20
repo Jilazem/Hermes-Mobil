@@ -11,16 +11,17 @@ import org.junit.Test
 /**
  * Tur-11 — ses ayarlarının varsayılanları ve tercihlere çözülmesi.
  *
- * Görev şartı: "otomatik gönder" **varsayılan KAPALI**, motor **varsayılan
- * kahya**. Yanlış anlaşılan bir cümle kendiliğinden ajana gitmemeli.
+ * Görev şartı: "otomatik gönder" **varsayılan KAPALI**. Tur-21: motor
+ * varsayılanı **YEREL** (gizlilik — telefon verisi buluta çıkmaz).
+ * Yanlış anlaşılan bir cümle kendiliğinden ajana gitmemeli.
  */
 class VoicePrefsTest {
 
     @Test
-    fun `varsayilanlar kapali gonder ve kahya motor`() {
+    fun `varsayilanlar kapali gonder ve yerel motor`() {
         val s = AppSettings()
         assertFalse(s.voiceAutoSend)
-        assertEquals("kahya", s.voiceEngine)
+        assertEquals("yerel", s.voiceEngine)
         assertEquals("", s.voiceUrl)
         assertEquals("", s.voiceLastOk)
     }
@@ -42,13 +43,13 @@ class VoicePrefsTest {
     @Test
     fun `bilinmeyen motor kimligi varsayilana duser`() {
         val p = AppSettings(voiceEngine = "yok-boyle-motor").toVoicePrefs()
-        assertEquals(VoiceSpeakLogic.Engine.KAHYA, p.engine)
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, p.engine)
     }
 
     @Test
     fun `tercihlerin varsayilani da kapali`() {
         val p = com.hermes.mobile.data.VoicePrefs()
         assertFalse(p.autoSend)
-        assertEquals(VoiceSpeakLogic.Engine.KAHYA, p.engine)
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, p.engine)
     }
 }
