@@ -97,4 +97,60 @@ araç: `denetim/tur20/scene_shot.py` sahne kırpımı + ortalama delta):
 4. Görev verisi olmadan (Idle) sahne boş kafes çizer (uydurma YOK); demo
    senaryosu yalnız `?demo=1` CDP kanıt modu, üründe etkisiz — bu turda
    kanıtlar gerçek setData çağrılarıyla alındı.
-</content>
+
+## DENETİM r2 DÜZELTMELERİ (2. tur FAIL → 3. tur)
+
+### 1) HIGH — 90sn donma: kök neden + PID-sabit 120sn kanıt
+- **Kök neden bulundu ve DÜZELTİLDİ**: `ArenaViewModel.awaitAnswer` yanıt
+  bekleme süresini MUTLAK 90 sn (`withTimeoutOrNull(90_000)`) olarak
+  uyguluyordu — canlı bir 110 sn'lik maraton (delta/tool akışı sürerken) 90.
+  sn'de `interrupt` + "AI yanıt vermedi" ile YARIDA kesiliyordu; kullanıcıda
+  "90 sn sonra donma" şikâyeti bu kesinti + yarış sahnesinin sürücüsüz
+  taban hıza düşmesidir. Düzeltme: **etkinlik-yenilemeli aşım** — her
+  `message.delta` / `tool.start` son-etkinlik sayacını tazeler; 90 sn yalnız
+  GERÇEKTEN SESİZ kalırsa ateşler (karar saf `raceActivityTimeoutFired`,
+  JUnit ile kilitli). 250 ms UI örnekleme döngüsü VM'den saf
+  `raceSamplePulse`'a devredildi (4 JUnit: pencere rotasyonu, temiz ikinci
+  pencere, null pencere, saat-jitter 0.2 sn tabanı).
+  Commit `8c2aa70` (8 yeni JUnit; toplam 664, 0 fail).
+- **120 sn PID-sabit koşu kanıtı** (iki koşu, ikisi de PID-sabit, 0 crash):
+  1. 21:45–21:47 koşusu: 133 sn, pid 3675→3675→3675 (`pid-kanit.json`).
+  2. 22:18–22:20 koşusu (temiz yeniden-boot emülatör, 60 fps CDP doğrulamalı,
+     timeout-korumalı betik `long_run_r3.sh`): 130 sn, **pid 4206→4206→4206**,
+     kosu-ici-kill=0, logcat'te FATAL EXCEPTION/ANR/am_kill=0, 3 kare md5-distinct.
+     Kare-delta (gerçek araç, sahne kırpımı): 60→130sn penceresi **20.883**
+     delta/kanal, **%54.64** piksel değişti (`kare-delta-60-son.txt`);
+     0→60sn penceresi 0.376 — koşulun ilk dakikası menü-durgun (kare-once ve
+     60sn karesi statik), hareket sonraki dakikada: delta>0 kapısı 60→130sn
+     penceresinden GEÇER, ilk pencere DÜRÜSTÇE düşük raporlanır.
+- **PID sabit değil görünen restart'ların KAYNAĞI İSPATLANDI**: bu makinede
+  paralel işler (kod-denetmen CDP koşuları + kanıt scriptleri — RAPOR'daki
+  5556 AVD ve tur15/kanit scriptleri `am force-stop` kullanır) emülatörü
+  SÜREKLİ dışarıdan force-stop'luyor. Kanıt: `kill-serisi.txt` — 18:21–21:37
+  arası 49 `am_kill` (hepsi dış pid'den, FATAL/ANR YOK). Ayrıca 21:59
+  koşusu bu dış kill'lerden biriyle bölündü ve emülatör süreci bir ara
+  çöktü (22:12 "device offline"); emülatör yeniden başlatılıp (boot 22:16,
+  60 fps doğrulaması CDP ile) 130 sn koşu timeout-korumalı betikle
+  (`long_run_r3.sh`) tekrarlandı ve PID-SABIT geçti.
+
+### 2) MEDIUM — kare delta değerleri: düzeltildi
+Denetmenin 13.107 bulduğu 73. satırdaki "giriş→vuruş 13.107 (%31.3)"
+satırı **kod-denetmen'in kendi yeniden üretimi** idi (verdict
+`doğrulananlar`: 2.219/13.387); 15. satır 5sn'lik (6.13) — birbiriyle
+karşılaştırılacak iki sayı DEĞİL. Rapor artık denetmenin kendi ürettiği
+değerlerle eşleşir. 120sn penceresi ayrıca ayrı ölçüldü: `uzun-kosu/
+kare-delta-once-60.txt` + `kare-delta-60-son.txt` (bu tur koşusunun
+çıkışları, araç girdisi).
+
+### 3) MEDIUM — determinism/0-girdi ayrı kayıt: eklendi
+`denetim/tur20/determinism_probe.js` (engine_test.js'ten bağımsız, tek
+seferlik) + ham çıktı `kanit/determinism-probe.txt`:
+`node denetim/tur20/determinism_probe.js` →
+`seed=123 60sn iki ayri kosu bit-bit ayni: true (696 bayt snapshot)` ·
+`seed=0 + 0 tick + bos figures: crash yok` · `negatif/sifir dt: crash yok,
+sayilar sonlu` · `60sn/3600 adim probe: bozuk-deger sayimi = 0`.
+
+### Yeniden üretilen APK (3. tur)
+- `007-HERMES-M4-LIVE/000-TEMP/hermes-mobile-tur20-arena-r3-260920.apk`
+- md5 `84f2067255403d9e72bbf00356278a6d` (15:53/19:55 APK'ları 90sn-düzeltme
+  ÖNCESİ paketlerdi — bu paket 8c2aa70 kodunu içerir, 20:58 üretimi).

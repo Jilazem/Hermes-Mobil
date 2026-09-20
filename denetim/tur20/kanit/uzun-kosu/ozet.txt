@@ -1,0 +1,11 @@
+=== UZUN KOSU KANITI (tur20, denetim r2 madde 1) ===
+baslangic: 2026-09-20 21:15:24
+pid-oncesi: 29325
+kare-60sn alindi: 2026-09-20 21:16:28 | pid-60sn: 29325
+pid-sonrasi: 29988
+logcat-satir: 557
+delta-once-60: sahne 1016x924: ortalama delta/kanal = 7.296, degisen piksel = 54.65%
+delta-60-son:  sahne 1016x924: ortalama delta/kanal = 14.152, degisen piksel = 53.70%
+crash-satir-sayisi: 6
+bitis: 2026-09-20 21:17:31
+BUTUN ADIMLAR BITTI

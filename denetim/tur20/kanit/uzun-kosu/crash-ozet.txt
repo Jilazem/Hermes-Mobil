@@ -1,0 +1,6 @@
+09-20 21:16:43.318 I/ActivityManager(  544): Force stopping com.hermes.mobile.v2 appid=10195 user=0: from pid 29980
+09-20 21:17:05.756 D/AndroidRuntime(30030): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-20 21:17:05.759 I/AndroidRuntime(30030): Using default boot image
+09-20 21:17:05.759 I/AndroidRuntime(30030): Leaving lock profiling enabled
+09-20 21:17:05.819 D/AndroidRuntime(30030): Calling main entry com.android.commands.uiautomator.Launcher
+09-20 21:17:06.879 D/AndroidRuntime(30030): Shutting down VM

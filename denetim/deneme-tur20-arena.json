@@ -1,0 +1,20 @@
+{
+  "fail_sayisi": 2,
+  "devir": false,
+  "turlar": [
+    {
+      "tarih": "2026-09-20T17:53:25",
+      "yapan": "coder",
+      "sonuc": "fail",
+      "not": "tur1 denetim: changes_requested (110sn kosu kanitsiz, kare delta 0.000, APK 15:53)"
+    },
+    {
+      "tarih": "2026-09-20T19:51:35",
+      "yapan": "coder",
+      "sonuc": "fail",
+      "not": "tur2 denetim: 90sn-donma kabul kriteri kanitsiz (logcat dump yok, PID sabit iddiasi uretilemedi); 659 JUnit + 26 node testi + delta>0 + determinism GECTI"
+    }
+  ],
+  "uzman": "coder",
+  "slug": "tur20-arena"
+}
