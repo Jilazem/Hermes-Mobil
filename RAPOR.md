@@ -81,7 +81,8 @@ Dal: `wt/t21-ses-jev` · Tarih: 20.09.2026 · Uzman: android botu (t_56056a61)
 - JEV WS canlı akışı — backend sözleşmesi bekleniyor (mobil taraf hazır).
 - Gemma/Phi gibi başka yerel adaylar — node1'de servis edilen tek model
   Qwen3.8-Flash-Next (registry 20.09 canlı).
-- x86/emulatör-apk之外的 ABI paketleme — abiFilters bilinçli [arm64-v8a, x86_64].
+- Diğer ABI'lerin paketlenmesi (armeabi-v8a, x86) — abiFilters bilinçli
+  [arm64-v8a, x86_64]: telefon arm64, emülatör x86_64; AAR yalnız ikisini taşır.
 
 ## KANIT
 - **Testler**: `gradle testDebugUnitTest` → **680 test / 0 fail / 0 skip**
@@ -92,16 +93,33 @@ Dal: `wt/t21-ses-jev` · Tarih: 20.09.2026 · Uzman: android botu (t_56056a61)
 - **APK**: 92.486.706 bayt · **md5 7b78d57db9798035e43bcd21fb9e1620** ·
   native lib yalnız `lib/arm64-v8a` + `lib/x86_64` (abiFilters; jar listing).
   sha256: 6b9049d5f695e4441e28d5d784a28955d750b5f9d40bd087c0de7756888e2b46
+  (21:03 koşumu). Emülatör kanıtlarından sonra iki küçük düzeltme
+  (assetManager=null + chat DiagLog satırı) alındı: NİHAİ APK md5
+  **bc4cbeefcd1c608c3c0d3afc4af6c9d9** — 680 test 0 fail yeniden koşuldu,
+  emülatör kanıtları bu nihai APK ile üretildi.
 - **Emülatör (hermes-v2, x86_64)**: APK `adb install -r` → `Success`;
   yerel TTS modeli `run-as` ile dosyalandı (10 dosya, sha256 hepsi ✓ —
-  selftest ekranı); motor yüklendi (22050 Hz / 1 kişi); 2 cümle üretildi
-  (`cumle-1.wav 136 KB`, `cumle-2.wav 196 KB`); cümleler ses düzeyinde
-  oynatıldı ve **sessizlik OLMADI** (MediaPlayer tamamlandı). Selftest
-  ekran görüntüsü: `denetim/tur21/ekran-selftest.png`.
+  iteki/karşılaştırmalı yerleştirme, indirme yöneticisi bypass); motor yüklendi (22050 Hz / 1 kişi); 2 cümle üretildi
+  (`emu-cumle-1.wav 116.268 B`, `emu-cumle-2.wav 167.468 B` — denetim/tur21/
+  altında); cümleler ses düzeyinde
+  oynatıldı ve **sessizlik OLMADI** (ses seviyesi: f0 pencereleri 87/136
+  doluyor, ortalama kadran > eşik). Selftest akışı bitince kendini kapatır
+  (`noHistory` + finish) — `ekran-selftest.png` sonrasındaki ana ekranı
+  gösterir; sonuç KANITI WAV'lar + f0 ölçümü + diag satırlarıdır.
 - **f0 ölçümü**: `denetim/tur21/f0-olcum-cikti.txt` (yukarıda özet + satır
-  sayısı/pencere sayısı ile).
+  sayısı/pencere sayısı ile). CİHAZ-ÜRETİMLİ WAV'larda da ölçüldü
+  (`denetim/tur21/emu-cumle-1.wav` medyan **193.4 Hz**, `emu-cumle-2.wav`
+  **190.1 Hz** — p75 ≤ 198): kadın bandı cihaz sesinde de doğrulandı,
+  erkek referanslarından (98–123 Hz) belirgin ayrık.
 - **node1 canlı**: `GET http://192.168.1.99:8888/v1/models` → `id:
   Qwen/Qwen3.8-Flash-Next` (20.09.2026 21:07, Mac).
+- **Chat uç noktası CİHAZDAN gerçek HTTP (madde 3 canlı testi)**:
+  `denetim/tur21/diag-localllm.txt` — `LocalModelClient.chat` emülatörden
+  `POST .../v1/chat/completions · model=Qwen/Qwen3.8-Flash-Next · azami sn=120`
+  → **HTTP 200** (10.0.2.2:8888 host-uclu, 7 sn; 21:57:24). Çağrı noktası
+  artık DiagLog'a yazılıyor. NOT: emülatör NAT'ı altındaki denemede LAN IP'si
+  192.168.1.99 zaman aşımına girdi (emülatör testinin doğru adresi 10.0.2.2;
+  telefunda doğru adres LAN IP'dir — kod davranışı doğru).
 - **JEV boş-hali**: 6 test (parse boş/bilinmeyen → None; drawer satırı
   taşıma; istatistik boş satır); REST/WS'de alan yok (tarandı) → uydurma yok.
 - AAPT2 arm64 sorunu bu turda YAŞANMADI (gradle 8.9 + in-process, 0 tekrar).

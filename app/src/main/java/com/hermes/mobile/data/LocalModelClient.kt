@@ -240,10 +240,12 @@ class LocalModelClient(
         val url = url("/v1/chat/completions")
         val payload = LocalModelLogic.chatBody(model, system, text)
             .toRequestBody(JSON_MEDIA)
+        DiagLog.i("LocalLLM", "POST $url · model=$model · azami sn=${readTimeoutMs / 1000}")
         try {
             httpFactory(8_000L, readTimeoutMs).newCall(
                 Request.Builder().url(url).post(payload).build(),
             ).execute().use { res ->
+                DiagLog.i("LocalLLM", "POST $url -> HTTP ${res.code}")
                 val raw = res.body?.string()
                 if (!res.isSuccessful) {
                     throw localized(
