@@ -21,6 +21,8 @@ data class LiveState(
     val notice: String? = null,
     /** Müdahale sayfası açık olan oturum. */
     val intervening: LiveSession? = null,
+    /** Tur-19 FR-002: mini composer (hızlı yanıt) hedefi — intervening'den ayrı. */
+    val quickReply: LiveSession? = null,
     val sending: Boolean = false,
     /**
      * `session.active_list` en az bir kez BAŞARIYLA geldi mi (tur-8).
@@ -73,7 +75,7 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
         pollJob = viewModelScope.launch {
             while (true) {
                 delay(6_000)
-                if (_state.value.intervening == null) refresh(quiet = true)
+                if (_state.value.intervening == null && _state.value.quickReply == null) refresh(quiet = true)
             }
         }
     }
@@ -110,6 +112,19 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeIntervention() {
         _state.update { it.copy(intervening = null) }
+    }
+
+    /**
+     * Tur-19 FR-002: hızlı yanıt hedefi — çekmece akışından açılan mini
+     * composer. Eski müdahale diyaloğundan AYRIZ (ikisi aynı anda açık olursa
+     * sending bayrağı çakışırdı); arayüz aynı anda birini açık tutar.
+     */
+    fun openQuickReply(session: LiveSession) {
+        _state.update { it.copy(quickReply = session) }
+    }
+
+    fun clearQuickReply() {
+        _state.update { it.copy(quickReply = null) }
     }
 
     /**
