@@ -124,6 +124,8 @@ fun SessionDrawerContent(
     onSubmitIntervention: (LiveSession, InterventionKind, String) -> Unit,
     onOpenSettings: () -> Unit,
     onDismissDrawer: () -> Unit,
+    /** Tur22 madde-3: oturum listesi ilk açılışta/ilk yenilemede iskelet. */
+    loading: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -270,7 +272,17 @@ fun SessionDrawerContent(
                     }
                 }
                 // Boş durum + boş arama sonucu (FR-005 boş-durum metni).
-                if (rows.isEmpty() && query.isBlank()) {
+                // Tur22 madde-3: yükleniyor VE liste boşsa "yok" YAZMA —
+                // iskelet göster (skeletonRowCount kuralı: yok/henüz-yok ayrımı).
+                if (skeletonRowCount(loading, rows.size, placeholder = 4) > 0 && query.isBlank()) {
+                    item(key = "skeleton") {
+                        SessionListSkeleton(
+                            skeletonRowCount(loading, rows.size, placeholder = 4),
+                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                if (rows.isEmpty() && query.isBlank() && !loading) {
                     item(key = "empty") {
                         Text(
                             S.t2(

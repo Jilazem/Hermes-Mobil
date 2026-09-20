@@ -988,6 +988,9 @@ private fun HermesApp(
                         onDismissDrawer = {
                             drawerScope.launch { drawerState.close() }
                         },
+                        // Tur22 madde-3: ilk açılış — sunucudan liste henüz
+                        // gelmediyse (boş + yükleniyor) iskelet çizilir.
+                        loading = state.loading && state.sessions.isEmpty(),
                     )
                 }
             },
