@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -36,10 +38,13 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -324,6 +329,7 @@ fun ChatComposer(
                     icon = Icons.Default.Stop,
                     label = "Durdur",
                     filled = true,
+                    tag = "t22_btn_stop",
                     onClick = onStop,
                 )
 
@@ -332,6 +338,8 @@ fun ChatComposer(
                     label = "Gönder",
                     filled = enabled,
                     enabled = enabled,
+                    tag = "t22_btn_send",
+                    sendFeedback = true,
                     onClick = onSend,
                 )
 
@@ -415,6 +423,8 @@ private fun ActionButton(
     label: String,
     filled: Boolean,
     enabled: Boolean = true,
+    tag: String = "t22_btn_action",
+    sendFeedback: Boolean = false,
     onClick: () -> Unit,
 ) {
     // Tur22 madde-2: mikro-etkileşim — basışta hafif ölçek (0.92), gevşeyince
@@ -431,17 +441,35 @@ private fun ActionButton(
         ),
         label = "aksiyon-olcek",
     )
+    // tur22-r1 madde-2: gönderme anı 1sn geçici geri bildirim (✓). Süre
+    // SendFeedbackLogic.FLASH_MS'ten, görünürlük kuralı saf fonksiyondan
+    // (testli, fail-closed) gelir; süre dolunca ikon normaline döner.
+    var sentAt by remember { mutableStateOf(-1L) }
+    var flash by remember { mutableStateOf(false) }
+    LaunchedEffect(sentAt) {
+        while (sentAt >= 0L &&
+            SendFeedbackLogic.visible(android.os.SystemClock.elapsedRealtime(), sentAt)
+        ) {
+            flash = true
+            delay(50)
+        }
+        flash = false
+    }
     IconButton(
         onClick = {
             // Gönderme anında tek hafif titreşim — geri bildirim "işlem alındı".
             haptics.performHapticFeedback(
                 androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove,
             )
+            if (sendFeedback) sentAt = android.os.SystemClock.elapsedRealtime()
             onClick()
         },
         enabled = enabled,
         modifier = Modifier
-            .size(46.dp)
+            .testTag(tag)
+            // tur22-r1: 48dp KESİN kutu (requiredSize) — kanıt dökümü
+            // tıklanabilir düğümün kendi bounds'unu taşır.
+            .requiredSize(48.dp)
             .pointerInput(enabled) {
                 awaitEachGesture {
                     awaitFirstDown(false)
@@ -461,7 +489,7 @@ private fun ActionButton(
             ),
     ) {
         Crossfade(
-            targetState = icon,
+            targetState = if (flash) Icons.Default.Check else icon,
             animationSpec = HermesMotion.tweenSpec(HermesMotion.FAST_MS, reduced),
             label = "aksiyon-ikon",
         ) { ic ->

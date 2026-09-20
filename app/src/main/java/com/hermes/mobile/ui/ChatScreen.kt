@@ -69,9 +69,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -593,7 +595,14 @@ private fun ChatHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Tur-16: ☰ — oturum çekmecesi (Claude/Grok/Gemini: menü solda).
-        IconButton(onClick = onOpenDrawer) {
+        // tur22-r1 düzeltme: 48dp KESİN kutu (requiredSize) + testTag — kanıt
+        // dökümü artık tıklanabilir düğüm üzerinden deterministik çekilir.
+        IconButton(
+            onClick = onOpenDrawer,
+            modifier = Modifier
+                .testTag("t22_btn_sessions")
+                .requiredSize(48.dp),
+        ) {
             Icon(
                 Icons.Default.Menu,
                 contentDescription = S.t2("Oturumlar", "Sessions"),
@@ -627,7 +636,13 @@ private fun ChatHeader(
         // Model, düşünme ve (ajan çalışırken) müdahale/durdurma tek ⋯ menüsünde.
         // Etiketsiz ikon: iç terminoloji (model adı, profil adı) üst şeride yazılmaz.
         Box {
-            IconButton(onClick = { menuOpen = true }) {
+            // tur22-r1: 48dp kesin kutu + tag (kanıt deterministik).
+            IconButton(
+                onClick = { menuOpen = true },
+                modifier = Modifier
+                    .testTag("t22_btn_menu")
+                    .requiredSize(48.dp),
+            ) {
                 Icon(
                     Icons.Default.MoreVert,
                     contentDescription = S.t2("Menü", "Menu"),
@@ -674,7 +689,13 @@ private fun ChatHeader(
 
         // Başlıkta yalnız iki ikon: ses + yeni oturum. Komut paleti composer'ın
         // "Ek" menüsünde (onOpenSnippets = onOpenCommands), profil ⋯ içinde.
-        IconButton(onClick = onToggleHandsFree) {
+        // tur22-r1: 48dp kesin kutu + tag.
+        IconButton(
+            onClick = onToggleHandsFree,
+            modifier = Modifier
+                .testTag("t22_btn_voice")
+                .requiredSize(48.dp),
+        ) {
             Icon(
                 if (state.handsFree) Icons.Default.RecordVoiceOver else Icons.Default.Headphones,
                 contentDescription = if (state.handsFree)
@@ -684,7 +705,13 @@ private fun ChatHeader(
             )
         }
 
-        IconButton(onClick = onNewSession) {
+        // tur22-r1: 48dp kesin kutu + tag.
+        IconButton(
+            onClick = onNewSession,
+            modifier = Modifier
+                .testTag("t22_btn_new")
+                .requiredSize(48.dp),
+        ) {
             Icon(
                 Icons.Default.Add,
                 contentDescription = S.t2("Yeni sohbet", "New chat"),
