@@ -259,7 +259,8 @@ class AssistantModeTest {
         val s = AppSettings()
         assertTrue("asistan oto-okuma varsayılan AÇIK", s.assistantAutoRead)
         assertFalse("normal sohbet oto-gönder varsayılan KAPALI", s.voiceAutoSend)
-        assertEquals("kahya", s.voiceEngine)
+        // Tur-21: motor varsayılanı YEREL (gizlilik — veri buluta çıkmaz).
+        assertEquals("yerel", s.voiceEngine)
         assertTrue(VoicePrefs().assistantAutoRead)
         assertFalse(VoicePrefs().autoSend)
     }
