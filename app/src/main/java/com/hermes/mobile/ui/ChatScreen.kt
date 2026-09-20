@@ -59,6 +59,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -385,7 +386,7 @@ fun ChatScreen(
             Text(
                 state.voicePartial,
                 color = HermesColors.Midground,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
             )
         }
@@ -428,7 +429,7 @@ fun ChatScreen(
                     line,
                     color = if (voice.speak.phase == com.hermes.mobile.data.VoiceSpeakLogic.Phase.Idle)
                         HermesColors.Danger else HermesColors.Midground,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 18.dp, vertical = 2.dp),
                 )
             }
@@ -601,21 +602,21 @@ private fun ChatHeader(
             Modifier
                 .weight(1f)
                 .heightIn(min = 44.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(MaterialTheme.shapes.medium)
                 .clickable(onClick = onOpenProfiles)
         ) {
             // Tek satır KONU (P3 #8): chrome ince, model orada durmaz.
             Text(
                 state.topic.takeIf { it.isNotBlank() } ?: S.chatTitle,
                 color = HermesColors.TextPrimary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             // İkinci satır yalnız gerçekten bir şey söylüyorsa.
             problem?.let {
-                Text(it, color = HermesColors.Danger, fontSize = 11.sp, maxLines = 1)
+                Text(it, color = HermesColors.Danger, style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
         }
 
@@ -641,7 +642,7 @@ private fun ChatHeader(
                                 chatMenuLabel(action),
                                 color = if (action == ChatMenuAction.Stop)
                                     HermesColors.Danger else HermesColors.TextPrimary,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                             )
                         },
                         leadingIcon = {
@@ -704,13 +705,13 @@ private fun VoiceBanner(mode: VoiceController.Mode) {
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 2.dp)
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatusDot(tint, size = 7)
         Spacer(Modifier.width(8.dp))
-        Text(text, color = tint, fontSize = 12.sp)
+        Text(text, color = tint, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -754,7 +755,7 @@ private fun EmptyChatHint(
         modifier.padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(S.emptyTitle, color = HermesColors.TextSecondary, fontSize = 16.sp)
+        Text(S.emptyTitle, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(6.dp))
         Text(
             when (connection) {
@@ -763,7 +764,7 @@ private fun EmptyChatHint(
                 else -> S.t2("Gateway bağlantısı bekleniyor…", "Waiting for the gateway…")
             },
             color = HermesColors.TextMuted,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
         )
         // İlk kurulum yolu (emülatör denetimi bulgu-1, 2026-09-14): bağlantı
         // yokken kullanıcı "nereye token gireceğini" bulamıyordu — CTA doğrudan
@@ -795,7 +796,7 @@ private fun EmptyChatHint(
                             Text(
                                 label,
                                 color = HermesColors.TextSecondary,
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.bodySmall,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -816,7 +817,7 @@ private fun EmptyChatHint(
                         Text(
                             S.t2("Promptlar", "Prompts"),
                             color = HermesColors.Midground,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     },
                     leadingIcon = {
@@ -836,7 +837,7 @@ private fun EmptyChatHint(
             Text(
                 S.phoneSectionTitle,
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.height(7.dp))
@@ -848,12 +849,12 @@ private fun EmptyChatHint(
                     Text(
                         example,
                         color = HermesColors.Midground,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .weight(1f)
-                            .background(HermesColors.SurfaceDim, RoundedCornerShape(9.dp))
+                            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                             .clickable { onSuggestion(example) }
                             .padding(horizontal = 10.dp, vertical = 9.dp),
                     )
@@ -868,12 +869,12 @@ private fun EmptyChatHint(
                     Text(
                         example,
                         color = HermesColors.Midground,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .weight(1f)
-                            .background(HermesColors.SurfaceDim, RoundedCornerShape(9.dp))
+                            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                             .clickable { onSuggestion(example) }
                             .padding(horizontal = 10.dp, vertical = 9.dp),
                     )
@@ -985,7 +986,7 @@ internal fun DaySeparatorRow(label: String?) {
         Text(
             label,
             color = HermesColors.TextFaint,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
         )
     }
@@ -1064,11 +1065,11 @@ private fun ChatItemView(
                     .widthIn(max = 300.dp)
                     // tur-17 B rol-tuketici: bubbleUser = kullanici balonu zemini
                     // (§3; varsayilan surface — piksel ayni, semantik bag).
-                    .background(HermesColors.BubbleUser, RoundedCornerShape(12.dp))
-                    .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(12.dp))
+                    .background(HermesColors.BubbleUser, MaterialTheme.shapes.medium)
+                    .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
                     .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
-                Text(item.text, color = HermesColors.TextPrimary, fontSize = 14.sp, lineHeight = 20.sp)
+                Text(item.text, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
             }
         }
 
@@ -1099,7 +1100,7 @@ private fun ChatItemView(
                     Box(
                         Modifier
                             .size(26.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.medium)
                             .clickable { onSpeak(item.key, item.text) },
                         contentAlignment = Alignment.Center,
                     ) {
@@ -1126,7 +1127,7 @@ private fun ChatItemView(
                     Text(
                         if (speaking) S.t2("Çalıyor", "Playing") else S.t2("Sesli oku", "Read aloud"),
                         color = HermesColors.TextFaint,
-                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
@@ -1145,12 +1146,12 @@ private fun ChatItemView(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .clickable { expanded = !expanded }
                     .padding(horizontal = 10.dp, vertical = 7.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(S.t2("Düşünüyor", "Thinking"), color = HermesColors.TextFaint, fontSize = 11.sp)
+                    Text(S.t2("Düşünüyor", "Thinking"), color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.weight(1f))
                     Icon(
                         if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -1172,8 +1173,7 @@ private fun ChatItemView(
                             append(" ▌")
                         },
                         color = HermesColors.TextMuted,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 } else {
@@ -1182,8 +1182,7 @@ private fun ChatItemView(
                         Text(
                             item.text,
                             color = HermesColors.TextMuted,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 6.dp),
                         )
                     }
@@ -1210,7 +1209,7 @@ private fun ChatItemView(
         is ChatItem.Notice -> Text(
             item.text,
             color = if (item.isError) HermesColors.Danger else HermesColors.TextMuted,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -1229,11 +1228,11 @@ private fun ApprovalCard(item: ChatItem.Approval, onApproval: (String, Boolean) 
     Column(
         Modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .border(
                 1.dp,
                 if (item.answered == null) HermesColors.Busy else HermesColors.Border,
-                RoundedCornerShape(10.dp),
+                MaterialTheme.shapes.medium,
             )
             .padding(12.dp)
     ) {
@@ -1248,7 +1247,7 @@ private fun ApprovalCard(item: ChatItem.Approval, onApproval: (String, Boolean) 
             Text(
                 if (item.isSudo) S.t2("Yükseltilmiş izin isteniyor", "Elevated permission requested") else "Onay bekleniyor",
                 color = HermesColors.TextPrimary,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -1257,33 +1256,32 @@ private fun ApprovalCard(item: ChatItem.Approval, onApproval: (String, Boolean) 
             item.text,
             style = MonoTextStyle,
             color = HermesColors.TextSecondary,
-            lineHeight = 17.sp,
         )
         Spacer(Modifier.height(11.dp))
 
         if (item.answered != null) {
-            Text(item.answered, color = HermesColors.TextMuted, fontSize = 12.sp)
+            Text(item.answered, color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     Modifier
                         .weight(1f)
-                        .background(HermesColors.Midground, RoundedCornerShape(8.dp))
+                        .background(HermesColors.Midground, MaterialTheme.shapes.medium)
                         .clickable { onApproval(item.key, true) }
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Text("Onayla", color = HermesColors.OnAccent, fontSize = 13.sp)
+                    Text("Onayla", color = HermesColors.OnAccent, style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(
                     Modifier
                         .weight(1f)
-                        .border(1.dp, HermesColors.Danger, RoundedCornerShape(8.dp))
+                        .border(1.dp, HermesColors.Danger, MaterialTheme.shapes.medium)
                         .clickable { onApproval(item.key, false) }
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Text("Reddet", color = HermesColors.Danger, fontSize = 13.sp)
+                    Text("Reddet", color = HermesColors.Danger, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -1354,7 +1352,7 @@ private fun SpeedRow(speed: StateFlow<StreamMeter.Snapshot?>) {
             Text(
                 line,
                 color = HermesColors.TextFaint,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 18.dp),
@@ -1365,7 +1363,7 @@ private fun SpeedRow(speed: StateFlow<StreamMeter.Snapshot?>) {
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp)
                     .height(2.dp)
-                    .clip(RoundedCornerShape(1.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .drawWithContent {
                         // Ucuz: tek yatay gradyan, kayan parlak bant.
                         val mid = (0.3f + shift * 0.4f).coerceIn(0.05f, 0.95f)
@@ -1422,7 +1420,7 @@ private fun ProfileChipsRow(
             AssistChip(
                 onClick = {},
                 label = {
-                    Text(label, color = HermesColors.TextMuted, fontSize = 11.sp)
+                    Text(label, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                 },
             )
         }
@@ -1442,7 +1440,7 @@ private fun ProfileChipsRow(
                 Text(
                     if (tr) ROUTER_LABEL_TR else ROUTER_LABEL_EN,
                     color = if (routerSelected) HermesColors.TextPrimary else HermesColors.TextMuted,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = if (routerSelected) FontWeight.Medium else FontWeight.Normal,
                 )
             },
@@ -1455,7 +1453,7 @@ private fun ProfileChipsRow(
                     Text(
                         label,
                         color = if (sel) HermesColors.TextPrimary else HermesColors.TextMuted,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal,
                     )
                 },
@@ -1483,8 +1481,8 @@ private fun AssistantBanner(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 4.dp)
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(11.dp))
-            .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(11.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1498,13 +1496,13 @@ private fun AssistantBanner(
             Text(
                 com.hermes.mobile.data.AssistantModeLogic.bannerText(phase, ::tr),
                 color = HermesColors.TextPrimary,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 S.t2("Çık", "Exit"),
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
                     .clickable(onClick = onExit)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -1517,16 +1515,16 @@ private fun AssistantBanner(
                 "Local path · voice_api · never goes to Google",
             ),
             color = HermesColors.TextFaint,
-            fontSize = 10.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
         Spacer(Modifier.height(8.dp))
         Row(
             Modifier
-                .background(HermesColors.Surface, RoundedCornerShape(20.dp))
+                .background(HermesColors.Surface, MaterialTheme.shapes.large)
                 .border(
                     1.dp,
                     if (autoRead) HermesColors.Midground else HermesColors.BorderStrong,
-                    RoundedCornerShape(20.dp),
+                    MaterialTheme.shapes.large,
                 )
                 .clickable { onToggleAutoRead(!autoRead) }
                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1543,7 +1541,7 @@ private fun AssistantBanner(
                 if (autoRead) S.t2("Yanıtı otomatik oku ✓", "Auto-read reply ✓")
                 else S.t2("Yanıtı otomatik oku", "Auto-read reply"),
                 color = if (autoRead) HermesColors.TextSecondary else HermesColors.TextFaint,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }

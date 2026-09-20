@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hermes.mobile.ui.theme.HermesColors
+import androidx.compose.material3.MaterialTheme
 
 /**
  * İskelet (skeleton) yükleme yer tutucuları (KALAN-1).
@@ -51,7 +52,7 @@ fun SkeletonBox(width: Dp?, height: Dp, modifier: Modifier = Modifier) {
     val base = modifier.alpha(alpha).height(height)
     androidx.compose.foundation.layout.Box(
         (if (width != null) base.width(width) else base.fillMaxWidth())
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(6.dp)),
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.extraSmall),
     )
 }
 

@@ -319,10 +319,12 @@ class ThemeTur17Test {
 
         // denetim/tur17/15x4-matris-ciktisi.txt — gradle test CWD'si app/ olabilir;
         // repo kokunu settings.gradle.kts ile bul, bulamazsan user.dir'e yaz (test patlamaz,
-        // icerik assertion'i ayrica asagida).
-        val repoRoot = generateSequence(java.io.File(System.getProperty("user.dir"))) { it.parentFile }
+        // icerik assertion'i ayrica asagida). user.dir platform-tipi String? oldugu icin
+        // non-null yerel degiskene alinir (tur17 LOW: Java type mismatch uyarisi).
+        val userDir: String = System.getProperty("user.dir") ?: "."
+        val repoRoot = generateSequence(java.io.File(userDir)) { it.parentFile }
             .firstOrNull { java.io.File(it, "settings.gradle.kts").exists() }
-            ?: java.io.File(System.getProperty("user.dir"))
+            ?: java.io.File(userDir)
         val outDir = java.io.File(repoRoot, "denetim/tur17").apply { mkdirs() }
         java.io.File(outDir, "15x4-matris-ciktisi.txt").writeText(sb.toString())
 

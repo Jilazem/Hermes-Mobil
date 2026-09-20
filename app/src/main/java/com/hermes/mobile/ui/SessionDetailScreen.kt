@@ -18,6 +18,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -160,7 +161,7 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
                 Text(
                     state.session?.title ?: state.sessionId,
                     color = HermesColors.TextPrimary,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -178,7 +179,7 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
                     Text(
                         counter,
                         color = HermesColors.TextMuted,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -199,10 +200,10 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
                     Text(
                         S.t2("Mesajlar alınamadı", "Could not load messages"),
                         color = HermesColors.Danger,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(6.dp))
-                    Text(state.error, color = HermesColors.TextMuted, fontSize = 12.sp)
+                    Text(state.error, color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
 
@@ -213,7 +214,7 @@ fun SessionDetailScreen(state: SessionDetailState, onBack: () -> Unit) {
                 Text(
                     S.t2("Bu oturumda mesaj yok.", "No messages in this session."),
                     color = HermesColors.TextMuted,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
 

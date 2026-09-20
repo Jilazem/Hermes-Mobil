@@ -22,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -114,11 +115,11 @@ fun PromptsSheet(
         containerColor = HermesColors.Background,
     ) {
         Column(Modifier.padding(horizontal = 16.dp).heightIn(max = 620.dp)) {
-            Text(S.t2("Promptlar", "Prompts"), color = HermesColors.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Text(S.t2("Promptlar", "Prompts"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(3.dp))
             Text(
                 S.t2("Sık kullandığın istekleri kaydet, dokununca taslağa düşsün", "Save frequent asks; tap to drop one into the draft"),
-                color = HermesColors.TextMuted, fontSize = 12.sp,
+                color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
 
@@ -163,7 +164,7 @@ fun PromptsSheet(
                 }
             }
             aiError?.let {
-                Text(it, color = HermesColors.Busy, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+                Text(it, color = HermesColors.Busy, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp))
             }
 
             // ── AI önerisi: onaylanmadan kayda yazılmaz ───────────────
@@ -172,17 +173,17 @@ fun PromptsSheet(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                         .padding(11.dp),
                 ) {
-                    Text(S.t2("Orijinal", "Original"), color = HermesColors.TextFaint, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                    Text(S.t2("Orijinal", "Original"), color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
                     Text(
-                        eski, color = HermesColors.TextMuted, fontSize = 11.sp,
+                        eski, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall,
                         maxLines = 3, overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(7.dp))
-                    Text(S.t2("AI önerisi", "AI suggestion"), color = HermesColors.Online, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                    Text(yeni, color = HermesColors.TextSecondary, fontSize = 12.sp, maxLines = 5, overflow = TextOverflow.Ellipsis)
+                    Text(S.t2("AI önerisi", "AI suggestion"), color = HermesColors.Online, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
+                    Text(yeni, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 5, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         TextButton(onClick = {
@@ -202,7 +203,7 @@ fun PromptsSheet(
             if (prompts.isEmpty()) {
                 Text(
                     S.t2("Henüz kayıtlı prompt yok", "No saved prompts yet"),
-                    color = HermesColors.TextFaint, fontSize = 12.sp,
+                    color = HermesColors.TextFaint, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             }
@@ -211,7 +212,7 @@ fun PromptsSheet(
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+                            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                             .combinedClickable(
                                 onClick = {
                                     // Taslağa düşür, sheet kapansın — kullanıcı
@@ -225,18 +226,18 @@ fun PromptsSheet(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                p.label, color = HermesColors.TextPrimary, fontSize = 13.sp,
+                                p.label, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false),
                             )
                             if (improvingId == p.id) {
                                 Spacer(Modifier.width(8.dp))
-                                Text(S.t2("AI iyileştiriyor…", "AI improving…"), color = HermesColors.Busy, fontSize = 10.sp)
+                                Text(S.t2("AI iyileştiriyor…", "AI improving…"), color = HermesColors.Busy, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         Spacer(Modifier.height(3.dp))
                         Text(
-                            p.text, color = HermesColors.TextMuted, fontSize = 11.sp,
+                            p.text, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall,
                             maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -253,14 +254,14 @@ fun PromptsSheet(
                                 Text(
                                     S.t2("AI ile iyileştir", "Improve with AI"),
                                     color = if (improvingId == p.id) HermesColors.TextFaint else HermesColors.TextSecondary,
-                                    fontSize = 13.sp,
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
                             },
                             enabled = improvingId != p.id,
                             onClick = { menuFor = null; improve(p) },
                         )
                         DropdownMenuItem(
-                            text = { Text(S.t2("Düzenle", "Edit"), color = HermesColors.TextSecondary, fontSize = 13.sp) },
+                            text = { Text(S.t2("Düzenle", "Edit"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyMedium) },
                             onClick = {
                                 menuFor = null
                                 editing = p
@@ -269,7 +270,7 @@ fun PromptsSheet(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text(S.t2("Sil", "Delete"), color = HermesColors.Danger, fontSize = 13.sp) },
+                            text = { Text(S.t2("Sil", "Delete"), color = HermesColors.Danger, style = MaterialTheme.typography.bodyMedium) },
                             onClick = {
                                 menuFor = null
                                 if (editing?.id == p.id) formuTemizle()

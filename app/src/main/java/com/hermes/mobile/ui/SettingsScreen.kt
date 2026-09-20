@@ -33,6 +33,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -149,7 +150,8 @@ fun SettingsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        // FR-004 bosluk ritmi: kartlar arasi 8dp (tur18, eski 6dp).
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
             Row(
@@ -170,7 +172,7 @@ fun SettingsScreen(
                 Text(
                     open?.let { catLabel(it) } ?: S.tabSettings,
                     color = HermesColors.TextPrimary,
-                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -184,21 +186,21 @@ fun SettingsScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(HermesColors.SurfaceDim, RoundedCornerShape(11.dp))
-                        .border(1.dp, HermesColors.Border, RoundedCornerShape(11.dp))
+                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                        .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
                         .clickable { onOpenProfiles() }
                         .padding(horizontal = 14.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(S.t2("Profiller", "Profiles"), color = HermesColors.TextPrimary, fontSize = 15.sp)
+                        Text(S.t2("Profiller", "Profiles"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
                         Text(
                             S.t2(
                                 "Ajan kişiliği ve araç seti — şu an: ${activeHermesProfile.ifBlank { "—" }}",
                                 "Agent persona and toolset — now: ${activeHermesProfile.ifBlank { "—" }}",
                             ),
                             color = HermesColors.TextMuted,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall,
                         )
                     }
                     Icon(
@@ -213,15 +215,15 @@ fun SettingsScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(HermesColors.SurfaceDim, RoundedCornerShape(11.dp))
-                        .border(1.dp, HermesColors.Border, RoundedCornerShape(11.dp))
+                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                        .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
                         .clickable { open = cat }
                         .padding(horizontal = 14.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column {
-                        Text(catLabel(cat), color = HermesColors.TextPrimary, fontSize = 15.sp)
-                        Text(catHint(cat), color = HermesColors.TextMuted, fontSize = 11.sp)
+                        Text(catLabel(cat), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+                        Text(catHint(cat), color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -331,8 +333,7 @@ fun SettingsScreen(
                         ::tr,
                     ),
                     color = HermesColors.TextMuted,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 2.dp),
                 )
             }
@@ -418,12 +419,12 @@ fun SettingsScreen(
                             Text(
                                 label,
                                 color = if (on) HermesColors.Background else HermesColors.TextSecondary,
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier
                                     .weight(1f)
                                     .background(
                                         if (on) HermesColors.Midground else HermesColors.SurfaceDim,
-                                        RoundedCornerShape(9.dp),
+                                        MaterialTheme.shapes.medium,
                                     )
                                     .clickable { onUpdate { it.copy(uiLang = code) } }
                                     .padding(vertical = 11.dp),
@@ -456,7 +457,7 @@ fun SettingsScreen(
                         Text(
                             S.t2("Bağlı sunucu profili yok", "No connected server profile"),
                             color = HermesColors.TextMuted,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                 }
@@ -473,7 +474,7 @@ fun SettingsScreen(
                         Column(Modifier.weight(1f)) {
                             Text(
                                 S.t2("Sunucular", "Servers"),
-                                color = HermesColors.TextPrimary, fontSize = 15.sp,
+                                color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium,
                             )
                             Text(
@@ -483,7 +484,7 @@ fun SettingsScreen(
                                     if (activeProfile == null) "Add a server address and token"
                                     else "${activeProfile.name} — manage profiles and token",
                                 ),
-                                color = HermesColors.TextMuted, fontSize = 12.sp,
+                                color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall,
                             )
                         }
                         Icon(
@@ -635,7 +636,7 @@ fun SettingsScreen(
                     Text(
                         S.t2("Asistan hangi ses hattını kullanır", "Which voice path the assistant uses"),
                         color = HermesColors.TextPrimary,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -648,8 +649,7 @@ fun SettingsScreen(
                                 "synthesised there too; the exchange never goes to Google.",
                         ),
                         color = HermesColors.TextSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 17.sp,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -662,8 +662,7 @@ fun SettingsScreen(
                                 "longer opens it.",
                         ),
                         color = HermesColors.TextMuted,
-                        fontSize = 11.sp,
-                        lineHeight = 16.sp,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
@@ -677,8 +676,7 @@ fun SettingsScreen(
                             "recording waits for YOU — the gesture alone never opens the mic.",
                     ),
                     color = HermesColors.TextMuted,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                 )
             }
@@ -810,7 +808,7 @@ private fun Header(text: String) {
     Text(
         text,
         color = HermesColors.Midground,
-        fontSize = 12.sp,
+        style = MaterialTheme.typography.bodySmall,
         fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
     )
@@ -821,9 +819,9 @@ private fun SwitchRow(title: String, detail: String?, value: Boolean, onChange: 
     HermesCard(Modifier.fillMaxWidth().clickable { onChange(!value) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(title, color = HermesColors.TextPrimary, fontSize = 14.sp)
+                Text(title, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
                 detail?.let {
-                    Text(it, color = HermesColors.TextMuted, fontSize = 11.sp, lineHeight = 15.sp)
+                    Text(it, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                 }
             }
             Switch(checked = value, onCheckedChange = onChange)
@@ -915,7 +913,7 @@ private fun VoiceStatusCard(
             Text(
                 "Ses ucu durumu",
                 color = HermesColors.TextPrimary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
             if (inFlight) {
@@ -930,7 +928,7 @@ private fun VoiceStatusCard(
                 if (probes == 0) "yoklanıyor…"
                 else "canlı · ${probes}. yoklama · 4,5 sn",
                 color = HermesColors.TextFaint,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
 
@@ -949,32 +947,30 @@ private fun VoiceStatusCard(
             }
             Text(
                 line,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )
         } else if (probe == null) {
             Text(
                 "Motor durumu okunuyor…",
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(top = 3.dp),
             )
         }
 
         probe?.base?.takeIf { it.isNotBlank() }?.let {
-            Text("Çalışan adres: $it", color = HermesColors.TextMuted, fontSize = 11.sp)
+            Text("Çalışan adres: $it", color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         }
         probe?.error?.let {
-            Text(it, color = HermesColors.Danger, fontSize = 11.sp, lineHeight = 15.sp)
+            Text(it, color = HermesColors.Danger, style = MaterialTheme.typography.labelSmall)
         }
         // "Şimdi dene" kapalı motor gördüyse: ısıtma ipucu (görev maddesi 3).
         if (probed && knownClosed && !warmReady && !warm.busy) {
             Text(
                 VoiceStatusLogic.coldHint(::tr),
                 color = HermesColors.Busy,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
         warm.message?.let {
@@ -982,8 +978,7 @@ private fun VoiceStatusCard(
                 it,
                 color = if (warm.phase == VoiceStatusLogic.WarmPhase.Failed) HermesColors.Danger
                 else HermesColors.TextSecondary,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
 
@@ -1009,14 +1004,14 @@ private fun VoiceStatusCard(
                 Text(
                     VoiceStatusLogic.warmLabel(warm, engine, ::tr),
                     color = HermesColors.TextSecondary,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             } else if (warmReady) {
                 Spacer(Modifier.width(10.dp))
                 Text(
                     VoiceStatusLogic.warmLabel(warm, engine, ::tr),
                     color = HermesColors.Online,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                 )
             } else if (knownClosed || VoiceStatusLogic.warmVisible(probe, engine)) {
@@ -1037,8 +1032,8 @@ private fun SliderRow(
 ) {
     HermesCard(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, color = HermesColors.TextPrimary, fontSize = 14.sp, modifier = Modifier.weight(1f))
-            Text(valueLabel, color = HermesColors.Midground, fontSize = 13.sp)
+            Text(title, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(valueLabel, color = HermesColors.Midground, style = MaterialTheme.typography.bodyMedium)
         }
         Slider(value = value, onValueChange = onChange, valueRange = range)
     }
@@ -1053,15 +1048,15 @@ private fun TextRow(
     onChange: (String) -> Unit,
 ) {
     HermesCard(Modifier.fillMaxWidth()) {
-        Text(title, color = HermesColors.TextPrimary, fontSize = 14.sp)
-        detail?.let { Text(it, color = HermesColors.TextMuted, fontSize = 11.sp) }
+        Text(title, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+        detail?.let { Text(it, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall) }
         Spacer(Modifier.height(7.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
             modifier = Modifier.fillMaxWidth(),
             minLines = minLines,
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, color = HermesColors.TextSecondary),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = HermesColors.TextSecondary),
         )
     }
 }
@@ -1074,7 +1069,7 @@ private fun ChoiceRow(
     onSelect: (String) -> Unit,
 ) {
     HermesCard(Modifier.fillMaxWidth()) {
-        Text(title, color = HermesColors.TextPrimary, fontSize = 14.sp)
+        Text(title, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(8.dp))
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
@@ -1086,7 +1081,7 @@ private fun ChoiceRow(
                     Modifier
                         .background(
                             if (on) HermesColors.Midground else HermesColors.SurfaceDim,
-                            RoundedCornerShape(18.dp),
+                            MaterialTheme.shapes.large,
                         )
                         .clickable { onSelect(id) }
                         .padding(horizontal = 13.dp, vertical = 8.dp),
@@ -1094,7 +1089,7 @@ private fun ChoiceRow(
                     Text(
                         label,
                         color = if (on) HermesColors.Background else HermesColors.TextSecondary,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
@@ -1106,12 +1101,12 @@ private fun ChoiceRow(
 private fun SmallButton(text: String, onClick: () -> Unit) {
     Row(
         Modifier
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(9.dp))
-            .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(9.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
     ) {
-        Text(text, color = HermesColors.TextSecondary, fontSize = 12.sp)
+        Text(text, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -1134,12 +1129,12 @@ private fun ThemeRow(
                     .width(96.dp)
                     .background(
                         theme.background.toColorOrNull() ?: HermesColors.Surface,
-                        RoundedCornerShape(11.dp),
+                        MaterialTheme.shapes.medium,
                     )
                     .border(
                         if (on) 2.dp else 1.dp,
                         if (on) HermesColors.Midground else HermesColors.Border,
-                        RoundedCornerShape(11.dp),
+                        MaterialTheme.shapes.medium,
                     )
                     .clickable { onSelect(theme.id) }
                     .padding(9.dp),
@@ -1157,14 +1152,14 @@ private fun ThemeRow(
                 Text(
                     theme.label,
                     color = theme.textPrimary.toColorOrNull() ?: HermesColors.TextPrimary,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     maxLines = 2,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
                     S.t2("düzenle", "edit"),
                     color = theme.textMuted.toColorOrNull() ?: HermesColors.TextMuted,
-                    fontSize = 9.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.clickable { onEdit(theme) },
                 )
             }
@@ -1225,7 +1220,7 @@ private fun ThemeEditorDialog(
                                     .size(20.dp)
                                     .background(
                                         value.toColorOrNull() ?: HermesColors.Border,
-                                        RoundedCornerShape(4.dp),
+                                        MaterialTheme.shapes.extraSmall,
                                     )
                             )
                             Spacer(Modifier.width(8.dp))
@@ -1242,7 +1237,7 @@ private fun ThemeEditorDialog(
                                         else -> draft.copy(border = v, borderStrong = v)
                                     }
                                 },
-                                label = { Text(label, fontSize = 10.sp) },
+                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
                                 singleLine = true,
                                 textStyle = MonoTextStyle,
                                 modifier = Modifier.weight(1f),
@@ -1265,7 +1260,7 @@ private fun ThemeEditorDialog(
                         modifier = Modifier.size(14.dp),
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(S.t2("Temayı panoya kopyala", "Copy theme to clipboard"), color = HermesColors.TextMuted, fontSize = 11.sp)
+                    Text(S.t2("Temayı panoya kopyala", "Copy theme to clipboard"), color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                 }
             }
         },
@@ -1301,7 +1296,7 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
                 Text(
                     S.t2("Tema JSON'unu yapıştır.", "Paste the theme JSON."),
                     color = HermesColors.TextMuted,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -1314,7 +1309,7 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
                 )
                 error?.let {
                     Spacer(Modifier.height(6.dp))
-                    Text(it, color = HermesColors.Danger, fontSize = 11.sp)
+                    Text(it, color = HermesColors.Danger, style = MaterialTheme.typography.labelSmall)
                 }
             }
         },
@@ -1346,7 +1341,7 @@ private fun AssistantRoleRow(
         Text(
             S.t2("Varsayılan asistan", "Default assistant"),
             color = HermesColors.TextPrimary,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(4.dp))
         Text(
@@ -1356,7 +1351,7 @@ private fun AssistantRoleRow(
                 AssistantModeLogic.RoleState.Unsupported -> HermesColors.TextMuted
                 else -> HermesColors.TextSecondary
             },
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(10.dp))
 
@@ -1376,8 +1371,7 @@ private fun AssistantRoleRow(
                         "to Settings → Default apps → Digital assistant.",
                 ),
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
-                lineHeight = 16.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         } else {
             // Rol API'si yok: kullanıcıyı adımlarla Ayarlar'a yönlendir.
@@ -1385,8 +1379,7 @@ private fun AssistantRoleRow(
                 Text(
                     "• $step",
                     color = HermesColors.TextMuted,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
@@ -1400,8 +1393,7 @@ private fun AssistantRoleRow(
                     "Hermes, the microphone waits ready — recording starts when you press.",
             ),
             color = HermesColors.TextMuted,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -1453,12 +1445,12 @@ private fun LiveModelRow(current: String, onPick: (String) -> Unit) {
         Text(
             S.t2("Canlı ses modeli", "Live voice model"),
             color = HermesColors.TextPrimary,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
         )
         Text(
             S.t2("Röleye iletilir", "Passed to the relay"),
             color = HermesColors.TextMuted,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
         Spacer(Modifier.height(8.dp))
         options.forEach { (id, label) ->
@@ -1468,7 +1460,7 @@ private fun LiveModelRow(current: String, onPick: (String) -> Unit) {
                     .fillMaxWidth()
                     .background(
                         if (on) HermesColors.Midground else HermesColors.SurfaceDim,
-                        RoundedCornerShape(9.dp),
+                        MaterialTheme.shapes.medium,
                     )
                     .clickable { onPick(id) }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1477,13 +1469,11 @@ private fun LiveModelRow(current: String, onPick: (String) -> Unit) {
                     Text(
                         label,
                         color = if (on) HermesColors.Background else HermesColors.TextSecondary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
                         id,
-                        style = MonoTextStyle,
-                        color = if (on) HermesColors.Background else HermesColors.TextFaint,
-                        fontSize = 9.sp,
+                        style = MonoTextStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, lineHeight = MaterialTheme.typography.labelSmall.lineHeight),
                     )
                 }
             }
@@ -1572,14 +1562,14 @@ private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
     }
 
     HermesCard(Modifier.fillMaxWidth()) {
-        Text(S.t2("Bakım", "Maintenance"), color = HermesColors.TextPrimary, fontSize = 14.sp)
+        Text(S.t2("Bakım", "Maintenance"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
         Text(
             S.t2(
                 "Hermes'i teşhis et veya güncelle — sunucuda ayrılmış süreç olarak koşar",
                 "Diagnose or update Hermes — runs as a detached process on the server",
             ),
             color = HermesColors.TextMuted,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
 
         Spacer(Modifier.height(8.dp))
@@ -1593,7 +1583,7 @@ private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
 
         Spacer(Modifier.height(7.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(S.t2("Onar (--fix)", "Repair (--fix)"), color = HermesColors.TextSecondary, fontSize = 12.sp)
+            Text(S.t2("Onar (--fix)", "Repair (--fix)"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.weight(1f))
             Switch(checked = fixOn, onCheckedChange = { fixOn = it })
         }
@@ -1604,7 +1594,7 @@ private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
             Text(
                 runningLabel ?: S.t2("çalışıyor…", "running…"),
                 color = HermesColors.Busy,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
         } else if (status != null) {
             Spacer(Modifier.height(7.dp))
@@ -1614,7 +1604,7 @@ private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
                     "Last: ${status.lastKind ?: "?"} · exit ${status.exitCode ?: "?"}",
                 ),
                 color = if ((status.exitCode ?: 1) == 0) HermesColors.Online else HermesColors.Danger,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
@@ -1635,7 +1625,7 @@ private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
                             "during the update.",
                     ),
                     color = HermesColors.TextSecondary,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             },
             confirmButton = {
@@ -1668,16 +1658,13 @@ private fun MaintenanceCard(profile: com.hermes.mobile.data.ServerProfile) {
                         Text(
                             S.t2("Henüz çıktı yok.", "No output yet."),
                             color = HermesColors.TextMuted,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     } else {
                         logLines.forEach { line ->
                             Text(
                                 line,
-                                style = MonoTextStyle,
-                                color = HermesColors.TextSecondary,
-                                fontSize = 10.sp,
-                                lineHeight = 13.sp,
+                                style = MonoTextStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, lineHeight = MaterialTheme.typography.labelSmall.lineHeight),
                             )
                         }
                     }
@@ -1722,7 +1709,7 @@ private fun FullControlRow(
                 Text(
                     S.t2("Tam kontrol", "Full control"),
                     color = HermesColors.TextPrimary,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
                     S.t2(
@@ -1730,7 +1717,7 @@ private fun FullControlRow(
                         "Reads the screen, taps, types, swipes, takes screenshots",
                     ),
                     color = HermesColors.TextMuted,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
             androidx.compose.material3.Switch(checked = on, onCheckedChange = onToggle)
@@ -1749,18 +1736,18 @@ private fun FullControlRow(
                 Box(
                     Modifier
                         .size(7.dp)
-                        .background(color, RoundedCornerShape(4.dp)),
+                        .background(color, MaterialTheme.shapes.extraSmall),
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(label, color = color, fontSize = 11.sp)
+                Text(label, color = color, style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.weight(1f))
                 if (!serviceOn) {
                     Text(
                         S.t2("İzin ver", "Grant"),
                         color = HermesColors.Midground,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier
-                            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                             .clickable { HermesAccessibilityService.openPermissionSettings(context) }
                             .padding(horizontal = 11.dp, vertical = 6.dp),
                     )
@@ -1778,7 +1765,7 @@ private fun FullControlRow(
                         "written to the diagnostics log.",
                 ),
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
@@ -1808,7 +1795,7 @@ private fun BridgeStatusRow() {
                 Text(
                     S.t2("Köprü durumu", "Bridge status"),
                     color = HermesColors.TextPrimary,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
                     S.t2(
@@ -1816,16 +1803,16 @@ private fun BridgeStatusRow() {
                         "The persistent connection the phone opens to the server",
                     ),
                     color = HermesColors.TextMuted,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
             Box(
                 Modifier
                     .size(7.dp)
-                    .background(color, RoundedCornerShape(4.dp)),
+                    .background(color, MaterialTheme.shapes.extraSmall),
             )
             Spacer(Modifier.width(8.dp))
-            Text(label, color = color, fontSize = 11.sp)
+            Text(label, color = color, style = MaterialTheme.typography.labelSmall)
         }
 
         if (state == com.hermes.mobile.data.BridgeState.TAKEN_OVER) {
@@ -1840,15 +1827,15 @@ private fun BridgeStatusRow() {
                         "would keep evicting each other forever.",
                 ),
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 S.t2("Yeniden bağlan", "Reconnect"),
                 color = HermesColors.Midground,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .clickable { com.hermes.mobile.data.PhoneBridgeService.reconnect(context) }
                     .padding(horizontal = 11.dp, vertical = 6.dp),
             )
@@ -1862,15 +1849,15 @@ private fun BridgeStatusRow() {
                         "To try right now:",
                 ),
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 S.t2("Yeniden bağlan", "Reconnect"),
                 color = HermesColors.Midground,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .clickable { com.hermes.mobile.data.PhoneBridgeService.reconnect(context) }
                     .padding(horizontal = 11.dp, vertical = 6.dp),
             )
@@ -1891,7 +1878,7 @@ private fun ShizukuRow(
                 Text(
                     S.t2("Shizuku ile derin denetim", "Deep control via Shizuku"),
                     color = HermesColors.TextPrimary,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
                     S.t2(
@@ -1899,7 +1886,7 @@ private fun ShizukuRow(
                         "Actually toggle Wi-Fi/Bluetooth, Do Not Disturb, shell commands",
                     ),
                     color = HermesColors.TextMuted,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
             androidx.compose.material3.Switch(
@@ -1919,18 +1906,18 @@ private fun ShizukuRow(
                 Box(
                     Modifier
                         .size(7.dp)
-                        .background(color, RoundedCornerShape(4.dp))
+                        .background(color, MaterialTheme.shapes.extraSmall)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(label, color = color, fontSize = 11.sp)
+                Text(label, color = color, style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.weight(1f))
                 if (state == ShizukuBridge.State.NeedsPermission) {
                     Text(
                         S.t2("İzin ver", "Grant"),
                         color = HermesColors.Midground,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier
-                            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+                            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                             .clickable(onClick = onRequestPermission)
                             .padding(horizontal = 11.dp, vertical = 6.dp),
                     )
@@ -1948,8 +1935,7 @@ private fun ShizukuRow(
                             "that step with Tasker.",
                     ),
                     color = HermesColors.TextFaint,
-                    fontSize = 10.sp,
-                    lineHeight = 15.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
         }

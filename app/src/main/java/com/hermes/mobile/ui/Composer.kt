@@ -34,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -118,7 +119,7 @@ fun ChatComposer(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 4.dp)
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(12.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .padding(vertical = 4.dp),
             ) {
                 suggestions.forEach { cmd ->
@@ -135,20 +136,20 @@ fun ChatComposer(
                         Text(
                             "/" + cmd.name,
                             color = HermesColors.Midground,
-                            fontSize = 13.sp,
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
                             cmd.description,
                             color = HermesColors.TextMuted,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
                         if (cmd.needsConfirm) {
-                            Text("onay", color = HermesColors.Busy, fontSize = 9.sp)
+                            Text("onay", color = HermesColors.Busy, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -187,14 +188,14 @@ fun ChatComposer(
                     VoiceRecordLogic.recordHint(voiceRecord, ::tr),
                     color = if (voiceRecord.phase == VoiceRecordLogic.Phase.Failed)
                         HermesColors.Danger else HermesColors.TextMuted,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.weight(1f),
                 )
                 if (voiceRecord.recording) {
                     Text(
                         VoiceRecordLogic.timerLabel(voiceRecord.elapsedMs),
                         color = HermesColors.TextSecondary,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 } else if (voiceRecord.busy) {
                     CircularProgressIndicator(
@@ -208,7 +209,7 @@ fun ChatComposer(
                 Text(
                     msg,
                     color = HermesColors.Danger,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 1.dp),
                 )
             }
@@ -287,11 +288,11 @@ fun ChatComposer(
                             else -> S.composerHint
                         },
                         color = HermesColors.TextFaint,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 },
                 maxLines = 5,
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = HermesColors.Surface,
                     unfocusedContainerColor = HermesColors.Surface,
@@ -365,7 +366,7 @@ private fun HoldToTalkButton(
                     busy -> HermesColors.SurfaceDim
                     else -> HermesColors.SurfaceDim
                 },
-                RoundedCornerShape(13.dp),
+                MaterialTheme.shapes.medium,
             )
             .pointerInput(enabled, busy) {
                 if (!enabled || busy) return@pointerInput
@@ -412,7 +413,7 @@ private fun ActionButton(
             .size(46.dp)
             .background(
                 if (filled) HermesColors.Midground else HermesColors.SurfaceDim,
-                RoundedCornerShape(13.dp),
+                MaterialTheme.shapes.medium,
             ),
     ) {
         Icon(
@@ -427,11 +428,11 @@ private fun ActionButton(
 private fun AttachmentChip(att: PendingAttachment, onRemove: (String) -> Unit) {
     Row(
         Modifier
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(9.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .border(
                 1.dp,
                 if (att.error != null) HermesColors.Danger.copy(alpha = 0.5f) else HermesColors.Border,
-                RoundedCornerShape(9.dp),
+                MaterialTheme.shapes.medium,
             )
             .padding(start = 9.dp, end = 3.dp, top = 5.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -443,7 +444,7 @@ private fun AttachmentChip(att: PendingAttachment, onRemove: (String) -> Unit) {
                 color = HermesColors.Busy,
             )
 
-            att.error != null -> Text("✕", color = HermesColors.Danger, fontSize = 12.sp)
+            att.error != null -> Text("✕", color = HermesColors.Danger, style = MaterialTheme.typography.bodySmall)
 
             else -> Icon(
                 if (att.kind == AttachmentKind.Image) Icons.Default.Image
@@ -458,13 +459,13 @@ private fun AttachmentChip(att: PendingAttachment, onRemove: (String) -> Unit) {
             Text(
                 att.label,
                 color = HermesColors.TextSecondary,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.width(120.dp),
             )
             att.error?.let {
-                Text(it, color = HermesColors.Danger, fontSize = 9.sp, maxLines = 1)
+                Text(it, color = HermesColors.Danger, style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
         }
         Box(

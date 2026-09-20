@@ -365,25 +365,25 @@ fun ArenaSceneFallback(
         modifier = modifier
             .background(
                 MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.medium,
             )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.medium,
             )
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
             note,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (figures.isEmpty()) {
             Text(
                 S.t2("Sahne verisi yok", "No scene data"),
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
@@ -410,19 +410,19 @@ private fun FallbackFigureCard(f: ArenaFigure) {
     Box(
         modifier = Modifier
             .height(56.dp)
-            .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .border(1.dp, color.copy(alpha = 0.6f), MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         Column {
-            Text(f.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(f.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Spacer(modifier = Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, fontSize = 10.sp, color = color)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = color)
                 f.badge?.let {
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(it, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -434,13 +434,13 @@ private fun FallbackFigureCard(f: ArenaFigure) {
 fun ArenaSceneSkeleton(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(10.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp)),
+            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             S.t2("3D sahne hazırlanıyor…", "Preparing 3D scene…"),
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

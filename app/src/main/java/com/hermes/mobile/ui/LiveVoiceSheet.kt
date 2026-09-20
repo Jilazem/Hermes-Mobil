@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -107,7 +108,7 @@ fun LiveVoiceSheet(
             Text(
                 S.voiceTitle,
                 color = HermesColors.TextPrimary,
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.height(10.dp))
@@ -131,7 +132,7 @@ fun LiveVoiceSheet(
                     LiveVoiceClient.State.Error -> HermesColors.Danger
                     else -> HermesColors.TextMuted
                 },
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
 
             Spacer(Modifier.height(10.dp))
@@ -139,7 +140,7 @@ fun LiveVoiceSheet(
             // Ses çıkışı — varsayılan hoparlör; dokundukça sıradaki cihaza geçer.
             Row(
                 Modifier
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(20.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.large)
                     .clickable(onClick = onCycleRoute)
                     .padding(horizontal = 14.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -156,10 +157,10 @@ fun LiveVoiceSheet(
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(state.route.label, color = HermesColors.TextSecondary, fontSize = 12.sp)
+                Text(state.route.label, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                 if (state.routeOptions.size > 1) {
                     Spacer(Modifier.width(6.dp))
-                    Text(S.voiceChange, color = HermesColors.TextFaint, fontSize = 10.sp)
+                    Text(S.voiceChange, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
                 }
             }
 
@@ -183,7 +184,7 @@ fun LiveVoiceSheet(
 
             state.error?.let { err ->
                 HermesCard(Modifier.fillMaxWidth()) {
-                    Text(err, color = HermesColors.Danger, fontSize = 12.sp, lineHeight = 17.sp)
+                    Text(err, color = HermesColors.Danger, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.height(12.dp))
             }
@@ -213,7 +214,7 @@ fun LiveVoiceSheet(
                     if (state.usingOwnKey) S.ownKey
                     else S.keyOnServer,
                     color = HermesColors.TextFaint,
-                    fontSize = 10.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
         }
@@ -234,7 +235,7 @@ private fun VoicePathRow(onUseLocal: () -> Unit) {
         Text(
             S.t2("Ses yolu", "Voice path"),
             color = HermesColors.TextFaint,
-            fontSize = 10.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
         Spacer(Modifier.height(5.dp))
         Row(
@@ -265,8 +266,7 @@ private fun VoicePathRow(onUseLocal: () -> Unit) {
                     "is Gemini Live only.",
             ),
             color = HermesColors.TextFaint,
-            fontSize = 10.sp,
-            lineHeight = 14.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -281,11 +281,11 @@ private fun VoicePathChip(
 ) {
     Column(
         modifier
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .border(
                 1.dp,
                 if (active) HermesColors.Midground else HermesColors.BorderStrong,
-                RoundedCornerShape(10.dp),
+                MaterialTheme.shapes.medium,
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 9.dp),
@@ -293,10 +293,10 @@ private fun VoicePathChip(
         Text(
             title,
             color = if (active) HermesColors.TextPrimary else HermesColors.TextSecondary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
         )
-        Text(detail, color = HermesColors.TextFaint, fontSize = 10.sp)
+        Text(detail, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -365,14 +365,14 @@ private fun TranscriptBlock(who: String, text: String, color: androidx.compose.u
     Column(
         Modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .padding(horizontal = 12.dp, vertical = 9.dp)
             .heightIn(max = 150.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(who, color = HermesColors.TextFaint, fontSize = 10.sp)
+        Text(who, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(3.dp))
-        Text(text, color = color, fontSize = 14.sp, lineHeight = 20.sp)
+        Text(text, color = color, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -381,8 +381,8 @@ private fun TranscriptBlock(who: String, text: String, color: androidx.compose.u
 private fun CameraButton(enabled: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
-            .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(10.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -394,7 +394,7 @@ private fun CameraButton(enabled: Boolean, onClick: () -> Unit) {
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(9.dp))
-        Text(S.voiceShowCamera, color = HermesColors.TextSecondary, fontSize = 13.sp)
+        Text(S.voiceShowCamera, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -403,7 +403,7 @@ private fun MicOrbSmall(state: LiveVoiceState, onStart: () -> Unit, onStop: () -
     val running = state.isRunning
     Row(
         Modifier
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(24.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.large)
             .border(
                 1.dp,
                 when (state.state) {
@@ -411,7 +411,7 @@ private fun MicOrbSmall(state: LiveVoiceState, onStart: () -> Unit, onStop: () -
                     LiveVoiceClient.State.Listening -> HermesColors.Online
                     else -> HermesColors.BorderStrong
                 },
-                RoundedCornerShape(24.dp),
+                MaterialTheme.shapes.large,
             )
             .clickable { if (running) onStop() else onStart() }
             .padding(horizontal = 18.dp, vertical = 11.dp),
@@ -427,7 +427,7 @@ private fun MicOrbSmall(state: LiveVoiceState, onStart: () -> Unit, onStop: () -
         Text(
             if (running) "Sesi kapat" else S.unmute,
             color = HermesColors.TextSecondary,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
         )
     }
 }
@@ -437,8 +437,8 @@ private fun MicOrbSmall(state: LiveVoiceState, onStart: () -> Unit, onStop: () -
 private fun DrivingButton(onClick: () -> Unit) {
     Row(
         Modifier
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
-            .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(10.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -450,6 +450,6 @@ private fun DrivingButton(onClick: () -> Unit) {
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(9.dp))
-        Text(S.voiceDriving, color = HermesColors.TextSecondary, fontSize = 13.sp)
+        Text(S.voiceDriving, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
     }
 }

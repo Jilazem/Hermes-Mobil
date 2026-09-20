@@ -22,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,14 +70,14 @@ fun CommandPalette(
             Text(
                 "Komutlar",
                 color = HermesColors.TextPrimary,
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 "Telegram'daki slash komutlarının aynısı",
                 color = HermesColors.TextMuted,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
 
@@ -108,7 +109,7 @@ fun CommandPalette(
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(HermesColors.Surface, RoundedCornerShape(8.dp))
+                                    .background(HermesColors.Surface, MaterialTheme.shapes.medium)
                                     .clickable {
                                         when {
                                             cmd.needsConfirm -> confirmFor = cmd
@@ -122,21 +123,15 @@ fun CommandPalette(
                                 Column(Modifier.weight(1f)) {
                                     Text(
                                         "/${cmd.name}",
-                                        style = MonoTextStyle,
-                                        color = HermesColors.Midground,
-                                    )
-                                    Text(
-                                        cmd.description,
-                                        color = HermesColors.TextMuted,
-                                        fontSize = 11.sp,
+                                        style = MonoTextStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, lineHeight = MaterialTheme.typography.labelSmall.lineHeight),
                                     )
                                 }
                                 if (cmd.takesArgument) {
-                                    Text("…", color = HermesColors.TextFaint, fontSize = 14.sp)
+                                    Text("…", color = HermesColors.TextFaint, style = MaterialTheme.typography.bodyMedium)
                                     Spacer(Modifier.width(4.dp))
                                 }
                                 if (cmd.needsConfirm) {
-                                    Text("!", color = HermesColors.Danger, fontSize = 13.sp)
+                                    Text("!", color = HermesColors.Danger, style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
@@ -157,7 +152,7 @@ fun CommandPalette(
             title = { Text("/${cmd.name}") },
             text = {
                 Column {
-                    Text(cmd.description, color = HermesColors.TextMuted, fontSize = 12.sp)
+                    Text(cmd.description, color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = arg,

@@ -71,6 +71,7 @@ import com.hermes.mobile.ui.TerminalScreen
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.hermes.mobile.ui.SessionDetailScreen
@@ -862,7 +863,7 @@ private fun HermesApp(
                             onClick = { tab = entry },
                             icon = { Icon(entry.icon, contentDescription = entry.label()) },
                             label = {
-                                Text(entry.label(), fontSize = 11.sp, maxLines = 1, softWrap = false)
+                                Text(entry.label(), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false)
                             },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = HermesColors.Background,
@@ -1366,7 +1367,7 @@ private fun CrashRecoveryBanner() {
         Text(
             "⚠ $text",
             color = androidx.compose.ui.graphics.Color.White,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             maxLines = 3,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),

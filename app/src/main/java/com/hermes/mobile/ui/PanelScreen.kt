@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -167,13 +168,13 @@ fun PanelScreen(
                 Text(
                     state.section?.let { labelFor(it) } ?: S.panelTitle,
                     color = HermesColors.TextPrimary,
-                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
                     state.section?.let { hintFor(it) } ?: S.panelSubtitle,
                     color = HermesColors.TextMuted,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
             if (state.section != null) {
@@ -190,7 +191,7 @@ fun PanelScreen(
             Text(
                 msg,
                 color = HermesColors.Danger,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
@@ -236,8 +237,8 @@ private fun SectionMenu(onOpen: (PanelSection) -> Unit, sparkEnabled: Boolean) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(11.dp))
-                    .border(1.dp, HermesColors.Border, RoundedCornerShape(11.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                    .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
                     .clickable { onOpen(section) }
                     .padding(horizontal = 14.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -250,8 +251,8 @@ private fun SectionMenu(onOpen: (PanelSection) -> Unit, sparkEnabled: Boolean) {
                 )
                 Spacer(Modifier.width(13.dp))
                 Column {
-                    Text(labelFor(section), color = HermesColors.TextPrimary, fontSize = 15.sp)
-                    Text(hintFor(section), color = HermesColors.TextMuted, fontSize = 11.sp)
+                    Text(labelFor(section), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+                    Text(hintFor(section), color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -272,15 +273,14 @@ private fun SparkView(state: PanelState) {
             Text(
                 S.t2("Spark bulunamadı.", "No Spark found."),
                 color = HermesColors.TextSecondary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 "sparkDash sunucuda 5555'te çalışmalı ve makineler kayıtlı olmalı. " +
                     "Ayarlar → sparkDash'ten kapatabilir ya da adresi değiştirebilirsin.",
                 color = HermesColors.TextMuted,
-                fontSize = 11.sp,
-                lineHeight = 16.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
         return
@@ -300,7 +300,7 @@ private fun SparkCard(spark: com.hermes.mobile.data.SparkMetrics) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(11.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .padding(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -309,21 +309,21 @@ private fun SparkCard(spark: com.hermes.mobile.data.SparkMetrics) {
                     .size(8.dp)
                     .background(
                         if (spark.online) HermesColors.Online else HermesColors.Danger,
-                        RoundedCornerShape(4.dp),
+                        MaterialTheme.shapes.extraSmall,
                     )
             )
             Spacer(Modifier.width(9.dp))
             Text(
                 DemoMask.name(DemoMask.Kind.NODE, spark.name.ifBlank { spark.id }),
                 color = HermesColors.TextPrimary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 spark.hardware.gpuChip.ifBlank { spark.hardware.cpuModel },
                 color = HermesColors.TextFaint,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
 
@@ -346,7 +346,7 @@ private fun SparkCard(spark: com.hermes.mobile.data.SparkMetrics) {
                 S.t2("çalışma süresi ", "uptime ") +
                     "${if (days > 0) "${days}${S.t2("g", "d")} " else ""}${hours}${S.t2("s", "h")}",
                 color = HermesColors.TextFaint,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
@@ -357,18 +357,18 @@ private fun SparkBar(label: String, percent: Double, right: String) {
     val p = percent.coerceIn(0.0, 100.0).toFloat() / 100f
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = HermesColors.TextSecondary, fontSize = 11.sp)
+            Text(label, color = HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.weight(1f))
-            Text("%${percent.toInt()}", color = HermesColors.TextMuted, fontSize = 11.sp)
+            Text("%${percent.toInt()}", color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.width(8.dp))
-            Text(right, color = HermesColors.TextFaint, fontSize = 10.sp)
+            Text(right, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
         }
         Spacer(Modifier.height(4.dp))
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .background(HermesColors.Surface, RoundedCornerShape(2.dp))
+                .background(HermesColors.Surface, MaterialTheme.shapes.extraSmall)
         ) {
             Box(
                 Modifier
@@ -380,7 +380,7 @@ private fun SparkBar(label: String, percent: Double, right: String) {
                             percent >= 70 -> HermesColors.Busy
                             else -> HermesColors.Online
                         },
-                        RoundedCornerShape(2.dp),
+                        MaterialTheme.shapes.extraSmall,
                     )
             )
         }
@@ -397,9 +397,7 @@ private fun FilesView(
     Column(Modifier.fillMaxSize()) {
         Text(
             DemoMask.path(listing?.path) ?: "…",
-            style = MonoTextStyle,
-            color = HermesColors.TextFaint,
-            fontSize = 10.sp,
+            style = MonoTextStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, lineHeight = MaterialTheme.typography.labelSmall.lineHeight),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -424,7 +422,7 @@ private fun FilesView(
                             modifier = Modifier.size(17.dp),
                         )
                         Spacer(Modifier.width(11.dp))
-                        Text(S.t2("üst klasör", "parent folder"), color = HermesColors.TextMuted, fontSize = 13.sp)
+                        Text(S.t2("üst klasör", "parent folder"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -462,13 +460,13 @@ private fun FileRow(
         Text(
             DemoMask.name(DemoMask.Kind.FILE, entry.name),
             color = HermesColors.TextSecondary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
         entry.size?.takeIf { !entry.isDirectory }?.let { size ->
-            Text(formatBytes(size), color = HermesColors.TextFaint, fontSize = 10.sp)
+            Text(formatBytes(size), color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -491,11 +489,11 @@ private fun LogsView(state: PanelState, onSelect: (String) -> Unit) {
                 Text(
                     file,
                     color = if (on) HermesColors.Background else HermesColors.TextSecondary,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier
                         .background(
                             if (on) HermesColors.Midground else HermesColors.SurfaceDim,
-                            RoundedCornerShape(14.dp),
+                            MaterialTheme.shapes.large,
                         )
                         .clickable { onSelect(file) }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -537,7 +535,7 @@ private fun CronCard(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .clickable { expanded = !expanded }
             .padding(13.dp),
     ) {
@@ -547,27 +545,27 @@ private fun CronCard(
                     .size(7.dp)
                     .background(
                         if (job.enabled) HermesColors.Online else HermesColors.TextFaint,
-                        RoundedCornerShape(4.dp),
+                        MaterialTheme.shapes.extraSmall,
                     )
             )
             Spacer(Modifier.width(9.dp))
             Text(
                 DemoMask.name(DemoMask.Kind.CRON, job.name),
                 color = HermesColors.TextPrimary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Text(job.scheduleDisplay, style = MonoTextStyle, color = HermesColors.TextMuted, fontSize = 10.sp)
+            Text(job.scheduleDisplay, style = MonoTextStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize), color = HermesColors.TextMuted)
             Spacer(Modifier.width(8.dp))
             // Duraklat / devam — sunucuda doğrulanmış tek iki eylem.
             Text(
                 if (job.enabled) S.t2("duraklat", "pause") else S.t2("devam", "resume"),
                 color = if (job.enabled) HermesColors.Busy else HermesColors.Online,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
-                    .background(HermesColors.Surface, RoundedCornerShape(8.dp))
+                    .background(HermesColors.Surface, MaterialTheme.shapes.medium)
                     .clickable { onToggle(job) }
                     .padding(horizontal = 9.dp, vertical = 5.dp),
             )
@@ -578,14 +576,12 @@ private fun CronCard(
                 (job.nextRunAt?.take(16)?.replace('T', ' ') ?: "—") +
                 S.t2("   son: ", "   last: ") +
                 (job.lastRunAt?.take(16)?.replace('T', ' ') ?: "—"),
-            style = MonoTextStyle,
-            color = HermesColors.TextFaint,
-            fontSize = 10.sp,
+            style = MonoTextStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, lineHeight = MaterialTheme.typography.labelSmall.lineHeight),
         )
         if (expanded) {
             if (job.prompt.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
-                Text(job.prompt, color = HermesColors.TextMuted, fontSize = 11.sp, lineHeight = 16.sp)
+                Text(job.prompt, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -616,7 +612,7 @@ private fun CronCard(
                             "Cron format: minute hour day month weekday",
                         ),
                         color = HermesColors.TextMuted,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             },
@@ -669,9 +665,9 @@ private fun CronAction(label: String, danger: Boolean = false, onClick: () -> Un
     Text(
         label,
         color = if (danger) HermesColors.Danger else HermesColors.Midground,
-        fontSize = 11.sp,
+        style = MaterialTheme.typography.labelSmall,
         modifier = Modifier
-            .background(HermesColors.Surface, RoundedCornerShape(8.dp))
+            .background(HermesColors.Surface, MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 7.dp),
     )
@@ -687,18 +683,18 @@ private fun SkillsView(state: PanelState) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(9.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .padding(12.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         DemoMask.name(DemoMask.Kind.SKILL, skill.name),
                         color = if (skill.enabled) HermesColors.TextPrimary else HermesColors.TextFaint,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
                     )
                     if (skill.usage > 0) {
-                        Text("${skill.usage}×", color = HermesColors.TextFaint, fontSize = 10.sp)
+                        Text("${skill.usage}×", color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 if (skill.descriptionText.isNotBlank()) {
@@ -706,10 +702,9 @@ private fun SkillsView(state: PanelState) {
                     Text(
                         DemoMask.description(skill.descriptionText.trim()),
                         color = HermesColors.TextMuted,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
-                        lineHeight = 15.sp,
                     )
                 }
             }
@@ -728,7 +723,7 @@ private fun McpView(state: PanelState) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(9.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -737,7 +732,7 @@ private fun McpView(state: PanelState) {
                         .size(7.dp)
                         .background(
                             if (server.enabled) HermesColors.Online else HermesColors.TextFaint,
-                            RoundedCornerShape(4.dp),
+                            MaterialTheme.shapes.extraSmall,
                         )
                 )
                 Spacer(Modifier.width(9.dp))
@@ -745,21 +740,19 @@ private fun McpView(state: PanelState) {
                     Text(
                         DemoMask.name(DemoMask.Kind.MCP, server.name),
                         color = HermesColors.TextPrimary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
                         DemoMask.text(
                             server.url ?: server.command ?: server.transport,
                         ),
-                        style = MonoTextStyle,
-                        color = HermesColors.TextFaint,
-                        fontSize = 10.sp,
+                        style = MonoTextStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, lineHeight = MaterialTheme.typography.labelSmall.lineHeight),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
                 server.toolNames.size.takeIf { it > 0 }?.let { n ->
-                    Text(S.t2("$n araç", "$n tools"), color = HermesColors.TextMuted, fontSize = 10.sp)
+                    Text(S.t2("$n araç", "$n tools"), color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -774,15 +767,15 @@ private fun WebhooksView(state: PanelState) {
         Text(
             if (info?.enabled == true) "Etkin" else S.t2("Kapalı", "Off"),
             color = if (info?.enabled == true) HermesColors.Online else HermesColors.TextMuted,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(6.dp))
-        Text(info?.baseUrl.orEmpty(), style = MonoTextStyle, color = HermesColors.TextFaint, fontSize = 11.sp)
+        Text(info?.baseUrl.orEmpty(), style = MonoTextStyle, color = HermesColors.TextFaint)
         Spacer(Modifier.height(12.dp))
         Text(
             "${info?.subscriptions?.size ?: 0} abonelik",
             color = HermesColors.TextSecondary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }
@@ -791,16 +784,15 @@ private fun WebhooksView(state: PanelState) {
 private fun PairingView(state: PanelState) {
     val info = state.pairing
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Bekleyen: ${info?.pending?.size ?: 0}", color = HermesColors.TextSecondary, fontSize = 14.sp)
+        Text("Bekleyen: ${info?.pending?.size ?: 0}", color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(6.dp))
-        Text(S.t2("Onaylı: ${info?.approved?.size ?: 0}", "Approved: ${info?.approved?.size ?: 0}"), color = HermesColors.TextSecondary, fontSize = 14.sp)
+        Text(S.t2("Onaylı: ${info?.approved?.size ?: 0}", "Approved: ${info?.approved?.size ?: 0}"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(14.dp))
         Text(
             "Eşleştirme onayı panodan yapılır — telefondan onay vermek, " +
                 "cihazı yalnız telefonun elinde olmasıyla yetkilendirmek olurdu.",
             color = HermesColors.TextFaint,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -819,8 +811,7 @@ private fun MonoBlock(text: String, reverse: Boolean = false) {
             Text(
                 line,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
-                lineHeight = 15.sp,
+                style = MaterialTheme.typography.labelSmall,
                 color = when {
                     line.contains(" ERROR") || line.contains("Traceback") -> HermesColors.Danger
                     line.contains(" WARN") -> HermesColors.Busy
