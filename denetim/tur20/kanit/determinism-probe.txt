@@ -1,0 +1,5 @@
+$ node denetim/tur20/determinism_probe.js  — 2026-09-20 22:04:34
+seed=123 60sn iki ayri kosu bit-bit ayni: true | snapshot bayt: 696
+seed=0 + 0 tick + bos figures: crash yok, snapshot var: true
+negatif/sifir dt: crash yok, sayilar sonlu: true
+60sn/3600 adim probe: bozuk-deger sayimi = 0 (0 beklenir)

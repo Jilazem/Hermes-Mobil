@@ -15,6 +15,9 @@ const val ARENA_ASSET_ROOT = "file:///android_asset/arena/"
 /** Outrun ilk kare için tanınan süre: yazılım GL'de (emülatör) shader derlemesi 4 sn'yi aşabiliyor. */
 const val OUTRUN_SCENE_TIMEOUT_MS = 12_000L
 
+/** Tur-20: kafes dövüşü de çok nesneli üç.js sahnesi — aynı geniş zaman aşımı. */
+const val CAGE_SCENE_TIMEOUT_MS = 12_000L
+
 enum class ArenaSceneKind(
     /** AppSettings'e yazılan kalıcı kimlik — DEĞİŞTİRME (eski kayıtlar bununla okunur). */
     val id: String,
@@ -26,6 +29,7 @@ enum class ArenaSceneKind(
 ) {
     WORK("work", "arena3d.html", "arenaScene", ARENA_SCENE_TIMEOUT_MS),
     OUTRUN("outrun", "outrun.html", "outrun", OUTRUN_SCENE_TIMEOUT_MS),
+    CAGE("cage", "cage.html", "cage", CAGE_SCENE_TIMEOUT_MS),
     ;
 
     companion object {

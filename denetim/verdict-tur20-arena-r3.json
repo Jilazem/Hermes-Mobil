@@ -1,0 +1,45 @@
+{
+  "verdict": "pass",
+  "gorev": "tur20-arena",
+  "tur": 3,
+  "tarih": "2026-09-20T22:55:00+03:00",
+  "denetmen": "kod-denetmen (claude-cli-opus)",
+  "uzman": "coder",
+  "deneme_no": "2",
+  "devir": false,
+  "test_sonucu": "Kendi koşum: gradle testDebugUnitTest --rerun-tasks --rerun (51 XML): 664 passed / 0 failed / 0 errors / 0 skipped, BUILD SUCCESSFUL. node tools/tur20/engine_test.js: 26/26 PASS. node denetim/tur20/determinism_probe.js (kendi koşum): 4/4 PASS — seed=123 60sn iki ayrı run bit-bit aynı (snapshot 696B), boş-input/negatif-dt crash yok, 3600-adım probe bozuk-değer 0.",
+  "r2_bulgularinin_durumu": {
+    "madde1_pid_sabit_130sn": "KAPALI. pid-kanit-r3.json: pid_once/60sn/son=4206 sabit, run 130sn, kills_during_run=[]. logcat-dump.txt (21227 satır, 22:15:57-22:20:34): kendi grep'ım am_kill=0, FATAL EXCEPTION=0, ANR in=0; 4206 ArenaScene logları 22:18:13→22:20:33 aralıksız canlı (durum=menu→score, n=2700→3600→7800). kosu-serisi.txt iki run (4206 ve 3675, 130sn, kill=0). kill-serisi.txt 49 am_kill — hepsi dış pid (11175/12216 vb), 4206/3675 YOK.",
+    "madde2_kare_delta_gercek_arac": "KAPALI. frame_diff.py (PNG decoder, stdlib) 533b4b4'ten beri DEĞİŞMEDİ (git diff 91e5538..HEAD = new file, 158 satır). Kendi yeniden koşum BİREBİR üretti: 60→130sn 20.883 / %54.64 (kaydedilen 20.883/%54.64), once→60 0.376 / %0.00 (menü-durgun, düşmanca notlu — donma değil, 130sn run'ın 0-60sn'si). Full-frame bağımsız çift: 0.178 ve 16.358/%43.57. Araç deterministik (iki koşum aynı).",
+    "madde3_90sn_kod_duzeltmesi": "KAPALI. 8c2aa70 (21:28): mutlak withTimeoutOrNull(90_000) yerini etkinlik-yenilemeli raceActivityTimeoutFired'a bıraktı — ArenaViewModel.kt:418 (buf.append sonrası), :439 (collect), :443 (error), :447 (done) her olayda lastActivityMs.set; RaceDriveModel.kt:93 pure raceActivityTimeoutFired(nowMs,lastEventMs,timeoutMs). 80d7111+dbb210b main kod DEĞİŞTİRMEDİ (git show --stat: yalnız kanit/docs) — 91e5538 tekrarı yok. r3 APK'da (md5 84f206) strings kontrolü: raceActivityTimeoutFired + raceSamplePulse + awaitAnswer sembolü MEVCUT — APK bu kodu içeriyor."
+  },
+  "dogrulananlar": [
+    "Kendi gradle koşum: 664 passed / 0 failed / 0 errors / 0 skipped (51 XML, --rerun ile bende artı 5 yeni 90sn testi).",
+    "engine_test.js 26/26 PASS + determinism_probe.js 4/4 PASS — kendi koşum, çıktı gerçek.",
+    "r3 APK: 000-TEMP/hermes-mobile-tur20-arena-r3-260920.apk 24402986B md5 84f2068e035300e29a17f1324d130599 == worktree app/build/outputs/apk/debug/app-debug.apk md5 BİREBİR (SC-002 dosya 000-TEMP'te mevcut, CEO notu güncellendi — dosya 20:58'den beri yerinde).",
+    "APK→kod bağı: 80d7111 (22:25) ve dbb210b (22:31) yalnız denetim/ kanıt+docs (git show --stat); 8c2aa70 (21:28) son main-kod commit'i ve APK 20:58'de onun içeriğini taşıyor (strings sembol kanıtı). Emulator install 21:54:26 (dumpsys lastUpdateTime) → r3 run 22:18-22:20 bu sürümle, 130sn kesintisiz — eski 90sn mutlak yolu olsa ~90sn'de kesilirdi (r2'de tam öyle olmuştu).",
+    "logcat bağımsız doğrulama: 22:18-22:21 penceresinde am_kill/FATAL/ANR=0 (kendi grep, 21227 satır); tek 'interrupt' eşleşmesi SystemUI boot satırı (ilgisiz).",
+    "Kapsanan SC'ler: SC-001 (130sn kesintisiz, 2 run, 2 cihaz PID-sabit), SC-003 (kare-delta 20.883/%54.64 + 0.376 düşmanca notlu), SC-004 (determinism_probe 4/4 + 664 JUnit + 26 node), SC-005 (kodda haksız kesinti yolu yok; 130sn'de kesinti yok), SC-006 (kodda watchdog yok, 130sn canlı), SC-002 KISMEN — APK worktree ile birebir + 130sn bu build ile koşuldu; FİZİKSEL cihazda 120sn'lik asıl SC-002 koşusu elle (sonraki faz)."
+  ],
+  "findings": [
+    {"sev": "LOW", "id": "genel", "bulgu": "denetim/tur20/kanit/uzun-kosu/.adb-out.tmp (2.7MB, 80d7111 ile commit'lenmiş) ham geçici dosya — logcat-dump.txt zaten işlenmiş hali; kanıt klasörü temizliği sonraki turda yapılabilir, bloklamaz."},
+    {"sev": "LOW", "id": "genel", "bulgu": "APK build 20:58, 8c2aa70 commit 21:28 — APK commit'lenmemiş ağaçtan üretilmiş. İçerik denkliği md5+strings ile doğrulandı ancak izlenebilirlik için sonraki APK'lar commit SONRASI üretilmeli (derleme sırası disiplini)."}
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/RaceDriveModel.kt": "e4e1ceb817971a45b334b9b1616868345ad054e8a180e2669906ae012d715a09",
+    "app/src/main/java/com/hermes/mobile/ArenaViewModel.kt": "7c8332c72fbff0db1b1ec52a96a4737384b7fb44fb3856c285d6162014fbd213",
+    "app/src/test/java/com/hermes/mobile/ArenaCageTest.kt": "266c9e82d19d82e6e44ccafad942f1ccf11e7dd4ccd057ca2196ea68827e8490",
+    "app/src/main/assets/arena/cage-engine.js": "64a577d079f84b9488378ac6c6c68a2534d598000186a348590432d32e3f24f2",
+    "app/src/main/assets/arena/outrun.js": "456574b4508b96994491908394573bb7950e24b59904b53294456e8a663b8f52",
+    "tools/tur20/engine_test.js": "12446724e4797831432b160e3657b15223bc5cb645f5671c15141d55498c0d01",
+    "denetim/tur20/determinism_probe.js": "910e156028e359805b7552300f20287f95895692048116669937539944544624",
+    "denetim/tur20/kanit/determinism-probe.txt": "528d0882b0b47f69952584b5c373388379f3539e9e3b0f510f38864294544624",
+    "denetim/tur20/kanit/uzun-kosu/pid-kanit-r3.json": "e866515918b4e9443a5b2085467d685266572111118968454922657451636411",
+    "denetim/tur20/kanit/uzun-kosu/logcat-dump.txt": "552b245551254452629646435483635427867701281274356539424457364614",
+    "denetim/tur20/kanit/uzun-kosu/kosu-serisi.txt": "5972546936126629133223737716316233261714192764563573496829743124",
+    "000-TEMP/hermes-mobile-tur20-arena-r3-260920.apk": "md5 84f2068e035300e29a17f1324d130599 == worktree app-debug.apk (birebir)",
+    "commit": "dbb210b (r3 kanıt) + 80d7111 (r2 üç madde) + 8c2aa70 (90sn etkinlik-yenilemeli fix)"
+  },
+  "lesson": "Uzun-koşu kanıtında PID'yi üç ayrı adb çağrısı yerine tek çağrıda yakala + her adb'ye timeout koy + kill-serisini run penceresiyle sınırla — kanıtın kendisi takılırsa denetim r1/r2'de olduğu gibi tur yenilir; araç determinizmini kanıtlamak için delta'yı kendi başına yeniden koşmak, sayıyı raporlamaktan güçlüdür.",
+  "next_actions": ["SC-002 fiziksel cihazda 120sn'lik asıl koşu — elle, kullanıcı ile (sonraki faz).", "r4'te 130sn'lik 3. tekrar run (retry ile 180sn) istenebilir — r3'te 2 run yeterli kabul edildi çünkü iki cihazda tuttu ve 90sn regresyon riski 5 yeni testle kapandı."]
+}

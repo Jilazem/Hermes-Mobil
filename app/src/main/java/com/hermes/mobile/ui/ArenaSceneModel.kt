@@ -244,15 +244,18 @@ object ArenaSceneJson {
     }
 
     /**
-     * `evaluateJavascript` gövdesi.
+     * `evaluateJavascript` gövdesi (iş sahnesi — mevcut test bu yazımı kilitler).
      *
      * JSON bir JS **string** olarak gömülür; bu yüzden ters bölü ve çift tırnak
      * ikinci kez kaçırılır. ASCII dışı karakterler `\uXXXX`e çevrilir: WebView
      * köprüsünde kodlama sarsılırsa etiketler bozulmasın (Türkçe adlar: "Canlı",
      * "Sentez", bot adları).
      */
-    fun jsCall(json: String): String =
-        "window.arenaScene&&window.arenaScene.setData(\"" + jsEscape(json) + "\")"
+    fun jsCall(json: String): String = jsCallFor(ArenaSceneKind.WORK, json)
+
+    /** Kip başına veri komutu: `window.<jsObject>.setData("<escaped-json>")`. */
+    fun jsCallFor(kind: ArenaSceneKind, json: String): String =
+        "window.${kind.jsObject}&&window.${kind.jsObject}.setData(\"" + jsEscape(json) + "\")"
 
     /** JS string literal kaçışı (ASCII güvenli). */
     fun jsEscape(s: String): String {
@@ -275,6 +278,9 @@ object ArenaSceneJson {
 
     /** Sahne duraklatma/aktiflik komutu — ekran görünmezken render döngüsü durur. */
     fun jsActive(active: Boolean): String = arenaJsActive(ArenaSceneKind.WORK, active)
+
+    /** Kip seçili duraklatma komutu. */
+    fun jsActive(kind: ArenaSceneKind, active: Boolean): String = arenaJsActive(kind, active)
 }
 
 // ── Fallback kararı ─────────────────────────────────────────────────────────
