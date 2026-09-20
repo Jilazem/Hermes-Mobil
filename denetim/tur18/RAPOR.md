@@ -84,6 +84,8 @@ Tasarım kaynağı: `/Users/gokhanuzman/007-HERMES/04-ARASTIRMA/hermes-mobil-tas
   Ek kanıt: `13c-son-apk-giris.png` (md5 802a07d7…) son APK ile açılış ekranı,
   `13d-b4-hermescard-son-apk.png` (md5 ba8b9588…) Pano bölüm satırları HermesCard
   (SurfaceCard + 12dp iç + shapes.medium + 1dp border) — 12dp yaması SONRASI sürümden.
+- **APK kopyası (FR-008 yolu):** `/Volumes/EX/007-HERMES-M4-LIVE/000-TEMP/hermes-mobile-tur18-20260920.apk`
+  (md5 aynı: df744514d127620ac0b0c972ad885c53).
 - **FR-006 fontScale kanıtı (uiautomator bounds, 1080×2400 @420dpi):**
   Ayarlar→Görünüm→"Yazı boyutu" slider %99→%135 (%115'ten sonra);
   "Yazı boyutu" bodyMedium etiketi bounds **43px → 58px** yükseklik,
