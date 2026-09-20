@@ -17,8 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.hermes.mobile.ui.theme.HermesColors
@@ -27,7 +25,8 @@ import com.hermes.mobile.ui.theme.HermesColors
  * Tur22 madde-4 — boş durum ekranı (Grok/ChatGPT/Claude kalıbı):
  * TEK cümle + ikon + (varsa) öneri aksiyonu. Uydurma veri gösterilmez.
  *
- * Ekran okuyucu: blok TEK etiket okunur (cümle), ikon çift okuma yapmaz.
+ * Ekran okuyucu: mesaj metni okunur, ikon dekoratiftir (boş etiket) — çift
+ * okuma yok, aksiyon düğmesi ayrı ve erişilebilir (semantics blok YUTULMAZ).
  *
  * Kullanım yerleri (tur22):
  *  - Çekmece: oturum yok → [emptyStateNoSessions]
@@ -44,7 +43,7 @@ fun EmptyState(
     onAction: (() -> Unit)? = null,
 ) {
     Column(
-        modifier.clearAndSetSemantics { contentDescription = message },
+        modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
