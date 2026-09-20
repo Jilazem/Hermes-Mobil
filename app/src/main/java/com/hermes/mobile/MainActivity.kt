@@ -82,6 +82,7 @@ import com.hermes.mobile.ui.SettingsScreen
 import com.hermes.mobile.data.CrashGuard
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.AssistantRole
+import com.hermes.mobile.data.LocalModelClient
 import com.hermes.mobile.data.toVoicePrefs
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.ShareHandoff
@@ -458,8 +459,21 @@ class MainActivity : ComponentActivity() {
                         .ifBlank { null }
                     panelViewModel.sparkUrl = settings.sparkUrl
                     // Sesli mesaj tercihleri: otomatik gönder (varsayılan kapalı),
-                    // motor (varsayılan kahya), uç adresi ve son çalışan adres.
+                    // motor (tur-21: varsayılan YEREL kadın ses), uç adresi ve son
+                    // çalışan adres.
                     chatViewModel.voicePrefs = settings.toVoicePrefs()
+                    // Tur-21: sesli asistan beyni (gemini|yerel) + yerel LLM
+                    // adres/model — adres değişirse istemci yeniden kurulur.
+                    chatViewModel.liveProvider =
+                        com.hermes.mobile.data.LiveModelLogic.Provider.fromId(settings.liveProvider)
+                    val localUrl = settings.localLlmUrl.trim()
+                    chatViewModel.settings_localModelName = settings.localLlmModel.ifBlank {
+                        com.hermes.mobile.data.LocalModelLogic.DEFAULT_MODEL
+                    }
+                    chatViewModel.localModelClient =
+                        chatViewModel.localModelClient
+                            ?.takeIf { it.baseUrl == localUrl }
+                            ?: com.hermes.mobile.data.LocalModelClient(localUrl)
                     // Tur-13: asistan akışında yanıt kendiliğinden okunsun mu
                     // (varsayılan AÇIK, ama yalnız asistan modunda etkili).
                     chatViewModel.assistantAutoRead = settings.assistantAutoRead
@@ -649,6 +663,9 @@ private fun HermesApp(
     val voicePrefillState by chatViewModel.voicePrefill.collectAsStateWithLifecycle()
     // Tur-12: "Isıt" durumu — bölümden çıkılsa da ısıtma sürer, dönünce "Hazır ✓".
     val voiceWarmState by chatViewModel.voiceWarmState.collectAsStateWithLifecycle()
+    // Tur-21: yerel TTS indirme durumu + yerel LLM sağlık noktası.
+    val localTtsState by chatViewModel.localTts.collectAsStateWithLifecycle()
+    val localHealthState by chatViewModel.liveLocalHealth.collectAsStateWithLifecycle()
     val panel by panelViewModel.state.collectAsStateWithLifecycle()
 
     // FR-001: canlı oturum başlık zinciri TEK kaynaktan — liveSessionTitle
@@ -1222,6 +1239,14 @@ private fun HermesApp(
                         onVoiceWarm = { engine -> chatViewModel.voiceWarm(engine) },
                         onVoiceWarmReset = { engine -> chatViewModel.voiceWarmReset(engine) },
                         voiceWarmState = voiceWarmState,
+                        // Tur-21: yerel kadın sesi (indirme durumu + indirme/silme).
+                        localTtsState = localTtsState,
+                        onLocalTtsDownload = { chatViewModel.downloadLocalTts() },
+                        onLocalTtsRefresh = { chatViewModel.refreshLocalTtsState() },
+                        onLocalTtsDelete = { chatViewModel.deleteLocalTts() },
+                        // Tur-21: sesli asistan yerel sağlık noktası.
+                        onLocalHealthProbe = { chatViewModel.probeLocalHealth() },
+                        localHealth = localHealthState,
                     )
                 }
             }

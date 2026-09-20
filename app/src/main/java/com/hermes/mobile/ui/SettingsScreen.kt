@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -68,6 +70,8 @@ import androidx.compose.foundation.lazy.items
 import com.hermes.mobile.data.ShizukuBridge
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.VoiceSpeakLogic
+import com.hermes.mobile.data.LocalTtsLogic
+import com.hermes.mobile.data.LiveModelLogic
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.LogResponse
 import com.hermes.mobile.data.MaintenanceStatusResponse
@@ -129,6 +133,24 @@ fun SettingsScreen(
     onVoiceWarmReset: (VoiceSpeakLogic.Engine) -> Unit = {},
     /** Tur-12: `Isıt` durum makinesi (MainActivity'den akış olarak gelir). */
     voiceWarmState: VoiceStatusLogic.WarmState = VoiceStatusLogic.WarmState(),
+    /**
+     * Tur-21: yerel TTS (Piper) indirme durum makinesi — Ayarlar kartı bu
+     * akışı çizer (yoksa NotInstalled görünür, indirme/düzen yok sayılır).
+     */
+    localTtsState: LocalTtsLogic.State = LocalTtsLogic.State(),
+    /** Tur-21: yerel modeli indir / yeniden dene. */
+    onLocalTtsDownload: () -> Unit = {},
+    /** Tur-21: yerel model disk durumunu yeniden tara (kart açılışında). */
+    onLocalTtsRefresh: () -> Unit = {},
+    /** Tur-21: yerel model dosyalarını sil (spec: Ayarlar'dan silme kapısı). */
+    onLocalTtsDelete: () -> Unit = {},
+    /**
+     * Tur-21: sesli asistan yerel sağlık noktası — true = bağlı
+     * (MainActivity [ChatViewModel.probeLocalHealth]'ten).
+     */
+    onLocalHealthProbe: suspend () -> LiveModelLogic.Health = { LiveModelLogic.Health.Unknown },
+    /** Tur-21: son bilinen yerel sağlık (durum noktası başlangıcı). */
+    localHealth: LiveModelLogic.Health = LiveModelLogic.Health.Unknown,
     /**
      * Tur-13: asistan rolü durumu — `RoleManager.getRoleHolders(ROLE_ASSISTANT)`.
      *
@@ -308,6 +330,113 @@ fun SettingsScreen(
                 }
             }
 
+            // ── Sesli asistan beyni (tur-21 model seçici) ─────────────────
+            // Segment: [Yerel (node1)] [Gemini]. Seçim kalıcı (AppSettings).
+            // Yerel seçiliyken durum noktası GERÇEK health-check ile dolar;
+            // koparsa hata tooltip'i net — sessiz Gemini geçişi YOK (kilit).
+            item {
+                var localHealthState by remember {
+                    mutableStateOf(localHealth)
+                }
+                val localScope = rememberCoroutineScope()
+                val selected = LiveModelLogic.Provider.fromId(settings.liveProvider)
+                HermesCard(Modifier.fillMaxWidth()) {
+                    Text(
+                        S.t2("Sesli asistan beyni", "Voice assistant brain"),
+                        color = HermesColors.TextPrimary,
+                        fontSize = 14.sp,
+                    )
+                    Text(
+                        S.t2(
+                            "Yerel seçimde sohbet node1'den geçer; bağlantı koparsa " +
+                                "hata gösterilir, sessiz Gemini'ye DÖNÜLMEZ.",
+                            "When local is selected chat goes through node1; on disconnect an " +
+                                "error is shown — there is NO silent switch to Gemini.",
+                        ),
+                        color = HermesColors.TextMuted,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LiveModelLogic.options(::tr).forEach { (id, label) ->
+                            val on = selected.id == id
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .background(
+                                        if (on) HermesColors.Midground else HermesColors.SurfaceDim,
+                                        RoundedCornerShape(9.dp),
+                                    )
+                                    .clickable {
+                                        onUpdate { s -> s.copy(liveProvider = id) }
+                                    }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (id == LiveModelLogic.Provider.YEREL.id) {
+                                        Box(
+                                            Modifier
+                                                .size(7.dp)
+                                                .background(
+                                                    when (LiveModelLogic.dotColor(localHealthState)) {
+                                                        "green" -> HermesColors.Online
+                                                        "red" -> HermesColors.Danger
+                                                        else -> HermesColors.Offline
+                                                    },
+                                                    CircleShape,
+                                                ),
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                    }
+                                    Text(
+                                        label,
+                                        color = if (on) HermesColors.Background else HermesColors.TextSecondary,
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        LiveModelLogic.healthLabel(localHealthState, ::tr),
+                        color = HermesColors.TextFaint,
+                        fontSize = 10.sp,
+                    )
+                    // Adres satırı + sağlık taraması.
+                    TextRow(
+                        S.t2("Yerel LLM adresi", "Local LLM address"),
+                        S.t2(
+                            "node1 örneği: http://192.168.1.99:8888",
+                            "node1 example: http://192.168.1.99:8888",
+                        ),
+                        settings.localLlmUrl,
+                    ) { v ->
+                        onUpdate { s -> s.copy(localLlmUrl = v.trim(), liveProvider = s.liveProvider) }
+                        localHealthState = LiveModelLogic.Health.Unknown
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        Text(
+                            S.t2("Sağlığı denetle", "Check health"),
+                            color = HermesColors.Midground,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .clickable {
+                                    localScope.launch {
+                                        localHealthState = onLocalHealthProbe()
+                                    }
+                                }
+                                .padding(6.dp),
+                        )
+                    }
+                }
+            }
+
             // ── Sesli mesaj (tur-11) ──────────────────────────────────────
             // Kayıt (bas-konuş) + sesli okuma: uç `voice_api` (8174 / dış /voice-api).
             item { Header(S.t2("Sesli mesaj (uygulama içi)", "Voice messages (in-app)")) }
@@ -364,12 +493,76 @@ fun SettingsScreen(
 
             item {
                 // Tur-12: canlı durum (4,5 sn) + "Yenile" + "Şimdi dene" + "Isıt".
+                // Tur-21: yerel motor seçiliyse ısıtma anlamsız — kart yalnız
+                // bulut motorlarında Isıt düğmesini etkin çizer.
                 VoiceStatusCard(
                     engine = VoiceSpeakLogic.Engine.fromId(settings.voiceEngine),
                     warm = voiceWarmState,
                     onProbe = onVoiceProbe,
                     onWarm = onVoiceWarm,
                 ) { base -> onUpdate { it.copy(voiceLastOk = base) } }
+            }
+
+            // ── Yerel kadın sesi (tur-21) ─────────────────────────────────
+            // İndirme durum kartı: ilerleme çubuğu + indirme/silme düğmeleri.
+            // Yalnız yerel motor seçiliyken belirgin; her zaman erişilebilir.
+            item {
+                LaunchedEffect(Unit) { onLocalTtsRefresh() }
+                HermesCard(Modifier.fillMaxWidth()) {
+                    Text(
+                        LocalTtsLogic.engineLabel(::tr),
+                        color = HermesColors.TextPrimary,
+                        fontSize = 14.sp,
+                    )
+                    Text(
+                        LocalTtsLogic.statusLine(localTtsState, ::tr),
+                        color = when (localTtsState.phase) {
+                            LocalTtsLogic.Phase.Failed -> HermesColors.Danger
+                            LocalTtsLogic.Phase.Ready -> HermesColors.Online
+                            else -> HermesColors.TextMuted
+                        },
+                        fontSize = 12.sp,
+                    )
+                    if (localTtsState.phase == LocalTtsLogic.Phase.Downloading) {
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { (LocalTtsLogic.percent(localTtsState.doneBytes) / 100f).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = HermesColors.Midground,
+                            trackColor = HermesColors.SurfaceDim,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        LocalTtsLogic.engineHint(::tr),
+                        color = HermesColors.TextFaint,
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (localTtsState.phase != LocalTtsLogic.Phase.Ready) {
+                            OutlinedButton(
+                                onClick = onLocalTtsDownload,
+                                enabled = localTtsState.phase != LocalTtsLogic.Phase.Downloading,
+                            ) {
+                                Text(
+                                    if (localTtsState.phase == LocalTtsLogic.Phase.Failed) {
+                                        S.t2("Yeniden dene", "Retry")
+                                    } else {
+                                        S.t2("İndir (~63 MB)", "Download (~63 MB)")
+                                    },
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        }
+                        if (localTtsState.phase == LocalTtsLogic.Phase.Ready) {
+                            OutlinedButton(onClick = onLocalTtsDelete) {
+                                Text(S.t2("Sil", "Delete"), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
             }
 
             // ── Sohbet ───────────────────────────────────────────────────
