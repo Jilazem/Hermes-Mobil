@@ -85,6 +85,14 @@ personal; with it on, none do.
 - Android Auto shows agent/server status; voice itself runs on the phone and
   reaches the car over Bluetooth, because the Car App Library cannot own the
   microphone.
+- Offline voice, on-device: the TTS engine can be switched to a local Piper
+  female voice (`tr_TR-fettah`, ~63 MB one-time download via
+  sherpa-onnx) — text never leaves the phone when it is selected, and the
+  cloud path gains a local fallback when synthesis fails. The live-assistant
+  brain can also point at a LAN OpenAI-compatible endpoint
+  (`/v1/chat/completions`) instead of Gemini; that choice is a lock, not a
+  preference — if the local node is down the app shows an error and stays
+  local. It never silently falls back to the cloud.
 
 ### The agent can use the phone
 

@@ -724,6 +724,11 @@
     bestShown: -1, lastCrash: -9
   };
   var cam = { x: 0, yaw: 0 };
+  // ── dış sürücü (Arena veri modu, tur-20) ─────────────────────────────
+  // Kotlin'den setDrive: hız hedefi token/s'den ölçekli, soluk = şerit hedefi,
+  // gecen() = araç çağrısı/geçiş anı (belirgin efekt). Sürücü YOKKEN oyun
+  // eskisi gibi kendi ritminde koşar (geriye uyumlu).
+  var drive = { on: false, speedPct: 0, lane: 0, laneOn: false, laneStepT: 0, passFlash: 0 };
   var traffic = [];
   for (var ti = 0; ti < TRAFFIC_N; ti++) {
     traffic.push({ dist: 260 + ti * 230 + rnd(0, 90), lane: rnd(-3.4, 3.4), v: rnd(24, 44), grp: ti < 3 ? 0 : 1, idx: ti % 3 });
@@ -901,6 +906,21 @@
         S.speed = 42;
         S.steerIn = Math.sin(S.time * 0.35) * 0.55;
         S.playerX = Math.sin(S.time * 0.42) * 2.0;
+      } else if (drive.on) {
+        // ── Arena veri modu: hız = token/s ölçeği, şerit = soluk hedefi ──
+        var dTarget = MAX_SPEED * clamp(drive.speedPct, 0, 1.26);
+        if (off) dTarget = Math.min(dTarget, OFF_MAX * 0.6);
+        S.speed += (dTarget - S.speed) * Math.min(1, dt * 0.8);
+        S.speed = clamp(S.speed, 0, MAX_SPEED * BOOST_MUL);
+        if (drive.laneOn) {
+          var dl = clamp(drive.lane, -3.4, 3.4);
+          S.playerX += (dl - S.playerX) * Math.min(1, dt * 2.4);
+        }
+        S.steerIn = 0;
+        S.steer += (0 - S.steer) * Math.min(1, dt * 6);
+        S.score = Math.floor(S.travel);
+        drive.passFlash = Math.max(0, drive.passFlash - dt * 1.6);
+        if (drive.passFlash > 0.6) S.shake = Math.max(S.shake, 0.3);
       } else {
         var target = MAX_SPEED * (S.boost ? BOOST_MUL : 1);
         if (off) target = OFF_MAX * 0.6;
@@ -1302,6 +1322,20 @@
     reset: function () { resetRun(); showScreen('start'); S.state = 'menu'; },
     setActive: function (v) { setSceneActive(v); },
     isActive: function () { return active; },
+    /** Arena veri modu: {hiz:0..1.26|token_hiz, soluk:x, gecen:true|false}. null → serbest. */
+    setDrive: function (d) {
+      if (!d) { drive.on = false; return; }
+      drive.on = true;
+      var h = (typeof d.hiz === 'number') ? d.hiz : 0.7;
+      drive.speedPct = clamp(h, 0, 1.26);
+      if (typeof d.soluk === 'number') { drive.lane = d.soluk; drive.laneOn = true; }
+      else drive.laneOn = false;
+      if (d.gecen) drive.passFlash = 1;
+    },
+    getState2: function () {
+      return { durum: S.state, hiz: +S.speed.toFixed(1), x: +S.playerX.toFixed(2),
+        surucu: drive.on ? 1 : 0, soluk: +drive.lane.toFixed(2) };
+    },
     getState: function () {
       return {
         durum: S.state, mesafe: S.score, en_iyi: S.best, hiz_kmh: Math.round(S.speed * 3.6),

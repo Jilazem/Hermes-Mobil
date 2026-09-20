@@ -1,0 +1,39 @@
+[21:27:01] === tur20-r3 kill-serisi + PID-sabit kosu ===
+[21:27:01] deneme 1: temiz pencere koluyorum (hedef 150s kill'siz)
+[21:29:03] pencere temiz, kosu basliyor (pid once)
+[21:29:56]   DIK: kill 21:29:54 (t=49sn, dis pid kaynakli)
+[21:29:56]   uygulama kill sonrasi yeniden basladi — deneme gecersiz
+[21:30:06] deneme 2: temiz pencere koluyorum (hedef 150s kill'siz)
+[21:30:11]   kill yakalandi (21:29:54) -> pencere sifirlandi
+[21:31:13]   kill yakalandi (21:31:11) -> pencere sifirlandi
+[21:31:18]   kill yakalandi (21:31:11) -> pencere sifirlandi
+[21:31:23]   kill yakalandi (21:31:11) -> pencere sifirlandi
+[21:31:28]   kill yakalandi (21:31:11) -> pencere sifirlandi
+[21:32:19]   kill yakalandi (21:32:14) -> pencere sifirlandi
+[21:32:24]   kill yakalandi (21:32:14) -> pencere sifirlandi
+[21:32:29]   kill yakalandi (21:32:14) -> pencere sifirlandi
+[21:32:39]   kill yakalandi (21:32:36) -> pencere sifirlandi
+[21:32:44]   kill yakalandi (21:32:36) -> pencere sifirlandi
+[21:32:50]   kill yakalandi (21:32:36) -> pencere sifirlandi
+[21:32:55]   kill yakalandi (21:32:36) -> pencere sifirlandi
+[21:33:51]   kill yakalandi (21:33:47) -> pencere sifirlandi
+[21:33:56]   kill yakalandi (21:33:47) -> pencere sifirlandi
+[21:34:01]   kill yakalandi (21:33:47) -> pencere sifirlandi
+[21:34:06]   kill yakalandi (21:33:47) -> pencere sifirlandi
+[21:35:59]   kill yakalandi (21:35:56) -> pencere sifirlandi
+[21:36:04]   kill yakalandi (21:35:56) -> pencere sifirlandi
+[21:36:09]   kill yakalandi (21:35:56) -> pencere sifirlandi
+[21:36:14]   kill yakalandi (21:35:56) -> pencere sifirlandi
+[21:37:00]   kill yakalandi (21:36:58) -> pencere sifirlandi
+[21:37:05]   kill yakalandi (21:36:58) -> pencere sifirlandi
+[21:37:05] SANIR: 600sn buceti icinde temiz pencere yok
+[21:45:28] KOSU BASLADI pid=3675 (pencere 423sn temizdi)
+[21:46:30] 60sn arasi: pid=3675
+[21:47:42] KOSU TAMAM 133sn: pid-once=3675 60sn=3675 son=3675 kosu-ici-kill=0
+[21:47:42] PID-SABIT DOGRULANDI
+[21:59:04] KOSU BASLADI pid=6783
+[22:18:16] KOSU BASLADI (r3, timeout-korumali)
+[22:18:17] pid-once=4206
+[22:19:25] 60sn arasi: pid=4206 kare=592837B
+[22:20:35] KOSU TAMAM 130sn: pid-once=4206 60sn=4206 son=4206 kosu-ici-kill=0
+[22:20:35] PID-SABIT DOGRULANDI

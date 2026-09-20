@@ -56,7 +56,7 @@ import com.hermes.mobile.data.DiagLog
 import java.io.ByteArrayInputStream
 
 /**
- * Arena 3D sahnesi — WebView içinde three.js.
+ * Arena 3D sahnesi — WebView içinde three.js (iş sahnesi VE tur-20 kafes dövüşü).
  *
  * Güvenlik/ayar sözleşmesi (tur-9):
  *  - JavaScript açık, ama **yalnız yerel asset** yüklenir: `file:///android_asset/arena/`
@@ -162,17 +162,19 @@ fun ArenaSceneHost(
     json: String,
     modifier: Modifier = Modifier,
     theme: ArenaSceneTheme = ArenaSceneTheme.DARK,
+    kind: ArenaSceneKind = ArenaSceneKind.WORK,
     onEvent: (String, String) -> Unit = { _, _ -> },
 ) {
     val ctx = LocalContext.current
     val latestEvent by rememberUpdatedState(onEvent)
     val lifecycleOwner = LocalLifecycleOwner.current
     var sceneReady by remember { mutableStateOf(false) }
+    val sceneUrl = arenaSceneUrl(kind)
 
     // WebView BİR KEZ doğar (remember): her recomposition'da yeniden yaratılıp
     // eskisinin yok edilmesi sahneyi öldürüyordu (tur-9 ölçümü: destroy + JS hiç koşmadı).
     val web = remember {
-        createArenaWebView(ctx, ArenaSceneKind.WORK, theme.background) { type, detail ->
+        createArenaWebView(ctx, kind, theme.background) { type, detail ->
             when (type) {
                 "ready" -> sceneReady = true
                 "nowebgl" -> sceneReady = false
@@ -181,8 +183,8 @@ fun ArenaSceneHost(
             }
             latestEvent(type, detail)
         }.also {
-            Log.i(ARENA_SCENE_TAG, "sahne yukleniyor: $ARENA_SCENE_URL")
-            it.loadUrl(ARENA_SCENE_URL)
+            Log.i(ARENA_SCENE_TAG, "sahne yukleniyor: $sceneUrl")
+            it.loadUrl(sceneUrl)
         }
     }
 
@@ -192,7 +194,7 @@ fun ArenaSceneHost(
     LaunchedEffect(web, sceneReady, json) {
         if (!sceneReady) return@LaunchedEffect
         Log.i(ARENA_SCENE_TAG, "veri basiliyor (${json.length} bayt)")
-        web.evaluateJavascript(ArenaSceneJson.jsCall(json), null)
+        web.evaluateJavascript(ArenaSceneJson.jsCallFor(kind, json), null)
     }
 
     // Ekran/sahne görünmezken render döngüsü DURUR (pil + ısı).
@@ -201,12 +203,12 @@ fun ArenaSceneHost(
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
                     web.onPause()
-                    web.evaluateJavascript(ArenaSceneJson.jsActive(false), null)
+                    web.evaluateJavascript(ArenaSceneJson.jsActive(kind, false), null)
                 }
 
                 Lifecycle.Event.ON_RESUME -> {
                     web.onResume()
-                    web.evaluateJavascript(ArenaSceneJson.jsActive(true), null)
+                    web.evaluateJavascript(ArenaSceneJson.jsActive(kind, true), null)
                 }
 
                 else -> {}
@@ -255,6 +257,11 @@ class ArenaOutrunHolder {
         run = next
         val w = web ?: return
         arenaSceneCommands(ArenaSceneKind.OUTRUN, prev, next).forEach { w.evaluateJavascript(it, null) }
+    }
+
+    /** Tur-20: kabuk → JS komutu (yarış veri sürücüsü). WebView yoksa no-op. */
+    fun eval(js: String) {
+        web?.evaluateJavascript(js, null)
     }
 
     internal fun obtain(ctx: Context): WebView = web ?: createArenaWebView(

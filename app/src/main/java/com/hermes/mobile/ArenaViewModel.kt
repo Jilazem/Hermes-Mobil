@@ -14,6 +14,7 @@ import com.hermes.mobile.ui.ArenaFigure
 import com.hermes.mobile.ui.ArenaFigureState
 import com.hermes.mobile.ui.arenaFigureId
 import com.hermes.mobile.ui.arenaSynthFigureId
+import com.hermes.mobile.ui.raceActivityTimeoutFired
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -24,7 +25,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 /** Arena'nın tek seferki sonuç durumu. */
 sealed interface ArenaPhase {
@@ -226,6 +226,37 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         return null
     }
 
+    // ── Tur-20: yarış nabız ölçümü (Outrun veri sürücüsü) ────────────────────
+    // awaitAnswer'ın 250 ms'lik örnekleme pencereleri: delta karakter sayacı +
+    // tool.start geçiş zamanı. UI 250 ms'de bir sampleRace() çağırır; saf
+    // kararlar RaceDriveModel'de (testli). Pencere/döngü kararı raceSamplePulse'ta.
+    private val raceWindows =
+        java.util.concurrent.ConcurrentHashMap<String, com.hermes.mobile.ui.RaceWindow>()
+
+    private fun raceNote(fid: String, chars: Int) {
+        raceWindows.getOrPut(fid) { com.hermes.mobile.ui.RaceWindow(since = System.currentTimeMillis()) }
+            .count += chars.coerceAtLeast(0)
+    }
+
+    private fun racePass(fid: String) {
+        raceWindows.getOrPut(fid) { com.hermes.mobile.ui.RaceWindow(since = System.currentTimeMillis()) }
+            .passUntilMs = System.currentTimeMillis() + 240L
+    }
+
+    /**
+     * Şu an ÇALIŞAN figürlerin yarış nabzı (karakter/s, pencere ortalaması).
+     * Pencere her örneklemede döner (UI 250 ms'de bir çağırır).
+     */
+    fun sampleRace(nowMs: Long): List<com.hermes.mobile.ui.RaceBotPulse> =
+        figureStates.values.filter { it.state == ArenaFigureState.WORKING }.map { f ->
+            com.hermes.mobile.ui.raceSamplePulse(raceWindows[f.id], nowMs, f.id)
+        }
+
+    /** Tur 2 / sentez / durdur: eski pencereleri temizle (sıfır nabız kalmasın). */
+    private fun raceReset() {
+        raceWindows.clear()
+    }
+
     /** Tüm aktif oturumlara interrupt gönderir ve state'i Done'a çeker. */
     fun stop() {
         activeGw?.let { gw ->
@@ -252,6 +283,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         runningJob?.cancel()
         activeSessions.clear()
         figureStates.clear()
+        raceReset()
         _state.update { ArenaState(profiles = it.profiles, mode = it.mode) }
     }
 
@@ -266,7 +298,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
             val sid = gw.createSession(bot)
             activeSessions += sid
             val text = try {
-                awaitAnswer(gw, sid, ArenaPrompts.round1(topic))
+                awaitAnswer(gw, sid, ArenaPrompts.round1(topic), raceFid = fid)
             } catch (e: Throwable) {
                 markFigure(fid, bot, ArenaFigureState.ERROR, round1Badge())
                 throw e
@@ -290,7 +322,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
             val sid = gw.createSession(bot)
             activeSessions += sid
             val text = try {
-                awaitAnswer(gw, sid, prompt)
+                awaitAnswer(gw, sid, prompt, raceFid = fid)
             } catch (e: Throwable) {
                 markFigure(fid, bot, ArenaFigureState.ERROR, round2Badge())
                 throw e
@@ -311,7 +343,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         val sid = gw.createSession(synthBot)
         activeSessions += sid
         val synthText = try {
-            awaitAnswer(gw, sid, synthPrompt)
+            awaitAnswer(gw, sid, synthPrompt, raceFid = fid)
         } catch (e: Throwable) {
             markFigure(fid, synthBot, ArenaFigureState.ERROR, synthBadge())
             throw e
@@ -334,7 +366,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
                 val sid = gw.createSession(bot)
                 activeSessions += sid
                 val text = try {
-                    awaitAnswer(gw, sid, prompt)
+                    awaitAnswer(gw, sid, prompt, raceFid = fid)
                 } catch (e: Throwable) {
                     markFigure(fid, bot, ArenaFigureState.ERROR, round1Badge())
                     throw e
@@ -350,14 +382,30 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         sid: String,
         prompt: String,
         timeoutMs: Long = 90_000,
+        raceFid: String? = null,
     ): String {
         val buf = StringBuilder()
         val done = CompletableDeferred<String>()
+        // Tur-20 denetim r2: mutlak 90 sn deadline yerine ETKİNLİK-yenilemeli aşım —
+        // akış (delta/tool) sürdükçe sayaç tazelenir; 90 sn ZİHİNSEL durma değil,
+        // 90 sn SESİZLİK cezası olur (canlı 110 sn maraton artık yarıda kesilmez).
+        val lastActivityMs = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
         val job = viewModelScope.launch {
             gw.events.collect { e ->
                 if (e.sessionId != sid) return@collect
                 when (e.type) {
-                    "message.delta" -> buf.append(e.text.orEmpty())
+                    "message.delta" -> {
+                        val t = e.text.orEmpty()
+                        buf.append(t)
+                        lastActivityMs.set(System.currentTimeMillis())
+                        // Tur-20: yarış nabzı — delta karakterleri sayaçlanır.
+                        raceFid?.let { raceNote(it, t.length) }
+                    }
+                    "tool.start" -> {
+                        // Tur-20: araç çağrısı = geçiş anı (sol şeride geçiş sembolü).
+                        lastActivityMs.set(System.currentTimeMillis())
+                        raceFid?.let { racePass(it) }
+                    }
                     "message.complete" ->
                         done.complete(buf.toString().ifBlank { e.text.orEmpty() })
                     "error" ->
@@ -367,12 +415,19 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         }
         try {
             gw.submitPrompt(sid, prompt)
-            val answer = withTimeoutOrNull(timeoutMs) { done.await() }
-                ?: run {
-                    runCatching { gw.interrupt(sid) }
-                    throw IllegalStateException("AI yanıt vermedi")
-                }
-            return answer
+            // Tur-20 denetim r2: etkinlik-yenilemeli bekleme (karar: raceActivityTimeoutFired).
+            while (!done.isCompleted) {
+                if (raceActivityTimeoutFired(
+                        System.currentTimeMillis(), lastActivityMs.get(), timeoutMs
+                    )
+                ) break
+                kotlinx.coroutines.delay(1_000L)
+            }
+            if (!done.isCompleted) {
+                runCatching { gw.interrupt(sid) }
+                throw IllegalStateException("AI yanıt vermedi")
+            }
+            return done.await()
         } finally {
             job.cancel()
         }

@@ -21,30 +21,35 @@ class VoiceSpeakLogicTest {
     private val t: (String, String) -> String = { tr, _ -> tr }
 
     @Test
-    fun `varsayilan motor kahya`() {
-        assertEquals(VoiceSpeakLogic.Engine.KAHYA, VoiceSpeakLogic.Engine.DEFAULT)
-        assertEquals(VoiceSpeakLogic.Engine.KAHYA, VoiceSpeakLogic.Engine.fromId(null))
-        assertEquals(VoiceSpeakLogic.Engine.KAHYA, VoiceSpeakLogic.Engine.fromId(""))
-        assertEquals(VoiceSpeakLogic.Engine.KAHYA, VoiceSpeakLogic.Engine.fromId("bilinmeyen"))
+    fun `varsayilan motor yerel`() {
+        // Tur-21 gizlilik kararı: telefon verisi buluta çıkmasın → YEREL.
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, VoiceSpeakLogic.Engine.DEFAULT)
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, VoiceSpeakLogic.Engine.fromId(null))
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, VoiceSpeakLogic.Engine.fromId(""))
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, VoiceSpeakLogic.Engine.fromId("bilinmeyen"))
     }
 
     @Test
     fun `motor kimlikleri sozlesmeyle ayni`() {
-        assertEquals(listOf("kahya", "chatterbox", "kadin"), VoiceSpeakLogic.Engine.ids)
+        assertEquals(
+            listOf("kahya", "chatterbox", "kadin", "yerel"),
+            VoiceSpeakLogic.Engine.ids,
+        )
     }
 
     @Test
     fun `motor adi buyuk harf ve boslukla da cozulur`() {
         assertEquals(VoiceSpeakLogic.Engine.KADIN, VoiceSpeakLogic.Engine.fromId(" KADIN "))
         assertEquals(VoiceSpeakLogic.Engine.CHATTERBOX, VoiceSpeakLogic.Engine.fromId("chatterbox"))
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, VoiceSpeakLogic.Engine.fromId("YEREL"))
     }
 
     @Test
     fun `motor secenekleri etiketli`() {
         val options = VoiceSpeakLogic.engineOptions(t)
-        assertEquals(3, options.size)
-        assertEquals("kahya", options[0].first)
-        assertTrue(options[0].second.contains("önerilen"))
+        assertEquals(4, options.size)
+        assertEquals("yerel", options[0].first)
+        assertTrue(options[0].second.contains("Yerel kadın"))
     }
 
     @Test
@@ -52,6 +57,9 @@ class VoiceSpeakLogicTest {
         assertTrue(VoiceSpeakLogic.engineHint(VoiceSpeakLogic.Engine.CHATTERBOX, t).contains("deneysel"))
         assertTrue(VoiceSpeakLogic.engineHint(VoiceSpeakLogic.Engine.KAHYA, t).contains("Ana motor"))
         assertTrue(VoiceSpeakLogic.engineHint(VoiceSpeakLogic.Engine.KADIN, t).contains("Kadın"))
+        // Tur-21: yerel motor gizlilik notunu söyler (buluta gitmez + CC0 + Apache-2.0).
+        val hint = VoiceSpeakLogic.engineHint(VoiceSpeakLogic.Engine.YEREL, t)
+        assertTrue(hint.contains("çıkmaz") && hint.contains("CC0") && hint.contains("Apache-2.0"))
     }
 
     @Test
@@ -181,7 +189,7 @@ class VoiceSpeakLogicTest {
 
     @Test
     fun `motor etiketi cozulur`() {
-        assertEquals("Kahya (önerilen)", VoiceSpeakLogic.engineLabel(VoiceSpeakLogic.Engine.KAHYA, t))
-        assertEquals("Kadın", VoiceSpeakLogic.engineLabel(VoiceSpeakLogic.Engine.KADIN, t))
+        assertEquals("Kahya (bulut)", VoiceSpeakLogic.engineLabel(VoiceSpeakLogic.Engine.KAHYA, t))
+        assertEquals("Kadın (bulut)", VoiceSpeakLogic.engineLabel(VoiceSpeakLogic.Engine.KADIN, t))
     }
 }

@@ -157,6 +157,10 @@ class VoiceMessageFlowTest {
         ).also {
             it.onNotice = { msg -> notices += msg }
             it.onTranscript = { text -> transcripts += text }
+            // Tur-21: varsayılan motor YEREL'e geçti; bu sınıf BULUT
+            // sözleşmesini sınadığı için motoru açıkça kahya'ya sabitleriz
+            // (yerel akış + karar tablosu: LocalTtsFlowTest).
+            it.engine = VoiceSpeakLogic.Engine.KAHYA
         }
 
     private fun waitUntil(timeoutMs: Long = 4_000, cond: () -> Boolean) {
@@ -304,6 +308,7 @@ class VoiceMessageFlowTest {
     @Test
     fun `mesaji seslendirir ve onbellege yazar`() {
         val c = controller()
+        c.engine = VoiceSpeakLogic.Engine.KAHYA   // tur-21: bulut akışı açık motorla
         c.speak("a-1", "**Merhaba** dünya")
         waitUntil { player.plays == 1 }
         assertEquals(1, transport.synthCalls)
@@ -417,9 +422,19 @@ class VoiceMessageFlowTest {
 
     @Test
     fun `varsayilanlar sozlesmeye uygun`() {
-        val c = controller()
+        //controller() bulut akışı için motoru kahya'ya sabitler; GERÇEK
+        // varsayılanı ölçmek için ham denetleyici kurulur (tur-21: YEREL).
+        val c = VoiceMessageController(
+            transport = { transport },
+            cacheDir = { cache },
+            scope = scope,
+            recorder = recorder,
+            player = player,
+            now = { clock.get() },
+            lang = { tr, _ -> tr },
+        )
         assertTrue(!c.autoSend)                                   // otomatik gönder KAPALI
-        assertEquals(VoiceSpeakLogic.Engine.KAHYA, c.engine)       // varsayılan motor kahya
+        assertEquals(VoiceSpeakLogic.Engine.YEREL, c.engine)       // tur-21: varsayılan YEREL
         assertEquals(VoiceRecordLogic.Phase.Idle, c.state.value.record.phase)
         assertNull(c.state.value.speak.message)
     }
@@ -473,10 +488,10 @@ class VoiceMessageFlowTest {
         val gate = CompletableDeferred<Unit>()
         transport.synthGate = gate
         val c = controller()
-        c.warmEngine()
+        c.warmEngine(VoiceSpeakLogic.Engine.KAHYA)
         waitUntil { transport.synthCalls == 1 }
-        c.warmEngine()
-        c.warmEngine()
+        c.warmEngine(VoiceSpeakLogic.Engine.KAHYA)
+        c.warmEngine(VoiceSpeakLogic.Engine.KAHYA)
         Thread.sleep(200)
         assertEquals("çift tık koruması: tek istek", 1, transport.synthCalls)
         assertTrue(c.warm.value.busy)
@@ -490,13 +505,13 @@ class VoiceMessageFlowTest {
     fun `isitma hatasi duruma ve bildirime duser`() {
         transport.fail = VoiceApiException("motor yüklenemedi", 500, "/synthesize")
         val c = controller()
-        c.warmEngine()
+        c.warmEngine(VoiceSpeakLogic.Engine.KAHYA)
         waitUntil { c.warm.value.phase == VoiceStatusLogic.WarmPhase.Failed }
         assertTrue(c.warm.value.message!!.contains("motor yüklenemedi"))
         assertTrue(notices.any { it.contains("motor yüklenemedi") })
         // Hata sonrası yeniden denenebilir (düğme "Yeniden dene").
         transport.fail = null
-        c.warmEngine()
+        c.warmEngine(VoiceSpeakLogic.Engine.KAHYA)
         assertTrue(c.warm.value.busy)
         waitUntil { c.warm.value.ready }
     }

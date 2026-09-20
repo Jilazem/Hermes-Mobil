@@ -24,10 +24,18 @@ object VoiceSpeakLogic {
     enum class Engine(val id: String) {
         KAHYA("kahya"),
         CHATTERBOX("chatterbox"),
-        KADIN("kadin");
+        KADIN("kadin"),
+
+        /**
+         * Tur-21: YEREL Piper (sherpa-onnx, tr_TR-fettah-medium) — telefonda
+         * çevrimdışı çalışır, metin buluta gitmez. Yerel kadın ses
+         * VARSAYILAN'dır (gizlilik kuralı); bulut motorları ayardan seçilir.
+         */
+        YEREL("yerel");
 
         companion object {
-            val DEFAULT = KAHYA
+            /** Tur-21 gizlilik kararı: varsayılan YEREL — telefon verisi buluta çıkmaz. */
+            val DEFAULT = YEREL
 
             /** Bilinmeyen/boş kimlik varsayılana düşer (fail-closed değil, sessiz). */
             fun fromId(raw: String?): Engine =
@@ -59,13 +67,15 @@ object VoiceSpeakLogic {
 
     /** Ayarlardaki motor seçeneği için etiketler. */
     fun engineOptions(t: (String, String) -> String): List<Pair<String, String>> = listOf(
-        Engine.KAHYA.id to t("Kahya (önerilen)", "Kahya (recommended)"),
-        Engine.KADIN.id to t("Kadın", "Female"),
+        Engine.YEREL.id to LocalTtsLogic.engineLabel(t),
+        Engine.KAHYA.id to t("Kahya (bulut)", "Kahya (cloud)"),
+        Engine.KADIN.id to t("Kadın (bulut)", "Female (cloud)"),
         Engine.CHATTERBOX.id to t("Chatterbox (deneysel)", "Chatterbox (experimental)"),
     )
 
     /** Motor açıklaması — Ayarlar satırının altı. */
     fun engineHint(engine: Engine, t: (String, String) -> String): String = when (engine) {
+        Engine.YEREL -> LocalTtsLogic.engineHint(t)
         Engine.KAHYA -> t(
             "Ana motor. İlk sentez motoru ısıtır: 2-3 dk sürebilir (bazen 5 dk'ya kadar).",
             "Primary engine. The first synthesis warms the engine: 2-3 min (sometimes up to 5 min).",
@@ -143,10 +153,13 @@ object VoiceSpeakLogic {
      * (`hashCode` 32 bit) burada zararsız — en kötü ihtimalle başka bir metin
      * çalınır ve dosya yeni indirmeyle değiştirilir; bu yüzden adı üretirken
      * metin uzunluğu da ekleniyor.
+     *
+     * [ext]: yerel motor WAV üretir ("wav"); bulut uçları ogg (varsayılan).
+     * Uzantı adı taşıyor ki iki motorun önbelleği asla çakışmasın.
      */
-    fun cacheName(text: String, engine: Engine): String {
+    fun cacheName(text: String, engine: Engine, ext: String = "ogg"): String {
         val h = (text.hashCode().toLong() shl 20) xor (engine.id.hashCode().toLong())
-        return "tts-${engine.id}-${h}-${text.length}.ogg"
+        return "tts-${engine.id}-${h}-${text.length}.$ext"
     }
 
     /** Aynı mesajın sesi zaten iniyor/çalıyorsa dokunuş onu DURDURUR. */

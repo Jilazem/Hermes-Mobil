@@ -1,0 +1,47 @@
+{
+  "verdict": "fail",
+  "gorev": "tur20-arena",
+  "tur": 2,
+  "tarih": "2026-09-20T19:50:00+03:00",
+  "denetmen": "kod-denetmen (claude-cli-opus)",
+  "test_sonucu": "Kendi koşum: gradle testDebugUnitTest --rerun-tasks BUILD SUCCESSFUL, 51 XML sayildi: 659 passed / 0 failed / 0 errors / 0 skipped. node tools/tur20/engine_test.js: 26/26 PASS (exit 0). node --check cage-engine.js/cage.js/outrun.js temiz.",
+  "doğrulananlar": [
+    "Hareket kaniti: 5sn arayiz kare delta kendi kosumla >0 (kare-5sn 2.219, yaris-kare 13.387, 00-durum vs kareler 22-28) — '5sn arayla 2 kare ayni' kabul kapisini gecer",
+    "Determinism: simulateCage(42,60,12.3) iki kez = bit-bit ayni JSON (60snx3600 frame)",
+    "hasar barlari 0..100, negatif degil (60sn probe)",
+    "APK icerigi kaynakla byte-birebir (cage-engine.js/cage.html/cage.js/outrun.js SHA-256 esiti)",
+    "CDN=0 (cage*/outrun assetlerinde http:// grep bos)",
+    "ArenaCageTest 10 Kotlin test + 26 node motor testi mevcut ve geciyor"
+  ],
+  "findings": [
+    {
+      "sev": "HIGH",
+      "id": "kabul-90sn-donma",
+      "bulgu": "Kabul kriteri '90sn donma yok' icin kanit uretilemedi ve kok neden cozulmedi. 1) 91e5538 ve HEAD kodunda 90sn'lik uyku/durma kod yolu YOK (git grep 90_000/90000/uyku/hibernat: tek 90_000 ArenaViewModel timeoutMs=90000 — watchdog korumasi; handoff '91e5538'de yoktu' iddiasi kodla CALISIR, 91e5538:352'de de ayni). 2) Handoff '110sn emulator kosusu crash yok, PID sabit' diyor ama kanit dosyasi yok (logcat dump denetim/tur20/ altinda yok); kendi logcat okumamda 18:21-19:44 arasi 6 process restart var (Force removing 'app died' x2, 19:44 'clear data', force-stop'lar) — FATAL/ANR yok ancak PID stabiligi 110sn iddiasini uretemiyorum. 3) Kullanici sikayeti cihazda '90sn sonra donma'; emulator'de reproduce da edilmedi. Kanitsiz kabul = fail."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "delta-degerleri-tutarsiz",
+      "bulgu": "Handoff/RAPOR.md delta degerleri (6.13/13.1/29.5) frame_diff.py geriz ciktilariyla eslesmiyor: kendi kosumum kare-5sn=2.219, yaris-kare=13.387, dovus-ciftleri 6.79-13.11. Yon/kapi (>0) dogru, kabul etkilenmez; ancak rapor edilen sayilar aracin geriz ciktisi degil — 'olculen degeri yaz' kurali ihlali."
+    },
+    {
+      "sev": "LOW",
+      "id": "restart-aciklamasi",
+      "bulgu": "Emulator logcat'inde aciklamasiz force-stop/clear-data restart zinciri var (19:36-19:44, 5 restart). Coder'in kendi oturum/komutlari olabilir; kanit dosyasinda (logcat dump) acik birakilmalı."
+    }
+  ],
+  "artifacts": {
+    "app/src/main/assets/arena/cage-engine.js": "4b6189a8c23a7246bfbcfc160e9ebe367b977abb4e46563a4c15b7dcb1b0bbe6",
+    "app/src/main/assets/arena/cage.js": "061df5e2038429654fae2ccdcd1f55c1c287baf2d1ab08eafb1251298390956c",
+    "app/src/main/assets/arena/outrun.js": "ce949c66216553003206deb68964ce6fa8e4e45dcd2ec8562c0a88bf94f7f175",
+    "app/src/main/java/com/hermes/mobile/ui/RaceDriveModel.kt": "e85a4176b0aab9e1130918b4641d57491b5e2583f92e3559000d8a841744141f",
+    "app/src/main/java/com/hermes/mobile/ArenaViewModel.kt": "647b59a5439e2483971466041e510d37190688ad7105bd1b2853f5acd491906b",
+    "app/src/test/java/com/hermes/mobile/ArenaCageTest.kt": "b8d101981098e32bc1adb18a53d8cc35385b130c8b787bd6b7af433874f55093",
+    "tools/tur20/engine_test.js": "45b08b8a2044a58990b6e7e2a8783546529416718b017419b6cc27b701097857",
+    "apk:/Users/gokhanuzman/007-HERMES-M4-LIVE/000-TEMP/hermes-mobile-tur20-arena-260920.apk": "md5 be4782088e170a9a0dbb7470af7f82de (24402986 bayt, assets kaynakla SHA-256 esit)"
+  },
+  "lesson": "Uzun sure kararli kosu iddiasi icin ekran goruntusu yetmez; logcat dump + kosu oncesi/sonrasi PID'i dosyaya kaydedip kanit klasorune konmali, yoksa iddia uretilemez.",
+  "uzman": "coder",
+  "deneme_no": "2",
+  "devir": false
+}

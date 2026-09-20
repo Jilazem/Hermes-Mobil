@@ -220,8 +220,10 @@ class VoiceApiClientTest {
     }
 
     @Test
-    fun `varsayilan motor istegi kahya olarak gider`() = runBlocking {
-        client().synthesize("deneme", VoiceSpeakLogic.Engine.DEFAULT)
+    fun `kahya motoru istegi kahya olarak gider`() = runBlocking {
+        // Tur-21: Engine.DEFAULT artık YEREL (cihaz içi motor — bu HTTP ucu
+        // sözleşmesi değildir). Bulut motoru kimliği KAHYA ile doğrulanır.
+        client().synthesize("deneme", VoiceSpeakLogic.Engine.KAHYA)
         assertTrue(bodies.first().contains("\"engine\":\"kahya\""))
     }
 

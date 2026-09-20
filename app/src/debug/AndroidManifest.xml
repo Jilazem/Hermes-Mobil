@@ -32,6 +32,16 @@
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
 
+        <!-- Tur-21: yerel kadın sesi (Piper/sherpa-onnx) + yerel LLM
+             sağlık/chat öz-testi. Kanıt WAV'ları shared-depo dışı
+             filesDir.parentFile/local-tts-kanit'e yazılır (run-as ile çekilir). -->
+        <activity
+            android:name=".ui.LocalTtsSelfTestActivity"
+            android:exported="true"
+            android:label="Yerel Ses Öz-Testi"
+            android:noHistory="true"
+            android:theme="@style/Theme.HermesMobile" />
+
         <!-- Tur-13: telefon asistanı öz-testi. Asistan modu kararlarını (saf
              katman) + kayıt durum makinesini + gerçek istemciyle transcribe →
              oto-okuma → sentez → çalma zincirini koşturur. Token intent

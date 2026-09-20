@@ -41,6 +41,12 @@ class VoiceMessageController(
     private val now: () -> Long = { System.currentTimeMillis() },
     private val diag: (String) -> Unit = {},
     private val lang: (String, String) -> String = { tr, _ -> tr },
+    /**
+     * Tur-21: yerel (çevrimdışı) Piper motoru — `yerel` motoru ve bulut
+     * hatalarında düşüş bu porttan geçer (testte sahte, üretimde
+     * [LocalTtsEngine] sarmalayıcısı).
+     */
+    private val localSynth: LocalSynthPort = LocalSynthPort.Noop,
 ) {
 
     data class UiState(
@@ -55,7 +61,7 @@ class VoiceMessageController(
     @Volatile
     var autoSend: Boolean = false
 
-    /** Ayarlar: ses motoru — varsayılan kahya. */
+    /** Ayarlar: ses motoru — varsayılan YEREL (tur-21 gizlilik kararı). */
     @Volatile
     var engine: VoiceSpeakLogic.Engine = VoiceSpeakLogic.Engine.DEFAULT
 
@@ -238,22 +244,75 @@ class VoiceMessageController(
         }
     }
 
-    /** Zaten dosya varsa indirmez; yoksa sentezleyip önbelleğe yazar. */
+    /**
+     * Zaten dosya varsa indirmez; yoksa üretir (yerel) ya da sentezler
+     * (bulut) ve önbelleğe yazar.
+     *
+     * Tur-21 zinciri ([LocalTtsLogic.decideSpeak]):
+     *  1. motor YEREL → model hazırsa yerel üret; değilse AÇIK hata
+     *     (sessiz bulut geçişi YOK — gizlilik kuralı).
+     *  2. motor bulut → normal akış; bulut patlarsa ve model hazırsa YEREL'e
+     *     düşülür ve kullanıcıya bildirilir ("yerel, hataya düşüş olarak da
+     *     eklenir").
+     */
     suspend fun ensureAudio(key: String, text: String): File {
         val dir = File(cacheDir(), "sesli").apply { mkdirs() }
+        // 1) Yerel istenmişse buluta hiç dokunma.
+        val want = LocalTtsLogic.decideSpeak(engine, localSynth.isReady(), null, lang)
+        if (want.error != null) throw VoiceApiException(want.error)
+        if (want.useLocal) return synthLocal(text, dir)
+
+        val t = requireTransport()
+        val started = now()
         val target = File(dir, VoiceSpeakLogic.cacheName(text, engine))
         if (target.exists() && target.length() > 0) {
             diag("ses onbellekten: ${target.name}")
             return target
         }
-        val t = requireTransport()
-        val started = now()
-        val bytes = t.synthesize(text, engine)
+        val bytes = try {
+            t.synthesize(text, engine)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val fb = LocalTtsLogic.decideSpeak(engine, localSynth.isReady(), e, lang)
+            if (!fb.useLocal) throw e
+            diag("bulut sentez hatali (${e.message?.take(120)}) - yerel dusuldu")
+            return synthLocal(text, dir)
+        }
         if (bytes.isEmpty()) {
             throw VoiceApiException(lang("Ses ucu boş yanıt döndü", "The voice endpoint returned an empty body"))
         }
         target.writeBytes(bytes)
         diag("sentez ${engine.id} · ${bytes.size} bayt · ${now() - started} ms · ${target.name}")
+        return target
+    }
+
+    /**
+     * Yerel Piper sentezi — dosya adı `.wav` (motor WAV yazar; `.ogg`
+     * uzantılı eski önbelleklerle çakışmaz, ayrı anahtar).
+     *
+     * Model diskte ama motor kapalıysa `ensureLoaded` bloklayan çağrıdır →
+     * Dispatchers.IO'da koşulur (sözlük + 63MB onnx yüklemesi 1-2 sn).
+     */
+    private suspend fun synthLocal(text: String, dir: File): File {
+        val target = File(dir, VoiceSpeakLogic.cacheName(text, VoiceSpeakLogic.Engine.YEREL, "wav"))
+        if (target.exists() && target.length() > 0) {
+            diag("yerel ses onbellekten: ${target.name}")
+            return target
+        }
+        val started = now()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            if (!localSynth.ensureLoaded()) {
+                throw VoiceApiException(
+                    lang(
+                        "Yerel ses motoru açılamadı — Ayarlar'dan modeli yeniden indir",
+                        "Could not start the local voice engine — re-download the model in Settings",
+                    ),
+                )
+            }
+            localSynth.synthesize(text, target)
+        }
+        diag("sentez yerel · ${target.length()} bayt · ${now() - started} ms · ${target.name}")
         return target
     }
 
@@ -336,6 +395,20 @@ class VoiceMessageController(
      * çıksa da motor yüklenmeye devam eder.
      */
     fun warmEngine(engine: VoiceSpeakLogic.Engine = this.engine) {
+        // Tur-21: yerel motorun "ısıtması" yok (model yükleme ilk sentezde
+        // 1-2 sn, Dispatchers.IO'da) — ısıtma isteği sessiz yutulmasın,
+        // kullanıcıya net satır dön.
+        if (engine == VoiceSpeakLogic.Engine.YEREL) {
+            val msg = lang(
+                "Yerel motorda ısıtma gerekmez — ilk ses 1-2 sn içinde gelir",
+                "The local engine needs no warming — the first voice arrives in 1-2 s",
+            )
+            _warm.value = VoiceStatusLogic.warmFail(
+                VoiceStatusLogic.warmStart(_warm.value, engine, now()), msg, now(),
+            )
+            onNotice(msg)
+            return
+        }
         val next = VoiceStatusLogic.warmStart(_warm.value, engine, now())
         if (next === _warm.value) {
             diag("isitma zaten suruyor - ikinci istek yok sayildi (motor=${engine.id})")
@@ -459,5 +532,37 @@ interface PlayerPort {
     object Noop : PlayerPort {
         override fun play(file: File, onDone: () -> Unit, onError: (String) -> Unit): Boolean = false
         override fun stop() = Unit
+    }
+}
+
+/**
+ * Yerel sentez portu (tur-21) — üretimde [LocalTtsEngine] sarmalayıcısı,
+ * testte sahte (JVM'de sherpa-onnx yok; sözleşme testleri sahteyle koşar).
+ */
+interface LocalSynthPort {
+    /** Motor açılabilecek durumda mı (model diskte + hash'ler doğru). */
+    fun isReady(): Boolean
+
+    /** Motoru yükler (bloklayan iş — çağıran IO'da sarar); başarılıysa true. */
+    fun ensureLoaded(): Boolean
+
+    /** Metni WAV dosyasına üretir (varsa üzerine yazar). */
+    @Throws(java.io.IOException::class)
+    fun synthesize(text: String, target: File)
+
+    object Noop : LocalSynthPort {
+        override fun isReady(): Boolean = false
+        override fun ensureLoaded(): Boolean = false
+        override fun synthesize(text: String, target: File) =
+            throw java.io.IOException("yerel motor yok")
+    }
+}
+
+/** Üretim adaptörü — [LocalTtsEngine]'i port sözleşmesine bağlar. */
+class AndroidLocalSynth(private val engine: LocalTtsEngine) : LocalSynthPort {
+    override fun isReady(): Boolean = engine.modelOk()
+    override fun ensureLoaded(): Boolean = engine.ensureLoaded()
+    override fun synthesize(text: String, target: File) {
+        engine.synthesize(text, target)
     }
 }
