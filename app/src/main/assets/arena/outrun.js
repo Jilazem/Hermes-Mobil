@@ -918,6 +918,7 @@
         }
         S.steerIn = 0;
         S.steer += (0 - S.steer) * Math.min(1, dt * 6);
+        S.score = Math.floor(S.travel);
         drive.passFlash = Math.max(0, drive.passFlash - dt * 1.6);
         if (drive.passFlash > 0.6) S.shake = Math.max(S.shake, 0.3);
       } else {
