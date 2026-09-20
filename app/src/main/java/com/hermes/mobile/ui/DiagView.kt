@@ -153,8 +153,7 @@ fun DiagView() {
                         Text(
                             entry.message,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp,
+                            style = MaterialTheme.typography.labelSmall,
                         )
                     }
                 }

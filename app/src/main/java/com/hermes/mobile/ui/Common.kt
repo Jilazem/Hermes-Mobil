@@ -3,6 +3,7 @@ package com.hermes.mobile.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,7 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hermes.mobile.ui.theme.HermesColors
 
-/** Hermes kartı — dolgun yüzey, ince kenarlık, 12dp köşe. */
+/**
+ * Hermes kartı — B4 bileşeni (TASARIM-RAPORU.md §3.3/§3.5 + tur18 FR-004):
+ * Surface + radius-md (MaterialTheme.shapes.medium=10dp) + 1dp border +
+ * iç boşluk 12dp (ritim sabiti) + min 48dp dokunma hedefi tabanı.
+ * Kartlar arası 8dp çağıranın spacedBy'sında, ekran kenarı 16dp ekran
+ * padding'indedir (HomeScreen/SettingsScreen L61/L152 — tur18'te 8'e sabitlendi).
+ */
 @Composable
 fun HermesCard(
     modifier: Modifier = Modifier,
@@ -26,9 +34,10 @@ fun HermesCard(
 ) {
     Column(
         modifier = modifier
-            .background(HermesColors.Surface, RoundedCornerShape(12.dp))
-            .border(1.dp, HermesColors.Border, RoundedCornerShape(12.dp))
-            .padding(14.dp),
+            .defaultMinSize(minHeight = 48.dp)
+            .background(HermesColors.SurfaceCard, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
+            .padding(12.dp),
         content = content,
     )
 }
@@ -44,7 +53,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         color = HermesColors.TextMuted,
-        fontSize = 11.sp,
+        style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Medium,
         modifier = modifier,
     )

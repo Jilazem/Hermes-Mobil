@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -99,7 +100,7 @@ fun TerminalScreen(
                 Text(
                     "Terminal",
                     color = HermesColors.TextPrimary,
-                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
@@ -107,14 +108,14 @@ fun TerminalScreen(
                         "slash command, or a task for the agent")
                     else S.t2("sunucuya bağlı değil", "not connected to the server"),
                     color = if (connected) HermesColors.TextMuted else HermesColors.Danger,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
             if (lines.isNotEmpty()) {
                 Text(
                     S.t2("Temizle", "Clear"),
                     color = HermesColors.TextMuted,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.clickable(onClick = onClear).padding(10.dp),
                 )
             }
@@ -131,12 +132,12 @@ fun TerminalScreen(
             quickCommands().forEach { (cmd, label) ->
                 Row(
                     Modifier
-                        .background(HermesColors.SurfaceDim, RoundedCornerShape(16.dp))
-                        .border(1.dp, HermesColors.Border, RoundedCornerShape(16.dp))
+                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.large)
+                        .border(1.dp, HermesColors.Border, MaterialTheme.shapes.large)
                         .clickable(enabled = connected && !busy) { onRun(cmd) }
                         .padding(horizontal = 12.dp, vertical = 7.dp),
                 ) {
-                    Text(label, color = HermesColors.TextSecondary, fontSize = 11.sp)
+                    Text(label, color = HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -147,7 +148,7 @@ fun TerminalScreen(
                     Text(
                         S.t2("Sunucuyu buradan yönet.", "Manage the server from here."),
                         color = HermesColors.TextSecondary,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -162,8 +163,7 @@ fun TerminalScreen(
                                 "  is available\" and the agent handles it with its tools",
                         ),
                         color = HermesColors.TextMuted,
-                        fontSize = 12.sp,
-                        lineHeight = 19.sp,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             } else {
@@ -171,7 +171,7 @@ fun TerminalScreen(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                         .padding(10.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -179,8 +179,7 @@ fun TerminalScreen(
                         Text(
                             (if (line.isCommand) "❯ " else "") + line.text,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             color = when {
                                 line.isCommand -> HermesColors.Midground
                                 line.isError -> HermesColors.Danger
@@ -205,14 +204,13 @@ fun TerminalScreen(
                     Text(
                         S.t2("/status  ya da  görev yaz…", "/status  or  type a task…"),
                         color = HermesColors.TextFaint,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 },
                 maxLines = 3,
-                shape = RoundedCornerShape(12.dp),
-                textStyle = androidx.compose.ui.text.TextStyle(
+                shape = MaterialTheme.shapes.medium,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
                 ),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = HermesColors.Surface,
@@ -235,7 +233,7 @@ fun TerminalScreen(
                     .background(
                         if (draft.isNotBlank() && !busy) HermesColors.Midground
                         else HermesColors.SurfaceDim,
-                        RoundedCornerShape(12.dp),
+                        MaterialTheme.shapes.medium,
                     ),
             ) {
                 if (busy) {

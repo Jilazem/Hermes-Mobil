@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.activity.compose.BackHandler
@@ -75,14 +76,14 @@ fun ShareTargetScreen(
             Text(
                 S.t2("Hermes'e iletmek için hedef seç", "Choose where to send"),
                 color = HermesColors.TextPrimary,
-                fontSize = 20.sp,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 S.t2("Vazgeç", "Cancel"),
                 color = HermesColors.TextMuted,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
                     .clickable { onCancel() }
                     .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -97,7 +98,7 @@ fun ShareTargetScreen(
                 Text(
                     preview,
                     color = HermesColors.TextMuted,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 6.dp),
@@ -110,7 +111,7 @@ fun ShareTargetScreen(
             Text(
                 "📎 $fileNote",
                 color = HermesColors.TextMuted,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
@@ -130,7 +131,7 @@ fun ShareTargetScreen(
             Text(
                 "+ ${S.t2("Yeni konu", "New topic")}",
                 color = HermesColors.TextPrimary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -140,7 +141,7 @@ fun ShareTargetScreen(
         Text(
             S.t2("Son oturumlar", "Recent sessions"),
             color = HermesColors.TextMuted,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(vertical = 4.dp),
         )
 
@@ -148,7 +149,7 @@ fun ShareTargetScreen(
             Text(
                 S.t2("Henüz aktif oturum yok.", "No active sessions yet."),
                 color = HermesColors.TextFaint,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
@@ -191,7 +192,7 @@ private fun ShareTargetRow(
             Text(
                 title,
                 color = HermesColors.TextPrimary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -200,7 +201,7 @@ private fun ShareTargetRow(
                 Text(
                     meta.joinToString(" · "),
                     color = HermesColors.TextFaint,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                 )
             }

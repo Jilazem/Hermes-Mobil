@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,8 +83,8 @@ fun ConnectScreen(
                     )
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(S.t2("Sunucular", "Servers"), color = HermesColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                    Text(S.t2("Kayıtlı Hermes profilleri", "Saved Hermes profiles"), color = HermesColors.TextMuted, fontSize = 12.sp)
+                    Text(S.t2("Sunucular", "Servers"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                    Text(S.t2("Kayıtlı Hermes profilleri", "Saved Hermes profiles"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
                 }
                 TextButton(onClick = onRefresh) { Text(S.refresh, color = HermesColors.Midground) }
             }
@@ -118,7 +119,7 @@ fun ConnectScreen(
                 Text(
                     S.t2("Sunucu üzerinde:", "On the server:"),
                     color = HermesColors.TextSecondary,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -186,12 +187,12 @@ private fun ProfileRow(
             Text(
                 profile.name.ifBlank { S.t2("(adsız)", "(unnamed)") },
                 color = if (isActive) HermesColors.Midground else HermesColors.TextSecondary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
             )
             if (isActive) {
                 Spacer(Modifier.width(8.dp))
-                Text(S.t2("aktif", "active"), color = HermesColors.Online, fontSize = 10.sp)
+                Text(S.t2("aktif", "active"), color = HermesColors.Online, style = MaterialTheme.typography.labelSmall)
             }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onEdit) {
@@ -211,10 +212,10 @@ private fun ProfileRow(
             )
         }
         Spacer(Modifier.height(2.dp))
-        Text(statusText, color = if (probe is ProbeResult.Ok) HermesColors.Online else HermesColors.TextFaint, fontSize = 11.sp)
+        Text(statusText, color = if (probe is ProbeResult.Ok) HermesColors.Online else HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
         if (profile.note.isNotBlank()) {
             Spacer(Modifier.height(4.dp))
-            Text(profile.note, color = HermesColors.TextFaint, fontSize = 11.sp)
+            Text(profile.note, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -291,8 +292,7 @@ fun ProfileEditorDialog(
                             "or tunnel address.",
                     ),
                     color = HermesColors.TextFaint,
-                    fontSize = 10.sp,
-                    lineHeight = 14.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
                 // Tur-10 (F3): "adres düzenleme netliği" — kullanıcı hangi
                 // adresin denendiğini, hangisinin art arda başarısız olduğu için
@@ -303,7 +303,7 @@ fun ProfileEditorDialog(
                 Text(
                     S.t2("Adres deneme durumu", "Address attempt status"),
                     color = HermesColors.TextSecondary,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
                 )
                 val statuses = remember(healthTick, initial.baseUrl, initial.remoteUrl) {
@@ -312,7 +312,7 @@ fun ProfileEditorDialog(
                 if (statuses.isEmpty()) {
                     Text(
                         S.t2("Adres girilmedi", "No address entered"),
-                        color = HermesColors.TextFaint, fontSize = 10.sp, lineHeight = 14.sp,
+                        color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall,
                     )
                 }
                 statuses.forEach { st ->
@@ -330,7 +330,7 @@ fun ProfileEditorDialog(
                         )
                         else -> S.t2("${st.url} — sağlıklı", "${st.url} — healthy")
                     }
-                    Text(line, color = HermesColors.TextFaint, fontSize = 10.sp, lineHeight = 14.sp)
+                    Text(line, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
                 }
                 TextButton(onClick = {
                     com.hermes.mobile.data.AddressHealth.reset(initial.id)

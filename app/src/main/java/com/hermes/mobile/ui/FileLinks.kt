@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,8 +84,8 @@ fun FileRefRow(refs: List<FileRef>, onOpen: (FileRef) -> Unit) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(9.dp))
-                    .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(9.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                    .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
                     .clickable { onOpen(ref) }
                     .padding(horizontal = 11.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -100,7 +101,7 @@ fun FileRefRow(refs: List<FileRef>, onOpen: (FileRef) -> Unit) {
                     Text(
                         ref.name,
                         color = HermesColors.TextPrimary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

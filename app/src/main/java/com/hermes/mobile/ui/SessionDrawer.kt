@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -46,6 +46,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -194,7 +195,7 @@ fun SessionDrawerContent(
             Text(
                 S.t2("Yeni sohbet", "New chat"),
                 color = HermesColors.Midground,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -204,14 +205,14 @@ fun SessionDrawerContent(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .padding(start = 12.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     S.t2("Arşivlendi", "Archived"),
                     color = HermesColors.TextSecondary,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(
@@ -223,7 +224,7 @@ fun SessionDrawerContent(
                 ) {
                     Icon(Icons.Default.Undo, null, tint = HermesColors.Midground, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(S.t2("Geri al", "Undo"), color = HermesColors.Midground, fontSize = 12.sp)
+                    Text(S.t2("Geri al", "Undo"), color = HermesColors.Midground, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -240,7 +241,7 @@ fun SessionDrawerContent(
                             Text(
                                 S.t2(entry.labelTr, entry.labelEn),
                                 color = HermesColors.TextFaint,
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 3.dp),
                             )
@@ -273,8 +274,7 @@ fun SessionDrawerContent(
                                 "No sessions yet.\nStart a new chat.",
                             ),
                             color = HermesColors.TextMuted,
-                            fontSize = 13.sp,
-                            lineHeight = 19.sp,
+                            style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(16.dp),
                         )
                     }
@@ -285,7 +285,7 @@ fun SessionDrawerContent(
                             Text(
                                 S.t2("\"$query\" için oturum yok", "No sessions for \"$query\""),
                                 color = HermesColors.TextSecondary,
-                                fontSize = 13.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                             )
                             TextButton(
                                 onClick = { onQuery("") },
@@ -294,7 +294,7 @@ fun SessionDrawerContent(
                                 Text(
                                     S.t2("Aramayı temizle", "Clear search"),
                                     color = HermesColors.Midground,
-                                    fontSize = 12.sp,
+                                    style = MaterialTheme.typography.bodySmall,
                                 )
                             }
                         }
@@ -332,8 +332,7 @@ fun SessionDrawerContent(
                                     "cron or the CLI show up here.",
                             ),
                             color = HermesColors.TextMuted,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(16.dp),
                         )
                     }
@@ -360,7 +359,7 @@ fun SessionDrawerContent(
             Text(
                 activeProfileName.ifBlank { "—" },
                 color = HermesColors.TextMuted,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -374,7 +373,7 @@ fun SessionDrawerContent(
             ) {
                 Icon(Icons.Default.Settings, null, tint = HermesColors.TextMuted, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text(S.t2("Ayarlar", "Settings"), color = HermesColors.TextSecondary, fontSize = 12.sp)
+                Text(S.t2("Ayarlar", "Settings"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -414,7 +413,7 @@ fun SessionDrawerContent(
             onDismissRequest = { renameTarget = null },
             containerColor = HermesColors.Surface,
             title = {
-                Text(S.t2("Yeniden adlandır", "Rename"), color = HermesColors.TextPrimary, fontSize = 14.sp)
+                Text(S.t2("Yeniden adlandır", "Rename"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
             },
             text = {
                 OutlinedTextField(
@@ -422,7 +421,7 @@ fun SessionDrawerContent(
                     onValueChange = { text = it.take(60) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = HermesColors.TextPrimary,
                         unfocusedTextColor = HermesColors.TextPrimary,
@@ -440,12 +439,12 @@ fun SessionDrawerContent(
                     },
                     enabled = text.isNotBlank(),
                 ) {
-                    Text(S.t2("Kaydet", "Save"), color = HermesColors.Midground, fontSize = 13.sp)
+                    Text(S.t2("Kaydet", "Save"), color = HermesColors.Midground, style = MaterialTheme.typography.bodyMedium)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { renameTarget = null }) {
-                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextMuted, fontSize = 13.sp)
+                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
                 }
             },
         )
@@ -456,13 +455,13 @@ fun SessionDrawerContent(
             onDismissRequest = { deleteTarget = null },
             containerColor = HermesColors.Surface,
             title = {
-                Text(target.title, color = HermesColors.TextPrimary, fontSize = 14.sp, maxLines = 2)
+                Text(target.title, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
             },
             text = {
                 Text(
                     S.t2("Bu oturum listeden kaldırılacak.", "This session will be removed from the list."),
                     color = HermesColors.TextSecondary,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             },
             confirmButton = {
@@ -472,12 +471,12 @@ fun SessionDrawerContent(
                         deleteTarget = null
                     },
                 ) {
-                    Text(S.t2("Kaldır", "Remove"), color = HermesColors.Danger, fontSize = 13.sp)
+                    Text(S.t2("Kaldır", "Remove"), color = HermesColors.Danger, style = MaterialTheme.typography.bodyMedium)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) {
-                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextMuted, fontSize = 13.sp)
+                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
                 }
             },
         )
@@ -507,7 +506,7 @@ private fun DrawerTab(
         modifier
             .background(
                 if (selected) HermesColors.Midground else HermesColors.SurfaceDim,
-                RoundedCornerShape(9.dp),
+                MaterialTheme.shapes.medium,
             )
             .clickable(onClick = onClick)
             .padding(vertical = 9.dp),
@@ -516,7 +515,7 @@ private fun DrawerTab(
         Text(
             label,
             color = if (selected) HermesColors.Background else HermesColors.TextSecondary,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
         )
     }
@@ -534,7 +533,7 @@ private fun DrawerSearchField(
         onValueChange = onChange,
         modifier = modifier.fillMaxWidth(),
         placeholder = {
-            Text(S.t2("Oturum ara…", "Search sessions…"), color = HermesColors.TextFaint, fontSize = 13.sp)
+            Text(S.t2("Oturum ara…", "Search sessions…"), color = HermesColors.TextFaint, style = MaterialTheme.typography.bodyMedium)
         },
         leadingIcon = {
             Icon(
@@ -560,7 +559,7 @@ private fun DrawerSearchField(
             }
         },
         singleLine = true,
-        shape = RoundedCornerShape(10.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = HermesColors.TextPrimary,
             unfocusedTextColor = HermesColors.TextPrimary,
@@ -677,7 +676,7 @@ private fun DrawerSessionRow(
                     Text(
                         row.title,
                         color = if (row.current) HermesColors.Midground else HermesColors.TextPrimary,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (row.current) FontWeight.Medium else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -687,7 +686,7 @@ private fun DrawerSessionRow(
                     Text(
                         formatRelative(row.epochSeconds),
                         color = HermesColors.TextFaint,
-                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
                 if (row.preview.isNotBlank()) {
@@ -695,7 +694,7 @@ private fun DrawerSessionRow(
                     Text(
                         row.preview,
                         color = HermesColors.TextMuted,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -710,7 +709,7 @@ private fun DrawerDot(color: Color) {
     Box(
         Modifier
             .size(8.dp)
-            .clip(RoundedCornerShape(50))
+            .clip(CircleShape)
             .background(color),
     )
 }
@@ -747,7 +746,7 @@ private fun DrawerLiveRow(
             Text(
                 title,
                 color = if (current) HermesColors.Midground else HermesColors.TextPrimary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -757,26 +756,26 @@ private fun DrawerLiveRow(
                 Text(
                     preview,
                     color = HermesColors.TextMuted,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
         Spacer(Modifier.width(6.dp))
-        Text(formatRelative(session.lastActive), color = HermesColors.TextFaint, fontSize = 10.sp)
+        Text(formatRelative(session.lastActive), color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
         if (session.canIntervene) {
             TextButton(
                 onClick = onIntervene,
                 contentPadding = PaddingValues(horizontal = 6.dp),
             ) {
-                Text(S.t2("Müdahale", "Steer"), color = HermesColors.Midground, fontSize = 11.sp)
+                Text(S.t2("Müdahale", "Steer"), color = HermesColors.Midground, style = MaterialTheme.typography.labelSmall)
             }
             TextButton(
                 onClick = onInterrupt,
                 contentPadding = PaddingValues(horizontal = 6.dp),
             ) {
-                Text(S.t2("Dur", "Stop"), color = HermesColors.Danger, fontSize = 11.sp)
+                Text(S.t2("Dur", "Stop"), color = HermesColors.Danger, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -805,7 +804,7 @@ private fun DrawerActionSheet(
             Text(
                 row.title,
                 color = HermesColors.TextPrimary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -864,6 +863,6 @@ private fun DrawerSheetRow(
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
-        Text(label, color = tint, fontSize = 14.sp)
+        Text(label, color = tint, style = MaterialTheme.typography.bodyMedium)
     }
 }
