@@ -5,10 +5,13 @@ import com.hermes.mobile.ui.ArenaSceneJson
 import com.hermes.mobile.ui.ArenaSceneKind
 import com.hermes.mobile.ui.CAGE_SCENE_TIMEOUT_MS
 import com.hermes.mobile.ui.RaceBotPulse
+import com.hermes.mobile.ui.RaceWindow
 import com.hermes.mobile.ui.arenaSceneUrl
+import com.hermes.mobile.ui.raceActivityTimeoutFired
 import com.hermes.mobile.ui.raceDriveJs
 import com.hermes.mobile.ui.raceLane
 import com.hermes.mobile.ui.racePass
+import com.hermes.mobile.ui.raceSamplePulse
 import com.hermes.mobile.ui.raceSpeedPct
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -128,6 +131,67 @@ class ArenaCageTest {
         val p = RaceBotPulse(id = "a", charsPerSec = 10.0, working = true, passUntilMs = 1_000L)
         assertTrue(racePass(p, 900L))
         assertFalse(racePass(p, 1_100L))
+    }
+
+    // ── 250 ms örnekleme döngüsü (raceSamplePulse — VM'den saf devir) ───────
+
+    @Test
+    fun samplePulseRotatesWindow() {
+        // Döngü sözleşmesi: nabız döndür, sayacı SIFIRLA, pencere başını nowMs'e taşı.
+        val w = RaceWindow(count = 50L, since = 1_000L, passUntilMs = 5_000L)
+        val p = raceSamplePulse(w, 1_250L, "coder#r1")
+        assertEquals(200.0, p.charsPerSec, 1e-9) // 50 / 0.25sn
+        assertEquals(0L, w.count)
+        assertEquals(1_250L, w.since)
+        assertEquals("coder#r1", p.id)
+        assertTrue(p.working)
+        assertTrue(racePass(p, 4_999L)) // geçiş penceresi taşınır
+    }
+
+    @Test
+    fun samplePulseSecondWindowStartsClean() {
+        val w = RaceWindow(count = 0L, since = 0L)
+        raceSamplePulse(w, 1_000L, "a")
+        // İlk turda sayacı sıfırlandı; ikinci örneklemede yeni delta gelmediyse nabız 0.
+        val p = raceSamplePulse(w, 1_250L, "a")
+        assertEquals(0.0, p.charsPerSec, 1e-9)
+    }
+
+    @Test
+    fun samplePulseNullWindowIsZeroNotCrash() {
+        // Pencere hiç yoksa (raceNote çağrılmamış): 0 nabız, 0 geçiş, çökme yok.
+        val p = raceSamplePulse(null, 5_000L, "a")
+        assertEquals(0.0, p.charsPerSec, 1e-9)
+        assertFalse(racePass(p, 5_000L))
+    }
+
+    @Test
+    fun samplePulseTimeJitterClampsToFloor() {
+        // Saat geri sıçrarsa (nowMs < since) elapsed NEGATİF olurdu → 0.2 sn tabanına
+        // çekilir; chars/s dev/negatif olmaz (tur15 sayı-hijyeni dersi).
+        val w = RaceWindow(count = 100L, since = 10_000L)
+        val p = raceSamplePulse(w, 5_000L, "a")
+        assertEquals(500.0, p.charsPerSec, 1e-9) // 100 / 0.2 (taban), neg/çarpık değil
+        assertEquals(5_000L, w.since)
+    }
+
+    // ── etkinlik-yenilemeli 90 sn aşım (denetim r2/MEDIUM 90sn-donma) ────────
+
+    @Test
+    fun activityTimeoutFiresOnlyAfterSilence() {
+        val t = 90_000L
+        // Son etkinlik 10 sn önce → aşılmadı (uzun ama AKIŞLI maraton kesilmez).
+        assertFalse(raceActivityTimeoutFired(nowMs = 200_000L, lastEventMs = 190_000L, timeoutMs = t))
+        // Son etkinlik tam 90 sn önce → ateşler (gerçek sessizlik).
+        assertTrue(raceActivityTimeoutFired(nowMs = 200_000L, lastEventMs = 110_000L, timeoutMs = t))
+        // 110 sn sessiz → ateşler.
+        assertTrue(raceActivityTimeoutFired(nowMs = 200_000L, lastEventMs = 90_000L, timeoutMs = t))
+        // Etkinlik 'şimdi' → asla.
+        assertFalse(raceActivityTimeoutFired(nowMs = 200_000L, lastEventMs = 200_000L, timeoutMs = t))
+        // Sıfır süre → anında ateşler (sınır değeri çökmesin).
+        assertTrue(raceActivityTimeoutFired(nowMs = 5L, lastEventMs = 5L, timeoutMs = 0L))
+        // Saat geri sıçrasa bile (nowMs < lastEventMs) negatif fark aşılmaz sayılır.
+        assertFalse(raceActivityTimeoutFired(nowMs = 100L, lastEventMs = 200L, timeoutMs = t))
     }
 
     // ── setDrive komutu ─────────────────────────────────────────────────────

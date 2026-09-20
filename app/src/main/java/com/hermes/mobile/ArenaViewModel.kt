@@ -14,6 +14,7 @@ import com.hermes.mobile.ui.ArenaFigure
 import com.hermes.mobile.ui.ArenaFigureState
 import com.hermes.mobile.ui.arenaFigureId
 import com.hermes.mobile.ui.arenaSynthFigureId
+import com.hermes.mobile.ui.raceActivityTimeoutFired
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -24,7 +25,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 /** Arena'nın tek seferki sonuç durumu. */
 sealed interface ArenaPhase {
@@ -229,22 +229,18 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
     // ── Tur-20: yarış nabız ölçümü (Outrun veri sürücüsü) ────────────────────
     // awaitAnswer'ın 250 ms'lik örnekleme pencereleri: delta karakter sayacı +
     // tool.start geçiş zamanı. UI 250 ms'de bir sampleRace() çağırır; saf
-    // kararlar RaceDriveModel'de (testli).
-    private class RaceWindow {
-        @Volatile var count: Long = 0
-        @Volatile var since: Long = System.currentTimeMillis()
-        @Volatile var passUntilMs: Long = 0L
-    }
-
-    private val raceWindows = java.util.concurrent.ConcurrentHashMap<String, RaceWindow>()
+    // kararlar RaceDriveModel'de (testli). Pencere/döngü kararı raceSamplePulse'ta.
+    private val raceWindows =
+        java.util.concurrent.ConcurrentHashMap<String, com.hermes.mobile.ui.RaceWindow>()
 
     private fun raceNote(fid: String, chars: Int) {
-        raceWindows.getOrPut(fid) { RaceWindow() }.count += chars.coerceAtLeast(0)
+        raceWindows.getOrPut(fid) { com.hermes.mobile.ui.RaceWindow(since = System.currentTimeMillis()) }
+            .count += chars.coerceAtLeast(0)
     }
 
     private fun racePass(fid: String) {
-        raceWindows.getOrPut(fid) { RaceWindow() }.passUntilMs =
-            System.currentTimeMillis() + 240L
+        raceWindows.getOrPut(fid) { com.hermes.mobile.ui.RaceWindow(since = System.currentTimeMillis()) }
+            .passUntilMs = System.currentTimeMillis() + 240L
     }
 
     /**
@@ -253,16 +249,7 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun sampleRace(nowMs: Long): List<com.hermes.mobile.ui.RaceBotPulse> =
         figureStates.values.filter { it.state == ArenaFigureState.WORKING }.map { f ->
-            val w = raceWindows[f.id]
-            val elapsed = ((nowMs - (w?.since ?: nowMs)) / 1000.0).coerceAtLeast(0.2)
-            val count = w?.count ?: 0L
-            if (w != null) { w.count = 0; w.since = nowMs }
-            com.hermes.mobile.ui.RaceBotPulse(
-                id = f.id,
-                charsPerSec = count / elapsed,
-                working = true,
-                passUntilMs = w?.passUntilMs ?: 0L,
-            )
+            com.hermes.mobile.ui.raceSamplePulse(raceWindows[f.id], nowMs, f.id)
         }
 
     /** Tur 2 / sentez / durdur: eski pencereleri temizle (sıfır nabız kalmasın). */
@@ -399,6 +386,10 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
     ): String {
         val buf = StringBuilder()
         val done = CompletableDeferred<String>()
+        // Tur-20 denetim r2: mutlak 90 sn deadline yerine ETKİNLİK-yenilemeli aşım —
+        // akış (delta/tool) sürdükçe sayaç tazelenir; 90 sn ZİHİNSEL durma değil,
+        // 90 sn SESİZLİK cezası olur (canlı 110 sn maraton artık yarıda kesilmez).
+        val lastActivityMs = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
         val job = viewModelScope.launch {
             gw.events.collect { e ->
                 if (e.sessionId != sid) return@collect
@@ -406,12 +397,15 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
                     "message.delta" -> {
                         val t = e.text.orEmpty()
                         buf.append(t)
+                        lastActivityMs.set(System.currentTimeMillis())
                         // Tur-20: yarış nabzı — delta karakterleri sayaçlanır.
                         raceFid?.let { raceNote(it, t.length) }
                     }
-                    "tool.start" ->
+                    "tool.start" -> {
                         // Tur-20: araç çağrısı = geçiş anı (sol şeride geçiş sembolü).
+                        lastActivityMs.set(System.currentTimeMillis())
                         raceFid?.let { racePass(it) }
+                    }
                     "message.complete" ->
                         done.complete(buf.toString().ifBlank { e.text.orEmpty() })
                     "error" ->
@@ -421,12 +415,19 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
         }
         try {
             gw.submitPrompt(sid, prompt)
-            val answer = withTimeoutOrNull(timeoutMs) { done.await() }
-                ?: run {
-                    runCatching { gw.interrupt(sid) }
-                    throw IllegalStateException("AI yanıt vermedi")
-                }
-            return answer
+            // Tur-20 denetim r2: etkinlik-yenilemeli bekleme (karar: raceActivityTimeoutFired).
+            while (!done.isCompleted) {
+                if (raceActivityTimeoutFired(
+                        System.currentTimeMillis(), lastActivityMs.get(), timeoutMs
+                    )
+                ) break
+                kotlinx.coroutines.delay(1_000L)
+            }
+            if (!done.isCompleted) {
+                runCatching { gw.interrupt(sid) }
+                throw IllegalStateException("AI yanıt vermedi")
+            }
+            return done.await()
         } finally {
             job.cancel()
         }

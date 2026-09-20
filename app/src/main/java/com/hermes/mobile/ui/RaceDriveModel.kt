@@ -45,7 +45,53 @@ fun raceLane(nowMs: Long, id: String): Double {
 /** Geçiş anı mı (araç çağrısı penceresi açık mı). */
 fun racePass(p: RaceBotPulse, nowMs: Long): Boolean = p.passUntilMs > nowMs
 
+// ── Örnekleme penceresi (tur20 denetim r2/MEDIUM: döngü kararı burada, testli) ──
+
+/** Süre sıçramasına karşı taban: bundan kısa pencere 0.2 sn sayılır (çarpma dışı kalır). */
+private const val MIN_ELAPSED_S = 0.2
+
+/**
+ * 250 ms'lik tek örnekleme penceresi: delta karakter sayacı + geçiş bitiş zamanı.
+ * UI her örneklemede [raceSamplePulse] ile döndürür (sayacı sıfırla, pencereyi yenile).
+ */
+class RaceWindow(
+    @Volatile var count: Long = 0,
+    @Volatile var since: Long = 0L,
+    @Volatile var passUntilMs: Long = 0L,
+)
+
+/**
+ * Pencere → nabız + **döngü**: kr/s = count/elapsed, sonra sayaç sıfırlanır ve
+ * `since = nowMs` olur (bir sonraki pencere başı). Süre tutarsızlığı (saat jitter,
+ * çift hızlı örnekleme, null pencere) 0.2 sn tabanına çekilir — chars/s asla
+ * dev/NaN olmaz (kabul: negatif ve 0 girdi). Pencere null ise 0 nabız, 0 geçiş.
+ *
+ * [id] boş/bozuk olabilir — yalnız etiket taşınır, hesap etkilenmez.
+ */
+fun raceSamplePulse(w: RaceWindow?, nowMs: Long, id: String): RaceBotPulse {
+    val elapsed = ((nowMs - (w?.since ?: nowMs)) / 1000.0).coerceAtLeast(MIN_ELAPSED_S)
+    val count = w?.count ?: 0L
+    if (w != null) {
+        w.count = 0
+        w.since = nowMs
+    }
+    return RaceBotPulse(
+        id = id,
+        charsPerSec = count / elapsed,
+        working = true,
+        passUntilMs = w?.passUntilMs ?: 0L,
+    )
+}
+
 private fun fmt(v: Double): String = (Math.round(v * 1000.0) / 1000.0).toString()
+
+/**
+ * Etkinlik-yenilemeli zaman aşımı kararı (tur20 denetim r2/MEDIUM 90sn-donma):
+ * mutlak deadline yerine SON ETKİNLİKTEN bu yana süreye bakılır. delta/tool akışı
+ * sürdüğü sürece süre yenilenir; yalnız gerçekten sessiz kalınca ateşler.
+ */
+fun raceActivityTimeoutFired(nowMs: Long, lastEventMs: Long, timeoutMs: Long): Boolean =
+    nowMs - lastEventMs >= timeoutMs
 
 /**
  * `setDrive` komutu — en hızlı ÇALIŞAN bot sürücüdür (tek oyunculu ray;
