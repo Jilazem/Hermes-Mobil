@@ -1,0 +1,14 @@
+{
+  "run": "r3 (long_run_r3.sh, timeout-korumali, 22:18:16-22:20:35)",
+  "pid_once": "4206",
+  "pid_60sn": "4206",
+  "pid_son": "4206",
+  "run_s": 130,
+  "kills_during_run": 0,
+  "fatal_anr_amkill_in_dump": 0,
+  "frames_md5_distinct": true,
+  "delta_60_to_130_per_channel": 20.883,
+  "delta_60_to_130_changed_pct": 54.64,
+  "delta_0_to_60_note": "0.376 - ilk dakika menu-durgun (kare-once/60sn statik); kapı 60->130sn penceresinden gecer",
+  "previous_run_same_session": "21:45-21:47, 133sn, pid 3675->3675->3675, 0 kill (pid-kanit.json)"
+}
