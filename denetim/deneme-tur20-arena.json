@@ -13,8 +13,14 @@
       "yapan": "coder",
       "sonuc": "fail",
       "not": "tur2 denetim: 90sn-donma kabul kriteri kanitsiz (logcat dump yok, PID sabit iddiasi uretilemedi); 659 JUnit + 26 node testi + delta>0 + determinism GECTI"
+    },
+    {
+      "tarih": "2026-09-20T23:18:33",
+      "yapan": "coder",
+      "sonuc": "pass"
     }
   ],
   "uzman": "coder",
-  "slug": "tur20-arena"
+  "slug": "tur20-arena",
+  "kapandi": true
 }
