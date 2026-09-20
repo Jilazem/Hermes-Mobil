@@ -347,7 +347,11 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
                     itemsIndexed(rows, key = { _, r -> r.key }) { _, row ->
-                        Column {
+                        Column(
+                            // Tur22 madde-1: mesaj girişi — fade + 20dp kayma
+                            // (graphicsLayer, layout'a dokunmaz → topuklama yok).
+                            Modifier.messageEntrance(row.key),
+                        ) {
                             val prevTs = prevTsByKey[row.key]
                             val ts = (row as? ChatRow.Single)?.item?.let { o ->
                                 when (o) {

@@ -50,6 +50,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -614,20 +618,41 @@ private fun DrawerSessionRow(
         }
     }
 
+    // Tur22 madde-2: uzun basma/bası basılıyken hafif ölçek (0.985) — haptic
+    // zaten confirm/onLongClick'te var; görsel eşlikçisi burada (reduced→1f).
+    val interaction = androidx.compose.runtime.remember(row.key) {
+        androidx.compose.foundation.interaction.MutableInteractionSource()
+    }
+    val pressedState by interaction.collectIsPressedAsState()
+    val reduced = LocalReducedMotion.current
+    val rowScale by animateFloatAsState(
+        targetValue = if (pressedState && !reduced) 0.985f else 1f,
+        animationSpec = if (reduced) tween(0) else tween(HermesMotion.FAST_MS),
+        label = "cekmece-satir-olcek",
+    )
+
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = false,
         backgroundContent = {
+            // Tur22 madde-2: arkadan görünen renk+ikon+etiket — sürüklerken
+            // "ne olacak" net okunsun (Claude/ChatGPT arşiv jesti).
             Row(
                 Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .background(HermesColors.Danger.copy(alpha = 0.12f))
+                    .background(HermesColors.Danger.copy(alpha = 0.16f))
                     .padding(end = 20.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Text(
+                    S.t2("Arşivle", "Archive"),
+                    color = HermesColors.Danger,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Spacer(Modifier.width(8.dp))
                 Icon(
                     Icons.Default.Archive,
                     contentDescription = S.t2("Arşivlendi", "Archived"),
@@ -648,9 +673,12 @@ private fun DrawerSessionRow(
                     },
                 )
                 .combinedClickable(
+                    interactionSource = interaction,
+                    indication = androidx.compose.material3.ripple(),
                     onClick = onPick,
                     onLongClick = onLongPress,
                 )
+                .graphicsLayer { scaleX = rowScale; scaleY = rowScale }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

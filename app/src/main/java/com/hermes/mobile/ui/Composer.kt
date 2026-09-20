@@ -59,6 +59,17 @@ import com.hermes.mobile.ui.theme.HermesColors
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+
 
 /**
  * Mesaj yazma çubuğu — ek, dikte, gönder/durdur.
@@ -406,21 +417,60 @@ private fun ActionButton(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
+    // Tur22 madde-2: mikro-etkileşim — basışta hafif ölçek (0.92), gevşeyince
+    // spring ile geri; ikon değişimi (gönder↔durdur) Crossfade ile yumuşar.
+    // reduced-motion: ölçek 1'de kalır, crossfade süresi 0 (D-6: tek bayrak).
+    val reduced = LocalReducedMotion.current
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var pressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !reduced) 0.92f else 1f,
+        animationSpec = if (reduced) tween(0) else spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow,
+        ),
+        label = "aksiyon-olcek",
+    )
     IconButton(
-        onClick = onClick,
+        onClick = {
+            // Gönderme anında tek hafif titreşim — geri bildirim "işlem alındı".
+            haptics.performHapticFeedback(
+                androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove,
+            )
+            onClick()
+        },
         enabled = enabled,
         modifier = Modifier
             .size(46.dp)
+            .pointerInput(enabled) {
+                awaitEachGesture {
+                    awaitFirstDown(false)
+                    pressed = true
+                    waitForUpOrCancellation()
+                    pressed = false
+                }
+            }
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .background(
-                if (filled) HermesColors.Midground else HermesColors.SurfaceDim,
+                animateColorAsState(
+                    targetValue = if (filled) HermesColors.Midground else HermesColors.SurfaceDim,
+                    animationSpec = tween(HermesMotion.specMs(HermesMotion.FAST_MS, reduced)),
+                    label = "aksiyon-renk",
+                ).value,
                 MaterialTheme.shapes.medium,
             ),
     ) {
-        Icon(
-            icon,
-            contentDescription = label,
-            tint = if (filled) HermesColors.Background else HermesColors.TextFaint,
-        )
+        Crossfade(
+            targetState = icon,
+            animationSpec = HermesMotion.tweenSpec(HermesMotion.FAST_MS, reduced),
+            label = "aksiyon-ikon",
+        ) { ic ->
+            Icon(
+                ic,
+                contentDescription = label,
+                tint = if (filled) HermesColors.OnAccent else HermesColors.TextFaint,
+            )
+        }
     }
 }
 
