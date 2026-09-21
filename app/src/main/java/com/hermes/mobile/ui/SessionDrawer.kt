@@ -21,11 +21,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
@@ -57,6 +60,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +68,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -91,6 +96,13 @@ import kotlinx.coroutines.delay
  *
  * Canlı sekmesi (FR-007): Canlı akışın çekmece içi hâli — bağlan / müdahale
  * / dur; ayrı ekran yok.
+ *
+ * Tur-19 (FR-001): sekme "Tümü" — Telegram tarzı genel akış (tüm oturumların
+ * SON mesajları, grup başlıksız, tam kronolojik). Tur-16 gruplu görünümü tek
+ * dokunuşla geri gelir ("Gruplar" düğmesi); arama/uzun basma/kaydır-arşivle
+ * her iki görünümde de aynıdır (FR-004 regresyon yok).
+ * Tur-19 (FR-002): uzun basma alt sayfasına "Yanıtla" — canlı ve müdahaleye
+ * açık oturumlarda satırı terk etmeden mini composer ile `session.steer`.
  */
 @Composable
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -122,12 +134,26 @@ fun SessionDrawerContent(
     onOpenIntervention: (LiveSession) -> Unit,
     onCloseIntervention: () -> Unit,
     onSubmitIntervention: (LiveSession, InterventionKind, String) -> Unit,
+    /** Tur-19 FR-002: hızlı yanıt — mevcut `session.steer` sözleşmesini
+     *  kullanır (yeni gateway API'si YOK). Gönderim `quickLive` üzerinden
+     *  izlenir: `sending` true→false düşüp notice başarılıysa sheet kapanır,
+     *  hata ise notice olarak görünür (çekmece/akış YERİNDE kalır). */
+    onQuickReply: (LiveSession, String) -> Unit,
+    /** Mini composer'ı açar (MainActivity hızlı-yanıt hedefini set eder). */
+    onOpenQuickReply: (LiveSession) -> Unit,
+    /** Hızlı yanıt hedefi (MainActivity, liveViewModel.openIntervention ile
+     *  aynı kanaldan set eder; null = sheet kapalı). */
+    quickLive: LiveSession?,
+    onClearQuickReply: () -> Unit,
     onOpenSettings: () -> Unit,
     onDismissDrawer: () -> Unit,
     /** Tur22 madde-3: oturum listesi ilk açılışta/ilk yenilemede iskelet. */
     loading: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
+    // Tur-19 FR-001: Tümü sekmesi görünümü — varsayılan akış (kronolojik,
+    // başlıksız); "Gruplar" ile tur-16 zaman grupları geri gelir.
+    var groupedFeed by rememberSaveable { mutableStateOf(false) }
 
     // Uzun basma alt sayfası / yeniden adlandır / sil — hedef satır, LazyColumn
     // kompozisyonundan bağımsız tutulur (satır yeniden kullanınca state kalmasın).
@@ -158,7 +184,8 @@ fun SessionDrawerContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             DrawerTab(
-                S.t2("Oturumlar", "Sessions"),
+                // Tur-19 FR-001: "Oturumlar" → "Tümü" — artık genel akış.
+                S.t2("Tümü", "All"),
                 selected = tab == 0,
                 modifier = Modifier.weight(1f),
             ) { onTab(0) }
@@ -244,69 +271,79 @@ fun SessionDrawerContent(
         // tab 0 = oturumlar, tab 2 = arşiv (aynı liste, farklı showArchived —
         // satırları MainActivity türetiyor); tab 1 = canlı.
         if (tab != 1) {
+            // Tur-19 FR-001: "Tümü" = genel akış (varsayılan, grup başlıksız,
+            // tam kronolojik). "Gruplar" = tur-16 zaman gruplu görünümü — tek
+            // dokunuşla geri gelir; arama her ikisinde de geçerli (FR-004).
+            // Arşiv sekmesi (tab 2) daima klasik gruplu listedir.
+            if (tab == 0 && !groupedFeed) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        S.t2("Genel akış", "All activity"),
+                        color = HermesColors.TextFaint,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        onClick = { groupedFeed = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text(S.t2("Gruplar", "Groups"), color = HermesColors.Midground, fontSize = 12.sp)
+                    }
+                }
+            }
+            val feedRows = if (tab == 0 && !groupedFeed) drawerFeed(rows, query) else null
             LazyColumn(
                 Modifier
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
-                items.forEach { entry ->
-                    when (entry) {
-                        is DrawerItem.Header -> item(key = entry.key) {
-                            Text(
-                                S.t2(entry.labelTr, entry.labelEn),
-                                color = HermesColors.TextFaint,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 3.dp),
-                            )
-                        }
-                        is DrawerItem.RowItem -> item(key = entry.key) {
-                            DrawerSessionRow(
-                                row = entry.row,
-                                onPick = {
-                                    onPick(entry.row)
-                                    onDismissDrawer()
-                                },
-                                onLongPress = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    menuRow = entry.row
-                                },
-                                onArchiveSwipe = {
-                                    if (tab == 2) {
-                                        // Arşiv görünümü: kaydır = arşivden çıkar.
-                                        onSetArchived(entry.row, false)
-                                    } else {
-                                        onSetArchived(entry.row, true)
-                                        undoRow = entry.row
-                                    }
-                                },
-                                archivedMode = tab == 2,
-                            )
-                        }
-                    }
-                }
-                // Boş durum + boş arama sonucu (FR-005 boş-durum metni).
-                // Tur22 madde-3: yükleniyor VE liste boşsa "yok" YAZMA —
-                // iskelet göster (skeletonRowCount kuralı: yok/henüz-yok ayrımı).
-                if (skeletonRowCount(loading, rows.size, placeholder = 4) > 0 && query.isBlank()) {
-                    item(key = "skeleton") {
-                        SessionListSkeleton(
-                            skeletonRowCount(loading, rows.size, placeholder = 4),
-                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                if (feedRows != null) {
+                    lazyItems(feedRows, key = { "feed-${it.key}" }) { row ->
+                        DrawerSessionRow(
+                            row = row,
+                            onPick = {
+                                onPick(row)
+                                onDismissDrawer()
+                            },
+                            onLongPress = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                menuRow = row
+                            },
+                            onArchiveSwipe = {
+                                onSetArchived(row, true)
+                                undoRow = row
+                            },
                         )
                     }
-                }
-                // Tur22 madde-4: boş durumlar TEK BİLEŞENDEN — ikon + tek
-                // cümle + öneri aksiyonu (uydurma veri yok).
-                if (rows.isEmpty() && query.isBlank() && !loading) {
-                    item(key = "empty") {
-                        if (tab == 2) {
-                            EmptyState(
-                                icon = EmptyStateIcons.ArchiveEmpty,
-                                message = emptyStateArchiveEmpty(),
-                                modifier = Modifier.padding(20.dp),
+                    // Tur22 madde-3: yükleniyor VE akış boşsa "yok" YAZMA —
+                    // iskelet göster.
+                    if (skeletonRowCount(loading, feedRows.size, placeholder = 4) > 0 && query.isBlank()) {
+                        item(key = "feed-skeleton") {
+                            SessionListSkeleton(
+                                skeletonRowCount(loading, feedRows.size, placeholder = 4),
+                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             )
-                        } else {
+                        }
+                    }
+                    val empty = feedRows.isEmpty()
+                    // Tur22 madde-4: boş durumlar TEK BİLEŞENDEN (uydurma veri yok).
+                    if (empty && query.isNotBlank() && !loading) {
+                        item(key = "feed-no-result") {
+                            EmptyState(
+                                icon = EmptyStateIcons.NoResults,
+                                message = emptyStateNoResults(query),
+                                modifier = Modifier.padding(20.dp),
+                                actionLabel = S.t2("Aramayı temizle", "Clear search"),
+                                onAction = { onQuery("") },
+                            )
+                        }
+                    } else if (empty && !loading) {
+                        item(key = "feed-empty") {
                             EmptyState(
                                 icon = EmptyStateIcons.NoSessions,
                                 message = emptyStateNoSessions(),
@@ -316,16 +353,85 @@ fun SessionDrawerContent(
                             )
                         }
                     }
-                }
-                if (query.isNotBlank() && items.none { it is DrawerItem.RowItem }) {
-                    item(key = "no-result") {
-                        EmptyState(
-                            icon = EmptyStateIcons.NoResults,
-                            message = emptyStateNoResults(query),
-                            modifier = Modifier.padding(20.dp),
-                            actionLabel = S.t2("Aramayı temizle", "Clear search"),
-                            onAction = { onQuery("") },
-                        )
+                } else {
+                    items.forEach { entry ->
+                        when (entry) {
+                            is DrawerItem.Header -> item(key = entry.key) {
+                                Text(
+                                    S.t2(entry.labelTr, entry.labelEn),
+                                    color = HermesColors.TextFaint,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 3.dp),
+                                )
+                            }
+                            is DrawerItem.RowItem -> item(key = entry.key) {
+                                DrawerSessionRow(
+                                    row = entry.row,
+                                    onPick = {
+                                        onPick(entry.row)
+                                        onDismissDrawer()
+                                    },
+                                    onLongPress = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        menuRow = entry.row
+                                    },
+                                    onArchiveSwipe = {
+                                        if (tab == 2) {
+                                            // Arşiv görünümü: kaydır = arşivden çıkar.
+                                            onSetArchived(entry.row, false)
+                                        } else {
+                                            onSetArchived(entry.row, true)
+                                            undoRow = entry.row
+                                        }
+                                    },
+                                    archivedMode = tab == 2,
+                                )
+                            }
+                        }
+                    }
+                    // Boş durum + boş arama sonucu (FR-005 boş-durum metni).
+                    // Tur22 madde-3: yükleniyor VE liste boşsa "yok" YAZMA —
+                    // iskelet göster (skeletonRowCount kuralı: yok/henüz-yok ayrımı).
+                    if (skeletonRowCount(loading, rows.size, placeholder = 4) > 0 && query.isBlank()) {
+                        item(key = "skeleton") {
+                            SessionListSkeleton(
+                                skeletonRowCount(loading, rows.size, placeholder = 4),
+                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
+                    // Tur22 madde-4: boş durumlar TEK BİLEŞENDEN — ikon + tek
+                    // cümle + öneri aksiyonu (uydurma veri yok).
+                    if (rows.isEmpty() && query.isBlank() && !loading) {
+                        item(key = "empty") {
+                            if (tab == 2) {
+                                EmptyState(
+                                    icon = EmptyStateIcons.ArchiveEmpty,
+                                    message = emptyStateArchiveEmpty(),
+                                    modifier = Modifier.padding(20.dp),
+                                )
+                            } else {
+                                EmptyState(
+                                    icon = EmptyStateIcons.NoSessions,
+                                    message = emptyStateNoSessions(),
+                                    modifier = Modifier.padding(20.dp),
+                                    actionLabel = S.t2("Yeni sohbet", "New chat"),
+                                    onAction = onNewChat,
+                                )
+                            }
+                        }
+                    }
+                    if (query.isNotBlank() && items.none { it is DrawerItem.RowItem }) {
+                        item(key = "no-result") {
+                            EmptyState(
+                                icon = EmptyStateIcons.NoResults,
+                                message = emptyStateNoResults(query),
+                                modifier = Modifier.padding(20.dp),
+                                actionLabel = S.t2("Aramayı temizle", "Clear search"),
+                                onAction = { onQuery("") },
+                            )
+                        }
                     }
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(12.dp)) }
@@ -406,11 +512,23 @@ fun SessionDrawerContent(
         }
     }
 
-    // Uzun basma alt sayfası (FR-004).
+    // Uzun basma alt sayfası (FR-004) — tur-19 FR-002: "Yanıtla" yalnız
+    // gateway'de canlı ve müdahaleye açık satırlarda görünür (spec: yeni
+    // gateway API'si yok — mevcut session.steer yeniden kullanılıyor).
     menuRow?.let { row ->
         DrawerActionSheet(
             row = row,
             onDismiss = { menuRow = null },
+            canQuickReply = canQuickReply(row),
+            onQuickReply = {
+                menuRow = null
+                row.liveSession?.let(onOpenQuickReply)
+            },
+            onGoChat = {
+                menuRow = null
+                onPick(row)
+                onDismissDrawer()
+            },
             onTranscript = {
                 menuRow = null
                 onOpenTranscript(row)
@@ -432,6 +550,25 @@ fun SessionDrawerContent(
                 menuRow = null
                 deleteTarget = row
             },
+        )
+    }
+
+    // Tur-19 FR-002: mini composer — gönderince çekmece/akış YERİNDE kalır.
+    // Sonuç, live.sending true→false düşünce anlaşılır (MainActivity notice
+    // gözlemcisi toast basar); sheet o an kapanır — hata noticesı da görünür.
+    quickLive?.let { live ->
+        var wasSending by remember(live.id) { mutableStateOf(liveSending) }
+        LaunchedEffect(liveSending) {
+            if (wasSending && !liveSending) {
+                onClearQuickReply()
+            }
+            wasSending = liveSending
+        }
+        QuickReplySheet(
+            title = displayLabel(liveTitleOf(live)),
+            sending = liveSending,
+            onDismiss = { if (!liveSending) onClearQuickReply() },
+            onSend = { text -> onQuickReply(live, text) },
         )
     }
 
@@ -862,12 +999,19 @@ private fun DrawerLiveRow(
     }
 }
 
-/** Uzun basma alt sayfası (FR-004): Sabitle / Yeniden adlandır / Arşivle / Sil. */
+/** Uzun basma alt sayfası (FR-004): Yanıtla / Döküm / Sabitle / Yeniden
+ *  adlandır / Arşivle / Sil. Tur-19 FR-002: "Yanıtla" yalnız canlı+müdaleleye
+ *  açık satırda (canQuickReply), "Sohbete git" her satırda, "Kopyala" önizleme
+ *  varsa — satır-içi mini composer ve yerinde kalma akışı QuickReplySheet'te. */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun DrawerActionSheet(
     row: DrawerRow,
     onDismiss: () -> Unit,
+    canQuickReply: Boolean,
+    onQuickReply: () -> Unit,
+    /** "Sohbete git" — satırı seç + çekmeceyi kapat (tur-16 dokun davranışı). */
+    onGoChat: () -> Unit,
     onTranscript: () -> Unit,
     onTogglePin: () -> Unit,
     onRename: () -> Unit,
@@ -875,6 +1019,7 @@ private fun DrawerActionSheet(
     onDelete: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -891,11 +1036,33 @@ private fun DrawerActionSheet(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(10.dp))
+            if (canQuickReply) {
+                DrawerSheetRow(
+                    icon = Icons.AutoMirrored.Filled.Reply,
+                    label = S.t2("Yanıtla", "Reply"),
+                    onClick = onQuickReply,
+                )
+            }
+            DrawerSheetRow(
+                icon = Icons.AutoMirrored.Filled.Chat,
+                label = S.t2("Sohbete git", "Go to chat"),
+                onClick = onGoChat,
+            )
             DrawerSheetRow(
                 icon = Icons.AutoMirrored.Filled.Article,
                 label = S.t2("Döküm", "Transcript"),
                 onClick = onTranscript,
             )
+            if (row.preview.isNotBlank()) {
+                DrawerSheetRow(
+                    icon = Icons.Default.ContentCopy,
+                    label = S.t2("Kopyala", "Copy"),
+                    onClick = {
+                        clipboardManager.setText(AnnotatedString(row.preview))
+                        onDismiss()
+                    },
+                )
+            }
             DrawerSheetRow(
                 icon = Icons.Default.PushPin,
                 label = if (row.pinned) S.t2("Sabiti kaldır", "Unpin") else S.t2("Sabitle", "Pin"),
@@ -923,6 +1090,101 @@ private fun DrawerActionSheet(
                 onClick = onDismiss,
             )
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+/**
+ * Tur-19 FR-002 — satır-içi mini composer (1-3 satır + Gönder). Gönderim
+ * mevcut `session.steer` yolundan akar (InterventionDialog'la aynı
+ * sözleşme); başarıda sheet kapanır, çekmece/akış YERİNDE kalır, toast'ı
+ * MainActivity basar. Gönder düğümü durum makinesiyle kilitli:
+ * [quickReplySendEnabled] — boş metin ve sürmekte gönderim ENGEL.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun QuickReplySheet(
+    title: String,
+    sending: Boolean,
+    onDismiss: () -> Unit,
+    onSend: (String) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var text by remember { mutableStateOf("") }
+    var phase by remember { mutableStateOf(QuickReplyPhase.Idle) }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = HermesColors.Background,
+        modifier = Modifier.heightIn(max = 320.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+            Text(
+                title,
+                color = HermesColors.TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = text,
+                onValueChange = {
+                    text = it
+                    phase = quickReplyOnType(phase)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        S.t2("Yanıtını yaz…", "Type your reply…"),
+                        color = HermesColors.TextFaint,
+                        fontSize = 13.sp,
+                    )
+                },
+                minLines = 1,
+                maxLines = 3,
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = HermesColors.TextPrimary,
+                    unfocusedTextColor = HermesColors.TextPrimary,
+                    focusedContainerColor = HermesColors.Surface,
+                    unfocusedContainerColor = HermesColors.Surface,
+                    focusedBorderColor = HermesColors.BorderStrong,
+                    unfocusedBorderColor = HermesColors.Border,
+                    cursorColor = HermesColors.Midground,
+                ),
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            ) {
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !sending,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(S.t2("Vazgeç", "Cancel"), color = HermesColors.TextMuted, fontSize = 13.sp)
+                }
+                TextButton(
+                    onClick = {
+                        if (quickReplySendEnabled(phase, text)) {
+                            phase = QuickReplyPhase.Sending
+                            onSend(text.trim())
+                        }
+                    },
+                    enabled = quickReplySendEnabled(phase, text),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        if (sending) S.t2("Gönderiliyor…", "Sending…") else S.t2("Gönder", "Send"),
+                        color = HermesColors.Midground,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
         }
     }
 }

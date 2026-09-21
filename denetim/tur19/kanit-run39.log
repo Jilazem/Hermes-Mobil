@@ -1,0 +1,23 @@
+install: tall
+Success 0s
+sohbet-hazir
+deneme 1
+kayit-sonrasi: ['Geri', 'Sunucular', 'Kayıtlı Hermes profilleri', 'Yenile', 'the server', 'Düzenle', 'Sil', 'http://192.168.1.10:9150', 'Token girilmemiş', 'Caddy → 127.0.0.1:9120 · token ~/.hermes/.env', 'mock-8198', 'aktif', 'Düzenle', 'Sil']
+profil-tap @ (226, 833)
+  shot 00-serit-genislemis-durum.png (157385b @ 65s)
+  shot 01-serit-mock-dolu.png (145214b @ 69s)
+  shot 09-serit-akista-sayi-grafik.png (149049b @ 88s)
+  shot 00-serit-gonderme-serbest.png (148442b @ 106s)
+  shot 02-tumu-akisi.png (113924b @ 114s)
+  shot 05-alt-sayfa-yanitla.png (80248b @ 121s)
+  shot 06-mini-composer-bos.png (81374b @ 124s)
+  shot 07-mini-composer-yazildi.png (147720b @ 129s)
+Gonder: (949, 714)
+  shot 08a-gonderiliyor.png (156162b @ 133s)
+  shot 08b-sonrasi-cekmece-yerinde.png (149599b @ 136s)
+Traceback (most recent call last):
+  File "/Users/gokhanuzman/hermes-workspace/wt-t19/denetim/tur19/kanit3_adim.py", line 443, in <module>
+    tap(al); time.sleep(1.2)
+  File "/Users/gokhanuzman/hermes-workspace/wt-t19/denetim/tur19/kanit3_adim.py", line 177, in tap
+    sh('shell', 'input', 'tap', str(pt[0]), str(pt[1]))
+TypeError: 'NoneType' object is not subscriptable

@@ -76,6 +76,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.hermes.mobile.ui.SessionDetailScreen
 import com.hermes.mobile.ui.SessionDrawerContent
+import com.hermes.mobile.ui.SessionStatsStrip
 import com.hermes.mobile.ui.drawerListItems
 import com.hermes.mobile.ui.drawerRows
 import com.hermes.mobile.ui.lastSessionToRestore
@@ -772,6 +773,15 @@ private fun HermesApp(
         chatViewModel.clearShareWarning()
     }
 
+    // Tur-19 FR-002: hızlı yanıt/müdahale sonucu — notice geldiği an Toast ve
+    // tüketilir (eski Canlı ekranı notice'u gösteriyordu; çekmece YERİNDEyken
+    // tek görülebilir kanal toast'tır).
+    LaunchedEffect(live.notice) {
+        val n = live.notice ?: return@LaunchedEffect
+        android.widget.Toast.makeText(toastContext, n, android.widget.Toast.LENGTH_SHORT).show()
+        liveViewModel.clearNotice()
+    }
+
     var modelSheet by remember { mutableStateOf(false) }
     var commandSheet by remember { mutableStateOf(false) }
     var reasoningSheet by remember { mutableStateOf(false) }
@@ -994,6 +1004,15 @@ private fun HermesApp(
                                 title = liveTitleOf(session),
                             )
                         },
+                        // Tur-19 FR-002: hızlı yanıt — mevcut intervene (steer)
+                        // yolu; sonuç live.notice üzerinden toast olur (aşağıdaki
+                        // LaunchedEffect), çekmece/akış YERİNDE kalır.
+                        onQuickReply = { session, text ->
+                            liveViewModel.intervene(session, InterventionKind.Add, text)
+                        },
+                        onOpenQuickReply = liveViewModel::openQuickReply,
+                        quickLive = live.quickReply,
+                        onClearQuickReply = liveViewModel::clearQuickReply,
                         onInterruptLive = { session ->
                             drawerScope.launch { drawerState.close() }
                             liveViewModel.interrupt(session)
@@ -1164,6 +1183,14 @@ private fun HermesApp(
                         onExitAssistantMode = chatViewModel::exitAssistantMode,
                         // Tur-16: ☰ — oturum çekmecesini açar (FR-001).
                         onOpenDrawer = { drawerScope.launch { drawerState.open() } },
+                        // Tur-19 FR-003: eşzamanlılık istatistik şeridi (composer üstü).
+                        statusStrip = {
+                            SessionStatsStrip(
+                                rows = drawerRowList,
+                                speed = chatViewModel.speed,
+                                decimalSeparator = if (com.hermes.mobile.ui.S.lang == com.hermes.mobile.ui.Lang.TR) ',' else '.',
+                            )
+                        },
                         )
                     }
                     // Tur-16: Work/Oturumlar sekmesi sekme çubuğunda çizilmez

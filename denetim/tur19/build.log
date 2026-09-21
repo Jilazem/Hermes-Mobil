@@ -1,0 +1,84 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:checkDebugAarMetadata
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:mergeDebugJniLibFolders
+> Task :app:compressDebugAssets
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libimage_processing_util_jni.so, libsurface_util_jni.so.
+
+> Task :app:mergeDebugResources
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeLibDexDebug
+> Task :app:processDebugResources
+> Task :app:mergeExtDexDebug
+
+> Task :app:compileDebugKotlin
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:106:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:113:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:141:14 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:143:14 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:144:14 'fun setActionStrip(p0: @NonNull() ActionStrip!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:234:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:259:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1128:59 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1548:31 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/Composer.kt:246:48 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/Composer.kt:450:36 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/DrivingScreen.kt:98:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/LiveVoiceSheet.kt:152:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:67:40 'val Icons.Filled.Subject: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Subject.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:456:76 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/PermissionRows.kt:59:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:250:40 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:58:42 'val Icons.Filled.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Send.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:59:38 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/test/java/com/hermes/mobile/CrashGuardTest.kt:39:52 Division by zero.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/test/java/com/hermes/mobile/ProfileChipLogicTest.kt:87:9 'static fun assertEquals(p0: (Array<Any!>..Array<out Any!>?), p1: (Array<Any!>..Array<out Any!>?)): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/test/java/com/hermes/mobile/ThemeTur17Test.kt:323:54 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-t19/app/src/test/java/com/hermes/mobile/ThemeTur17Test.kt:325:29 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+
+BUİLD SUCCESSFUL in 34s
+41 actionable tasks: 41 executed

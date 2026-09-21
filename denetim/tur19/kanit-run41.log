@@ -1,0 +1,24 @@
+install: tall
+Success 0s
+sohbet-hazir
+deneme 1
+kayit-sonrasi: ['Geri', 'Sunucular', 'Kayıtlı Hermes profilleri', 'Yenile', 'the server', 'Düzenle', 'Sil', 'http://192.168.1.10:9150', 'Token girilmemiş', 'Caddy → 127.0.0.1:9120 · token ~/.hermes/.env', 'mock-8198', 'aktif', 'Düzenle', 'Sil']
+profil-tap @ (226, 833)
+  shot 00-serit-genislemis-durum.png (157115b @ 62s)
+  shot 01-serit-mock-dolu.png (144838b @ 66s)
+  shot 09-serit-akista-sayi-grafik.png (142661b @ 86s)
+  shot 00-serit-gonderme-serbest.png (147666b @ 103s)
+  shot 02-tumu-akisi.png (113127b @ 110s)
+  shot 05-alt-sayfa-yanitla.png (79456b @ 117s)
+  shot 06-mini-composer-bos.png (80716b @ 120s)
+  shot 07-mini-composer-yazildi.png (154816b @ 124s)
+Gonder: (949, 714)
+  shot 08a-gonderiliyor.png (123470b @ 128s)
+  shot 08b-sonrasi-cekmece-yerinde.png (111674b @ 131s)
+  shot 03-arama.png (154557b @ 137s)
+  shot 04-gruplu-gorunum.png (85116b @ 154s)
+MOCK RPC son: ['session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.create', 'prompt.submit', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.steer', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.create', 'prompt.submit', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.steer', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list', 'session.active_list']
+STEERING: []
+CRASH: 0
+DONE 155 s | 12 png |
+OK: ['00-serit-genislemis-durum.png', '01-serit-mock-dolu.png', '09-serit-akista-sayi-grafik.png', '00-serit-gonderme-serbest.png', '02-tumu-akisi.png', '05-alt-sayfa-yanitla.png', '06-mini-composer-bos.png', '07-mini-composer-yazildi.png', '08a-gonderiliyor.png', '08b-sonrasi-cekmece-yerinde.png', '03-arama.png', '04-gruplu-gorunum.png']

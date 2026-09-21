@@ -1,0 +1,1 @@
+tur19 ham-id denetimi: 1 satır, başlık filtreli (sızan=0), doğrulama=assertFalse(ham id alt dizileri)
