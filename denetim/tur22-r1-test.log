@@ -1,0 +1,75 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest FROM-CACHE
+> Task :app:processDebugManifest FROM-CACHE
+> Task :app:processDebugManifestForPackage FROM-CACHE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:checkDebugAarMetadata
+> Task :app:mergeDebugAssets
+> Task :app:processDebugResources FROM-CACHE
+> Task :app:compressDebugAssets FROM-CACHE
+> Task :app:desugarDebugFileDependencies FROM-CACHE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugNativeLibs
+> Task :app:mergeExtDexDebug FROM-CACHE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libonnxruntime.so, libsherpa-onnx-c-api.so, libsherpa-onnx-cxx-api.so, libsherpa-onnx-jni.so.
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:1 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:2 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:3 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:4 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:5 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:6 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:7 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:24:9 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:25:1 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:25:4 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:25:7 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:1 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:2 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:3 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:4 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:5 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:6 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:7 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:9 Syntax error: Expecting a top level declaration.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:26:13 Syntax error: imports are only allowed in the beginning of file.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUİLD FAILED in 15s
+29 actionable tasks: 6 executed, 7 from cache, 16 up-to-date

@@ -1,0 +1,496 @@
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/model/info HTTP/1.1" 404 -
+
+
+
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+
+
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/model/info HTTP/1.1" 404 -
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -
+127.0.0.1 "GET /api/model/info HTTP/1.1" 404 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+
+127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -127.0.0.1 "GET /api/profiles HTTP/1.1" 200 -127.0.0.1 "GET /api/model/info HTTP/1.1" 404 -
+
+
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/profiles/active HTTP/1.1" 404 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/status HTTP/1.1" 200 -
+127.0.0.1 "GET /api/cron/jobs HTTP/1.1" 200 -
+127.0.0.1 "GET /api/system/stats HTTP/1.1" 200 -
+127.0.0.1 "GET /api/sessions HTTP/1.1" 200 -

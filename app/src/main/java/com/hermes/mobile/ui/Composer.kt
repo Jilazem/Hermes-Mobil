@@ -117,6 +117,22 @@ fun ChatComposer(
     var attachMenu by remember { mutableStateOf(false) }
     val hasContent = draft.isNotBlank() || attachments.any { it.remotePath != null }
 
+    // tur22-r1 madde-2: gönderme-anı 1sn geri bildirim (✓). DURUM BURADA
+    // (Composer kapsamında): gönder basılınca taslak temizlenip when-dalı
+    // Gönder→Stop/Mikrofon dalına geçiyor; ActionButton İÇİNDEKİ remember bu
+    // yüzden sıfırlanırdı (ilk burst kanıtında ✓ hiç görünmedi — D-02 kök neden).
+    var sentAt by remember { mutableStateOf(-1L) }
+    var sendFlash by remember { mutableStateOf(false) }
+    LaunchedEffect(sentAt) {
+        while (sentAt >= 0L &&
+            SendFeedbackLogic.visible(android.os.SystemClock.elapsedRealtime(), sentAt)
+        ) {
+            sendFlash = true
+            delay(50)
+        }
+        sendFlash = false
+    }
+
     // "/" ile başlayan tek satırlık taslakta komut önerisi. Boşluktan sonrası
     // argüman sayıldığı için orada öneri kesiliyor — "/model gpt" yazarken
     // liste yolu tıkamasın.
@@ -325,6 +341,16 @@ fun ChatComposer(
             Spacer(Modifier.width(8.dp))
 
             when {
+                // tur22-r1: gönderilen mesajın 1sn'lık ✓ geri bildirimi, taslak
+                // temizlenip dal değişse bile (Mikrofon/Stop'a) AYNI YERDE
+                // görünür kalır — kullanıcı "gönderdim"i düğmenin kendisinde görür.
+                sendFlash -> ActionButton(
+                    icon = Icons.Default.Check,
+                    label = "Gönder",
+                    filled = true,
+                    onClick = {},
+                )
+
                 agentBusy -> ActionButton(
                     icon = Icons.Default.Stop,
                     label = "Durdur",
@@ -334,13 +360,16 @@ fun ChatComposer(
                 )
 
                 hasContent -> ActionButton(
-                    icon = Icons.Default.ArrowUpward,
+                    icon = if (sendFlash) Icons.Default.Check else Icons.Default.ArrowUpward,
                     label = "Gönder",
                     filled = enabled,
                     enabled = enabled,
                     tag = "t22_btn_send",
-                    sendFeedback = true,
-                    onClick = onSend,
+                    onClick = {
+                        // gönderme-anı: Composer-kapsamı flash durumunu tetikle
+                        sentAt = android.os.SystemClock.elapsedRealtime()
+                        onSend()
+                    },
                 )
 
                 // Boş taslakta mikrofon = BAS-KONUŞ (tur-11). Canlı sesli sohbet
@@ -378,7 +407,7 @@ private fun HoldToTalkButton(
     val busy = state.busy
     Box(
         Modifier
-            .size(46.dp)
+            .size(48.dp)
             .background(
                 when {
                     recording -> HermesColors.Danger
@@ -424,7 +453,6 @@ private fun ActionButton(
     filled: Boolean,
     enabled: Boolean = true,
     tag: String = "t22_btn_action",
-    sendFeedback: Boolean = false,
     onClick: () -> Unit,
 ) {
     // Tur22 madde-2: mikro-etkileşim — basışta hafif ölçek (0.92), gevşeyince
@@ -441,27 +469,15 @@ private fun ActionButton(
         ),
         label = "aksiyon-olcek",
     )
-    // tur22-r1 madde-2: gönderme anı 1sn geçici geri bildirim (✓). Süre
-    // SendFeedbackLogic.FLASH_MS'ten, görünürlük kuralı saf fonksiyondan
-    // (testli, fail-closed) gelir; süre dolunca ikon normaline döner.
-    var sentAt by remember { mutableStateOf(-1L) }
-    var flash by remember { mutableStateOf(false) }
-    LaunchedEffect(sentAt) {
-        while (sentAt >= 0L &&
-            SendFeedbackLogic.visible(android.os.SystemClock.elapsedRealtime(), sentAt)
-        ) {
-            flash = true
-            delay(50)
-        }
-        flash = false
-    }
+    // tur22-r1: gönderme-anı ✓ durumu artık ÇAĞIRAN kapsamda (Composer) —
+    // dal değişimi (Gönder→Stop) bu düğmeyi yeniden yaratıp yerel state'i
+    // sıfırladığı için ilk burst denemesinde ✓ hiç görünmedi (D-02).
     IconButton(
         onClick = {
             // Gönderme anında tek hafif titreşim — geri bildirim "işlem alındı".
             haptics.performHapticFeedback(
                 androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove,
             )
-            if (sendFeedback) sentAt = android.os.SystemClock.elapsedRealtime()
             onClick()
         },
         enabled = enabled,
@@ -489,7 +505,7 @@ private fun ActionButton(
             ),
     ) {
         Crossfade(
-            targetState = if (flash) Icons.Default.Check else icon,
+            targetState = icon,
             animationSpec = HermesMotion.tweenSpec(HermesMotion.FAST_MS, reduced),
             label = "aksiyon-ikon",
         ) { ic ->

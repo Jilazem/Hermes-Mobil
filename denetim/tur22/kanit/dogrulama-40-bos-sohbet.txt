@@ -1,0 +1,4 @@
+TextView | 'Çıkılsın mı?' | cd='' | [183,1026][504,1110]
+TextView | 'Sohbet oturumun kayıtlı — tekrar açınca kaldığın yerden deva' | cd='' | [183,1152][897,1258]
+TextView | 'Kal' | cd='' | [622,1358][675,1411]
+TextView | 'Çık' | cd='' | [794,1358][848,1411]

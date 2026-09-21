@@ -1,0 +1,19 @@
+48dp KANIT (tur22-r1) — tıklanabilir kutu bounds, 1080x2400@420dpi, 48dp=126px
+ölçüm komutu: uiautomator dump + clickable_parent_of (setup: mock 9171 bağlı sohbet ekranı)
+
+--- çekim 1 ---
+Oturumlar            [42,144][168,270]  genişlik=126px = 48.0dp OK
+Menü                 [691,144][817,270]  genişlik=126px = 48.0dp OK
+Sesli sohbet         [817,144][943,270]  genişlik=126px = 48.0dp OK
+Yeni sohbet          [943,144][1069,270]  genişlik=126px = 48.0dp OK
+Ek                   [17,1981][143,2107]  genişlik=126px = 48.0dp OK
+Basılı tut, konuş    YOK
+--- çekim 2 ---
+Oturumlar            [42,144][168,270]  genişlik=126px = 48.0dp OK
+Menü                 [691,144][817,270]  genişlik=126px = 48.0dp OK
+Sesli sohbet         [817,144][943,270]  genişlik=126px = 48.0dp OK
+Yeni sohbet          [943,144][1069,270]  genişlik=126px = 48.0dp OK
+Ek                   [17,1981][143,2107]  genişlik=126px = 48.0dp OK
+Basılı tut, konuş    YOK
+
+SHA256: 94a274ee3c5565ea3b175ef10e558b4d0d23fd23ae8651b6a3869c787f4ec46e
