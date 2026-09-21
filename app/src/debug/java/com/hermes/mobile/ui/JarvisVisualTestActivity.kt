@@ -44,6 +44,13 @@ class JarvisVisualTestActivity : ComponentActivity() {
         val phaseName = intent.getStringExtra("phase") ?: "idle"
         val level = intent.getFloatExtra("level", 0.5f)
         val animate = intent.getStringExtra("animate") == "1"
+        // Tur-23 r1 (LOW-5): her intent açılışında satırlı iz — kanıt betiği
+        // log.txt'yi bu satırdan doldurur (ekrandaki Text ayrı, ama OCR'siz
+        // doğrulanabilir tek kaynak logcat).
+        android.util.Log.i(
+            "JARVIS-VISUAL-TEST",
+            "phase=$phaseName level=$level animate=$animate",
+        )
         val phase = when (phaseName.lowercase()) {
             "listening" -> JarvisPhase.Listening
             "thinking" -> JarvisPhase.Thinking

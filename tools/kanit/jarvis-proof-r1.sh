@@ -8,7 +8,8 @@
 set -u
 ADB=${ADB:-/Users/gokhanuzman/007-HERMES/20-ARACLAR/android-sdk/platform-tools/adb}
 DEV=${DEV:-emulator-5554}
-ACT=com.hermes.mobile/.ui.JarvisVisualTestActivity
+# r1 fix: debug applicationIdSuffix=.v2 (build.gradle.kts) — ayrı paket kimliği.
+ACT=com.hermes.mobile.v2/com.hermes.mobile.ui.JarvisVisualTestActivity
 OUT=${1:?kanıt klasörü verin}
 mkdir -p "$OUT"
 adb() { $ADB -s "$DEV" "$@"; }
@@ -18,7 +19,7 @@ shot() { local f=$1; adb exec-out screencap -p > "$f"; }
 
 phase_shot() { # phase_shot <faz> <ek dosya> [extra...]
   local phase=$1 file=$2; shift 2
-  adb shell "am force-stop com.hermes.mobile" >/dev/null 2>&1
+  adb shell "am force-stop com.hermes.mobile.v2" >/dev/null 2>&1
   adb logcat -c >/dev/null 2>&1
   adb shell "am start -n $ACT --es phase $phase $*" >/dev/null
   sleep 3
@@ -33,7 +34,7 @@ phase_shot thinking  "$OUT/faz3_thinking.png"
 phase_shot speaking  "$OUT/faz4a_speaking.png" --es animate 1
 sleep 1
 shot "$OUT/faz4b_speaking.png"
-adb shell "am force-stop com.hermes.mobile" >/dev/null 2>&1
+adb shell "am force-stop com.hermes.mobile.v2" >/dev/null 2>&1
 
 python3 - "$OUT" <<'PY'
 import sys, zlib, struct, os
