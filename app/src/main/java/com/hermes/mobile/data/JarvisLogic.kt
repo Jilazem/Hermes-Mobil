@@ -184,6 +184,16 @@ object JarvisIdentity {
      * DEĞİŞMEZ; persona adı ayrıdır.
      */
     const val NAME = "Jarvis"
+
+    /**
+     * Tur-23 r1: persona sistem yönergesi — yerel asistan turunun `system`
+     * mesajı olarak gerçek kullanıma bağlıdır (ChatViewModel.sendLocalAssistant).
+     * Ad TEK KAYNAKTAN (NAME) gelir; persona adı değişirse yönerge de değişir.
+     */
+    val SYSTEM_PROMPT: String
+        get() = "Sen $NAME'sın — kişisel yapay zekâ asistanı. Türkçe konuş. Sesli " +
+            "sohbette kısa ve doğal cümleler kur; uzun liste okuma. Emin " +
+            "değilsen söyle."
 }
 
 /**

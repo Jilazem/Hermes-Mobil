@@ -8,6 +8,7 @@ import com.hermes.mobile.data.AwaitReplyService
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
+import com.hermes.mobile.data.JarvisIdentity
 import com.hermes.mobile.data.LiveModelLogic
 import com.hermes.mobile.data.LocalModelClient
 import com.hermes.mobile.data.LocalModelLogic
@@ -758,7 +759,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             val started = System.currentTimeMillis()
-            runCatching { client.chat(label, settings_localModelName) }
+            // Tur-23 r1 (KAPSAM-1): persona yönergesi gerçekten modele gider —
+            // system mesajı JarvisIdentity.SYSTEM_PROMPT (ad, NAME'den türeme).
+            runCatching {
+                client.chat(
+                    label,
+                    settings_localModelName,
+                    system = JarvisIdentity.SYSTEM_PROMPT,
+                )
+            }
                 .onSuccess { answer ->
                     DiagLog.i("localllm", "yanıt ${answer.length} kr · ${System.currentTimeMillis() - started} ms")
                     val key = nextKey("a")
