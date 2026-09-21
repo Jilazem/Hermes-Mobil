@@ -108,3 +108,10 @@ USER_INFO    | The emulator is starting from scratch. Reason: different renderer
 INFO         | Created extended window in 96.756ms
 INFO         | Boot completed in 21122 ms
 INFO         | Increasing screen off timeout, logcat buffer size to 2M.
+INFO         | Wait for emulator (pid 38587) 20 seconds to shutdown gracefully before kill;you can set environment variable ANDROID_EMULATOR_WAIT_TIME_BEFORE_KILL(in seconds) to change the default value (20 seconds)
+
+USER_INFO    | Snapshots have been disabled by the user, save request is ignored.
+INFO         | Saving snapshot 'default_boot' using 1 ms
+INFO         | removeAll
+ERROR        | Failed to restore previous context: 12297
+WARNING      | Netsim Wifi dns:///localhost:57646 is gone due to Stream removed (CANCELLED)
