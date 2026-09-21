@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,15 +69,15 @@ private fun UserBubble(message: SessionMessage, modifier: Modifier) {
         Box(
             Modifier
                 .widthIn(max = 300.dp)
-                .background(HermesColors.Surface, RoundedCornerShape(12.dp))
-                .border(1.dp, HermesColors.BorderStrong, RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 9.dp)
+                .background(HermesColors.Surface, MaterialTheme.shapes.medium)
+                .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
+                // FR-005: balon ici 12/9 -> 12/10 (4dp ritim; tur3 prose bandi korunur).
+                .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             Text(
                 message.content.orEmpty(),
                 color = HermesColors.TextPrimary,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
+                style = MaterialTheme.typography.bodyMedium,
             )
         }
     }
@@ -111,13 +112,13 @@ private fun ToolCallCard(call: ToolCall) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
-            .border(1.dp, HermesColors.Border, RoundedCornerShape(8.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
             .clickable { expanded = !expanded }
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("→", color = HermesColors.Busy, fontSize = 12.sp)
+            Text("→", color = HermesColors.Busy, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.width(7.dp))
             Text(
                 call.function.name?.takeIf { it.isNotBlank() } ?: "araç",
@@ -140,7 +141,6 @@ private fun ToolCallCard(call: ToolCall) {
                     call.function.arguments.orEmpty().take(2_000),
                     style = MonoTextStyle,
                     color = HermesColors.TextMuted,
-                    lineHeight = 16.sp,
                 )
             }
         }
@@ -157,11 +157,11 @@ private fun ToolResultCard(message: SessionMessage, modifier: Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .border(
                 1.dp,
                 if (looksFailed) HermesColors.Danger.copy(alpha = 0.45f) else HermesColors.Border,
-                RoundedCornerShape(8.dp),
+                MaterialTheme.shapes.medium,
             )
             .clickable { expanded = !expanded }
             .padding(horizontal = 10.dp, vertical = 8.dp)
@@ -170,7 +170,7 @@ private fun ToolResultCard(message: SessionMessage, modifier: Modifier) {
             Text(
                 if (looksFailed) "✕" else "✓",
                 color = if (looksFailed) HermesColors.Danger else HermesColors.Online,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.width(7.dp))
             Text(
@@ -182,7 +182,7 @@ private fun ToolResultCard(message: SessionMessage, modifier: Modifier) {
             Text(
                 S.t2("${body.length} krkt", "${body.length} chars"),
                 color = HermesColors.TextFaint,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
             Spacer(Modifier.width(6.dp))
             Icon(
@@ -199,7 +199,6 @@ private fun ToolResultCard(message: SessionMessage, modifier: Modifier) {
                     body.take(4_000),
                     style = MonoTextStyle,
                     color = HermesColors.TextMuted,
-                    lineHeight = 16.sp,
                 )
             }
         }
@@ -211,12 +210,12 @@ private fun CollapsedBlock(label: String, body: String, modifier: Modifier) {
     var expanded by remember { mutableStateOf(false) }
     Column(
         modifier
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             .clickable { expanded = !expanded }
             .padding(horizontal = 10.dp, vertical = 7.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = HermesColors.TextFaint, fontSize = 11.sp)
+            Text(label, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.weight(1f))
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -228,7 +227,7 @@ private fun CollapsedBlock(label: String, body: String, modifier: Modifier) {
         AnimatedVisibility(expanded) {
             Column {
                 Spacer(Modifier.height(6.dp))
-                Text(body.take(4_000), color = HermesColors.TextMuted, fontSize = 12.sp, lineHeight = 18.sp)
+                Text(body.take(4_000), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

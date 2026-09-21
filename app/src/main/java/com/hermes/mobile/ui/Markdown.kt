@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -51,7 +52,9 @@ fun MarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     color: androidx.compose.ui.graphics.Color = HermesColors.TextSecondary,
-    fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
+    // Tur18 B3: sabit 15.sp yerine prose rolu (15 x fontScale) — sohbet govdesi
+    // de artik sistem/app yazi olcegiyle olceklenir (tur3 prose noktasi sabit).
+    fontSize: androidx.compose.ui.unit.TextUnit = MaterialTheme.typography.bodyLarge.fontSize,
 ) {
     val blocks = remember(markdown) { parseMarkdown(markdown) }
     // Telegram: ardışık maddeler BİTİŞİK, bloklar arası boş satır. Tek sabit
@@ -189,9 +192,11 @@ private fun CodeBlock(block: MdBlock.Code) {
     Column(
         Modifier
             .fillMaxWidth()
-            // FR-004: balondan KOYU panel — Background tonu (SurfaceDim'den koyu).
-            .background(HermesColors.Background, RoundedCornerShape(8.dp))
-            .border(1.dp, HermesColors.Border, RoundedCornerShape(8.dp)),
+            // Tur18 FR-009 (tur17 finding #5 kapanisi): kod blogu dolgusu artik
+            // Midground (=aksan) degil — ntr Skeleton yuzey tonu. Sol 3dp cizgi
+            // Midground kalir (vurgu gorevi), dolguyu aksana cevirmek B2 ihlaliydi.
+            .background(HermesColors.Skeleton, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium),
     ) {
         // Sol dikey vurgu çizgisi + içerik.
         Row(Modifier.fillMaxWidth()) {
@@ -199,7 +204,11 @@ private fun CodeBlock(block: MdBlock.Code) {
                 Modifier
                     .width(3.dp)
                     .height(IntrinsicSize.Min)
-                    .background(HermesColors.Midground),
+                    // FR-009 (L202, tur17 finding #5): kod blogu VURGU CIZGISI
+                    // artik Midground (=aksan) degil — ntr BorderStrong. Kod
+                    // blogu vurgu degil icerik tasiyan ntr yuzeydir; aksani
+                    // vurgu butonuna birakiriz (B2 kurali).
+                    .background(HermesColors.BorderStrong),
             )
             Column(Modifier.weight(1f)) {
                 // Üstte yalnız dil etiketi (satır sayısı YOK — sade).
@@ -207,15 +216,14 @@ private fun CodeBlock(block: MdBlock.Code) {
                     Text(
                         block.language.lowercase(),
                         color = HermesColors.TextFaint,
-                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(start = 10.dp, top = 6.dp, end = 10.dp),
                     )
                 }
                 Text(
                     block.code,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = HermesColors.TextSecondary,
                     modifier = Modifier
                         .horizontalScroll(scroll)
@@ -233,7 +241,7 @@ private fun CodeBlock(block: MdBlock.Code) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
+                .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
                 .clickable { clipboard.setText(AnnotatedString(block.code)) }
                 .padding(vertical = 9.dp),
             horizontalArrangement = Arrangement.Center,
@@ -249,7 +257,7 @@ private fun CodeBlock(block: MdBlock.Code) {
             Text(
                 S.t2("KODU KOPYALA", "COPY CODE"),
                 color = HermesColors.Midground,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.5.sp,
             )

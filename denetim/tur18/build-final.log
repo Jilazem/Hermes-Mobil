@@ -1,0 +1,74 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:compileDebugKotlin
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:106:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:113:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:141:14 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:143:14 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:144:14 'fun setActionStrip(p0: @NonNull() ActionStrip!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:234:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:259:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1117:59 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1534:31 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/Composer.kt:247:48 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/Composer.kt:451:36 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/DrivingScreen.kt:99:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/LiveVoiceSheet.kt:153:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:68:40 'val Icons.Filled.Subject: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Subject.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:454:76 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/PermissionRows.kt:60:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:225:40 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:58:42 'val Icons.Filled.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Send.
+w: file:///Users/gokhanuzman/hermes-workspace/wt-android-uzman/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:59:38 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:dexBuilderDebug
+> Task :app:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:testDebugUnitTest
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug
+
+BUİLD SUCCESSFUL in 1m 12s
+41 actionable tasks: 7 executed, 34 up-to-date

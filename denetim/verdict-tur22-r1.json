@@ -1,0 +1,41 @@
+{
+  "verdict": "fail",
+  "gorev": "tur22",
+  "tur": "r1",
+  "tarih": "2026-09-21T00:40:00+03:00",
+  "proje": "/Users/gokhanuzman/hermes-workspace/wt-t22",
+  "dal": "wt/t22-parlaklik",
+  "bas": "63b42fa",
+  "uzman": "coder",
+  "deneme_no": "1",
+  "devir": "false",
+  "test_sonucu": "Kendi koşum (çerez silinmiş, fresh): 665 passed / 0 failed / 0 skipped (53 suite). assembleDebug EXIT=0. Mevcut APK md5 65261c9e349defc2c3ca509e59b93fdd — 000-TEMP kopyası ile BAYT-BAŞA-BAYT aynı.",
+  "bulgular_ozet": "4 madde KAPALI (kod+test), 1 madde KISMEN KAPALI (48dp — 4 düğme 24dp), 1 madde AÇIK (gonder-ani 1sn gecikme), 3 eksik kanıt dosyası, 1 HIGH merge çakışması.",
+  "findings": [
+    {"sev": "HIGH", "id": "merge-cakisma", "bulgu": "git merge-tree main(9e5178b) x HEAD(63b42fa) CARI ÇAKIŞMA veriyor: SessionDrawer.kt (main'deki tur21-JEV rozeti 686-687 satırları ile dalın tur22-3/4 değişiklikleri). Kart 'çakışma YOKSA merge et' diyor — ÇAKIŞMA VAR, merge yapılmamalı; coder rebase/merge ile SessionDrawer.kt'de JEV rozetini KORUYARAK çözmeli ve tur21-JEV sönüm testini (tur21'de 408→664'e taşıyan testler) yeniden koşmalı."},
+    {"sev": "HIGH", "id": "48dp-4-dugme", "bulgu": "48dp hedef iddiası 4 düğme için YANLIŞ. Kanıt: kanit/dogrulama-01-bosluk.txt + 46-mesaj-dolu.txt + CANLI ölçüm (emulator hermes-v2, 420dpi=2.625x doğrulandı). 420dpi'de 63px = 24dp: 'Menü' [723,184][786,247], 'Sesli sohbet' [849,184][912,247], 'Yeni sohbet' [975,184][1038,247], 'Gönder' [957,2015][1020,2078]. DOKUNMA TESTİ (canlı, temiz temel): 48dp kutusunun 24dp ikon DIŞINDA KALAN köşesine dokunma (700,150) 'Model ve profiller / Düşünme' popup'ını AÇTI — 48dp dokunma alanı YOK, komşu katmana sızıyor. Kart 14 düğme iddia etti; 11'i kapalı, 4'ü 24dp."},
+    {"sev": "HIGH", "id": "gonder-ani-1sn", "bulgu": "Composer.gönder-anı 1sn geçici geri-besleme maddesi KODDA YOK. Composer.kt:435-438 yalnız tıklama anı haptic + scale (0.92f spring) — 1sn'lik geçici durum/geri-besleme mekanizması ve onu test eden test bulunamadı (grep: LaunchedEffect/delay/sent yok)."},
+    {"sev": "MEDIUM", "id": "kanit-eksik-dosyalar", "bulgu": "OKUMA-NOTU.md 3 dosyayı KANIT diye sayıyor ama YOKLAR: kanit/45-gonder-burst.txt (gönder-anı bounds dökümü — 48dp iddiasının kanıtı buydu), kanit/bounds-48dp.txt, kanit/RAPOR.md (repo kökünde ve kanit/'te yok). Kart: 'bounds-48dp.txt + 45-gonder-burst.txt + 41-mesaj-girisi-1/2/3.png + 45-gonder-burst 5 kare + logcat-crash.txt (com.hermes karması yok)'. bounds-48dp.txt hiç üretilmemiş; 45-gonder-burst 5 karesi 3 benzersiz (1-2, 3-5, 4 ayrı)."},
+    {"sev": "LOW", "id": "tur18-15-dosya", "bulgu": "tur18 merge 18e1b21 '15 dosya' idi; 41bb591 (tur22 tabanı) 12 dosya + 3 docs = 15. UYARI: 18e1b21'deki ChatScreen.kt, ProfileBar.kt, VoiceCallScreen.kt tur22 tabanında YOK — tur21→tur18→tur22 zinciri tek merge'de birleştirilirken bu 3 dosya elle çözülüp 1283 testte sönümlenmiş olmalı; tek-merge doğrulaması bunu teyit etmeli."},
+    {"sev": "LOW", "id": "logcat-crash-temiz", "bulgu": "logcat-crash.txt 1 FATAL EXCEPTION içeriyor ama process 'usap' (com.android.shell) — com.hermes karması YOK (grep=0). Madde KAPALI."}
+  ],
+  "kapali_maddeler": [
+    "48dp disari tasma: 11/14 düğme kapali (topBar 48dp kutular, 20-44px ikonlar, 40px 160dp chip'ler, 40px 140dp chip'ler) — bounds dökümleri 420dpi'de dogrulandi",
+    "48dp menu (SessionDrawer 88dp DrawerSheetRow) + Composer 48dp hedefleri: 240px=91dp satirlar, 63px+golgeli 84px=32dp composer dugmeleri KAPALI",
+    "prefers-reduced-motion: Motion.kt 6 token (MotionDuration 120/600/900/1100, MotionScale, MotionAlpha, MotionSpring, MotionCrossfade, MotionStateIn) + LocalReducedMotion + rememberPrefersReducedMotion; Theme.kt:214 besliyor; grep: 120/600/900/1100 hardcode 0 (Motion.kt:30 yorum hariç); MotionTur22Test 8 test",
+    "4 EmptyState tek cumle + 200ms Crossfade (EmptyState.kt + EmptyStateTur22Test 11 test, 4 dil x 4 durum)",
+    "iskelet 1->3->0: skeletonRowCount 3-imzali overload (Skeleton.kt:33, default placeholder=3 — Tur5KalanTest 2-imzali cagri derleniyor, 665 test bunu kanitliyor); v03-iskelet-final 3 PNG + 4 sembol dokumu",
+    "LazyColumn key: SessionDrawer 3 lazyColumnItems + 8 item() + 4 items() hepsi key'li; ChatScreen 3 lazyItems key'li (satır 191/196/201)",
+    "swipe-back renk+ikon+etiket 4 ekran (SessionDrawer 31-41 arsiv modu Online/Secondary)",
+    "tokenlastirma: fontSize literal 1 (Theme.kt tanim), RoundedCornerShape([0-9]) 6 (Theme.kt HermesRadius tanimlari) — '0 literal' iddiasi dogru",
+    "tur18 15 dosya 1283 test sönümlemesi: 1283 >= 1273 + 10 + 0 OK; 665 test 0 fail ile uyumlu"
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/Motion.kt": "cc21b6b52610f9453bd5ae42207b93bf4c1073a491d4452fcbc24f1e893845cb",
+    "app/src/main/java/com/hermes/mobile/ui/EmptyState.kt": "090960942f626fc745381299dd3f70e92ba3e7768798e2df943619d0959ca306",
+    "app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt": "d0ea863f4d650492b878cba986ed4b352d9e415a4a5241d746541c300181cd9d",
+    "app/build/outputs/apk/debug/app-debug.apk": "65261c9e349defc2c3ca509e59b93fdd"
+  },
+  "test_komutu": "JAVA_HOME=$HOME/007-HERMES/20-ARACLAR/jdk/jdk-17/Contents/Home ANDROID_HOME=$HOME/007-HERMES/20-ARACLAR/android-sdk gradle -Pkotlin.compiler.execution.strategy=in-process testDebugUnitTest assembleDebug",
+  "lesson": "Bounds dökümünde 24px'lik (63px@420dpi) node'u '48dp hedef' saymak, dokunma testiyle kutu doğrulamadan iddiaya dönüşürse komşu katmana sızan ölü bölgeler üretilir — 48dp iddiası daima 48dp KUTU bounds'u + köşe dokunma testi ile kanıtlanmalı."
+}

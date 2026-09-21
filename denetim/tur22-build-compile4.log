@@ -1,0 +1,39 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/Composer.kt:68:40 Unresolved reference 'animateColorAsState'.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/Composer.kt:438:71 Unresolved reference 'TextHandleChange'.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/Composer.kt:447:36 No parameter with name 'requireUnmodified' found.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/Composer.kt:455:17 Unresolved reference 'animateColorAsState'.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:623:61 Unresolved reference 'id'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUİLD FAILED in 14s
+14 actionable tasks: 1 executed, 13 up-to-date

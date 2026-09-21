@@ -15,6 +15,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -114,8 +115,7 @@ fun InterventionDialog(
                                 "supports it — falls back to appending.",
                         ),
                     color = HermesColors.TextFaint,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
         },
@@ -146,12 +146,12 @@ private fun KindOption(
         modifier
             .background(
                 if (selected) HermesColors.SurfaceDim else HermesColors.Surface,
-                RoundedCornerShape(9.dp),
+                MaterialTheme.shapes.medium,
             )
             .border(
                 if (selected) 2.dp else 1.dp,
                 if (selected) HermesColors.Midground else HermesColors.Border,
-                RoundedCornerShape(9.dp),
+                MaterialTheme.shapes.medium,
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 9.dp),
@@ -159,9 +159,9 @@ private fun KindOption(
         Text(
             title,
             color = if (selected) HermesColors.Midground else HermesColors.TextSecondary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
         )
-        Text(detail, color = HermesColors.TextFaint, fontSize = 10.sp)
+        Text(detail, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
     }
 }

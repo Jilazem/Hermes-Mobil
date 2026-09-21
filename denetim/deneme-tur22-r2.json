@@ -1,0 +1,14 @@
+{
+  "fail_sayisi": 0,
+  "devir": false,
+  "turlar": [
+    {
+      "tarih": "2026-09-21T07:16:44",
+      "yapan": "coder",
+      "sonuc": "pass"
+    }
+  ],
+  "uzman": "coder",
+  "slug": "tur22-r2",
+  "kapandi": true
+}

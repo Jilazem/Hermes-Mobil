@@ -1,0 +1,39 @@
+Starting a Gradle Daemon, 1 incompatible and 1 stopped Daemons could not be reused, use --status for details
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues FROM-CACHE
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources FROM-CACHE
+> Task :app:mergeDebugResources FROM-CACHE
+> Task :app:packageDebugResources FROM-CACHE
+> Task :app:parseDebugLocalResources FROM-CACHE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug FROM-CACHE
+> Task :app:processDebugMainManifest FROM-CACHE
+> Task :app:processDebugManifest FROM-CACHE
+> Task :app:processDebugManifestForPackage FROM-CACHE
+> Task :app:processDebugResources FROM-CACHE
+> Task :app:javaPreCompileDebug FROM-CACHE
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/Motion.kt:59:50 Unresolved reference 'ANIMATION_SCALE_VALUE'.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/Motion.kt:112:9 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///Users/gokhanuzman/hermes-workspace/wt-t22/app/src/main/java/com/hermes/mobile/ui/Motion.kt:112:9 Not enough information to infer type argument for 'T'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUİLD FAILED in 12s
+15 actionable tasks: 4 executed, 11 from cache

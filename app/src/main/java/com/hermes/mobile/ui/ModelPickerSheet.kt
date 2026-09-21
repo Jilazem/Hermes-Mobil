@@ -23,6 +23,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
@@ -171,7 +172,7 @@ fun ModelPickerSheet(
             Text(
                 S.t2("Model seç", "Pick a model"),
                 color = HermesColors.TextPrimary,
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.height(4.dp))
@@ -197,13 +198,13 @@ fun ModelPickerSheet(
                     Text(
                         S.t2("Varsayılan model yap", "Make it the default"),
                         color = HermesColors.TextSecondary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
                         if (persist) S.t2("Tüm yeni oturumlarda kullanılır", "Used for every new session")
                         else S.t2("Yalnız bu sohbette geçerli", "Applies to this chat only"),
                         color = HermesColors.TextFaint,
-                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
@@ -223,12 +224,12 @@ fun ModelPickerSheet(
             Text(
                 S.t2("Raptiye ile sabitle · satıra uzun bas, gizle", "Tap the pin to keep it on top · long-press a row to hide"),
                 color = HermesColors.TextFaint,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(bottom = 6.dp),
             )
 
             if (loading) {
-                Text(S.t2("Yükleniyor…", "Loading…"), color = HermesColors.TextMuted, fontSize = 13.sp)
+                Text(S.t2("Yükleniyor…", "Loading…"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
             }
 
             LazyColumn(
@@ -255,7 +256,7 @@ fun ModelPickerSheet(
                                 SectionLabel(title)
                                 hint?.let {
                                     Spacer(Modifier.width(8.dp))
-                                    Text(it, color = HermesColors.TextFaint, fontSize = 10.sp)
+                                    Text(it, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
@@ -300,7 +301,7 @@ fun ModelPickerSheet(
                                 Text(
                                     if (showBroken) "gizlenenleri sakla" else S.t2("$gizli gizli — göster", "$gizli hidden — show"),
                                     color = HermesColors.TextMuted,
-                                    fontSize = 10.sp,
+                                    style = MaterialTheme.typography.labelSmall,
                                 )
                             }
                         }
@@ -323,10 +324,10 @@ fun ModelPickerSheet(
                             SectionLabel(provider.name.ifBlank { provider.slug })
                             if (provider.isCurrent) {
                                 Spacer(Modifier.width(8.dp))
-                                Text("etkin", color = HermesColors.Online, fontSize = 10.sp)
+                                Text("etkin", color = HermesColors.Online, style = MaterialTheme.typography.labelSmall)
                             }
                             Spacer(Modifier.weight(1f))
-                            Text("${rows.size}", color = HermesColors.TextFaint, fontSize = 10.sp)
+                            Text("${rows.size}", color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
                         }
                     }
 
@@ -374,7 +375,7 @@ private fun ModelRowView(
         Modifier
             .fillMaxWidth()
             .padding(bottom = if (prominent) 6.dp else 0.dp)
-            .background(bg, RoundedCornerShape(if (prominent) 10.dp else 8.dp))
+            .background(bg, MaterialTheme.shapes.medium)
             .combinedClickable(
                 enabled = row.usable,
                 onClick = onSelect,
@@ -397,7 +398,7 @@ private fun ModelRowView(
                     prominent -> HermesColors.TextPrimary
                     else -> HermesColors.TextSecondary
                 },
-                fontSize = if (prominent) 14.sp else 13.sp,
+                fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                 fontWeight = if (prominent) FontWeight.Medium else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -416,7 +417,7 @@ private fun ModelRowView(
                         Text(
                             "YEREL",
                             color = HermesColors.Online,
-                            fontSize = 9.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
                         )
                         Spacer(Modifier.width(6.dp))
@@ -429,7 +430,7 @@ private fun ModelRowView(
                                 row.note == S.t2("ücretsiz", "free") -> HermesColors.Online
                                 else -> HermesColors.TextMuted
                             },
-                            fontSize = 10.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -446,7 +447,7 @@ private fun ModelRowView(
                     sn <= 12 -> HermesColors.Busy
                     else -> HermesColors.TextFaint
                 },
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
 

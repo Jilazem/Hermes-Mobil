@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -80,8 +81,7 @@ fun ReadAccessRows() {
                     "Anything you don't grant just disables that one capability.",
             ),
             color = HermesColors.TextMuted,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
+            style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
         )
         Spacer(Modifier.height(6.dp))
@@ -150,7 +150,7 @@ private fun AccessRow(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 3.dp)
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(10.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
             // Verilmiş bir izni geri almak uygulamadan mümkün değil; satır
             // yalnız eksikken tıklanabilir olsun ki boş bir dokunuş olmasın.
             .clickable(enabled = !granted, onClick = onGrant)
@@ -158,9 +158,9 @@ private fun AccessRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = HermesColors.TextPrimary, fontSize = 13.sp)
+            Text(title, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(2.dp))
-            Text(why, color = HermesColors.TextMuted, fontSize = 11.sp, lineHeight = 15.sp)
+            Text(why, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         }
         Spacer(Modifier.size(8.dp))
         if (granted) {
@@ -171,13 +171,13 @@ private fun AccessRow(
                 androidx.compose.foundation.layout.Box(
                     Modifier.size(7.dp).background(HermesColors.Online, CircleShape),
                 )
-                Text(S.t2("verildi", "granted"), color = HermesColors.Online, fontSize = 11.sp)
+                Text(S.t2("verildi", "granted"), color = HermesColors.Online, style = MaterialTheme.typography.labelSmall)
             }
         } else {
             Text(
                 S.t2("izin ver", "grant"),
                 color = HermesColors.Midground,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }

@@ -1,0 +1,31 @@
+gönder-kutu-oncesi: [922,1370][1048,1496]
+burst zamanlama+sha256: [
+ {
+  "i": 0,
+  "t_ms": 261,
+  "sha": "6e3c57f8205421564e88cde5a630931dd3cfa0a57bc2e0a2ecf941cb32696826"
+ },
+ {
+  "i": 1,
+  "t_ms": 463,
+  "sha": "920de8e7bd94af4a91a3db5b2ea57d062f31f0162a452fe0200e5bb4dd5645ff"
+ },
+ {
+  "i": 2,
+  "t_ms": 605,
+  "sha": "6f5190116ffeb93028dfc7a49aaad58b64167878efde414710eff1b9a9cff9f1"
+ },
+ {
+  "i": 3,
+  "t_ms": 734,
+  "sha": "9fd7c4ebcf55108a05fb8b0b8ec2cb926bcd78d1c86f01eb4628ad9fbc28549c"
+ },
+ {
+  "i": 4,
+  "t_ms": 861,
+  "sha": "9fd7c4ebcf55108a05fb8b0b8ec2cb926bcd78d1c86f01eb4628ad9fbc28549c"
+ }
+]
+oncesi-sha: 5ff0d161d3dfb9727960112647722539c24f52805745211c024439efbbe40325
+sonrasi-sha: e8d88c1e2243977a67892c9b3e891cfda09692be422694b1cb328b144817ce74
+sonrasi-mesaj-balonu-var-mi: True

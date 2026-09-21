@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -85,7 +86,7 @@ fun DrivingScreen(
         ) {
             Row(
                 Modifier
-                    .background(HermesColors.SurfaceDim, RoundedCornerShape(22.dp))
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.large)
                     .clickable(onClick = onCycleRoute)
                     .padding(horizontal = 18.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -102,7 +103,7 @@ fun DrivingScreen(
                     modifier = Modifier.size(22.dp),
                 )
                 Spacer(Modifier.width(10.dp))
-                Text(state.route.label, color = HermesColors.TextSecondary, fontSize = 15.sp)
+                Text(state.route.label, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
             }
 
             Spacer(Modifier.weight(1f))
@@ -132,7 +133,7 @@ fun DrivingScreen(
         Text(
             statusText,
             color = accent,
-            fontSize = 30.sp,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
         )
@@ -149,18 +150,16 @@ fun DrivingScreen(
                     Text(
                         it,
                         color = HermesColors.Danger,
-                        fontSize = 17.sp,
+                        style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
-                        lineHeight = 24.sp,
                     )
                 }
                 if (state.userText.isNotBlank()) {
                     Text(
                         state.userText,
                         color = HermesColors.TextFaint,
-                        fontSize = 17.sp,
+                        style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
-                        lineHeight = 24.sp,
                     )
                     Spacer(Modifier.height(12.dp))
                 }
@@ -168,9 +167,8 @@ fun DrivingScreen(
                     Text(
                         state.modelText,
                         color = HermesColors.TextSecondary,
-                        fontSize = 20.sp,
+                        style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
-                        lineHeight = 29.sp,
                     )
                 }
             }
@@ -181,7 +179,7 @@ fun DrivingScreen(
         Text(
             S.driveScreenOff,
             color = HermesColors.TextFaint,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = 22.dp),
         )
     }

@@ -6,8 +6,14 @@
       "tarih": "2026-09-19T15:35:07",
       "yapan": "android",
       "sonuc": "fail"
+    },
+    {
+      "tarih": "2026-09-19T23:21:08",
+      "yapan": "android",
+      "sonuc": "pass"
     }
   ],
   "uzman": "android",
-  "slug": "tur17"
+  "slug": "tur17",
+  "kapandi": true
 }

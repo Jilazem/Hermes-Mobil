@@ -2,6 +2,7 @@ package com.hermes.mobile.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +60,7 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
             Row(
@@ -72,7 +74,7 @@ fun HomeScreen(
                     Text(
                         profile?.name ?: S.t2("Sunucu seçilmedi", "No server selected"),
                         color = HermesColors.TextPrimary,
-                        fontSize = 20.sp,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
@@ -108,9 +110,9 @@ fun HomeScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = {
                         editing = ServerProfile(name = "", baseUrl = "http://", token = "")
-                    }) { Text("Sunucu ekle", color = HermesColors.Midground, fontSize = 13.sp) }
+                    }) { Text("Sunucu ekle", color = HermesColors.Midground, style = MaterialTheme.typography.bodyMedium) }
                     TextButton(onClick = onRefresh) {
-                        Text("Yenile", color = HermesColors.TextMuted, fontSize = 13.sp)
+                        Text("Yenile", color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -121,7 +123,7 @@ fun HomeScreen(
                 HermesCard(Modifier.fillMaxWidth()) {
                     SectionLabel("Hata")
                     Spacer(Modifier.height(4.dp))
-                    Text(message, color = HermesColors.Danger, fontSize = 12.sp)
+                    Text(message, color = HermesColors.Danger, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -132,10 +134,10 @@ fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         StatusDot(HermesColors.Offline)
                         Spacer(Modifier.width(8.dp))
-                        Text(S.t2("Bağlanamadı", "Couldn't connect"), color = HermesColors.TextSecondary, fontSize = 14.sp)
+                        Text(S.t2("Bağlanamadı", "Couldn't connect"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text(fail.reason, color = HermesColors.TextMuted, fontSize = 12.sp)
+                    Text(fail.reason, color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -161,9 +163,9 @@ fun HomeScreen(
                                     size = 6,
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(name, color = HermesColors.TextSecondary, fontSize = 13.sp)
+                                Text(name, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                                 Spacer(Modifier.weight(1f))
-                                Text(platform.state, color = HermesColors.TextMuted, fontSize = 11.sp)
+                                Text(platform.state, color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -181,7 +183,7 @@ fun HomeScreen(
                             DemoMask.name(DemoMask.Kind.HOST, stats.hostname) +
                                 " · ${stats.arch}",
                             color = HermesColors.TextMuted,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall,
                         )
                     }
                     Spacer(Modifier.height(10.dp))
@@ -199,7 +201,7 @@ fun HomeScreen(
                         S.t2("${formatBytes(stats.disk.free)} boş", "${formatBytes(stats.disk.free)} free"),
                     )
                     Spacer(Modifier.height(10.dp))
-                    Text(S.t2("Çalışma süresi ${formatUptime(stats.uptimeSeconds)}", "Uptime ${formatUptime(stats.uptimeSeconds)}"), color = HermesColors.TextMuted, fontSize = 11.sp)
+                    Text(S.t2("Çalışma süresi ${formatUptime(stats.uptimeSeconds)}", "Uptime ${formatUptime(stats.uptimeSeconds)}"), color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -237,9 +239,9 @@ private fun GatewayCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusDot(if (running) HermesColors.Online else HermesColors.Offline)
             Spacer(Modifier.width(8.dp))
-            Text("Gateway", color = HermesColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text("Gateway", color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Spacer(Modifier.weight(1f))
-            Text(gatewayState, color = if (running) HermesColors.Online else HermesColors.TextMuted, fontSize = 12.sp)
+            Text(gatewayState, color = if (running) HermesColors.Online else HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.height(6.dp))
         Text(
@@ -249,18 +251,18 @@ private fun GatewayCard(
             "v$version" + (releaseDate?.let { " · $it" } ?: "") +
                 " · $activeAgents etkin ajan (sunucu raporu)",
             color = HermesColors.TextMuted,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { onAction(GatewayAction.Restart) }, modifier = Modifier.weight(1f)) {
-                Text(S.t2("Yeniden başlat", "Restart"), fontSize = 12.sp)
+                Text(S.t2("Yeniden başlat", "Restart"), style = MaterialTheme.typography.bodySmall)
             }
             OutlinedButton(
                 onClick = { onAction(if (running) GatewayAction.Stop else GatewayAction.Start) },
                 modifier = Modifier.weight(1f),
             ) {
-                Text(if (running) "Durdur" else S.t2("Başlat", "Start"), fontSize = 12.sp)
+                Text(if (running) "Durdur" else S.t2("Başlat", "Start"), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -276,9 +278,9 @@ private fun MeterRow(label: String, percent: Double, detail: String) {
     }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = HermesColors.TextSecondary, fontSize = 12.sp)
+            Text(label, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.weight(1f))
-            Text("${percent.toInt()}%", color = color, fontSize = 12.sp)
+            Text("${percent.toInt()}%", color = color, style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.height(4.dp))
         LinearProgressIndicator(
@@ -290,7 +292,7 @@ private fun MeterRow(label: String, percent: Double, detail: String) {
             drawStopIndicator = {},
         )
         Spacer(Modifier.height(3.dp))
-        Text(detail, color = HermesColors.TextFaint, fontSize = 10.sp)
+        Text(detail, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -310,19 +312,25 @@ private fun ServerRow(
         null -> HermesColors.Busy to S.t2("yoklanıyor…", "probing…")
     }
 
-    HermesCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
+    // Liste satiri min 56dp (FR-004 ritim; kart govdesi zaten 48dp taban tasir).
+    HermesCard(
+        Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 56.dp)
+            .clickable(onClick = onSelect),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusDot(dot)
             Spacer(Modifier.width(8.dp))
             Text(
                 profile.name.ifBlank { S.t2("(adsız)", "(unnamed)") },
                 color = if (isActive) HermesColors.Midground else HermesColors.TextSecondary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
             )
             if (isActive) {
                 Spacer(Modifier.width(7.dp))
-                Text("aktif", color = HermesColors.Online, fontSize = 10.sp)
+                Text("aktif", color = HermesColors.Online, style = MaterialTheme.typography.labelSmall)
             }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onEdit) {
@@ -352,7 +360,7 @@ private fun ServerRow(
         Text(
             status,
             color = if (probe is ProbeResult.Ok) HermesColors.Online else HermesColors.TextFaint,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }

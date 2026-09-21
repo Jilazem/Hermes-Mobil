@@ -1,0 +1,32 @@
+{
+ "gonder-kutu-oncesi": "[926,1374][1052,1500]",
+ "oncesi-sha": "dc2a5b4cdef45498ed87759c4439be06a456cec96ee82560e5b8cd03fbfeed8a",
+ "burst": [
+  {
+   "i": 0,
+   "sha": "4c5f87e5f0653d41f6a81560e047d8fa22b8d042e7dec31d343c5014a35687d6"
+  },
+  {
+   "i": 1,
+   "sha": "90eaa1f57f08d16af4b94079990fc7c2bf676c44f51dfeee880628f9ba497c2e"
+  },
+  {
+   "i": 2,
+   "sha": "90eaa1f57f08d16af4b94079990fc7c2bf676c44f51dfeee880628f9ba497c2e"
+  },
+  {
+   "i": 3,
+   "sha": "2376d70465190a5a7800b1dd3337b71fa19bf7707f2bc087c0e548e4f3a5f037"
+  },
+  {
+   "i": 4,
+   "sha": "5ad725cf12c85f803856f69f8380394b5193f803b75bed2623243b51a7daa225"
+  },
+  {
+   "i": 5,
+   "sha": "5ad725cf12c85f803856f69f8380394b5193f803b75bed2623243b51a7daa225"
+  }
+ ],
+ "sonrasi-kutu": null,
+ "toplam_sn": 3.2
+}

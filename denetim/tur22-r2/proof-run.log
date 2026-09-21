@@ -1,0 +1,65 @@
+!YOK: 'Sunucu ekle'
+!YOK: 'Profiller'
+!YOK: 'Düzenle'
+form EditText: 1
+--form--
+'Gezinme menüsünü kapat' [918,0][1080,2127] View
+'Tümü' [198,194][283,257] TextView
+'Canlı (2)' [613,194][743,257] TextView
+'Oturum ara…' [169,354][379,417] TextView
+'Yeni sohbet' [121,507][325,570] TextView
+'Genel akış' [42,639][724,702] TextView
+'Gruplar' [748,644][853,697] TextView
+'Rapor 2026-284' [84,764][357,827] TextView
+'az önce' [378,764][479,827] TextView
+'Alan hesabı tamamlandı' [84,832][448,895] TextView
+'Pavo Sağlık Takibi' [84,947][399,1010] TextView
+'az önce' [420,947][521,1010] TextView
+'Kilo grafiği güncellendi' [84,1015][431,1078] TextView
+'?' [84,1152][104,1215] TextView
+'3 sa önce' [125,1152][249,1215] TextView
+'Sohbet' [78,2253][176,2295] TextView
+'Pano' [367,2253][438,2295] TextView
+'Arena' [636,2253][719,2295] TextView
+'Ayarlar' [903,2253][1003,2295] TextView
+--kayit-sonrasi--
+'Gezinme menüsünü kapat' [918,0][1080,2127] View
+'Tümü' [198,194][283,257] TextView
+'Canlı (2)' [613,194][743,257] TextView
+'Oturum ara…' [169,354][379,417] TextView
+'Yeni sohbet' [121,507][325,570] TextView
+'Genel akış' [42,639][724,702] TextView
+'Gruplar' [748,644][853,697] TextView
+'Rapor 2026-284' [84,764][357,827] TextView
+'az önce' [378,764][479,827] TextView
+'Alan hesabı tamamlandı' [84,832][448,895] TextView
+'Pavo Sağlık Takibi' [84,947][399,1010] TextView
+'az önce' [420,947][521,1010] TextView
+'Kilo grafiği güncellendi' [84,1015][431,1078] TextView
+'?' [84,1152][104,1215] TextView
+'3 sa önce' [125,1152][249,1215] TextView
+'Sohbet' [78,2253][176,2295] TextView
+'Pano' [367,2253][438,2295] TextView
+'Arena' [636,2253][719,2295] TextView
+'Ayarlar' [903,2253][1003,2295] TextView
+KRİTİK: Bağlantı kurulamadı — burst alınamaz
+--son--
+'Gezinme menüsünü kapat' [918,0][1080,2127] View
+'Tümü' [198,194][283,257] TextView
+'Canlı (2)' [613,194][743,257] TextView
+'Oturum ara…' [169,354][379,417] TextView
+'Yeni sohbet' [121,507][325,570] TextView
+'Genel akış' [42,639][724,702] TextView
+'Gruplar' [748,644][853,697] TextView
+'Rapor 2026-284' [84,764][357,827] TextView
+'az önce' [378,764][479,827] TextView
+'Alan hesabı tamamlandı' [84,832][448,895] TextView
+'Pavo Sağlık Takibi' [84,947][399,1010] TextView
+'az önce' [420,947][521,1010] TextView
+'Kilo grafiği güncellendi' [84,1015][431,1078] TextView
+'?' [84,1152][104,1215] TextView
+'3 sa önce' [125,1152][249,1215] TextView
+'Sohbet' [78,2253][176,2295] TextView
+'Pano' [367,2253][438,2295] TextView
+'Arena' [636,2253][719,2295] TextView
+'Ayarlar' [903,2253][1003,2295] TextView

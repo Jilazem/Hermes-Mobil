@@ -1,0 +1,51 @@
+{
+  "verdict": "pass",
+  "gorev": "tur22-r2",
+  "tarih": "2026-09-21T07:16:27.613620+03:00",
+  "commit": "c26a736",
+  "test_sonucu": "KENDI KOSUM: 727 test, 0 fail, 0 error, 0 skip, 59 sinif (app/build/test-results/testDebugUnitTest, --rerun-tasks 21.09.2026); SendFeedbackTur22Test 4/0/0",
+  "findings": [
+    {
+      "sev": "LOW",
+      "id": "madde-2",
+      "bulgu": "Gonderme-ani 1sn flash CANLI dogrulandi: 4sn 15fps video (r2-gonder-video.mp4) kare-diff + ASCII glif render ile: taslak varken ok-farki=0, gonder aninda 3. durum (v020-v034, ok'tan fark 1131, mikrofondan fark 884; cizim = sol inen kisa kol + sag cikan uzun kol = tik glifi), ~0.93-1.0sn, sonra Mikrofon dali. Composer-kapsami durum + LaunchedEffect 50sn polling — kod dogru."
+    },
+    {
+      "sev": "LOW",
+      "id": "madde-1",
+      "bulgu": "48dp: 4 dugme kendi olcumumde 126px=48.0dp (uiautomator, 420dpi); kod requiredSize(48.dp) + testTag, padding kirpigi yok; HoldToTalk 46->48 dogrulandi."
+    },
+    {
+      "sev": "LOW",
+      "id": "madde-3",
+      "bulgu": "Kapsam creepsiz: c26a736 kaynak diff yalniz 4 dosya + 1 test (ChatScreen yorumi satiri); ServerClient'e dokunulmamis."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "f540beb commit mesaji '+45-r1 JSONL' diyor ama commit'te .jsonl dosyasi YOK (burst txt + 4 PNG var) — commit mesaji/icerik tutarsizligi, kanit kendisi mevcut ve durust (OKUMA-NOTU 44/45/46 disarda itirafini iceriyor)."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "Coder'in 45-r1-burst PNG'leri zayif kanit (NOTU'da kendisi de 'iddia edilemez' demis); bu bosluk benim video delilimle kapandi."
+    }
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ui/Composer.kt": "13ae9c090d85206dee60b825607060fcd1b75664a26ad7e007cf031c388649bc",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "e3fe0b740b00b87962e3c0c0aa3d5e2e26502b693683ad385402c8ffb23889a6",
+    "app/src/main/java/com/hermes/mobile/ui/SendFeedback.kt": "f570e4aa4e15ff303bd3bcd8cae081ee3584a858d98e8814350992a694a085fd",
+    "app/src/test/java/com/hermes/mobile/SendFeedbackTur22Test.kt": "5dbad49f9a451100e641dc59da201d723fbf743b78708e1dfbd88d71f17a12a7",
+    "denetim/tur22/kanit/bounds-48dp-r1.txt": "2b4cacc3d454cb4ecfb0361fae4e45344b562223f8ba5fdb5145351e7f650f11",
+    "denetim/tur22/kanit/OKUMA-NOTU.md": "c90da9efb45477785a90bac22e534dabfb760bbc0952aca309ecb91b469bf62a",
+    "denetim/tur22/kanit/45-r1-gonder-burst.txt": "2e4008c7b052b35cdc19a77910ff50d9d081fde737407ee815e004cc60421a08",
+    "denetim/tur22-r2/kanit/r2-gonder-burst.json": "8f51e1250d7a6881efa8d5248a7abc7903ca4f306ab340cff84f2fa496131258",
+    "denetim/tur22-r2/kanit/r2-gonder-video.mp4": "e0e147fe3454392acc43ee45d477ce04b4c158a5527420c68523f5b28b7b9907",
+    "denetim/tur22-r2/test-kosu2.log": "94565d9a7c51058e84b7d144a2fa7deef2a3c01bb7f3851354314b38f5ba34bd"
+  },
+  "lesson": "Kucuk UI glif degisiminde burst screenshot pencere/latency nedeniyle kanit olamaz; video + kare-diff + glif ASCII-render'i deterministik kanittir — uretici de sonraki turda boyle kanitlamali.",
+  "uzman": "coder",
+  "deneme_no": "2",
+  "devir": "false",
+  "denetci_notu": "r1 fail bulgularinin 4'u de kapanmis: 48dp kesin kutu + bounds kaniti, 46->48, 1sn flash (saf mantik + 4 test + 3. dal + video), commit disiplini."
+}

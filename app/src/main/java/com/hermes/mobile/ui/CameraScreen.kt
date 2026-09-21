@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -102,9 +103,9 @@ fun CameraScreen(
                 Text(
                     camera.error ?: "${camera.framesSent} ${S.camFrames}",
                     color = if (camera.error != null) HermesColors.Danger else Color.White,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                        .background(Color.Black.copy(alpha = 0.45f), MaterialTheme.shapes.medium)
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
                 Spacer(Modifier.width(8.dp))
@@ -135,12 +136,11 @@ fun CameraScreen(
                 Text(
                     text,
                     color = Color.White,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 4,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
                         .padding(12.dp),
                 )
                 Spacer(Modifier.height(14.dp))
@@ -152,7 +152,7 @@ fun CameraScreen(
                     .background(
                         if (live) HermesColors.Danger.copy(alpha = 0.85f)
                         else HermesColors.Midground,
-                        RoundedCornerShape(28.dp),
+                        MaterialTheme.shapes.large,
                     )
                     .clickable { if (live) onStopVoice() else onStartVoice() }
                     .padding(horizontal = 24.dp, vertical = 15.dp),
@@ -168,7 +168,7 @@ fun CameraScreen(
                 Text(
                     if (live) S.camStop else S.camStart,
                     color = if (live) Color.White else HermesColors.Background,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
             }

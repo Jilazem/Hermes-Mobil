@@ -22,6 +22,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,19 +70,19 @@ fun ProfileSheet(
             Text(
                 "Profil",
                 color = HermesColors.TextPrimary,
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 "Her profilin kendi promptu, becerileri ve ayarları var",
                 color = HermesColors.TextMuted,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
 
             if (loading) {
-                Text("Yükleniyor…", color = HermesColors.TextMuted, fontSize = 13.sp)
+                Text("Yükleniyor…", color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
             }
 
             // FR-002: hata yutulmaz — gerçek HTTP nedeni + yeniden dene.
@@ -95,14 +96,14 @@ fun ProfileSheet(
                             "No profiles found on the server.",
                         ),
                         color = HermesColors.Danger,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(6.dp))
                     TextButton(onClick = onRetry) {
                         Text(
                             S.t2("Yeniden dene", "Retry"),
                             color = HermesColors.Midground,
-                            fontSize = 13.sp,
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
                 }
@@ -116,12 +117,12 @@ fun ProfileSheet(
                             .fillMaxWidth()
                             .background(
                                 if (selected) HermesColors.Surface else HermesColors.SurfaceDim,
-                                RoundedCornerShape(10.dp),
+                                MaterialTheme.shapes.medium,
                             )
                             .border(
                                 if (selected) 2.dp else 1.dp,
                                 if (selected) HermesColors.Midground else HermesColors.Border,
-                                RoundedCornerShape(10.dp),
+                                MaterialTheme.shapes.medium,
                             )
                             .clickable { onSelect(profile) }
                             .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -133,7 +134,7 @@ fun ProfileSheet(
                                     profile.name,
                                     color = if (selected) HermesColors.Midground
                                     else HermesColors.TextPrimary,
-                                    fontSize = 14.sp,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -143,7 +144,7 @@ fun ProfileSheet(
                                     Text(
                                         "varsayılan",
                                         color = HermesColors.TextFaint,
-                                        fontSize = 9.sp,
+                                        style = MaterialTheme.typography.labelSmall,
                                     )
                                 }
                                 if (profile.gatewayRunning) {

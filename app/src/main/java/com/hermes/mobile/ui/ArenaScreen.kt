@@ -164,7 +164,7 @@ fun ArenaScreen(
                     Text(
                         S.t2("Durdur", "Stop"),
                         color = MaterialTheme.colorScheme.error,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
 
@@ -175,7 +175,7 @@ fun ArenaScreen(
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(S.t2("Temizle", "Clear"), fontSize = 13.sp)
+                    Text(S.t2("Temizle", "Clear"), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -260,7 +260,7 @@ fun ArenaScreen(
             Text(
                 err,
                 color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -293,7 +293,7 @@ fun ArenaScreen(
         // Bot çipleri
         Text(
             S.t2("Botlar (maks 4)", "Bots (max 4)"),
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
@@ -301,7 +301,7 @@ fun ArenaScreen(
         if (profiles.isEmpty() && st.loadingProfiles) {
             Text(
                 S.t2("Profiller yükleniyor…", "Loading profiles…"),
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else if (profiles.isEmpty()) {
@@ -316,7 +316,7 @@ fun ArenaScreen(
                         "Sunucuda profil bulunamadı.",
                         "No profiles found on the server.",
                     ),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
                 OutlinedButton(
@@ -325,7 +325,7 @@ fun ArenaScreen(
                         horizontal = 12.dp, vertical = 2.dp,
                     ),
                 ) {
-                    Text(S.t2("Yeniden dene", "Retry"), fontSize = 12.sp)
+                    Text(S.t2("Yeniden dene", "Retry"), style = MaterialTheme.typography.bodySmall)
                 }
             }
         } else {
@@ -345,14 +345,14 @@ fun ArenaScreen(
                                     MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.outlineVariant,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = MaterialTheme.shapes.medium,
                             )
                             .background(
                                 if (selected)
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                                 else
                                     MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = MaterialTheme.shapes.medium,
                             )
                             .clickable(enabled = canAdd) {
                                 arenaViewModel.toggleProfile(p.name)
@@ -372,7 +372,7 @@ fun ArenaScreen(
                                     MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(p.name, fontSize = 12.sp, maxLines = 1)
+                            Text(p.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                         }
                     }
                 }
@@ -399,7 +399,7 @@ fun ArenaScreen(
             is com.hermes.mobile.ArenaPhase.Running -> {
                 Text(
                     S.t2("Botlar çalışıyor…", "Bots running…"),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -413,7 +413,7 @@ fun ArenaScreen(
                     Text(
                         S.t2("Cevap yok — durduruldu veya hata oluştu.",
                             "No answers — stopped or error."),
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
@@ -449,14 +449,14 @@ private fun <T> RowScope.modeChip(
                     MaterialTheme.colorScheme.primary
                 else
                     MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialTheme.shapes.medium,
             )
             .background(
                 if (isActive)
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 else
                     MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialTheme.shapes.medium,
             )
             .clickable { onClick() }
             .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -464,7 +464,7 @@ private fun <T> RowScope.modeChip(
     ) {
         Text(
             label,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
             color = if (isActive)
                 MaterialTheme.colorScheme.primary
@@ -490,11 +490,11 @@ private fun BotCard(ans: ArenaAnswer) {
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.medium,
             )
             .background(
                 MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.medium,
             )
             .padding(10.dp),
     ) {
@@ -517,17 +517,17 @@ private fun BotCard(ans: ArenaAnswer) {
                             2 -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
                             else -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                         },
-                        shape = RoundedCornerShape(4.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
                     )
                     .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
-                Text(roundLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(roundLabel, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.weight(1f).width(0.dp))
             if (!ans.ok) {
                 Text(
                     "Hata: " + (ans.error ?: "?"),
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                 )
             }

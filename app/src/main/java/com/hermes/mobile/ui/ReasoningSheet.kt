@@ -18,6 +18,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,7 +83,7 @@ fun ReasoningSheet(
                 Text(
                     S.t2("Düşünce panosu", "Reasoning panel"),
                     color = HermesColors.TextPrimary,
-                    fontSize = 17.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -90,7 +91,7 @@ fun ReasoningSheet(
             Text(
                 S.t2("Çaba", "Effort"),
                 color = HermesColors.TextFaint,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.height(6.dp))
@@ -101,7 +102,7 @@ fun ReasoningSheet(
                         FilterChip(
                             selected = selected == level,
                             onClick = { onLevel(level) },
-                            label = { Text(label, color = HermesColors.TextPrimary, fontSize = 12.sp) },
+                            label = { Text(label, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodySmall) },
                         )
                     }
                 }
@@ -113,7 +114,7 @@ fun ReasoningSheet(
                         FilterChip(
                             selected = selected == level,
                             onClick = { onLevel(level) },
-                            label = { Text(label, color = HermesColors.TextPrimary, fontSize = 12.sp) },
+                            label = { Text(label, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodySmall) },
                         )
                     }
                 }
@@ -124,7 +125,7 @@ fun ReasoningSheet(
                     Text(
                         S.t2("Düşünürken canlı göster", "Show thinking live"),
                         color = HermesColors.TextPrimary,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
                         S.t2(
@@ -132,7 +133,7 @@ fun ReasoningSheet(
                             "When on, the last lines of the model's reasoning scroll live on screen",
                         ),
                         color = HermesColors.TextMuted,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
                 Spacer(Modifier.width(10.dp))

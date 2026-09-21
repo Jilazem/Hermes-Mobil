@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,8 +95,8 @@ fun ToolActivityRow(
     Column(
         modifier
             .fillMaxWidth()
-            .background(HermesColors.SurfaceDim, RoundedCornerShape(8.dp))
-            .border(1.dp, HermesColors.Border, RoundedCornerShape(8.dp))
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
             .clickable { expanded = !expanded }
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
@@ -110,7 +111,7 @@ fun ToolActivityRow(
                 Text(
                     if (failed > 0) "✕" else "✓",
                     color = accent,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
             Spacer(Modifier.width(8.dp))
@@ -121,14 +122,14 @@ fun ToolActivityRow(
                 Text(
                     label,
                     color = HermesColors.TextSecondary,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.width(7.dp))
             } else if (entries.size > 1) {
                 Text(
                     S.t2("${entries.size} araç", "${entries.size} tools"),
                     color = HermesColors.TextSecondary,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.width(7.dp))
             }
@@ -143,7 +144,7 @@ fun ToolActivityRow(
             )
 
             if (failed > 0 && !expanded) {
-                Text("$failed hata", color = HermesColors.Danger, fontSize = 10.sp)
+                Text("$failed hata", color = HermesColors.Danger, style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.width(6.dp))
             }
 
@@ -176,7 +177,7 @@ private fun ToolEntryDetail(order: Int, entry: ToolEntry) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(HermesColors.Background, RoundedCornerShape(6.dp))
+            .background(HermesColors.Background, MaterialTheme.shapes.extraSmall)
             .then(if (hasDetail) Modifier.clickable { open = !open } else Modifier)
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
@@ -184,7 +185,7 @@ private fun ToolEntryDetail(order: Int, entry: ToolEntry) {
             Text(
                 "$order.",
                 color = HermesColors.TextFaint,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.width(20.dp),
             )
             Text(
@@ -198,7 +199,7 @@ private fun ToolEntryDetail(order: Int, entry: ToolEntry) {
                     ToolEntryState.Done -> HermesColors.Online
                     ToolEntryState.Failed -> HermesColors.Danger
                 },
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
             )
             Spacer(Modifier.width(7.dp))
             Text(
@@ -213,7 +214,7 @@ private fun ToolEntryDetail(order: Int, entry: ToolEntry) {
                 Text(
                     "${entry.detail!!.length} krkt",
                     color = HermesColors.TextFaint,
-                    fontSize = 9.sp,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
         }
@@ -225,7 +226,6 @@ private fun ToolEntryDetail(order: Int, entry: ToolEntry) {
                     entry.detail.orEmpty().take(4_000),
                     style = MonoTextStyle,
                     color = HermesColors.TextMuted,
-                    lineHeight = 16.sp,
                 )
             }
         }
