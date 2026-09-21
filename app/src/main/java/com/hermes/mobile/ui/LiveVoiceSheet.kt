@@ -55,6 +55,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.hermes.mobile.CameraState
 import com.hermes.mobile.LiveVoiceState
 import com.hermes.mobile.data.AudioRouter
+import com.hermes.mobile.data.JarvisPhase
+import com.hermes.mobile.data.JarvisVisualLogic
 import com.hermes.mobile.data.LiveVoiceClient
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
@@ -300,31 +302,31 @@ private fun VoicePathChip(
     }
 }
 
-/** Mikrofon küresi — seviyeyle nefes alır, dokununca başlat/durdur. */
+/**
+ * Mikrofon küresi — tur-23: gövde JarvisVisualizer (faz + seviye), üstte
+ * dokunulabilir ikon. Seviye: mikrofon (Listening) veya TTS speakLevel
+ * (Speaking) — Effective seçim saf [JarvisVisualLogic.effectiveSpeakLevel].
+ */
 @Composable
 private fun MicOrb(state: LiveVoiceState, onStart: () -> Unit, onStop: () -> Unit) {
     val running = state.isRunning
-    val target = when {
-        !running -> 0f
-        state.state == LiveVoiceClient.State.Speaking -> 0.55f
-        else -> state.level
+    val phase = when {
+        !running -> JarvisPhase.Idle
+        else -> JarvisVisualLogic.fromLiveState(state.state.name)
     }
-    val amplitude by animateFloatAsState(targetValue = target, label = "mic-level")
-    val ring = (108f + amplitude * 46f).dp
+    // Speaking'de seviye = TTS RMS'i (speakLevel); kare yoksa fallback (saf).
+    val level = when (phase) {
+        JarvisPhase.Speaking -> JarvisVisualLogic.effectiveSpeakLevel(state.speakLevel.takeIf { it > 0f }, null)
+        JarvisPhase.Listening -> state.level
+        else -> 0f
+    }
+    val amplitude by animateFloatAsState(targetValue = level, label = "mic-level")
 
     Box(contentAlignment = Alignment.Center) {
-        // Seviye halkası
-        Box(
-            Modifier
-                .size(ring)
-                .background(
-                    when (state.state) {
-                        LiveVoiceClient.State.Speaking -> HermesColors.Midground.copy(alpha = 0.14f)
-                        LiveVoiceClient.State.Listening -> HermesColors.Online.copy(alpha = 0.16f)
-                        else -> HermesColors.Surface
-                    },
-                    CircleShape,
-                )
+        JarvisVisualizer(
+            phase = phase,
+            level = amplitude,
+            scale = 0.72f,   // 168dp × 0.72 ≈ 121dp — eski 108–154dp bandıyla uyumlu
         )
         Box(
             Modifier
@@ -336,8 +338,8 @@ private fun MicOrb(state: LiveVoiceState, onStart: () -> Unit, onStop: () -> Uni
                 .border(
                     2.dp,
                     when (state.state) {
-                        LiveVoiceClient.State.Speaking -> HermesColors.Midground
-                        LiveVoiceClient.State.Listening -> HermesColors.Online
+                        LiveVoiceClient.State.Speaking -> JarvisColors.Core
+                        LiveVoiceClient.State.Listening -> JarvisColors.Glow
                         LiveVoiceClient.State.Error -> HermesColors.Danger
                         else -> HermesColors.BorderStrong
                     },
@@ -353,7 +355,7 @@ private fun MicOrb(state: LiveVoiceState, onStart: () -> Unit, onStop: () -> Uni
                     else -> Icons.Default.Close
                 },
                 contentDescription = if (running) "Durdur" else S.start,
-                tint = if (running) HermesColors.Midground else HermesColors.TextMuted,
+                tint = if (running) JarvisColors.Core else HermesColors.TextMuted,
                 modifier = Modifier.size(34.dp),
             )
         }

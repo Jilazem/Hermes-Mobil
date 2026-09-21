@@ -108,7 +108,13 @@ class VoiceMessageFlowTest {
         var onDone: (() -> Unit)? = null
         var onError: ((String) -> Unit)? = null
 
-        override fun play(file: File, onDone: () -> Unit, onError: (String) -> Unit): Boolean {
+        override fun play(
+            file: File,
+            onDone: () -> Unit,
+            onError: (String) -> Unit,
+            frames: List<Float>?,
+            onLevel: (Float) -> Unit,
+        ): Boolean {
             plays++
             lastFile = file
             this.onDone = onDone

@@ -119,10 +119,11 @@ object AssistantModeLogic {
     /** Asistan şeridindeki tek satır ipucu. */
     fun bannerText(p: Phase, t: (String, String) -> String): String = when (p) {
         Phase.Off -> ""
-        Phase.Ready -> t("Asistan hazır — basılı tut ve konuş", "Assistant ready — hold to talk")
+        // Tur-23 (JARVIS-1): ekran içi persona adı Jarvis (sistem rol etiketi değil).
+        Phase.Ready -> t("${JarvisIdentity.NAME} hazır — basılı tut ve konuş", "${JarvisIdentity.NAME} ready — hold to talk")
         Phase.Recording -> t("Dinliyorum… bırakınca yazıya çevirir", "Listening… release to transcribe")
         Phase.Transcribing -> t("Yazıya çevriliyor…", "Transcribing…")
-        Phase.AwaitingReply -> t("Hermes yanıtlıyor…", "Hermes is replying…")
+        Phase.AwaitingReply -> t("${JarvisIdentity.NAME} yanıtlıyor…", "${JarvisIdentity.NAME} is replying…")
         Phase.Speaking -> t("Yanıt okunuyor…", "Reading the reply out…")
     }
 

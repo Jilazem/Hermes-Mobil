@@ -3,6 +3,7 @@ package com.hermes.mobile.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
+import com.hermes.mobile.data.JarvisIdentity
 
 /**
  * Arayüz metinleri — Türkçe ve İngilizce.
@@ -53,8 +54,13 @@ object S {
     val notReady: String @Composable get() = t("hazır değil", "not ready")
 
     // ── Canlı ses ────────────────────────────────────────────────────
-    val voiceTitle: String @Composable get() = t("Canlı ses", "Live voice")
-    val voiceTapToStart: String @Composable get() = t("Başlatmak için dokun", "Tap to start")
+    // Tur-23 (JARVIS-1): persona adı TEK KAYNAKTAN (JarvisIdentity.NAME) gelir;
+    // çeviri şablonu { } yerine artı birleşme ile kurulur (dize sabit, isim ayrı).
+    val jarvisName: String get() = JarvisIdentity.NAME
+    val voiceTitle: String
+        @Composable get() = t("${jarvisName} — canlı ses", "${jarvisName} — live voice")
+    val voiceTapToStart: String
+        @Composable get() = t("Başlatmak için dokun", "Tap to start")
     val voiceShowCamera: String @Composable get() = t("Kamerayı göster", "Show camera")
     val voiceDriving: String @Composable get() = t("Sürüş kipi", "Driving mode")
     val voiceSpeaker: String @Composable get() = t("Hoparlör", "Speaker")
@@ -105,7 +111,7 @@ object S {
     val start: String @Composable get() = t("Başlat", "Start")
     val voiceConnecting: String @Composable get() = t("Bağlanıyor…", "Connecting…")
     val voiceListening: String
-        @Composable get() = t("Dinliyorum — konuşabilirsin", "Listening — go ahead")
+        @Composable get() = t("${jarvisName} dinliyor — konuşabilirsin", "${jarvisName} is listening — go ahead")
     val voiceSpeaking: String
         @Composable get() = t("Yanıtlıyor — sözünü kesebilirsin", "Answering — you can interrupt")
     val noRelay: String @Composable get() = t("röle adresi yok", "no relay address")
