@@ -58,5 +58,15 @@
             android:label="Asistan Öz-Testi"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
+
+        <!-- Tur-24 (JARVIS-2): sürekli sesli sohbet DÖNGÜSÜ kanıtı. Gerçek
+             JarvisLoopController + gerçek ticker; çevre sahte (2 tur + kapat
+             komutu). Yalnız adb'den explicit açılır. -->
+        <activity
+            android:name=".ui.JarvisLoopProofActivity"
+            android:exported="true"
+            android:label="Jarvis Döngü Kanıtı"
+            android:noHistory="true"
+            android:theme="@style/Theme.HermesMobile" />
     </application>
 </manifest>
