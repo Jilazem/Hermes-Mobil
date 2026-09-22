@@ -30,6 +30,11 @@ data class LiveVoiceState(
     val route: AudioRouter.Route = AudioRouter.Route.Speaker,
     val routeOptions: List<AudioRouter.Route> = emptyList(),
     val driving: Boolean = false,
+    /**
+     * Tur-23: TTS oynatma seviyesi (0..1) — mikrofon `level`'ından ayrı
+     * gelir (barge-in). Speaking fazında görsel bunu izler.
+     */
+    val speakLevel: Float = 0f,
 ) {
     val isRunning: Boolean
         get() = state != LiveVoiceClient.State.Idle && state != LiveVoiceClient.State.Error
@@ -141,6 +146,8 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
         jobs += viewModelScope.launch { c.userTranscript.collect { t -> _state.update { it.copy(userText = t) } } }
         jobs += viewModelScope.launch { c.modelTranscript.collect { t -> _state.update { it.copy(modelText = t) } } }
         jobs += viewModelScope.launch { c.level.collect { l -> _state.update { it.copy(level = l) } } }
+        // Tur-23: TTS oynatma seviyesi — mikrofon level'ından ayrı akar.
+        jobs += viewModelScope.launch { c.speakLevel.collect { l -> _state.update { it.copy(speakLevel = l) } } }
         jobs += viewModelScope.launch { c.error.collect { e -> _state.update { it.copy(error = e) } } }
         jobs += viewModelScope.launch { router.route.collect { r -> _state.update { it.copy(route = r) } } }
         jobs += viewModelScope.launch {
@@ -164,7 +171,7 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
         jobs.clear()
         client?.release()
         client = null
-        _state.update { it.copy(state = LiveVoiceClient.State.Idle, level = 0f) }
+        _state.update { it.copy(state = LiveVoiceClient.State.Idle, level = 0f, speakLevel = 0f) }
     }
 
     /** Hoparlör → kulaklık → Bluetooth → kablolu arasında döner. */

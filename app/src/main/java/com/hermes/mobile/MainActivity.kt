@@ -662,6 +662,8 @@ private fun HermesApp(
     // yazılan metin. HermesApp gövdesinde toplanıyor: ChatScreen çağrısı bu
     // kapsamda (setContent lambda'sındaki val'lar burada görünmez).
     val voiceMsgState by chatViewModel.voiceMsg.state.collectAsStateWithLifecycle()
+    // Tur-23: çalan sesin gerçek seviyesi — asistan şeridi görseli için.
+    val voiceSpeakLevel by chatViewModel.voiceMsg.speakLevel.collectAsStateWithLifecycle()
     val voicePrefillState by chatViewModel.voicePrefill.collectAsStateWithLifecycle()
     // Tur-12: "Isıt" durumu — bölümden çıkılsa da ısıtma sürer, dönünce "Hazır ✓".
     val voiceWarmState by chatViewModel.voiceWarmState.collectAsStateWithLifecycle()
@@ -1168,6 +1170,7 @@ private fun HermesApp(
                         },
                         // Tur-11: bas-konuş kaydı + sesli okuma.
                         voice = voiceMsgState,
+                        voiceSpeakLevel = voiceSpeakLevel,
                         voicePrefill = voicePrefillState,
                         onVoicePrefillConsumed = chatViewModel::consumeVoicePrefill,
                         onVoiceHoldStart = chatViewModel::voiceHoldStart,

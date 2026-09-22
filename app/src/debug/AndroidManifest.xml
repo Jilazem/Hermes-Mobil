@@ -36,6 +36,12 @@
              sağlık/chat öz-testi. Kanıt WAV'ları shared-depo dışı
              filesDir.parentFile/local-tts-kanit'e yazılır (run-as ile çekilir). -->
         <activity
+            android:name=".ui.JarvisVisualTestActivity"
+            android:exported="true"
+            android:label="Jarvis Görsel Testi"
+            android:theme="@style/Theme.HermesMobile" />
+
+        <activity
             android:name=".ui.LocalTtsSelfTestActivity"
             android:exported="true"
             android:label="Yerel Ses Öz-Testi"

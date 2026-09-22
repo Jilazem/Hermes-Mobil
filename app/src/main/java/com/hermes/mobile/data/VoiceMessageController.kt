@@ -57,6 +57,14 @@ class VoiceMessageController(
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
+    /**
+     * Tur-23: çalan sesin GERÇEK seviyesi (0..1) — AndroidVoicePlayer'ın
+     * WAV karelerinden konum-eşlemeli RMS'i. Kare yoksa (mp3/ogg) 0 kalır;
+     * UI bu durumda FALLBACK sabitine düşer (JarvisVisualLogic.effectiveSpeakLevel).
+     */
+    private val _speakLevel = MutableStateFlow(0f)
+    val speakLevel: StateFlow<Float> = _speakLevel.asStateFlow()
+
     /** Ayarlar: "otomatik gönder" — varsayılan KAPALI. */
     @Volatile
     var autoSend: Boolean = false
@@ -317,13 +325,23 @@ class VoiceMessageController(
     }
 
     private fun playFile(key: String, file: File) {
+        // Tur-23: WAV ise RMS kareleri önceden çıkarılır — oynatma sırasında
+        // konum→kare eşlemesiyle REAL seviye akar (mp3/ogg'da null → sabit).
+        val frames = runCatching {
+            if (file.extension.lowercase() == "wav") SpeakLevelLogic.framesFromWav(file.readBytes())
+            else null
+        }.getOrNull()
         val ok = player.play(file, onDone = {
             if (_state.value.speak.key == key) {
                 _state.value = _state.value.copy(speak = VoiceSpeakLogic.done())
             }
+            _speakLevel.value = 0f
         }, onError = { msg ->
             _state.value = _state.value.copy(speak = VoiceSpeakLogic.failed(msg))
+            _speakLevel.value = 0f
             onNotice(msg)
+        }, frames = frames, onLevel = { v ->
+            _speakLevel.value = v
         })
         _state.value = _state.value.copy(
             speak = if (ok) VoiceSpeakLogic.started(key, cached = true)
@@ -334,6 +352,7 @@ class VoiceMessageController(
     fun stopSpeaking() {
         speakJob?.cancel()
         player.stop()
+        _speakLevel.value = 0f
         _state.value = _state.value.copy(speak = VoiceSpeakLogic.done())
     }
 
@@ -526,11 +545,29 @@ interface RecorderPort {
 
 /** Çalma portu — üretimde [android.media.MediaPlayer]. */
 interface PlayerPort {
-    fun play(file: File, onDone: () -> Unit, onError: (String) -> Unit): Boolean
+    /**
+     * Tur-23 genişletmesi: `frames` — ses dosyasının 20 ms'lik RMS kareleri
+     * (WAV ayrıştırılabilirse dolar, mp3/ogg'da null); oynatma ilerledikçe
+     * `onLevel` ~50 ms'de bir çağrılır (konum→kare eşlemesi). Eski çağrı
+     * noktaları iki yeni parametreyi atlayabilir (varsayılan null).
+     */
+    fun play(
+        file: File,
+        onDone: () -> Unit,
+        onError: (String) -> Unit,
+        frames: List<Float>? = null,
+        onLevel: (Float) -> Unit = {},
+    ): Boolean
     fun stop()
 
     object Noop : PlayerPort {
-        override fun play(file: File, onDone: () -> Unit, onError: (String) -> Unit): Boolean = false
+        override fun play(
+            file: File,
+            onDone: () -> Unit,
+            onError: (String) -> Unit,
+            frames: List<Float>?,
+            onLevel: (Float) -> Unit,
+        ): Boolean = false
         override fun stop() = Unit
     }
 }

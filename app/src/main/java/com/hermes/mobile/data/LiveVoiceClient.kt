@@ -116,6 +116,14 @@ class LiveVoiceClient(
     /** 0..1 mikrofon seviyesi — dalga animasyonu için. */
     val level: StateFlow<Float> = _level.asStateFlow()
 
+    private val _speakLevel = MutableStateFlow(0f)
+    /**
+     * Tur-23: 0..1 TTS oynatma seviyesi — her ses dilimi yazılırken gerçek
+     * RMS'i. Capture'ın level'ından AYRIDIR (barge-in'de mikrofon açıktır;
+     * ikisi yarismasın).
+     */
+    val speakLevel: StateFlow<Float> = _speakLevel.asStateFlow()
+
     fun start() {
         if (_state.value != State.Idle && _state.value != State.Error) return
         closedByUser = false
@@ -175,6 +183,7 @@ class LiveVoiceClient(
         router?.end()
         _state.value = State.Idle
         _level.value = 0f
+        _speakLevel.value = 0f
     }
 
     fun release() {
@@ -442,11 +451,16 @@ class LiveVoiceClient(
             val data = inline["data"]?.jsonPrimitive?.contentOrNull() ?: return@forEach
             val pcm = runCatching { Base64.decode(data, Base64.DEFAULT) }.getOrNull() ?: return@forEach
             _state.value = State.Speaking
+            // Tur-23: oynatmaya giden her TTS diliminin GERÇEK ortalama
+            // genliği AYRI speakLevel akışına yazılır — mikrofon barge-in
+            // için açık kaldığından capture'ın `level`'ıyla yarışmasın.
+            _speakLevel.value = rms(pcm)
             runCatching { ensurePlayer().write(pcm, 0, pcm.size) }
         }
 
         if (server["turnComplete"]?.jsonPrimitive?.booleanOrNull() == true) {
             _state.value = State.Listening
+            _speakLevel.value = 0f
             // Yeni tur için altyazıyı sıfırla, eskisi ekranda birikmesin.
             _userTranscript.value = ""
         }

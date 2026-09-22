@@ -182,6 +182,8 @@ fun ChatScreen(
      */
     voice: com.hermes.mobile.data.VoiceMessageController.UiState =
         com.hermes.mobile.data.VoiceMessageController.UiState(),
+    /** Tur-23: çalan sesin gerçek seviyesi (0..1) — asistan şeridi görseli. */
+    voiceSpeakLevel: Float = 0f,
     /** Sesle yazılan metin — taslağa eklenir, sonra tüketilir (kapalıysa gönderilir). */
     voicePrefill: String? = null,
     onVoicePrefillConsumed: () -> Unit = {},
@@ -458,6 +460,7 @@ fun ChatScreen(
                     speak = voice.speak,
                     agentBusy = state.agentBusy,
                 ),
+                level = voiceSpeakLevel,
                 autoRead = autoReadAssistant,
                 onToggleAutoRead = onToggleAssistantAutoRead,
                 onExit = onExitAssistantMode,
@@ -1515,8 +1518,21 @@ private fun ProfileChipsRow(
  * (tek kaynak), böylece iki yerde ayrı doğruluk tutulmaz.
  */
 @Composable
+private fun JarvisVisualizerForBanner(
+    phase: com.hermes.mobile.data.AssistantModeLogic.Phase,
+    level: Float,
+) {
+    JarvisVisualizer(
+        phase = com.hermes.mobile.data.JarvisVisualLogic.fromAssistantPhase(phase.name),
+        level = level,
+        scale = 0.16f,   // ~27dp — şerit içi küçük reaktör
+    )
+}
+
+@Composable
 private fun AssistantBanner(
     phase: com.hermes.mobile.data.AssistantModeLogic.Phase,
+    level: Float,
     autoRead: Boolean,
     onToggleAutoRead: (Boolean) -> Unit,
     onExit: () -> Unit,
@@ -1530,12 +1546,8 @@ private fun AssistantBanner(
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Default.RecordVoiceOver,
-                contentDescription = null,
-                tint = HermesColors.Online,
-                modifier = Modifier.size(16.dp),
-            )
+            // Tur-23: reaktör noktası — faz + seviye ile Jarvis animasyonu.
+            JarvisVisualizerForBanner(phase, level)
             Spacer(Modifier.width(8.dp))
             Text(
                 com.hermes.mobile.data.AssistantModeLogic.bannerText(phase, ::tr),

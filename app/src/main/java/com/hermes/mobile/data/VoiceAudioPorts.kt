@@ -98,12 +98,24 @@ class AndroidVoiceRecorder(private val context: Context) : RecorderPort {
  *
  * Ses `USAGE_MEDIA` + `CONTENT_TYPE_SPEECH`: konuşma için tonlanır, müzik
  * akışına düşer (kulaklıkta/telefon hoparlöründe aynı davranış).
+ *
+ * Tur-23: `frames` verilirse oynatma sırasında konum→kare eşlemesiyle REAL
+ * RMS seviyesi üretilir ve kare hızında (~20 ms) `onLevel`'e bildirilir
+ * (MediaPlayer'ın kendi seviye API'si YOK — ses dosyası önceden dilimlenir).
  */
 class AndroidVoicePlayer : PlayerPort {
 
     private var player: MediaPlayer? = null
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var levelTicker: Runnable? = null
 
-    override fun play(file: File, onDone: () -> Unit, onError: (String) -> Unit): Boolean {
+    override fun play(
+        file: File,
+        onDone: () -> Unit,
+        onError: (String) -> Unit,
+        frames: List<Float>?,
+        onLevel: (Float) -> Unit,
+    ): Boolean {
         stop()
         return runCatching {
             val p = MediaPlayer()
@@ -127,6 +139,23 @@ class AndroidVoicePlayer : PlayerPort {
             p.prepare()
             p.start()
             player = p
+            // Seviye tick'ı: yalnız kare varsa (WAV ayrıştırılabilmişse).
+            if (frames != null && frames.isNotEmpty()) {
+                var prev: Float? = null
+                val ticker = object : Runnable {
+                    override fun run() {
+                        val mp = player ?: return
+                        val pos = runCatching { mp.currentPosition.toLong() }.getOrDefault(-1L)
+                        if (pos < 0) return
+                        val i = SpeakLevelLogic.frameIndexAt(pos, frames.size)
+                        val v = SpeakLevelLogic.smooth(prev, frames[i])
+                        prev = v
+                        onLevel(v)
+                    }
+                }
+                levelTicker = ticker
+                handler.postDelayed(ticker, SpeakLevelLogic.FRAME_MS)
+            }
             true
         }.getOrElse { e ->
             DiagLog.e("voice", "ses calinamadi", e)
@@ -137,6 +166,8 @@ class AndroidVoicePlayer : PlayerPort {
     }
 
     override fun stop() {
+        levelTicker?.let { handler.removeCallbacks(it) }
+        levelTicker = null
         val p = player ?: return
         player = null
         runCatching { if (p.isPlaying) p.stop() }

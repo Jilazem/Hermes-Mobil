@@ -153,3 +153,22 @@ Tam liste: `app/build/test-results/testDebugUnitTest/` (XML fail=0).
 - D-10/d-11 disiplini: sayısal çıktılar test/build üretimli; Locale.ROOT
   kullanıldı (`LocalTtsLogic.statusLine` yüzde TR-virgül basmaz).
 - D-04: her yeni catch ya DiagLog'a yazar ya kullanıcıya kodlu satır gösterir.
+
+## TUR-23 — JARVIS-1 (r1 düzeltme turu, 21.09.2026 23:20)
+- Persona (KAPSAM-1): JarvisIdentity.SYSTEM_PROMPT ChatViewModel.sendLocalAssistant
+  içinde client.chat(system=...) gerçek alanına bağlandı — yerel asistan turu artık
+  Jarvis yönergesiyle gidiyor (gateway/uzak yol model-sistem-katmanına dokunmaz).
+  LiveVoice (Gemini Live) systemInstruction'ı ayar-yönergesi (settings.resolveInstruction)
+  kullanmaya devam eder — çakışma yok, ayrı hat.
+- Test sayısı GERÇEK: 62 suite / 782 test / 0 fail / 0 err (--rerun-tasks, 21:5x + 23:1x
+  iki tam tur). r1'de +22 test (JarvisSpeakLevelTest 12 + JarvisUiWiringTest 10).
+  Önceki "40 (24+16)" iddiası hataydı: 20 @Test + 16 var-sanılan ChatScreenTest satırları
+  hiç yoktu — düzeltildi, wiring iddiaları artık kaynak-tarama testleriyle kilitli.
+- Sohbet barı: chatViewModel.voiceMsg.speakLevel MainActivity→ChatScreen AssistantBanner
+  → JarvisVisualizerForBanner zinciriyle canlı (chatViewModel sakin, wiring 3 testte sabit).
+- Kanıt: kanit-t23-jarvis-r1/ 4+1 PNG (5 ayrı md5) + log.txt (4 intent izi, logcat) +
+  4 çift pixel-diff 598..15638 örnek (eşik 100). Kanıt betiği jarvis-proof-r1.sh
+  (.v2 paket, force-stop düzeltmeli, logcat satır izli).
+- APK teslimi: /Volumes/EX/007-HERMES-M4-LIVE/05-GEICICI/t23-jarvis/app-debug-r1.apk
+  md5 4c3b7deec85d2198d333275b72a5bab2, apksigner: CN=Android Debug (debug imza, beklenen).
+- Commitler: 15347ad (kod+test fix), 4472898 (kanıt betiği fix + Log satırı).
