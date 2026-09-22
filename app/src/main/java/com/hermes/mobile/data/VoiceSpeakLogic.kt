@@ -27,6 +27,14 @@ object VoiceSpeakLogic {
         KADIN("kadin"),
 
         /**
+         * JARVIS-2 (tur24): Pocket-TTS-TR (8175) — sunucu anahtarları
+         * `pocket-kadin` / `pocket-erkek`. Döngü düşüş sırasının sondan
+         * halkası; Ayarlar'dan da seçilebilir.
+         */
+        POCKET_KADIN("pocket-kadin"),
+        POCKET_ERKEK("pocket-erkek"),
+
+        /**
          * Tur-21: YEREL Piper (sherpa-onnx, tr_TR-fettah-medium) — telefonda
          * çevrimdışı çalışır, metin buluta gitmez. Yerel kadın ses
          * VARSAYILAN'dır (gizlilik kuralı); bulut motorları ayardan seçilir.
@@ -71,6 +79,9 @@ object VoiceSpeakLogic {
         Engine.KAHYA.id to t("Kahya (bulut)", "Kahya (cloud)"),
         Engine.KADIN.id to t("Kadın (bulut)", "Female (cloud)"),
         Engine.CHATTERBOX.id to t("Chatterbox (deneysel)", "Chatterbox (experimental)"),
+        // JARVIS-2 (tur24): Pocket-TTS-TR — Jarvis döngüsü düşüş sırasının halkaları.
+        Engine.POCKET_KADIN.id to t("Pocket Kadın (bulut)", "Pocket female (cloud)"),
+        Engine.POCKET_ERKEK.id to t("Pocket Erkek (bulut)", "Pocket male (cloud)"),
     )
 
     /** Motor açıklaması — Ayarlar satırının altı. */
@@ -87,6 +98,15 @@ object VoiceSpeakLogic {
         Engine.CHATTERBOX -> t(
             "Referanssızken kararsız (bant geziyor) — deneysel, varsayılan değil.",
             "Unstable without a reference (band wanders) — experimental, not the default.",
+        )
+        // JARVIS-2: Pocket-TTS-TR — hafif/hızlı; Jarvis döngüsünün yedek halkası.
+        Engine.POCKET_KADIN -> t(
+            "Pocket TTS kadın ses. Hafif ve hızlı — Jarvis döngüsünün yedek motoru.",
+            "Pocket TTS female voice. Light and fast — the fallback of the Jarvis loop.",
+        )
+        Engine.POCKET_ERKEK -> t(
+            "Pocket TTS erkek ses. Hafif ve hızlı — Jarvis döngüsünün yedek motoru.",
+            "Pocket TTS male voice. Light and fast — the fallback of the Jarvis loop.",
         )
     }
 

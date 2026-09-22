@@ -190,6 +190,10 @@ fun ChatScreen(
     onVoiceHoldStart: () -> Unit = {},
     onVoiceHoldRelease: () -> Unit = {},
     onVoiceCancel: () -> Unit = {},
+    /** JARVIS-2 (tur24): mikrofon düğmesine tek dokunuş — döngüyü aç/kapat. */
+    onVoiceQuickTap: () -> Unit = {},
+    /** Döngü aktif mi — mikrofon düğmesi bu durumda yalnız kapatır. */
+    jarvisLoopActive: Boolean = false,
     /** Asistan balonunu seslendir/durdur — (balon anahtarı, metin). */
     onSpeak: (String, String) -> Unit = { _, _ -> },
     /**
@@ -485,6 +489,8 @@ fun ChatScreen(
             onVoiceHoldStart = onVoiceHoldStart,
             onVoiceHoldRelease = onVoiceHoldRelease,
             onVoiceCancel = onVoiceCancel,
+            onVoiceQuickTap = onVoiceQuickTap,
+            jarvisLoopActive = jarvisLoopActive,
             onDraftChange = { draft = it },
             onSend = {
                 onSend(draft)

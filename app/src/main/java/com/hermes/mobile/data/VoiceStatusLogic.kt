@@ -84,6 +84,8 @@ object VoiceStatusLogic {
             VoiceSpeakLogic.Engine.KAHYA -> t("Kahya", "Kahya")
             VoiceSpeakLogic.Engine.KADIN -> t("Kadın", "Female")
             VoiceSpeakLogic.Engine.CHATTERBOX -> t("Chatterbox", "Chatterbox")
+            VoiceSpeakLogic.Engine.POCKET_KADIN -> t("Pocket Kadın", "Pocket female")
+            VoiceSpeakLogic.Engine.POCKET_ERKEK -> t("Pocket Erkek", "Pocket male")
         }
 
     /** Satırın ilk parçası: `Metinleştirme` (STT). */

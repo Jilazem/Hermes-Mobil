@@ -107,6 +107,10 @@ fun ChatComposer(
     onVoiceHoldStart: () -> Unit = {},
     onVoiceHoldRelease: () -> Unit = {},
     onVoiceCancel: () -> Unit = {},
+    /** JARVIS-2 (tur24): mikrofon düğmesine TEK dokunuş — döngüyü aç/kapat. */
+    onVoiceQuickTap: () -> Unit = {},
+    /** Döngü aktif mi — mikrofon düğüsü bu durumda yalnız kapatır. */
+    jarvisLoopActive: Boolean = false,
     /**
      * Sunucuya ulaşılabiliyor mu. Yazmak buna bağlı **değil**: kopukken yazılan
      * mesaj kuyruğa girip bağlanınca gönderiliyor. Yalnız dosya/görsel ekleme
@@ -380,6 +384,8 @@ fun ChatComposer(
                     onHoldStart = onVoiceHoldStart,
                     onHoldRelease = onVoiceHoldRelease,
                     onCancel = onVoiceCancel,
+                    onQuickTap = onVoiceQuickTap,
+                    loopActive = jarvisLoopActive,
                 )
             }
         }
@@ -402,6 +408,10 @@ private fun HoldToTalkButton(
     onHoldStart: () -> Unit,
     onHoldRelease: () -> Unit,
     onCancel: () -> Unit,
+    /** JARVIS-2: tek dokunuş (döngüyü aç/kapat). */
+    onQuickTap: () -> Unit = {},
+    /** Döngü şu an aktif — mikrofon döngünün; bas-konuş devre dışı. */
+    loopActive: Boolean = false,
 ) {
     val recording = state.recording
     val busy = state.busy
@@ -416,13 +426,32 @@ private fun HoldToTalkButton(
                 },
                 MaterialTheme.shapes.medium,
             )
-            .pointerInput(enabled, busy) {
+            .pointerInput(enabled, busy, loopActive) {
                 if (!enabled || busy) return@pointerInput
+                if (loopActive) {
+                    // JARVIS-2 (tur24): döngü AÇIKKEN dokunuş yalnız döngüyü
+                    // kapatır — holdStart/cancel çağrılmaz (mikrofon döngünün;
+                    // karıştırmak kaydı bozardı).
+                    detectTapGestures(onTap = { onQuickTap() })
+                    return@pointerInput
+                }
                 detectTapGestures(
                     onPress = {
+                        val t0 = android.os.SystemClock.elapsedRealtime()
                         onHoldStart()
                         val released = tryAwaitRelease()
-                        if (released) onHoldRelease() else onCancel()
+                        val held = android.os.SystemClock.elapsedRealtime() - t0
+                        // JARVIS-2 (tur24): 0,8 sn'den KISA tek dokunuş = döngüyü
+                        // aç. Bas-konuşun kısa-basış iptal yolu aynen korunur:
+                        // kayıt İPTAL edilir, yükleme YOK. Uzun bası = eski akış.
+                        if (released && held < 800L) {
+                            onCancel()
+                            onQuickTap()
+                        } else if (released) {
+                            onHoldRelease()
+                        } else {
+                            onCancel()
+                        }
                     },
                 )
             },

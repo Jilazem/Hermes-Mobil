@@ -46,6 +46,41 @@ object Notifier {
         return nm
     }
 
+    // ── JARVIS-2 (tur24): kalıcı "Jarvis dinliyor" ───────────────────
+
+    private const val JARVIS_LISTEN_ID = 4815
+    private const val CHANNEL_JARVIS = "hermes_jarvis"
+
+    /**
+     * Döngü açıkken kalıcı bildirim — mikrofonun açık OLDUĞUNU kullanıcı
+     * her zaman bilsin (görev maddesi 4; arka plan kaydı yok, döngü yalnız
+     * ekran açıkken koşar ama durum çubuğu dürüstlük gereği bildirir).
+     */
+    fun jarvisListening(context: Context, on: Boolean) {
+        val nm = channel(context)
+        if (!on) {
+            nm.cancel(JARVIS_LISTEN_ID)
+            return
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_JARVIS,
+                "Jarvis döngüsü",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply { description = "Sürekli sesli sohbet döngüsü açıkken kalır" }
+        )
+        val n = NotificationCompat.Builder(context, CHANNEL_JARVIS)
+            .setSmallIcon(com.hermes.mobile.R.drawable.ic_stat_hermes)
+            .setContentTitle("Jarvis dinliyor")
+            .setContentText("Sürekli sesli sohbet açık — kapatmak için uygulamayı aç")
+            .setOngoing(true)
+            .build()
+        runCatching { nm.notify(JARVIS_LISTEN_ID, n) }
+    }
+
     /**
      * Ajanın kendiliğinden gönderdiği bildirim.
      *
