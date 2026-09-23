@@ -156,11 +156,19 @@ object JarvisLoopLogic {
     val LOOP_FALLBACK: List<String> =
         listOf("chatterbox", "kadin", "pocket-kadin", "pocket-erkek", "yerel")
 
-    /** `/health` engines haritasında motor açık mı (`"acik"`/`"açık"`). */
+    /**
+     * `/health` engines haritasında motor açık mı.
+     *
+     * Tur-24 denetim iadesi (CRITICAL): canlı sunucu (`chatterbox_service.py`)
+     * motor durumu olarak `acik` DEĞİL `hazir` yayınlıyor; kopyalama predicate
+     * `hazir`i düşürdüğü için zincir canlıda hiç işlemiyordu. Tek doğru
+     * kaynak [VoiceStatusLogic.isOn] (`acik/hazir/ready` + TR harf indirgeme)
+     * artık burada da paylaşılıyor — predicate iki dil konuşmayacak.
+     */
     fun engineOn(engines: Map<String, String>, id: String): Boolean {
         val v = engines.entries.firstOrNull { it.key.equals(id, ignoreCase = true) }?.value
             ?: return false
-        return v.trim().lowercase(newLocaleTr()) in setOf("acik", "açık", "true", "on")
+        return VoiceStatusLogic.isOn(v)
     }
 
     /**

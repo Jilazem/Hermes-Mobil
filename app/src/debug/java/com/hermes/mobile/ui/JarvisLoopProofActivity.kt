@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.hermes.mobile.data.JarvisLoopController
 import com.hermes.mobile.data.JarvisLoopLogic
+import com.hermes.mobile.data.Notifier
 import com.hermes.mobile.data.PlayerPort
 import com.hermes.mobile.data.RecorderPort
 import com.hermes.mobile.data.VoiceApiException
@@ -98,7 +99,7 @@ class JarvisLoopProofActivity : ComponentActivity() {
         )
         private val turn = AtomicInteger()
         override suspend fun health(): VoiceHealth =
-            VoiceHealth(ok = true, engines = JarvisLoopLogic.LOOP_FALLBACK.associateWith { "acik" })
+            VoiceHealth(ok = true, engines = JarvisLoopLogic.LOOP_FALLBACK.associateWith { "hazir" })
         override suspend fun transcribe(audio: ByteArray, fileName: String, mime: String): String {
             delay(200)   // sahte STT gecikmesi
             val i = turn.getAndIncrement()
@@ -131,7 +132,7 @@ class JarvisLoopProofActivity : ComponentActivity() {
             cacheDir = { cacheDir },
             scope = lifecycleScope,
             healthEngines = {
-                JarvisLoopLogic.LOOP_FALLBACK.associateWith { "acik" }
+                JarvisLoopLogic.LOOP_FALLBACK.associateWith { "hazir" }
             },
             diag = { msg -> step("diag: $msg") },
         )
@@ -152,8 +153,17 @@ class JarvisLoopProofActivity : ComponentActivity() {
         ctrl.onLoopEngine = { id -> step("ENGINE: $id") }
         ctrl.onLoopClosed = { reason ->
             step("CLOSED: $reason")
+            // Madde 4 kanıtı: gerçek Notifier — kapanışta kalıcı bildirim kalkmalı.
+            Notifier.jarvisListening(this, false)
+            step("NOTIF: kaldirildi")
             step("KANIT TAMAM: 2 tam tur + kapat komutu")
         }
+
+        // Madde 4 kanıtı: gerçek Notifier.jarvisListening — kalıcı "Jarvis
+        // dinliyor" bildirimi açılışta basılır (PNG'de durum çubuğunda görünür;
+        // denetim r1 MEDIUM-a: harness Notify'i baypas ediyordu).
+        Notifier.jarvisListening(this, true)
+        step("NOTIF: basilendi (ongoing 4815)")
 
         // Faz izleyicisi — her değişim ekrana ve logcat'e.
         lifecycleScope.launch {

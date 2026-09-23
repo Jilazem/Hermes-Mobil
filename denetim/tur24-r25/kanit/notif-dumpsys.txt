@@ -1,0 +1,9 @@
+            timeout=unknown
+            extras={
+                android.title=String (Jarvis dinliyor)
+                android.reduced.images=Boolean (true)
+                android.subText=null
+                android.showChronometer=Boolean (false)
+                android.text=String (Sürekli sesli sohbet açık — kapatmak için uygulamayı aç)
+                android.progress=Integer (0)
+                android.progressMax=Integer (0)

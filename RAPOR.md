@@ -172,3 +172,25 @@ Tam liste: `app/build/test-results/testDebugUnitTest/` (XML fail=0).
 - APK teslimi: /Volumes/EX/007-HERMES-M4-LIVE/05-GEICICI/t23-jarvis/app-debug-r1.apk
   md5 4c3b7deec85d2198d333275b72a5bab2, apksigner: CN=Android Debug (debug imza, beklenen).
 - Commitler: 15347ad (kod+test fix), 4472898 (kanıt betiği fix + Log satırı).
+
+## TUR-24 — JARVIS-2 r2 iade turu (23.09.2026, denetim r1 FAIL kapatma)
+- CRITICAL kapatıldı: JarvisLoopLogic.engineOn kopyalama predicate'iydi ve canlı
+  `/health`'ın yayınladığı `hazir` değerini düşürüyordu (canlı yoklama 23.09:
+  chatterbox=kadin=hazir, acik Hİç yok) → zincir canlıda ölüydü. Artık tek doğru
+  kaynak VoiceStatusLogic.isOn (`acik/hazir/ready` + TR indirgeme) paylaşılıyor.
+  Regresyon testi: `canli health payload hazir — zincir canli degerle cozulur`
+  (gerçek payload kopyası; resolveLoopEngine + nextEngineOn canlı değerle).
+  JarvisLoopFlowTest/ProofActivity sahte haritaları da `hazir`e çevrildi — harness
+  artık canlı sözleşmeyi taklit ediyor.
+- MEDIUM-a kapatıldı: JarvisLoopProofActivity gerçek Notifier.jarvisListening çağırıyor
+  (açılışta bas + kapanışta kaldır, log log.txt'de NOTIF izleri); kalıcı bildirim
+  dumpsys'te (notif-dumpsys.txt) ve çekmece PNG'sinde (shot_notif_shade.png,
+  "Jarvis dinliyor" + ongoing) görüldü.
+- MEDIUM-b kapatıldı: t24-loop-proof.sh ACT değeri bozuktu (`com.hermes.mobile/.ui.…`
+  → Error type 3, ilk koşumda Activity hiç açılmamış; PNG'ler masaüstü). Düzeltildi,
+  betik KENDİ koşturuldu: VERDICT 2 tur + kapat KANITLANDI, 4 faz PNG ayrı md5
+  (e554c1a5 / 49d4eee9 / 46e4771a / e8b98e54) + 2 bildirim PNG (b6c624d6, 26fbf19a).
+- Düşük: kanıt betiği artık `KANIT TAMAM` grep'i + md5 listesiyle makine doğrulamalı.
+- Test: kendi --rerun-tasks koşum 64 suite / 821 test / 0 fail / 0 err (r1 820 + 1 yeni
+  canlı-payload regresyonu). APK app-debug-r2.apk md5 a2c7ebb7d0f4dbc67f2e3b1e616d9e6e,
+  EX teslim: 05-GEICICI/t24-jarvis-loop/ (+ kanit-r2/). Push YOK.

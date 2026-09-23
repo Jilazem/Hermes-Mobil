@@ -9,7 +9,7 @@ set -u
 ADB=${ADB:-/Users/gokhanuzman/007-HERMES/20-ARACLAR/android-sdk/platform-tools/adb}
 DEV=${DEV:-emulator-5554}
 PKG=com.hermes.mobile.v2
-ACT=com.hermes.mobile/.ui.JarvisLoopProofActivity
+ACT=com.hermes.mobile.ui.JarvisLoopProofActivity
 OUT=${1:?kanit klasoru verin}
 mkdir -p "$OUT"
 $ADB -s "$DEV" shell "am force-stop $PKG"; $ADB -s "$DEV" logcat -c
