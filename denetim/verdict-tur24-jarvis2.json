@@ -1,0 +1,64 @@
+{
+  "verdict": "fail",
+  "gorev": "tur24-jarvis2",
+  "tarih": "2026-09-23T09:15:00+03:00",
+  "commit": "1a3cbd9",
+  "test_sonucu": "KENDI KOSUM (--rerun-tasks, 23.09.2026 07:37): 820 test / 0 fail / 0 error / 0 skip, 64 XML — app/build/test-results/testDebugUnitTest, build2.log BUILD SUCCESSFUL TEST-EXIT=0. JarvisLoopLogicTest 25/0/0, JarvisLoopFlowTest 13/0/0. Test sayimi DOGRU.",
+  "findings": [
+    {
+      "sev": "CRITICAL",
+      "id": "madde-3",
+      "bulgu": "Motor dusus zinciri CANLI ortamda calismaz: JarvisLoopLogic.engineOn (JarvisLoopLogic.kt:160-163) yalniz 'acik'/'açık'/'true'/'on' kabul eder; canli voice_api :8174 /health yaniti 'hazir' doner (kendi yoklamam: engines={chatterbox:hazir, kadin:hazir, pocket-kadin:kapali, pocket-erkek:kapali, kahya:kapali}; sunucu kaynagi chatterbox_service.py:87 durum='hazir'). Sonuc: resolveLoopEngine canli haritada HEPCIGER null dondurur -> JarvisLoopController.kt:292 'Ses motoru kapali' ile ilk yanitta donguyu kapatir. Kanit harness'i sahte 'acik' ile kendini dogrular (JarvisLoopProofActivity.kt:101,134 LOOP_FALLBACK.associateWith{'acik'}; JarvisLoopFlowTest fakeHealth) — gercek sunucu 'acik' HIC yayinlamaz. Eski dogru yuklem VoiceStatusLogic.kt:142 'hazir'/'ready' de kabul eder: predicate kopyalanmis, 'hazir' dusmus (regresyon). Eski iade deseni aynen tekror: anlatim (madde 3 zinciri) ile kod canli gercegi ayni degil."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "madde-4",
+      "bulgu": "Kalici 'Jarvis dinliyor' bildirimi yalniz kodda dogrulandi (Notifier.kt:59 ongoing bildirim + ChatViewModel.kt:604/615/671 cagri yerleri dogru); gorev 'kanit PNG'de gor' diyor — teslimde PNG YOK. Harness JarvisLoopController'i dogrudan kosur, ChatViewModel/Notifier'i bayilir; kanit PNG'ler uretim bildirim yollarini hic kanitlamaz."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "madde-5",
+      "bulgu": "APK iddiasi dogrulanamadi: app/build/outputs/apk/debug/app-debug.apk kendi md5'im c80f2f669986c3e93a669bdae4e85cee (yeniden uretim), iddia edilen dd132f87 diskte HICBIR kopyada bulunamadi (build non-deterministik olabilir, fakat teslim iddiasi boylece kanitsiz). apksigner verify OK: imza debug cert, SHA-1 2626902e7d30e3f31dba1d5764a675e1a3a165a9 (beklentiyle eslesiyor)."
+    },
+    {
+      "sev": "LOW",
+      "id": "madde-2",
+      "bulgu": "Dongu KANITLANDI (kendi kosumum): yeni derlenen APK emulator-5554'e kuruldu, t24-loop-proof.sh kondi — log: 2 tam tur, VAD kesti (CutSilence), motor dususu 'chatterbox hatali -> kadin', 3. turda 'kapat' komutu, CLOSED:komut, KANIT TAMAM. 4 faz ayri md5 (benim kosum: 225104da/7e28bfd6/5e13867d/6e62978c; commit'li kanit 4 ayri md5). Eksik: ilk faz PNG'si (t=1.0s) cold-start splash yakaladi — harness zamanlamasi; ana kanit log, kabul edilebilir."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "RAPOR.md'de tur-24 bolumu yok (son guncelleme 382719f tur-23); teslim anlatimi yalniz kart yorumunda — onceki turlarin belge deseni birakilmis."
+    }
+  ],
+  "dogrulanalar": [
+    "madde-1: 820/820 kendi --rerun-tasks kosumum + XML sayimim (64 dosya, 820 test, 0/0/0) — iddia dogru",
+    "madde-2: 2 tur + kapat komutu + 4 ayri md5 — kendi emulator kosumumla dogrulandi",
+    "madde-3 kod yapi: LOOP_FALLBACK=[chatterbox,kadin,pocket-kadin,pocket-erkek,yerel] (JarvisLoopLogic.kt:156), 10sn cache ChatViewModel.loopEngines:551 + JarvisLoopLogic.healthDue + testleri var; FAKAT canli 'hazir' degeri engineOn'dan gecmiyor (CRITICAL bulgu)",
+    "madde-3 /health canli yoklama: token'siz 403 {'error':'yetkisiz'}, X-Hermes-Session-Token (HERMES_DASHBOARD_SESSION_TOKEN) ile 200 + engines haritasi — canli",
+    "madde-6: push YOK — git branch -r --contains 1a3cbd9 bos, origin/main'de tur24 yok, PII disi",
+    "apksigner: debug cert SHA-1 2626902e beklenen"
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/JarvisLoopController.kt": "7cf4576ce24b01571ae5241266266e18c6a579ded8a9c338c504b768c2a79c6d",
+    "app/src/main/java/com/hermes/mobile/data/JarvisLoopLogic.kt": "3794c46b06851511a69dced7aca6680078674e140805379a52702c53edefe060",
+    "app/src/main/java/com/hermes/mobile/data/VoiceAudioPorts.kt": "25eefee27a3eaad9f2329b4303bedc3cf1a630cdbec6135121ead32cee905403",
+    "app/src/debug/java/com/hermes/mobile/ui/JarvisLoopProofActivity.kt": "527a907cafed11fc6116a0fe8b7cd0727098a89c0d34fd1d0c6411d10313f0c2",
+    "app/src/debug/AndroidManifest.xml": "f5926744902df8e075cba44e7d1bae7e78cbd1bb8cd3b4a024f3476ebdfec733",
+    "app/src/test/java/com/hermes/mobile/JarvisLoopLogicTest.kt": "b6265a6d50134ef48a8fa8dc1afc07f769c7f011632bee18f400fdce930cb3fd",
+    "app/src/test/java/com/hermes/mobile/JarvisLoopFlowTest.kt": "decb0125e0d3bfd112288769769606edf846be37d32672d628b77d4d6c0a6f88",
+    "tools/kanit/t24-loop-proof.sh": "c5ce976781414ef833cb4a7f72ac477dbf6d7dae9590424c348586435d5a716c",
+    "tools/kanit/tur24-jarvis-loop/log.txt": "e41f81379a334cef3f1ba35060b15faaaf36968bf6e904f4f4125deddae8f241",
+    "tools/kanit/tur24-jarvis-loop/apk.md5": "f5681ddce1508c01670c0dc52df30ac95242e47c209057e698c041b5c3cd53d6",
+    "tools/kanit/tur24-jarvis-loop/shot_tur1_dinle.png": "44a1b45548130258c76cf405b6a729cf59ed8b9278a7589d8086a4f17dd02049",
+    "tools/kanit/tur24-jarvis-loop/shot_tur1_oku.png": "42be3aac50d68ce7903b47bfa191d93d6e4e30754d2f5d866b5cc00930db7d68",
+    "tools/kanit/tur24-jarvis-loop/shot_tur2_dinle.png": "8a3ce0497093d8e65a2bcdd006cf555e540602956025db7485f43741e3e52586",
+    "tools/kanit/tur24-jarvis-loop/shot_kapanis.png": "5f199e924d8dfb6b0d35ee351b700c2acb65ac15ab8eb3f37e48ba7d55a6dc6b",
+    "denetim/tur24-r24/build2.log": "37331cd3e54dc7be96464befae873ab2f49106f9463850d6cb8df35faa30022f",
+    "denetim/tur24-r24/benim-run/log.txt": "4175e40ad0237898e0c3d29d2efdcecc79b69d0f0b3ce52292894c3e16ad279a"
+  },
+  "lesson": "Kanit harness'i sahte /health degeri uretirken ('acik') canli sunucu baska bir deger yayinlar ('hazir'); motor-acik predicate'ini sunucu sozlesmesinden kopyalamak yerine yeniden yazarsan canlıda hicbir motor acik gorunmez — harness degerlerini canli yoklamayla eslestir, tek predicate kaynagi kullan.",
+  "uzman": "coder",
+  "deneme_no": "1",
+  "devir": "false"
+}

@@ -228,6 +228,17 @@ data class AppSettings(
      */
     val assistantAutoRead: Boolean = true,
 
+    /**
+     * JARVIS-2 (tur24): Jarvis DÖNGÜSÜNÜN tercih edilen TTS motoru — ayrı
+     * ayardır çünkü kullanıcı normal sohbeti YEREL'de (gizlilik), döngüyü
+     * favori bulut kadın sesi olan `chatterbox`'ta istiyor. Kullanıcı
+     * favorisi: chatterbox (tur24 görev 3).
+     *
+     * Kapalı/hatalı olursa [JarvisLoopLogic.LOOP_FALLBACK] sırasıyla otomatik
+     * düşer: chatterbox → kadin → pocket-kadin → pocket-erkek → yerel.
+     */
+    val jarvisLoopEngine: String = "chatterbox",
+
     // ── Arena (tur-15) ───────────────────────────────────────────────
     /**
      * Arena sahne kipi: `work` = İş sahnesi (varsayılan) · `outrun` = Outrun yarış.

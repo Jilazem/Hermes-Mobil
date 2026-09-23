@@ -63,6 +63,7 @@ import com.hermes.mobile.ui.FileRef
 import com.hermes.mobile.ui.downloadUrl
 import com.hermes.mobile.ui.DrivingScreen
 import com.hermes.mobile.ui.HomeScreen
+import com.hermes.mobile.ui.JarvisScreen
 import com.hermes.mobile.ui.LiveVoiceSheet
 import com.hermes.mobile.ui.ModelPickerSheet
 import com.hermes.mobile.ui.PanelScreen
@@ -662,6 +663,14 @@ private fun HermesApp(
     // yazılan metin. HermesApp gövdesinde toplanıyor: ChatScreen çağrısı bu
     // kapsamda (setContent lambda'sındaki val'lar burada görünmez).
     val voiceMsgState by chatViewModel.voiceMsg.state.collectAsStateWithLifecycle()
+
+    // ── JARVIS-2 (tur24) ──────────────────────────────────────────────
+    val jarvisMode by chatViewModel.jarvisMode.collectAsStateWithLifecycle()
+    val jarvisLoopPhase by chatViewModel.jarvisLoop.state.collectAsStateWithLifecycle()
+    val jarvisCaptions by chatViewModel.captions.collectAsStateWithLifecycle()
+    // Döngü kendi çalarından okur — seviye hattı voiceMsg.speakLevel'e bağlı
+    // değil; şimdilik 0 (reaktor Speaking'te nefes animasyonuyla çalışır).
+    val jarvisSpeakLevel = 0f
     // Tur-23: çalan sesin gerçek seviyesi — asistan şeridi görseli için.
     val voiceSpeakLevel by chatViewModel.voiceMsg.speakLevel.collectAsStateWithLifecycle()
     val voicePrefillState by chatViewModel.voicePrefill.collectAsStateWithLifecycle()
@@ -1176,6 +1185,10 @@ private fun HermesApp(
                         onVoiceHoldStart = chatViewModel::voiceHoldStart,
                         onVoiceHoldRelease = chatViewModel::voiceHoldRelease,
                         onVoiceCancel = chatViewModel::voiceCancel,
+                        // JARVIS-2 (tur24): tek dokunuş = döngüyü aç/kapat.
+                        onVoiceQuickTap = chatViewModel::toggleJarvisLoop,
+                        jarvisLoopActive = jarvisLoopPhase.phase !=
+                            com.hermes.mobile.data.JarvisLoopLogic.Phase.Off,
                         onSpeak = chatViewModel::speak,
                         // Tur-13: asistan şeridi — anahtarın tek kaynağı
                         // Ayarlar'daki değer; şerit onu yazar.
@@ -1347,6 +1360,20 @@ private fun HermesApp(
             CommandPalette(
                 onRun = chatViewModel::runSlash,
                 onDismiss = { commandSheet = false },
+            )
+        }
+
+        // ── JARVIS-2 (tur24): TAM EKRAN Jarvis modu ──────────────────
+        // En üst overlay (son çizilen + en son BackHandler = en yüksek öncelik).
+        if (jarvisMode) {
+            // Geri = modu kapat (görev 2): mikrofon + altyazı + ekran birlikte iner.
+            BackHandler(enabled = true) { chatViewModel.closeJarvisMode() }
+            JarvisScreen(
+                phase = jarvisLoopPhase.phase,
+                level = jarvisSpeakLevel,
+                captions = jarvisCaptions,
+                langT = { tr, _ -> tr },
+                onStop = chatViewModel::closeJarvisMode,
             )
         }
 

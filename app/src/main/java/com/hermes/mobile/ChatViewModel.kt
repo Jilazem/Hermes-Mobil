@@ -9,6 +9,8 @@ import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
 import com.hermes.mobile.data.JarvisIdentity
+import com.hermes.mobile.data.JarvisLoopController
+import com.hermes.mobile.data.JarvisLoopLogic
 import com.hermes.mobile.data.LiveModelLogic
 import com.hermes.mobile.data.LocalModelClient
 import com.hermes.mobile.data.LocalModelLogic
@@ -536,6 +538,85 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile
     var assistantAutoRead: Boolean = true
 
+    // ── JARVIS-2 (tur24): sürekli sesli sohbet döngüsü ────────────────
+
+    /**
+     * `/health` motor haritası — 10 sn önbellek (görev 3). Döngü her yanıtta
+     * motor durumunu sormasın; 10 sn içindeki tekrarlar önbellekten döner.
+     * Hata = boş harita (fail-closed: hiçbir motor "açık" sayılmaz).
+     */
+    private var enginesCacheAtMs = 0L
+    private var enginesCacheMap: Map<String, String> = emptyMap()
+
+    private suspend fun loopEngines(): Map<String, String> {
+        val t = System.currentTimeMillis()
+        if (enginesCacheMap.isNotEmpty() && t - enginesCacheAtMs < JarvisLoopLogic.HEALTH_CACHE_MS) {
+            return enginesCacheMap
+        }
+        val map = runCatching {
+            voiceTransport()?.health()?.engines ?: emptyMap()
+        }.getOrDefault(emptyMap())
+        enginesCacheAtMs = t
+        enginesCacheMap = map
+        return map
+    }
+
+    /**
+     * Döngü yürütücüsü. Mikrofon/çalma portları ChatViewModel'in TEK
+     * örneklerini paylaşır — iki akış aynı anda çalamaz/yazamaz; bunu
+     * karar katmanı engeller (döngü açıkken bas-konuş girdisi yutulur,
+     * Speak fazında VAD kesmez — [com.hermes.mobile.data.JarvisLoopLogic]).
+     */
+    val jarvisLoop = JarvisLoopController(
+        transport = ::voiceTransport,
+        recorder = voiceRecorder,
+        player = voicePlayer,
+        cacheDir = { app.cacheDir },
+        scope = viewModelScope,
+        healthEngines = ::loopEngines,
+        diag = { msg -> DiagLog.d("jarvis-loop", msg) },
+    )
+
+    /**
+     * Tur24: tam ekran Jarvis açık/kapalı. Döngüyle TEK dokunuşta birlikte
+     * açılır/kapanır (toggleJarvisLoop); geri hareketi closeJarvisMode ile
+     * ikisini birden kapatır.
+     */
+    private val _jarvisMode = MutableStateFlow(false)
+    val jarvisMode: StateFlow<Boolean> = _jarvisMode.asStateFlow()
+
+    /** Tam ekran altyazısı — senkronize kayan çift rol (max 40, sonra budanır). */
+    private val _captions = MutableStateFlow<List<JarvisLoopLogic.Caption>>(emptyList())
+    val captions: StateFlow<List<JarvisLoopLogic.Caption>> = _captions.asStateFlow()
+
+    fun addCaption(c: JarvisLoopLogic.Caption) {
+        _captions.update { (it + c).takeLast(40) }
+    }
+
+    /** Döngüyü açar/kapatır; açarken tam ekranı da kaldırır (tek dokunuş). */
+    fun toggleJarvisLoop() {
+        if (jarvisLoop.state.value.phase == JarvisLoopLogic.Phase.Off) {
+            // Döngü kendi motoruyla okur — eşzamanlı çalma + taze altyazı.
+            voiceMsg.stopSpeaking()
+            _captions.value = emptyList()
+            _jarvisMode.value = true
+            jarvisLoop.start()
+            Notifier.jarvisListening(getApplication(), true)
+            DiagLog.i("jarvis-loop", "dongu acildi")
+        } else {
+            closeJarvisMode()
+        }
+    }
+
+    /** Tam mod + döngü birlikte kapanır (geri hareketi, Durdur düğmesi). */
+    fun closeJarvisMode() {
+        jarvisLoop.stop("kullanici")
+        _jarvisMode.value = false
+        Notifier.jarvisListening(getApplication(), false)
+        DiagLog.i("jarvis-loop", "dongu kapandi (kullanici)")
+    }
+
+    // ── (eski) Ses tercihleri bağlantısı ─────────────────────────────
 
     /** Çalışan ses ucu adresi hatırlandı — MainActivity ayarlara yazar. */
     var onVoiceBase: (String) -> Unit = {}
@@ -572,6 +653,23 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         voiceMsg.onWorkingBase = { base -> onVoiceBase(base) }
+
+        // ── JARVIS-2 (tur24): döngü callback'leri ─────────────────────
+        jarvisLoop.onSend = { text -> send(text) }
+        jarvisLoop.onNotice = { msg ->
+            _state.update {
+                it.copy(items = it.items + ChatItem.Notice(nextKey("jl"), msg, isError = true))
+            }
+        }
+        jarvisLoop.onCaption = { role, text ->
+            addCaption(JarvisLoopLogic.Caption(role, text))
+        }
+        jarvisLoop.onLoopClosed = { _ ->
+            // Döngü kendi kendini kapattı (komut/hata/kullanici): tam ekran da
+            // inerken altyazılar sonraki açılışa kadar korunur (bağlam hatırlansın).
+            _jarvisMode.value = false
+            Notifier.jarvisListening(getApplication(), false)
+        }
     }
 
     /** Bas-konuş: parmak indi. */
@@ -2000,10 +2098,14 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 // Sesli kip açıkken yanıtı oku; TTS bitince eller-serbest döngü
                 // kendiliğinden yeniden dinlemeye geçer.
                 if (_state.value.handsFree && spoken.isNotBlank()) voice.speak(spoken)
-                // Tur-13: telefon asistanı akışı — YEREL hat (voice_api/whisper +
-                // kahya) üzerinden kendiliğinden seslendir. Karar saf katmanda:
-                // normal sohbette ayar açık olsa bile OKUMAZ (asistan modu şart).
-                if (
+                // JARVIS-2 (tur24): döngü WaitReply'de ise yanıt ONA gider —
+                // okuma + altyazı + (okuma bitince) otomatik dinleme döngü
+                // içinde çözülür. Asistan şeridi otomatik-okuması bu turda
+                // ATLANIR (çift okuma yok); normal sohbet okuma kararı aşağıda.
+                if (jarvisLoop.state.value.phase == JarvisLoopLogic.Phase.WaitReply) {
+                    addCaption(JarvisLoopLogic.Caption("agent", spoken))
+                    jarvisLoop.onAgentReply(spoken)
+                } else if (
                     AssistantModeLogic.shouldAutoRead(
                         assistantMode = _state.value.assistantMode,
                         settingOn = assistantAutoRead,

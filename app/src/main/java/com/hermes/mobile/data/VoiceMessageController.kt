@@ -536,10 +536,17 @@ interface RecorderPort {
 
     fun cancel()
 
+    /**
+     * JARVIS-2 (tur24): son RMS seviyesi — sessizlik-VAD örneklemesi için.
+     * Cihaz durmuşsa / desteklenmiyorsa 0.
+     */
+    fun amplitude(): Int = 0
+
     object Noop : RecorderPort {
         override fun start(target: File): Boolean = false
         override fun stop(): Recorded? = null
         override fun cancel() = Unit
+        override fun amplitude(): Int = 0
     }
 }
 

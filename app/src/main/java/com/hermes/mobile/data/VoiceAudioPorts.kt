@@ -84,6 +84,14 @@ class AndroidVoiceRecorder(private val context: Context) : RecorderPort {
         runCatching { r.release() }
     }
 
+    /**
+     * JARVIS-2 VAD: tepe genlik seviyesi — cihaz durmuşsa 0
+     * (tepe genlik (getMaxAmplitude) kayıtlıyken çağrılmalı; try/catch güvenlik ağı).
+     */
+    override fun amplitude(): Int = runCatching {
+        if (recorder == null) 0 else recorder!!.maxAmplitude.coerceIn(0, 32_767)
+    }.getOrDefault(0)
+
     private fun mimeOf(file: File): String =
         when (file.extension.lowercase()) {
             "ogg", "opus" -> "audio/ogg"
