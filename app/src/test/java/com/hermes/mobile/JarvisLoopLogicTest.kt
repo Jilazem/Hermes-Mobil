@@ -180,6 +180,30 @@ class JarvisLoopLogicTest {
         assertFalse(JarvisLoopLogic.engineOn(eng, "kahya"))
     }
 
+    /**
+     * Tur-24 denetim iadesi regresyonu: canlı `:8174/health` motor değeri
+     * `hazir` yayınlıyor (`acik` HİÇ yayınlanmıyor). Bu gerçek payload
+     * örneğiyle resolveLoopEngine çözülmazsa zincir canlıda ölüdür.
+     */
+    @Test
+    fun `canli health payload hazir — zincir canli degerle cozulur`() {
+        // 23.09.2026 canlı yoklama çıktısının birebir kopyası (denetim metadata).
+        val canli = mapOf(
+            "kahya" to "kapali", "chatterbox" to "hazir", "kadin" to "hazir",
+            "pocket-kadin" to "kapali", "pocket-erkek" to "kapali",
+        )
+        assertTrue(JarvisLoopLogic.engineOn(canli, "chatterbox"))
+        assertTrue(JarvisLoopLogic.engineOn(canli, "kadin"))
+        assertFalse(JarvisLoopLogic.engineOn(canli, "kahya"))
+        assertEquals("chatterbox", JarvisLoopLogic.resolveLoopEngine("chatterbox", canli))
+        // Tercih kapalıysa düşüş, sıradaki AÇIK motoru — chatterbox'ı — seçer.
+        assertEquals(
+            "chatterbox",
+            JarvisLoopLogic.resolveLoopEngine("pocket-kadin", canli),
+        )
+        assertEquals("kadin", JarvisLoopLogic.nextEngineOn("chatterbox", canli))
+    }
+
     @Test
     fun `tercih aciksa o secilir`() {
         val eng = mapOf(

@@ -161,7 +161,7 @@ class JarvisLoopFlowTest {
         }
     }
 
-    private val allEngines = JarvisLoopLogic.LOOP_FALLBACK.associateWith { "acik" }
+    private val allEngines = JarvisLoopLogic.LOOP_FALLBACK.associateWith { "hazir" }
 
     // ── 1) Tam tur ───────────────────────────────────────────────────
 

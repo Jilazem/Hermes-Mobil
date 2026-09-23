@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.hermes.mobile.data.JarvisLoopController
 import com.hermes.mobile.data.JarvisLoopLogic
+import com.hermes.mobile.data.Notifier
 import com.hermes.mobile.data.PlayerPort
 import com.hermes.mobile.data.RecorderPort
 import com.hermes.mobile.data.VoiceApiException
@@ -98,7 +99,7 @@ class JarvisLoopProofActivity : ComponentActivity() {
         )
         private val turn = AtomicInteger()
         override suspend fun health(): VoiceHealth =
-            VoiceHealth(ok = true, engines = JarvisLoopLogic.LOOP_FALLBACK.associateWith { "acik" })
+            VoiceHealth(ok = true, engines = JarvisLoopLogic.LOOP_FALLBACK.associateWith { "hazir" })
         override suspend fun transcribe(audio: ByteArray, fileName: String, mime: String): String {
             delay(200)   // sahte STT gecikmesi
             val i = turn.getAndIncrement()
@@ -131,7 +132,7 @@ class JarvisLoopProofActivity : ComponentActivity() {
             cacheDir = { cacheDir },
             scope = lifecycleScope,
             healthEngines = {
-                JarvisLoopLogic.LOOP_FALLBACK.associateWith { "acik" }
+                JarvisLoopLogic.LOOP_FALLBACK.associateWith { "hazir" }
             },
             diag = { msg -> step("diag: $msg") },
         )
@@ -152,6 +153,9 @@ class JarvisLoopProofActivity : ComponentActivity() {
         ctrl.onLoopEngine = { id -> step("ENGINE: $id") }
         ctrl.onLoopClosed = { reason ->
             step("CLOSED: $reason")
+            // Döngü kapandığında üretim bildirimi de kalkar (ChatViewModel.onLoopClosed ayni yol).
+            Notifier.jarvisListening(this, false)
+            step("NOTIF: Notifier.jarvisListening(false) — bildirim kalkti")
             step("KANIT TAMAM: 2 tam tur + kapat komutu")
         }
 
@@ -164,5 +168,10 @@ class JarvisLoopProofActivity : ComponentActivity() {
 
         step("JARVIS-LOOP-PROOF: dongu aciliyor (gercek ticker, sahte cevre)")
         ctrl.start()
+        // Üretim bildirimi yolu (madde-4 kanıtı): ChatViewModel.toggleJarvisLoop
+        // döngüyü açarken tam olarak bunu çağırıyor — burada da aynı üretim
+        // fonksiyonu koşuyor, Harness bildirimi bayiltmiyor.
+        Notifier.jarvisListening(this, true)
+        step("NOTIF: Notifier.jarvisListening(true) cagrildi (uretim yolu)")
     }
 }

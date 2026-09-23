@@ -172,3 +172,26 @@ Tam liste: `app/build/test-results/testDebugUnitTest/` (XML fail=0).
 - APK teslimi: /Volumes/EX/007-HERMES-M4-LIVE/05-GEICICI/t23-jarvis/app-debug-r1.apk
   md5 4c3b7deec85d2198d333275b72a5bab2, apksigner: CN=Android Debug (debug imza, beklenen).
 - Commitler: 15347ad (kod+test fix), 4472898 (kanıt betiği fix + Log satırı).
+
+## TUR-24 — JARVIS-2 (r2 düzeltme turu, 23.09.2026 10:25)
+Denetim r1 FAIL (denetim/verdict-tur24-jarvis2.json) → dört madde kapatıldı:
+- CRITICAL madde-3: JarvisLoopLogic.engineOn kopya predicate'i canlı `/health`
+  değerini ("hazir") düşürüyordu → zincir canlıda ölü. engineOn artık tek doğru
+  kaynak VoiceStatusLogic.isOn'a devrediyor (acik/hazir/ready + TR harf indirgeme).
+  Harness sahte değeri canlı sözleşmeyle eşitlendi ("acik"→"hazir": ProofActivity,
+  JarvisLoopFlowTest). Regresyon testi: `canli health payload hazir — zincir canli
+  degerle cozulur` — 23.09 canlı yoklama haritasının birebir kopyasıyla çözülür.
+- MEDIUM madde-4: kalıcı "Jarvis dinliyor" bildirimi artık ÜRETİM yolundan kanıtlı:
+  JarvisLoopProofActivity Notifier.jarvisListening(true/false)'ı doğrudan çağırıyor
+  (ChatViewModel.toggleJarvisLoop/onLoopClosed ile aynı fonksiyon); betik pm grant
+  + gölge paneli açıp shot_bildirim.png çekiyor — PNG'de "Jarvis dinliyor · şimdi /
+  Sürekli sesli sohbet açık" ongoing bildirimi görünüyor (vision ile doğrulandı).
+- MEDIUM madde-5: apk.md5 gerçek üretim md5 ile güncellendi: f60b6ac1274efad049ca4134b1511962
+  (r2 APK, assembleDebug BUILD-EXIT=0, 23.09 10:16). Eski dd132f87 diskte yoktu — geçersiz iddiaydı.
+- Kanıt: denetim/tur24-r25/kanit/ 5 PNG (5 ayrı md5) + log.txt (2 tam tur, CutSilence,
+  motor düşüşü chatterbox→kadin, kapat→CLOSED:komut, NOTIF aç/kapat satırları).
+  Betik düzeltmesi: ACT alanındaki bozuk "paket/.ui" öneki giderildi (r1 betiği bu
+  haliyle am start'ı Error type 3 ile kaçırıyordu), POST_NOTIFICATIONS pm grant eklendi.
+- Test sayısı GERÇEK: 64 suite / 821 test / 0 fail / 0 err / 0 skip (--rerun-tasks,
+  23.09 XML sayımı; +1 = canlı-payload regresyon testi).
+- Commitler: fix+kanıt+RAPOR bu committe; branch wt/t24-fix, push YOK.
