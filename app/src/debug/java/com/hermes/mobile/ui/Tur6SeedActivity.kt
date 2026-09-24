@@ -23,7 +23,7 @@ import java.io.File
  * debug variant'ında derlenir.
  *
  * Kullanım:
- *   adb shell am start -n com.hermes.mobile.v2/com.hermes.mobile.ui.Tur6SeedActivity \
+ *   adb shell am start -n com.hermes.mobile.v3/com.hermes.mobile.ui.Tur6SeedActivity \
  *       --es url http://10.0.2.2:9180 --es name Tur6 \
  *       --ez full true --ez readonly false --ez agent true
  */

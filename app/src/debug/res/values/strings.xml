@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Debug/V2 yapılandırması: yüklü Hermes'ten ayırt edilebilir ad. -->
-    <string name="app_name">Hermes V2</string>
+    <!-- Debug/V3 yapılandırması: yüklü Hermes ve Hermes V2'den ayırt
+         edilebilir ad (launcher, asistan seçici, erişilebilirlik, döşeme). -->
+    <string name="app_name">Hermes V3</string>
+    <string name="assistant_label">Hermes V3 Asistan</string>
+    <string name="tile_label">Hermes V3\'e konuş</string>
 </resources>

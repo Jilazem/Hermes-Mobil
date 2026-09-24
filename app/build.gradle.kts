@@ -26,9 +26,11 @@ android {
 
     buildTypes {
         debug {
-            // Mevcut yüklü Hermes ile ÇAKIŞMASIN: ayrı paket kimliği (V2) ve
-            // ayrı ad — telefonda ikinci uygulama olarak yanına kurulur.
-            applicationIdSuffix = ".v2"
+            // Telefonda yüklü Hermes / Hermes V2 ile ÇAKIŞMASIN: ayrı paket
+            // kimliği (V3) ve ayrı ad — üzerine yazmaz, yanına ayrı uygulama
+            // olarak kurulur (ayarları ve verisi de ayrıdır).
+            applicationIdSuffix = ".v3"
+            versionNameSuffix = "-v3"
             isMinifyEnabled = false
         }
         release {

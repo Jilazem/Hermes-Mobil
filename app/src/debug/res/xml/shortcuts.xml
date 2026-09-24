@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Uygulama simgesine uzun basınca çıkan kısayollar. Hedef her zaman
      MainActivity; hangi ekranın açılacağını `hermes_action` ekstrası söyler. -->
+<!-- Debug/V3 kopyası: targetPackage kaynak referansı kabul etmediği için
+     paket adı (applicationIdSuffix ".v3") burada sabit yazılı. build.gradle.kts
+     içindeki sonek değişirse bu dosya da güncellenmeli. -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:shortcutId="voice"
@@ -9,7 +12,7 @@
         android:shortcutShortLabel="@string/shortcut_voice">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile"
+            android:targetPackage="com.hermes.mobile.v3"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="voice" />
         </intent>
@@ -21,7 +24,7 @@
         android:shortcutShortLabel="@string/shortcut_driving">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile"
+            android:targetPackage="com.hermes.mobile.v3"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="driving" />
         </intent>
@@ -33,7 +36,7 @@
         android:shortcutShortLabel="@string/shortcut_camera">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile"
+            android:targetPackage="com.hermes.mobile.v3"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="camera" />
         </intent>
@@ -45,7 +48,7 @@
         android:shortcutShortLabel="@string/shortcut_new">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile"
+            android:targetPackage="com.hermes.mobile.v3"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="new" />
         </intent>
