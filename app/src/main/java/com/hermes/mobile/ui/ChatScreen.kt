@@ -168,6 +168,12 @@ fun ChatScreen(
     /** Yazma hızı göstergesi — ayrı StateFlow; ana `state` recomposition'ını tetiklemez. */
     speed: StateFlow<StreamMeter.Snapshot?> = MutableStateFlow(null),
     /**
+     * Tur-19 FR-003: ekran altı eşzamanlılık istatistik şeridi — composer'ın
+     * hemen üstünde sabit tek satır. Klavye açıkken ProfileChips gibi gizlenir
+     * (yazma alanı korunur).
+     */
+    statusStrip: (@Composable () -> Unit)? = null,
+    /**
      * Sesli mesaj (tur-11): kayıt fazı + seslendirme fazı.
      *
      * Ayrı bir StateFlow olarak geçirilir (`speed` deseni): kayıt sayacı her
@@ -456,6 +462,12 @@ fun ChatScreen(
                 onToggleAutoRead = onToggleAssistantAutoRead,
                 onExit = onExitAssistantMode,
             )
+        }
+
+        // Tur-19 FR-003: eşzamanlılık şeridi — composer'ın hemen üstü, tek
+        // satır; klavye açılınca ProfileChips ile birlikte kalkar.
+        if (!imeVisible && statusStrip != null) {
+            statusStrip()
         }
 
         ChatComposer(

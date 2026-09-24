@@ -21,6 +21,8 @@ data class LiveState(
     val notice: String? = null,
     /** Müdahale sayfası açık olan oturum. */
     val intervening: LiveSession? = null,
+    /** Tur-19 FR-002: mini composer (hızlı yanıt) hedefi — intervening'den ayrı. */
+    val quickReply: LiveSession? = null,
     val sending: Boolean = false,
     /**
      * `session.active_list` en az bir kez BAŞARIYLA geldi mi (tur-8).
@@ -73,7 +75,7 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
         pollJob = viewModelScope.launch {
             while (true) {
                 delay(6_000)
-                if (_state.value.intervening == null) refresh(quiet = true)
+                if (_state.value.intervening == null && _state.value.quickReply == null) refresh(quiet = true)
             }
         }
     }
@@ -113,6 +115,19 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Tur-19 FR-002: hızlı yanıt hedefi — çekmece akışından açılan mini
+     * composer. Eski müdahale diyaloğundan AYRIZ (ikisi aynı anda açık olursa
+     * sending bayrağı çakışırdı); arayüz aynı anda birini açık tutar.
+     */
+    fun openQuickReply(session: LiveSession) {
+        _state.update { it.copy(quickReply = session) }
+    }
+
+    fun clearQuickReply() {
+        _state.update { it.copy(quickReply = null) }
+    }
+
+    /**
      * Oturuma müdahale eder.
      *
      * `Redirect` ajan tarafından desteklenmiyorsa sunucu 4010 döner — bu durumda
@@ -120,9 +135,14 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
      * ulaştırmak.
      */
     fun intervene(session: LiveSession, kind: InterventionKind, text: String) {
-        val gw = client ?: return
         val body = text.trim()
         if (body.isEmpty()) return
+        // Bağlantı yokken sessizce dönmek hızlı yanıt sayfasını "Gönderiliyor"
+        // fazında kilitli bırakıyordu (sending hiç true→false düşmüyordu).
+        val gw = client ?: run {
+            _state.update { it.copy(notice = "Bağlantı yok — mesaj gönderilemedi", quickReply = null) }
+            return
+        }
 
         viewModelScope.launch {
             _state.update { it.copy(sending = true) }
