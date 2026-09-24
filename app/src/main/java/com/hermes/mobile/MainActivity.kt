@@ -480,6 +480,10 @@ class MainActivity : ComponentActivity() {
                     // Tur-13: asistan akışında yanıt kendiliğinden okunsun mu
                     // (varsayılan AÇIK, ama yalnız asistan modunda etkili).
                     chatViewModel.assistantAutoRead = settings.assistantAutoRead
+                    // V3: Google Artemis ("/telefon <görev>").
+                    chatViewModel.artemisUrl = settings.artemisUrl.trim()
+                    chatViewModel.artemisProfile = settings.artemisProfile
+                    chatViewModel.artemisDevice = settings.artemisDevice
                 }
 
                 // Model denenip başarısız olursa kalıcı olarak "bozuk" işaretlenir;

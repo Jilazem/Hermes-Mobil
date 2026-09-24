@@ -770,6 +770,8 @@ fun SettingsScreen(
                 }
             }
 
+            item { ArtemisCard(settings, onUpdate) }
+
             // Tam kontrol her zaman görünür (önceden "Ajan telefonu
             // kullanabilsin" kapalıyken gizliydi → "tam kontrol yok").
             item {
@@ -2168,6 +2170,118 @@ private fun ShizukuRow(
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
+        }
+    }
+}
+
+
+/**
+ * Google Artemis — sunucuda koşan "telefonu insan gibi kullanan" ajan.
+ *
+ * Telefonun kendi erişilebilirlik katmanından (Tam kontrol) farklı olarak
+ * Artemis ADB ile bağlanır: Android'in "Kısıtlanmış ayar" engeline takılmaz,
+ * uygulamalar arası uzun işleri planlayıp doğrulayabilir. Sohbette
+ * "/telefon <görev>" ile çağrılır. Kurulum adımları: docs/ARTEMIS.md.
+ */
+@Composable
+private fun ArtemisCard(
+    settings: AppSettings,
+    onUpdate: ((AppSettings) -> AppSettings) -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var probe by remember { mutableStateOf<String?>(null) }
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text(
+            S.t2("Artemis — telefonu insan gibi kullanan ajan", "Artemis — agent that uses the phone like a human"),
+            color = HermesColors.TextPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            S.t2(
+                "Google Artemis sunucunda koşar, telefonu kablosuz hata ayıklama (ADB) ile kullanır. " +
+                    "Sohbette \"/telefon WhatsApp'ta Ali'ye 'geliyorum' yaz\" gibi komut ver.",
+                "Google Artemis runs on your server and drives the phone over wireless debugging (ADB). " +
+                    "In chat type e.g. \"/phone open Settings and tell me the battery level\".",
+            ),
+            color = HermesColors.TextMuted,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Spacer(Modifier.height(6.dp))
+        TextRow(
+            S.t2("Artemis adresi", "Artemis address"),
+            S.t2("Sunucu: http://192.168.1.101:8000 (yalnız ev ağı)", "Server: http://192.168.1.101:8000 (home network only)"),
+            settings.artemisUrl,
+        ) { v -> onUpdate { it.copy(artemisUrl = v.trim()) } }
+        TextRow(
+            S.t2("Cihaz seri no (isteğe bağlı)", "Device serial (optional)"),
+            S.t2("Boşsa telefonun Wi-Fi IP'sinden bulunur", "Empty = matched by the phone's Wi-Fi IP"),
+            settings.artemisDevice,
+        ) { v -> onUpdate { it.copy(artemisDevice = v.trim()) } }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                S.t2("Kip", "Mode"),
+                color = HermesColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+            listOf("flash" to S.t2("Hızlı", "Flash"), "pro" to S.t2("Planlı (Pro)", "Pro")).forEach { (id, label) ->
+                val on = settings.artemisProfile == id
+                Text(
+                    label,
+                    color = if (on) HermesColors.OnAccent else HermesColors.TextSecondary,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier
+                        .padding(start = 6.dp)
+                        .background(if (on) HermesColors.Midground else HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                        .clickable { onUpdate { it.copy(artemisProfile = id) } }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                S.t2("Bağlantıyı dene", "Test connection"),
+                color = HermesColors.Midground,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                    .clickable {
+                        probe = "…"
+                        scope.launch {
+                            val c = com.hermes.mobile.data.ArtemisClient(settings.artemisUrl)
+                            probe = runCatching {
+                                val list = c.devices()
+                                if (list.isEmpty()) tr("Artemis ayakta, ama bağlı telefon yok (adb connect gerekli)",
+                                    "Artemis is up, but no phone attached (adb connect needed)")
+                                else tr("Artemis ayakta · cihazlar: ", "Artemis up · devices: ") +
+                                    list.joinToString { "${it.serial} (${it.state})" }
+                            }.getOrElse { tr("Ulaşılamadı: ", "Unreachable: ") + (it.message ?: "") }
+                        }
+                    }
+                    .padding(horizontal = 11.dp, vertical = 8.dp),
+            )
+            Text(
+                S.t2("Kablosuz hata ayıklama", "Wireless debugging"),
+                color = HermesColors.Midground,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                    .clickable {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }
+                    .padding(horizontal = 11.dp, vertical = 8.dp),
+            )
+        }
+        probe?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(it, color = HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

@@ -289,6 +289,17 @@ data class AppSettings(
     val fullControl: Boolean = false,
 
     /**
+     * Google Artemis daemon adresi (sunucuda, varsayılan port 8000). Sohbette
+     * "/telefon <görev>" bu adrese gider; Artemis telefonu kablosuz ADB ile
+     * kullanır. Boşsa özellik kapalı.
+     */
+    val artemisUrl: String = "http://192.168.1.101:8000",
+    /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
+    val artemisProfile: String = "flash",
+    /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */
+    val artemisDevice: String = "",
+
+    /**
      * Denenip başarısız olan modeller — "sağlayıcı/model" biçiminde.
      *
      * Sunucunun `unavailable_models` listesi yalnız kredi sorununu biliyor;

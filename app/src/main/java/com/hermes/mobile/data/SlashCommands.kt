@@ -35,6 +35,9 @@ enum class SlashCategory(val label: String) {
 val SLASH_COMMANDS: List<SlashCommand> = listOf(
     // ── Oturum ───────────────────────────────────────────────────────
     SlashCommand("new", "Yeni oturum başlat", SlashCategory.Session),
+    // V3: yerel komut — sunucuya değil Google Artemis'e gider (ChatViewModel.send).
+    SlashCommand("telefon", "Artemis: telefonda görev yaptır (ADB)", SlashCategory.Tools, true, "görev"),
+    SlashCommand("czip", "Oturumu czip ile paketle", SlashCategory.Session, true, "oturum id | son"),
     SlashCommand("clear", "Ekranı temizle, yeni oturum", SlashCategory.Session),
     SlashCommand("history", "Konuşma geçmişini göster", SlashCategory.Session),
     SlashCommand("save", "Konuşmayı kaydet", SlashCategory.Session),

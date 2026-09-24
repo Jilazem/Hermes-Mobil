@@ -489,6 +489,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile
     var liveProvider: LiveModelLogic.Provider = LiveModelLogic.Provider.GEMINI
 
+    /** V3 Google Artemis ayarları (MainActivity settings'ten yazar). */
+    @Volatile var artemisUrl: String = ""
+    @Volatile var artemisProfile: String = "flash"
+    @Volatile var artemisDevice: String = ""
+    private var artemisTaskId: String? = null
+
     /** Son yerel sağlık okuması (Ayarlar durum noktası). */
     private val _liveLocalHealth = MutableStateFlow(LiveModelLogic.Health.Unknown)
     val liveLocalHealth: StateFlow<LiveModelLogic.Health> = _liveLocalHealth.asStateFlow()
@@ -972,6 +978,14 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         // Ayardan bağımsız çalışıyor: "WhatsApp aç" diye **yazmak** zaten açık
         // rızadır. Ayar, modelin kendiliğinden telefonu kullanabildiği canlı ses
         // yolunu denetliyor — orada kararı kullanıcı değil model veriyor.
+        // V3: "/telefon <görev>" → Google Artemis (sunucuda, telefonu ADB ile
+        // kullanır). Ajan sohbetine gitmez; sonuç sohbete yazılır.
+        if (ready.isEmpty()) {
+            com.hermes.mobile.data.ArtemisLogic.parseCommand(body)?.let { goal ->
+                runArtemis(goal, body)
+                return
+            }
+        }
         if (ready.isEmpty()) {
             PhoneIntent.parse(body)?.let { intent ->
                 runPhoneAction(body, intent)
@@ -1071,6 +1085,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      * yoksa ekranda eski oturumun mesajları kalırdı.
      */
     fun runSlash(command: String) {
+        if (com.hermes.mobile.data.ArtemisLogic.parseCommand(command) != null) {
+            send(command)
+            return
+        }
         val gw = client ?: return
         _state.update {
             it.copy(items = it.items + ChatItem.User(nextKey("u"), command), agentBusy = true)
@@ -1293,6 +1311,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Süren üretimi keser. */
     fun stopGeneration() {
+        if (stopArtemis()) {
+            _state.update { it.copy(statusLine = tr("📱 Artemis durduruluyor…", "📱 Stopping Artemis…")) }
+            return
+        }
         val gw = client ?: return
         val sid = _state.value.sessionId ?: return
         voice.stopSpeaking()
@@ -1838,6 +1860,88 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    /**
+     * Artemis görevi: gönder → 1.5 sn aralıkla izle (en çok 30 dk) → sonucu yaz.
+     * Durum satırı adım sayısını gösterir; "Durdur" [stopArtemis] ile iptal.
+     */
+    private fun runArtemis(goal: String, typed: String) {
+        val url = artemisUrl
+        if (url.isBlank()) {
+            _state.update {
+                it.copy(items = it.items + ChatItem.Notice(nextKey("n"),
+                    tr("Artemis adresi boş — Ayarlar → Artemis", "Artemis address empty — Settings → Artemis"), isError = true))
+            }
+            return
+        }
+        val en = com.hermes.mobile.ui.serviceLang == com.hermes.mobile.ui.Lang.EN
+        _state.update {
+            it.copy(
+                items = it.items + ChatItem.User(nextKey("u"), typed),
+                agentBusy = true,
+                statusLine = tr("📱 Artemis telefonu kullanıyor…", "📱 Artemis is using the phone…"),
+            )
+        }
+        viewModelScope.launch {
+            val client = com.hermes.mobile.data.ArtemisClient(url)
+            runCatching {
+                val devices = runCatching { client.devices() }.getOrDefault(emptyList())
+                val serial = com.hermes.mobile.data.ArtemisLogic.pickDevice(devices, artemisDevice, phoneWifiIp())
+                val id = client.submit(goal, artemisProfile, serial)
+                artemisTaskId = id
+                val deadline = System.currentTimeMillis() + 30 * 60_000L
+                var task = client.task(id)
+                while (!task.done && System.currentTimeMillis() < deadline) {
+                    _state.update {
+                        it.copy(statusLine = tr("📱 Artemis çalışıyor", "📱 Artemis working") +
+                            (task.turns?.let { n -> tr(" · $n adım", " · step $n") } ?: ""))
+                    }
+                    kotlinx.coroutines.delay(1_500)
+                    task = client.task(id)
+                }
+                task
+            }.onSuccess { task ->
+                _state.update {
+                    it.copy(
+                        items = it.items + ChatItem.Assistant(nextKey("a"),
+                            if (task.done) com.hermes.mobile.data.ArtemisLogic.resultText(task, en)
+                            else tr("📱 Artemis 30 dk içinde bitmedi (sunucuda sürüyor olabilir)", "📱 Artemis did not finish in 30 min")),
+                        agentBusy = false,
+                        statusLine = null,
+                    )
+                }
+            }.onFailure { e ->
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                _state.update {
+                    it.copy(
+                        items = it.items + ChatItem.Notice(nextKey("n"),
+                            tr("Artemis'e ulaşılamadı ($url): ", "Could not reach Artemis ($url): ") + (e.message ?: ""),
+                            isError = true),
+                        agentBusy = false,
+                        statusLine = null,
+                    )
+                }
+            }
+            artemisTaskId = null
+        }
+    }
+
+    /** Süren Artemis görevini iptal eder (Durdur düğmesi). */
+    private fun stopArtemis(): Boolean {
+        val id = artemisTaskId ?: return false
+        val url = artemisUrl
+        viewModelScope.launch { runCatching { com.hermes.mobile.data.ArtemisClient(url).stop(id) } }
+        return true
+    }
+
+    /** Telefonun Wi-Fi IPv4 adresi — kablosuz ADB serisini ("ip:port") eşlemek için. */
+    private fun phoneWifiIp(): String? = runCatching {
+        val cm = getApplication<Application>().getSystemService(android.net.ConnectivityManager::class.java)
+        cm.getLinkProperties(cm.activeNetwork)?.linkAddresses
+            ?.map { it.address }
+            ?.firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }
+            ?.hostAddress
+    }.getOrNull()
 
     fun newSession() {
         _state.update { ChatState(connection = it.connection) }
