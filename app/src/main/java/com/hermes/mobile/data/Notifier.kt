@@ -114,24 +114,64 @@ object Notifier {
             replyIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
+        // Android Auto şartları: yanıt eylemi SEMANTIC_ACTION_REPLY + arayüz
+        // açmaz; ayrıca görünmez bir "okundu" eylemi; MessagingStyle. Böylece
+        // araç ekranında Hermes bir mesajlaşma uygulaması gibi görünür, yanıtı
+        // sesle okunur ve sesle cevap verilebilir (cevap ReplyService'e gelir).
         val replyAction = NotificationCompat.Action.Builder(
             android.R.drawable.ic_menu_send, "Yanıtla", replyPending,
         )
             .addRemoteInput(remoteInput)
             .setAllowGeneratedReplies(true)
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+            .setShowsUserInterface(false)
             .build()
 
-        val short = text.trim().take(300)
+        val id = nextId++
+        val markRead = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_view, "Okundu",
+            PendingIntent.getBroadcast(
+                context, id,
+                Intent(context, MarkReadReceiver::class.java).putExtra(MarkReadReceiver.EXTRA_ID, id),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+            .setShowsUserInterface(false)
+            .build()
+
+        val short = text.trim().take(600)
+        val me = androidx.core.app.Person.Builder().setName("Sen").setKey("me").build()
+        val hermes = androidx.core.app.Person.Builder().setName("Hermes").setKey("hermes").setBot(true).build()
+        val style = NotificationCompat.MessagingStyle(me)
+            .addMessage(short, System.currentTimeMillis(), hermes)
         val n = NotificationCompat.Builder(context, CHANNEL_REPLIES)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
             .setContentTitle("Hermes")
             .setContentText(short)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(short))
+            .setStyle(style)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setContentIntent(open)
             .addAction(replyAction)
+            .addInvisibleAction(markRead)
             .setAutoCancel(true)
             .build()
 
-        channel(context).notify(nextId++, n)
+        channel(context).notify(id, n)
+    }
+}
+
+
+/** Android Auto "okundu" eylemi — Hermes yanıt bildirimini kaldırır. */
+class MarkReadReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val id = intent.getIntExtra(EXTRA_ID, -1)
+        if (id >= 0) {
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(id)
+        }
+    }
+
+    companion object {
+        const val EXTRA_ID = "hermes_notification_id"
     }
 }

@@ -43,6 +43,16 @@ class ReplyService : Service() {
 
         startForeground(FG_ID, progressNotification())
 
+        // V3: mesaj okuma/yanıt komutu (araçta sesle ya da bildirimden yazılmış)
+        // telefonda çözülür — sunucuya gitmez, bağlantı olmasa da çalışır.
+        // Kullanıcının kendi söylediği komut olduğu için ayrı rıza gerekmez.
+        PhoneIntent.parse(text)?.takeIf { it.tool == "phone_messages" || it.tool == "phone_reply" }?.let { act ->
+            val out = PhoneTools(applicationContext, ShizukuBridge()).execute(act.tool, act.toJson())
+            Notifier.agentReply(applicationContext, out, sessionId, force = true)
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
         scope.launch {
             val profile = ServerProfileStore(applicationContext).active()
             if (profile == null || profile.token.isBlank()) {

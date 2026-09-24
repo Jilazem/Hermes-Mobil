@@ -775,6 +775,26 @@ fun SettingsScreen(
             // Tam kontrol her zaman görünür (önceden "Ajan telefonu
             // kullanabilsin" kapalıyken gizliydi → "tam kontrol yok").
             item {
+                SwitchRow(
+                    S.t2("Ajan mesajlara yanıt verebilsin", "Agent may reply to chats"),
+                    S.t2(
+                        "WhatsApp/Telegram/SMS'e bildirimden yanıt (Android Auto'nun yolu). Hermes, " +
+                            "Telegram'dan ya da araçtan \"Ali'ye geliyorum yaz\" dediğinde gönderir. " +
+                            "Kişi belirsizse göndermez, sorar. Uygulamada kendin yazdığın komut bu " +
+                            "ayar olmadan da çalışır. Bildirim erişimi gerekir.",
+                        "Reply to WhatsApp/Telegram/SMS through the notification (the Android Auto way). " +
+                            "Hermes sends when you ask from Telegram or the car. Ambiguous names are never " +
+                            "guessed. Commands you type in the app work without this. Needs notification access.",
+                    ),
+                    settings.agentMayReply,
+                ) { v ->
+                    onUpdate {
+                        if (v) it.copy(agentMayReply = true, agentMayUsePhone = true, agentReadOnly = false)
+                        else it.copy(agentMayReply = false)
+                    }
+                }
+            }
+            item {
                 FullControlRow(
                     on = settings.fullControl && settings.agentMayUsePhone && !settings.agentReadOnly,
                     onToggle = { v -> onUpdate { it.withFullControl(v) } },

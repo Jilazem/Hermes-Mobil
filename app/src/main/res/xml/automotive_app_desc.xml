@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <automotiveApp>
+    <!-- Araç ekranı (durum + sürüş kipi) -->
     <uses name="template" />
+    <!-- V3: Hermes yanıtları mesajlaşma bildirimi olarak araçta okunur,
+         sesle yanıtlanır (MessagingStyle + REPLY/MARK_AS_READ eylemleri). -->
+    <uses name="notification" />
 </automotiveApp>

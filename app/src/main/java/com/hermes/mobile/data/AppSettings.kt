@@ -294,6 +294,13 @@ data class AppSettings(
      * kullanır. Boşsa özellik kapalı.
      */
     val artemisUrl: String = "http://192.168.1.101:8000",
+    /**
+     * Ajan (Telegram/cron/sohbet/Android Auto yanıtı) senin adına sohbetlere
+     * yanıt gönderebilsin mi (`phone_reply`). Geri alınamaz bir eylem olduğu
+     * için Tam kontrol'den AYRI ve varsayılan KAPALI. Uygulamada kendin
+     * yazdığın "ali'ye … yaz" komutu bu ayardan bağımsız (yazmak zaten rıza).
+     */
+    val agentMayReply: Boolean = false,
     /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
     val artemisProfile: String = "flash",
     /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */

@@ -167,6 +167,11 @@
         </service>
 
         <!-- Ajan yanıt üretirken süreci ayakta tutar; yanıt gelince durur. -->
+        <!-- Android Auto "okundu" eylemi (Hermes yanıt bildirimleri). -->
+        <receiver
+            android:name=".data.MarkReadReceiver"
+            android:exported="false" />
+
         <service
             android:name=".data.AwaitReplyService"
             android:exported="false"

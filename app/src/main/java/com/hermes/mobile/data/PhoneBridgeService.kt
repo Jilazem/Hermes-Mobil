@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -94,6 +95,11 @@ class PhoneBridgeService : Service() {
     private lateinit var tools: PhoneTools
     /** Tam kontrol katmanı — erişilebilirlik servisine dayanan komutlar. */
     private lateinit var fullTools: FullControlTools
+
+    /** Uzun süren araçlar (phone_task/Artemis) WS okuma iş parçacığını tutmasın. */
+    private val jobScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO + CrashGuard.handler,
+    )
 
     override fun onCreate() {
         super.onCreate()
@@ -281,7 +287,10 @@ class PhoneBridgeService : Service() {
         if (!s.agentMayUsePhone) return emptyList()
         val read = PhoneTools.READ_TOOL_NAMES.toList()
         val base = if (s.agentReadOnly) read else (read + PhoneTools.AGENT_WRITE_TOOLS).distinct()
-        return (base + FullControl.advertise(s.agentMayUsePhone, s.fullControl)).distinct()
+        // V3: sohbet yanıtı ayrı rızaya bağlı; Artemis yalnız tam kontrol + adres varken.
+        val reply = if (s.agentMayReply && !s.agentReadOnly) listOf("phone_reply") else emptyList()
+        val artemis = if (s.fullControl && s.artemisUrl.isNotBlank()) listOf("phone_task") else emptyList()
+        return (base + reply + artemis + FullControl.advertise(s.agentMayUsePhone, s.fullControl)).distinct()
     }
 
     private inner class Listener : WebSocketListener() {
@@ -310,6 +319,10 @@ class PhoneBridgeService : Service() {
                         put("model", JsonPrimitive("${Build.MANUFACTURER} ${Build.MODEL}"))
                         put("android", JsonPrimitive(Build.VERSION.SDK_INT))
                         put("tools", buildJsonArray { list.forEach { add(JsonPrimitive(it)) } })
+                        // V3: yeni araçların şeması — phone MCP dinamik kayıt için.
+                        put("specs", buildJsonObject {
+                            list.forEach { n -> PhoneToolSpecs.SPECS[n]?.let { put(n, it) } }
+                        })
                     })
                 }.toString()
             )
@@ -356,6 +369,14 @@ class PhoneBridgeService : Service() {
             }
 
             DiagLog.i("bridge", "agent called $tool")
+            if (tool == "phone_task") {
+                // Artemis dakikalar sürebilir: ayrı iş parçacığında bekle, bitince yanıtla.
+                jobScope.launch {
+                    val out = runArtemisTask(s, args)
+                    reply(webSocket, id, out.first, out.second)
+                }
+                return
+            }
             if (fullTools.handles(tool)) {
                 // Ekran görüntüsü base64'ü log'a YAZILMAZ: kanıt değeri yok,
                 // günlüğü megabaytlarca şişirir.
@@ -455,6 +476,28 @@ class PhoneBridgeService : Service() {
             if (raw.length > 60) "$k=${raw.take(40)}...(${raw.length})" else "$k=$raw"
         }
 
+    /** phone_task: Artemis'e görev ver, en çok ~4 dk bekle. (ok, metin) döner. */
+    private suspend fun runArtemisTask(s: AppSettings, args: JsonObject): Pair<Boolean, String> {
+        val goal = (args["goal"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        if (goal.isEmpty()) return false to "goal is empty"
+        val profile = (args["profile"] as? JsonPrimitive)?.content?.takeIf { it == "pro" || it == "flash" }
+            ?: s.artemisProfile
+        return runCatching {
+            val client = ArtemisClient(s.artemisUrl)
+            val devices = runCatching { client.devices() }.getOrDefault(emptyList())
+            val serial = ArtemisLogic.pickDevice(devices, s.artemisDevice, null)
+            val id = client.submit(goal, profile, serial)
+            val deadline = System.currentTimeMillis() + 240_000L
+            var task = client.task(id)
+            while (!task.done && System.currentTimeMillis() < deadline) {
+                kotlinx.coroutines.delay(2_000)
+                task = client.task(id)
+            }
+            if (!task.done) true to "Artemis task $id still running (status ${task.status}); ask again later."
+            else task.succeeded to ArtemisLogic.resultText(task, en = false)
+        }.getOrElse { false to "Artemis unreachable (${s.artemisUrl}): ${it.message}" }
+    }
+
     private fun reply(ws: WebSocket, id: String, ok: Boolean, payload: String) {
         ws.send(
             buildJsonObject {
@@ -502,6 +545,7 @@ class PhoneBridgeService : Service() {
         cancelPending()
         socket?.close(1000, "service destroyed")
         socket = null
+        jobScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }
 

@@ -50,6 +50,10 @@ object PhoneIntent {
         // Okuma niyetleri QUESTION korumasindan ONCE deneniyor: "bugun ne
         // kacirdim?" ve "neredeyim?" biciminde soru ama cevabi telefonda,
         // ajanda degil. Sunucudaki ajan bu bilgilere zaten ulasamiyor.
+        // V3: mesajlaşma (WhatsApp/Telegram/SMS) — okuma + bildirimden yanıt.
+        // Genel bildirim kalıbından ÖNCE: "whatsapp mesajlarımı oku" bildirim
+        // özeti değil, sohbet satırları istiyor.
+        messages(text, folded)?.let { return it }
         read(folded)?.let { return it }
 
         if (QUESTION.containsMatchIn(folded)) return null
@@ -86,6 +90,58 @@ object PhoneIntent {
                 else -> c.lowercaseChar()
             }
         )
+    }
+
+    // ── Mesajlaşma (V3) ──────────────────────────────────────────────
+    //
+    // Okuma: "whatsapp mesajlarımı oku", "gelen mesajları oku", "telegramda ne
+    // var", "ali ne yazmış". Yanıt: "ali'ye whatsapp'tan geliyorum yaz",
+    // "whatsapp'tan ali'ye 'geliyorum' diye cevap ver", "ayşe'ye tamam yaz".
+    // Yanıt kalıpları kesme işareti ya da uygulama adı İSTER — "ekmek al yaz"
+    // gibi bir not yanlışlıkla mesaj olarak gitmesin.
+    private const val APP = """(whatsapp|whatsap|watsap|wp|telegram|sms)"""
+    private const val FROM = """(?:['’]?(?:tan|ten|dan|den|ta|te|da|de|taki|teki|daki|deki))?"""
+    private const val VERB = """(?:diye\s+)?(?:yaz|gonder|yolla|de|cevap ver|cevapla|yanit ver|yanitla)"""
+
+    private val MSG_READ = Regex(
+        // Uygulama adı ya da okuma fiili ŞART: "yeni mesaj var mı" genel
+        // bildirim özetine (phone_notifications) gitmeye devam eder.
+        """^$APP$FROM\s+(?:gelen\s+|son\s+|yeni\s+|okunmamis\s+)?mesaj(?:lar)?(?:im|imi|imiz|imizi|lari|larimi|i|ini)?""" +
+            """(?:\s+(?:oku|goster|neler|ne|var mi|listele))?$""" +
+            """|^(?:gelen\s+|son\s+|yeni\s+|okunmamis\s+)?mesaj(?:lar)?(?:im|imi|imiz|imizi|lari|larimi|i|ini)?""" +
+            """\s+(?:oku|goster|listele)$""" +
+            """|^$APP$FROM\s+(?:ne var|neler var|kim yazmis|ne gelmis|mesaj var mi)$""" +
+            """|^read\s+(?:my\s+)?(?:(whatsapp|telegram|sms)\s+)?messages$"""
+    )
+    private val MSG_WHO = Regex("""^(?:$APP$FROM\s+)?(.{2,40}?)\s+ne\s+(?:yazmis|yazmislar|demis|gondermis)$""")
+    private val REPLY_APP_FIRST = Regex("""^$APP$FROM\s+(.{2,40}?)['’]?(?:y?e|y?a)\s+(.+?)\s+$VERB$""")
+    private val REPLY_NAME_FIRST = Regex("""^(.{2,40}?)['’]?(?:y?e|y?a)\s+$APP$FROM\s+(.+?)\s+$VERB$""")
+    private val REPLY_BARE = Regex("""^(.{2,40}?)['’](?:y?e|y?a)\s+(.+?)\s+$VERB$""")
+
+    private fun cleanBody(s: String): String =
+        s.trim().trim('"', '\'', '“', '”', '‘', '’').trim()
+
+    private fun messages(text: String, folded: String): Action? {
+        REPLY_APP_FIRST.find(folded)?.let { m ->
+            return action("phone_reply", "app" to m.groupValues[1], "chat" to slice(text, m, 2),
+                "text" to cleanBody(slice(text, m, 3)))
+        }
+        REPLY_NAME_FIRST.find(folded)?.let { m ->
+            return action("phone_reply", "app" to m.groupValues[2], "chat" to slice(text, m, 1),
+                "text" to cleanBody(slice(text, m, 3)))
+        }
+        REPLY_BARE.find(folded)?.let { m ->
+            return action("phone_reply", "app" to "", "chat" to slice(text, m, 1),
+                "text" to cleanBody(slice(text, m, 2)))
+        }
+        MSG_READ.find(folded)?.let { m ->
+            val app = m.groupValues.drop(1).firstOrNull { it.isNotBlank() }.orEmpty()
+            return action("phone_messages", "app" to app)
+        }
+        MSG_WHO.find(folded)?.let { m ->
+            return action("phone_messages", "app" to m.groupValues[1], "chat" to slice(text, m, 2))
+        }
+        return null
     }
 
     private fun action(tool: String, vararg pairs: Pair<String, String>) =

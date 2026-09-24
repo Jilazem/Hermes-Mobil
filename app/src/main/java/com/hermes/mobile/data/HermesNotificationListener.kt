@@ -102,7 +102,11 @@ class HermesNotificationListener : NotificationListenerService() {
             else satirlar.joinToString("\n")
         }
 
-        private fun appLabel(context: Context, pkg: String): String = runCatching {
+        /** Duran bildirimler (erişim yoksa/bağlanmadıysa null) — [MessageInbox] kullanır. */
+        fun activeOrNull(): Array<StatusBarNotification>? =
+            instance?.let { svc -> runCatching { svc.activeNotifications }.getOrNull() }
+
+        internal fun appLabel(context: Context, pkg: String): String = runCatching {
             val pm = context.packageManager
             pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg.substringAfterLast('.'))
