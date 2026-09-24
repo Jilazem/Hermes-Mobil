@@ -124,6 +124,41 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- ── V3 Jarvis: varsayılan dijital asistan ────────────────────
+             Hermes "Dijital asistan" olarak seçilince asistan hareketleri
+             (yan/ana tuşa basılı tutma, köşeden kaydırma) Google yerine bu
+             servise gelir ve ekranı kaplamayan Jarvis paneli açılır. -->
+        <service
+            android:name=".assistant.HermesVoiceInteractionService"
+            android:exported="true"
+            android:label="@string/assistant_label"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".assistant.HermesSessionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION" />
+        <!-- Asistanın zorunlu tanıyıcısı — gerçek tanıyıcıya vekil, böylece
+             diğer uygulamaların sesle yazması bozulmaz. -->
+        <service
+            android:name=".assistant.HermesRecognitionService"
+            android:exported="true"
+            android:label="@string/assistant_label">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/recognition_service" />
+        </service>
+
         <!-- Sürüş kipi: ekran kapalıyken mikrofonun çalışmaya devam etmesi
              Android 14+'ta bu servisi zorunlu kılıyor. -->
         <service

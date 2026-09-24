@@ -73,6 +73,7 @@ import com.hermes.mobile.data.ShizukuBridge
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.VoiceSpeakLogic
 import com.hermes.mobile.data.LocalTtsLogic
+import kotlin.math.roundToInt
 import com.hermes.mobile.data.LiveModelLogic
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.LogResponse
@@ -823,79 +824,26 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Assistant) {
-            item { Header(S.t2("Telefon asistanı", "Phone assistant")) }
+            item { Header(S.t2("Jarvis — sesli asistan", "Jarvis — voice assistant")) }
 
-            item {
-                AssistantRoleRow(
-                    role = assistantRole,
-                    onMakeDefault = onMakeDefaultAssistant,
-                )
-            }
+            // V3: Google yerine Hermes. Asistan hareketi ekranı kaplamayan
+            // Jarvis panelini açar; kurulum + deneme tek kartta.
+            item { JarvisSetupCard(role = assistantRole, onMakeDefault = onMakeDefaultAssistant) }
+            item { JarvisBehaviorCard(settings, onUpdate) }
+            item { VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload) }
 
+            item { Header(S.t2("Uygulama içi asistan kipi", "In-app assistant mode")) }
             item {
                 SwitchRow(
                     S.t2("Asistan yanıtını otomatik oku", "Read the assistant reply aloud"),
                     S.t2(
-                        "Yalnız asistan akışında geçerli: bas-konuş ile sorduğun " +
-                            "sorunun yanıtı gelince kendiliğinden okunur. Normal " +
-                            "sohbette seslendirme değişmez — balondaki hoparlöre " +
-                            "dokunman gerekir.",
-                        "Only inside the assistant flow: the reply to a push-to-talk " +
-                            "question is read out automatically. Normal chat is " +
-                            "unchanged — tap the speaker on the bubble.",
+                        "Hermes varsayılan asistan DEĞİLKEN kullanılan eski kip: sohbet açılır, " +
+                            "bas-konuş ile sorulan sorunun yanıtı kendiliğinden okunur.",
+                        "The older mode used while Hermes is NOT the default assistant: chat opens " +
+                            "and the reply to a push-to-talk question is read out automatically.",
                     ),
                     settings.assistantAutoRead,
                 ) { v -> onUpdate { it.copy(assistantAutoRead = v) } }
-            }
-
-            item {
-                HermesCard(Modifier.fillMaxWidth()) {
-                    Text(
-                        S.t2("Asistan hangi ses hattını kullanır", "Which voice path the assistant uses"),
-                        color = HermesColors.TextPrimary,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        S.t2(
-                            "Yerel (Kahya) — VARSAYILAN. Ses, sunucudaki voice_api " +
-                                "(:8174) üzerinden yazıya çevrilir ve yanıt yine orada " +
-                                "seslendirilir; konuşma Google'a gitmez.",
-                            "Local (Kahya) — DEFAULT. Audio is transcribed through the " +
-                                "voice_api on your server (:8174) and the reply is " +
-                                "synthesised there too; the exchange never goes to Google.",
-                        ),
-                        color = HermesColors.TextSecondary,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        S.t2(
-                            "Gemini Live — isteğe bağlı, ayrı bir özellik olarak duruyor " +
-                                "(canlı ses ekranındaki \"Gemini Live\" sekmesi). Asistan " +
-                                "hareketi artık oraya gitmez.",
-                            "Gemini Live — optional and still available (the \"Gemini Live\" " +
-                                "tab on the live voice screen). The assistant gesture no " +
-                                "longer opens it.",
-                        ),
-                        color = HermesColors.TextMuted,
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            }
-
-            item {
-                Text(
-                    S.t2(
-                        "Asistan modu: sohbet açılır, mikrofon öne çıkar ve kayıt " +
-                            "SENDEN bekler — asistan hareketi tek başına mikrofonu açmaz.",
-                        "Assistant mode: chat opens, the microphone comes forward and " +
-                            "recording waits for YOU — the gesture alone never opens the mic.",
-                    ),
-                    color = HermesColors.TextMuted,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                )
             }
 
             // ── Gizlilik ─────────────────────────────────────────────────
@@ -1543,78 +1491,6 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
 
 
 
-/**
- * Tur-13: "Telefon asistanı" — rol durumu + sistem diyaloğunu açan düğme.
- *
- * Rol desteklenmiyorsa (API < 29 ya da cihaz rolü sunmuyor) düğme yerine
- * kısa elle atama adımları gösterilir; sessiz kalan bir düğme bırakılmaz.
- */
-@Composable
-private fun AssistantRoleRow(
-    role: AssistantModeLogic.RoleStatus,
-    onMakeDefault: () -> Unit,
-) {
-    HermesCard(Modifier.fillMaxWidth()) {
-        Text(
-            S.t2("Varsayılan asistan", "Default assistant"),
-            color = HermesColors.TextPrimary,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            AssistantModeLogic.roleLine(role, ::tr),
-            color = when (role.state) {
-                AssistantModeLogic.RoleState.Hermes -> HermesColors.Online
-                AssistantModeLogic.RoleState.Unsupported -> HermesColors.TextMuted
-                else -> HermesColors.TextSecondary
-            },
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(Modifier.height(10.dp))
-
-        val canRequest = AssistantModeLogic.canRequestRole(role)
-        if (canRequest) {
-            SmallButton(S.t2("Hermes'i varsayılan asistan yap", "Make Hermes the default assistant")) {
-                onMakeDefault()
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                S.t2(
-                    "Android 12 ve üstünde sistem, rolü yalnız Ayarlar'dan atatabiliyor " +
-                        "— düğme diyaloğu açar, kapanırsa seni doğrudan Ayarlar → " +
-                        "Varsayılan uygulamalar → Dijital asistan ekranına götürür.",
-                    "On Android 12+ the system only lets the role be set from Settings — " +
-                        "the button opens the dialog and, if it closes, takes you straight " +
-                        "to Settings → Default apps → Digital assistant.",
-                ),
-                color = HermesColors.TextMuted,
-                style = MaterialTheme.typography.labelSmall,
-            )
-        } else {
-            // Rol API'si yok: kullanıcıyı adımlarla Ayarlar'a yönlendir.
-            AssistantModeLogic.manualSteps(::tr).forEach { step ->
-                Text(
-                    "• $step",
-                    color = HermesColors.TextMuted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(6.dp))
-        Text(
-            S.t2(
-                "Asistan hareketi (ana ekrandan yukarı kaydırma / güç tuşu) Hermes'i " +
-                    "açtığında mikrofon hazır bekler — kayıt sen basınca başlar.",
-                "When the assistant gesture (swipe up from a corner / power button) opens " +
-                    "Hermes, the microphone waits ready — recording starts when you press.",
-            ),
-            color = HermesColors.TextMuted,
-            style = MaterialTheme.typography.labelSmall,
-        )
-    }
-}
-
 /** Ayar kategorileri — panonun bölüm listesiyle aynı desen. */
 enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, Developer }
 
@@ -1625,7 +1501,7 @@ private fun catLabel(c: SettingsCategory): String = when (c) {
     SettingsCategory.Chat -> S.t2("Sohbet", "Chat")
     SettingsCategory.General -> S.t2("Genel", "General")
     SettingsCategory.Phone -> S.t2("Telefon denetimi", "Phone control")
-    SettingsCategory.Assistant -> S.t2("Telefon asistanı", "Phone assistant")
+    SettingsCategory.Assistant -> S.t2("Jarvis asistan", "Jarvis assistant")
     SettingsCategory.Server -> S.t2("Sunucu", "Server")
     SettingsCategory.Privacy -> S.t2("Gizlilik ve bildirim", "Privacy & notifications")
     SettingsCategory.Developer -> S.t2(S.t2("Geliştirici", "Developer"), "Developer")
@@ -1638,7 +1514,7 @@ private fun catHint(c: SettingsCategory): String = when (c) {
     SettingsCategory.Chat -> S.t2("Düşünme, araçlar, geçmiş", "Thinking, tools, history")
     SettingsCategory.General -> S.t2("Arayüz dili, çıkış onayı", "Interface language, exit confirmation")
     SettingsCategory.Phone -> S.t2("Sesli asistanın telefonu kullanması", "Letting voice use the phone")
-    SettingsCategory.Assistant -> S.t2("Varsayılan asistan, yerel ses", "Default assistant, local voice")
+    SettingsCategory.Assistant -> S.t2("Google yerine Hermes, ses stüdyosu, Hey Jarvis", "Hermes instead of Google, voice studio, Hey Jarvis")
     SettingsCategory.Server -> S.t2("Spark izleme, yenileme aralıkları", "Spark monitoring, refresh intervals")
     SettingsCategory.Privacy -> S.t2("Kilit, token, bildirimler", "Lock, token, notifications")
     SettingsCategory.Developer -> S.t2("Ham olaylar", "Raw events")
@@ -2366,5 +2242,298 @@ private fun AutoMirrorCard(
             ),
             settings.mirrorPauseWhileDriving,
         ) { v -> onUpdate { it.copy(mirrorPauseWhileDriving = v) } }
+    }
+}
+
+
+// ── V3 Jarvis ayarları ─────────────────────────────────────────────────
+
+/**
+ * Jarvis kurulumu: Hermes varsayılan dijital asistan mı, değilse tek düğmeyle
+ * sistem ekranına git; Samsung yan tuş adımları; "Şimdi dene".
+ */
+@Composable
+private fun JarvisSetupCard(
+    role: AssistantModeLogic.RoleStatus,
+    onMakeDefault: () -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var active by remember { mutableStateOf(false) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        active = com.hermes.mobile.assistant.HermesVoiceInteractionService.isActive(context)
+        onPauseOrDispose { }
+    }
+    val isDefault = active || role.state == AssistantModeLogic.RoleState.Hermes
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text(
+            S.t2("Hermes'i Google yerine asistan yap", "Use Hermes instead of Google"),
+            color = HermesColors.TextPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (isDefault) S.t2("Hermes varsayılan asistan ✓", "Hermes is the default assistant ✓")
+            else AssistantModeLogic.roleLine(role, ::tr),
+            color = if (isDefault) HermesColors.Online else HermesColors.TextSecondary,
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!isDefault) {
+                SmallButton(S.t2("Varsayılan asistan yap", "Make default")) { onMakeDefault() }
+            }
+            SmallButton(S.t2("▶ Şimdi dene", "▶ Try now")) {
+                if (!com.hermes.mobile.assistant.HermesVoiceInteractionService.show()) {
+                    android.widget.Toast.makeText(
+                        context,
+                        tr("Önce Hermes'i varsayılan asistan yap", "Make Hermes the default assistant first"),
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            S.t2(
+                "Nasıl açılır:\n" +
+                    "• Yan tuşa basılı tut (Samsung: Ayarlar → Gelişmiş özellikler → Yan tuş → " +
+                    "Basılı tut → \"Dijital asistanı uyandır\")\n" +
+                    "• ya da ekranın alt köşesinden çapraz yukarı kaydır\n" +
+                    "• ya da \"Hey Jarvis\" de (uyandırma kelimesi açıksa)\n\n" +
+                    "Varsayılan asistan yolu: Ayarlar → Uygulamalar → Varsayılan uygulamaları seç → " +
+                    "Dijital asistan uygulaması → Hermes V3 Asistan.",
+                "How to open it:\n" +
+                    "• Press and hold the side key (Samsung: Settings → Advanced features → Side key → " +
+                    "Press and hold → \"Wake digital assistant\")\n" +
+                    "• or swipe up diagonally from a bottom corner\n" +
+                    "• or say \"Hey Jarvis\" (if the wake word is on)",
+            ),
+            color = HermesColors.TextMuted,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+/** Beyin, hitap, sürekli sohbet, ekran bağlamı. */
+@Composable
+private fun JarvisBehaviorCard(
+    settings: AppSettings,
+    onUpdate: ((AppSettings) -> AppSettings) -> Unit,
+) {
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text(S.t2("Asistanın beyni", "Assistant brain"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            S.t2(
+                "Hermes ajanı: araçlar, hafıza, telefon kontrolü (önerilen). Yerel model: node1'deki " +
+                    "modele doğrudan, daha hızlı ama araçsız. Telefon komutları (\"feneri aç\", " +
+                    "\"Ali'ye geliyorum yaz\") her iki durumda da anında telefonda yapılır.",
+                "Hermes agent: tools, memory, phone control (recommended). Local model: straight to node1, " +
+                    "faster but without tools. Phone commands run instantly on the phone either way.",
+            ),
+            color = HermesColors.TextMuted,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("hermes" to S.t2("Hermes ajanı", "Hermes agent"), "yerel" to S.t2("Yerel model", "Local model")).forEach { (id, label) ->
+                StudioChip(label, settings.assistantBrain == id) { onUpdate { it.copy(assistantBrain = id) } }
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    TextRow(
+        S.t2("Hitap", "Form of address"),
+        S.t2("Jarvis sana böyle seslenir (ör. efendim, Gökhan Bey). Boş = hitapsız.", "How Jarvis addresses you. Empty = none."),
+        settings.assistantAddress,
+    ) { v -> onUpdate { it.copy(assistantAddress = v) } }
+    SwitchRow(
+        S.t2("Sürekli sohbet", "Continuous conversation"),
+        S.t2(
+            "Yanıttan sonra kendiliğinden yeniden dinler; sessiz kalırsan durur. \"Teşekkürler\", " +
+                "\"kapat\" deyince panel kapanır.",
+            "Listens again after replying; stops if you stay silent. Say \"thanks\" or \"close\" to dismiss.",
+        ),
+        settings.assistantContinuous,
+    ) { v -> onUpdate { it.copy(assistantContinuous = v) } }
+    SwitchRow(
+        S.t2("Ekranı görebilsin", "Can see the screen"),
+        S.t2(
+            "\"Ekranda ne var\", \"bunu özetle\", \"bu mesaja ne yazayım\" dediğinde o anki ekranın " +
+                "metni soruya eklenir. Yalnız böyle sorularda gönderilir; şifre alanları asla.",
+            "When you ask about the screen, its text is added to the question — only then, never password fields.",
+        ),
+        settings.assistantScreenContext,
+    ) { v -> onUpdate { it.copy(assistantScreenContext = v) } }
+}
+
+@Composable
+private fun StudioChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        color = if (selected) HermesColors.OnAccent else HermesColors.TextSecondary,
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier
+            .background(if (selected) HermesColors.Midground else HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+    )
+}
+
+/**
+ * Ses stüdyosu: asistanın sesini seç ve DİNLE. Telefon sesleri anında çalar
+ * (Google/Samsung TTS, internetsiz), yerel Piper indirilmişse telefonda,
+ * sunucu sesleri (kahya/kadın) sunucudan gelir — ilk açılışta yavaş olabilir.
+ */
+@Composable
+private fun VoiceStudioCard(
+    settings: AppSettings,
+    onUpdate: ((AppSettings) -> AppSettings) -> Unit,
+    localTtsState: LocalTtsLogic.State,
+    onLocalTtsDownload: () -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preview = remember { com.hermes.mobile.assistant.VoicePreview(context) }
+    var playing by remember { mutableStateOf<String?>(null) }
+    var engines by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var voices by remember { mutableStateOf<List<com.hermes.mobile.assistant.TtsVoiceInfo>>(emptyList()) }
+    var ttsError by remember { mutableStateOf<String?>(null) }
+    val engine = settings.assistantVoiceEngine
+
+    // Seçili telefon motorunun Türkçe seslerini oku (motor değişince yeniden).
+    androidx.compose.runtime.DisposableEffect(settings.assistantTtsPackage) {
+        var tts: android.speech.tts.TextToSpeech? = null
+        tts = android.speech.tts.TextToSpeech(
+            context,
+            { status ->
+                val t = tts ?: return@TextToSpeech
+                if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                    engines = com.hermes.mobile.assistant.TtsCatalog.engines(t)
+                    voices = com.hermes.mobile.assistant.TtsCatalog.voices(t)
+                    ttsError = if (voices.isEmpty()) tr(
+                        "Bu motorda Türkçe ses yok — motoru değiştir ya da ayarlarından Türkçe ses verisini indir.",
+                        "No Turkish voice in this engine — switch engine or install Turkish voice data.",
+                    ) else null
+                } else {
+                    ttsError = tr("Telefon ses motoru açılamadı.", "Could not start the phone speech engine.")
+                }
+            },
+            settings.assistantTtsPackage.takeIf { it.isNotBlank() },
+        )
+        onDispose {
+            runCatching { tts?.shutdown() }
+            preview.stop()
+        }
+    }
+
+    fun listen(key: String, voiceName: String = settings.assistantVoiceName, eng: String = engine) {
+        if (playing == key) { preview.stop(); playing = null; return }
+        playing = key
+        preview.play(eng, settings.assistantTtsPackage, voiceName, settings.assistantSpeechRate, settings.assistantPitch) {
+            if (playing == key) playing = null
+        }
+    }
+
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text(S.t2("Ses stüdyosu", "Voice studio"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            S.t2("Asistanın sesini seç, dinle, hız ve tonunu ayarla.", "Pick the assistant voice, listen, tune speed and pitch."),
+            color = HermesColors.TextMuted,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        // Motor seçimi
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(
+                "android" to S.t2("Telefon sesi (anında)", "Phone voice (instant)"),
+                "yerel" to S.t2("Yerel Piper", "Local Piper"),
+                "kahya" to S.t2("Sunucu: Kahya", "Server: Kahya"),
+                "kadin" to S.t2("Sunucu: Kadın", "Server: Female"),
+            ).forEach { (id, label) ->
+                StudioChip(label, engine == id) { onUpdate { it.copy(assistantVoiceEngine = id) } }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+
+        when (engine) {
+            "android" -> {
+                if (engines.size > 1) {
+                    Text(S.t2("Motor", "Engine"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StudioChip(S.t2("Sistem", "System"), settings.assistantTtsPackage.isBlank()) {
+                            onUpdate { it.copy(assistantTtsPackage = "", assistantVoiceName = "") }
+                        }
+                        engines.forEach { (pkg, label) ->
+                            StudioChip(label, settings.assistantTtsPackage == pkg) {
+                                onUpdate { it.copy(assistantTtsPackage = pkg, assistantVoiceName = "") }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                ttsError?.let { Text(it, color = HermesColors.Busy, style = MaterialTheme.typography.labelSmall) }
+                val all = listOf(com.hermes.mobile.assistant.TtsVoiceInfo("", S.t2("Varsayılan Türkçe", "Default Turkish"), false, 0)) + voices
+                all.forEach { v ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onUpdate { it.copy(assistantVoiceName = v.name) } }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.RadioButton(
+                            selected = settings.assistantVoiceName == v.name,
+                            onClick = { onUpdate { it.copy(assistantVoiceName = v.name) } },
+                        )
+                        Text(v.label, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        SmallButton(if (playing == "v:${v.name}") S.t2("■ Dur", "■ Stop") else S.t2("▶ Dinle", "▶ Listen")) {
+                            listen("v:${v.name}", v.name, "android")
+                        }
+                    }
+                }
+            }
+            "yerel" -> {
+                Text(LocalTtsLogic.statusLine(localTtsState, ::tr), color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(6.dp))
+                if (localTtsState.phase != LocalTtsLogic.Phase.Ready) {
+                    SmallButton(S.t2("Modeli indir (63 MB)", "Download model (63 MB)")) { onLocalTtsDownload() }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        S.t2("İndirilmemişken telefon sesiyle okunur.", "Until downloaded the phone voice is used."),
+                        color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+            else -> Text(
+                S.t2(
+                    "Sunucu sesi. İlk cümle motoru ısıtır, 1-3 dk sürebilir; sonra hızlanır. Sürekli sohbet için telefon sesi önerilir.",
+                    "Server voice. The first sentence warms the engine (1-3 min); faster afterwards. Phone voice is recommended.",
+                ),
+                color = HermesColors.TextMuted,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        SliderRow(
+            S.t2("Konuşma hızı", "Speech rate"),
+            "×" + "%.2f".format(settings.assistantSpeechRate),
+            settings.assistantSpeechRate,
+            0.6f..1.6f,
+        ) { v -> onUpdate { it.copy(assistantSpeechRate = (v * 20).roundToInt() / 20f) } }
+        if (engine == "android") {
+            SliderRow(
+                S.t2("Ses tonu", "Pitch"),
+                "×" + "%.2f".format(settings.assistantPitch),
+                settings.assistantPitch,
+                0.7f..1.4f,
+            ) { v -> onUpdate { it.copy(assistantPitch = (v * 20).roundToInt() / 20f) } }
+        }
+        Spacer(Modifier.height(6.dp))
+        SmallButton(if (playing == "sample") S.t2("■ Durdur", "■ Stop") else S.t2("▶ Seçili sesle örnek cümle", "▶ Sample with selected voice")) {
+            listen("sample")
+        }
     }
 }

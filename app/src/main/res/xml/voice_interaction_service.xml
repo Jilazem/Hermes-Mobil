@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- V3 Jarvis: Hermes'in varsayılan dijital asistan tanımı. Sınıf adları TAM
+     yazılmalı (sistem ComponentName(paket, ad) kuruyor; ".x" çözülmez). -->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.hermes.mobile.assistant.HermesSessionService"
+    android:recognitionService="com.hermes.mobile.assistant.HermesRecognitionService"
+    android:settingsActivity="com.hermes.mobile.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true"
+    android:supportsLocalInteraction="false" />

@@ -103,6 +103,11 @@ import com.hermes.mobile.ui.serviceLang
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        /** Jarvis panelinden "Sohbette aç": asistan oturumunun kimliği. */
+        const val EXTRA_OPEN_SESSION = "hermes_open_session"
+    }
+
     private val viewModel: AppViewModel by viewModels()
     private val chatViewModel: ChatViewModel by viewModels()
     private val liveViewModel: LiveSessionsViewModel by viewModels()
@@ -139,9 +144,18 @@ class MainActivity : ComponentActivity() {
      * yalnız iznin sorulması; kaydı kullanıcı bas-konuş ile başlatır
      * ("otomatik kayda başlama" şartı).
      */
+    /** Jarvis kurulumu: önce mikrofon izni, sonra asistan rolü (iki diyalog üst üste binmesin). */
+    private var roleAfterMic = false
+
     private val requestMicQuiet = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* izin verilince kullanıcı bas-konuş yapar */ }
+    ) {
+        // izin verilince kullanıcı bas-konuş yapar; Jarvis kurulumundaysak rol diyaloğuna geç.
+        if (roleAfterMic) {
+            roleAfterMic = false
+            launchAssistantRoleRequest()
+        }
+    }
 
     /**
      * Tur-13: `ROLE_ASSISTANT` sistem diyaloğu.
@@ -176,6 +190,17 @@ class MainActivity : ComponentActivity() {
 
     /** "Hermes'i varsayılan asistan yap" — sistem diyaloğu, yoksa Ayarlar. */
     private fun makeDefaultAssistant() {
+        // Jarvis paneli sistemden açılınca izin isteyemez (etkinlik yok):
+        // mikrofon iznini ŞİMDİ al, yoksa panel "izin yok" der.
+        if (!hasMicPermission()) {
+            roleAfterMic = true
+            requestMicQuiet.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        launchAssistantRoleRequest()
+    }
+
+    private fun launchAssistantRoleRequest() {
         val intent = AssistantRole.requestIntent(this)
         if (intent != null) {
             runCatching { requestAssistantRole.launch(intent) }
@@ -365,6 +390,13 @@ class MainActivity : ComponentActivity() {
      */
     private fun handleActionIntent(intent: Intent?) {
         val i = intent ?: return
+        // V3 Jarvis: panelden "Sohbette aç" — asistan oturumuna bağlan.
+        i.getStringExtra(EXTRA_OPEN_SESSION)?.takeIf { it.isNotBlank() }?.let { sid ->
+            i.removeExtra(EXTRA_OPEN_SESSION)
+            chatViewModel.openSessionWhenReady(sid, "Jarvis")
+            chatViewModel.pendingAction.value = "chat"
+            return
+        }
         val action = when {
             // Tur-13: asistan hareketi artık CANLI SES (Gemini Live) değil,
             // asistan modu. Gerekçe: kullanıcı telefonun asistan uygulamasının
@@ -797,6 +829,13 @@ private fun HermesApp(
     var reasoningSheet by remember { mutableStateOf(false) }
     val reasoningStatus by chatViewModel.reasoningStatus.collectAsStateWithLifecycle()
     var voiceSheet by remember { mutableStateOf(false) }
+    // V3 Jarvis — uygulama içinde de aynı panel (varsayılan asistan olmasa bile).
+    // Uygulamadaki ses düğmeleri artık Gemini Live'a (Google) değil buraya gelir.
+    var jarvisOpen by remember { mutableStateOf(false) }
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val jarvis = remember { com.hermes.mobile.assistant.JarvisEngine(appContext) { jarvisOpen = false } }
+    androidx.compose.runtime.DisposableEffect(jarvis) { onDispose { jarvis.release() } }
+    LaunchedEffect(jarvisOpen) { if (jarvisOpen) jarvis.start() else jarvis.stop() }
     var cameraFullScreen by remember { mutableStateOf(false) }
     var exitDialog by remember { mutableStateOf(false) }
     // Tur-16: `backToSessions` KALDIRILDI — ayrı Oturumlar sayfası yok; geri
@@ -820,6 +859,7 @@ private fun HermesApp(
                 voiceViewModel.startDriving()
             }
             "new" -> { tab = Tab.Chat; showHome = false; chatViewModel.newSession() }
+            "chat" -> { tab = Tab.Chat; showHome = false }
             "camera" -> { tab = Tab.Chat; if (onNeedCamera()) cameraFullScreen = true }
         }
         if (pendingAction != null) chatViewModel.pendingAction.value = null
@@ -1147,7 +1187,7 @@ private fun HermesApp(
                                 chatViewModel.send(text)
                                 showHome = false
                             },
-                            onVoice = { if (onNeedMic()) voiceSheet = true },
+                            onVoice = { if (onNeedMic()) jarvisOpen = true },
                             onRefresh = {
                                 viewModel.refreshAll()
                                 liveViewModel.refresh(quiet = true)
@@ -1173,9 +1213,9 @@ private fun HermesApp(
                         onStop = chatViewModel::stopGeneration,
                         onDictate = { if (onNeedMic()) chatViewModel.startDictation() },
                         onToggleHandsFree = {
-                            // Kulaklık düğmesi artık Gemini Live'ı açıyor —
-                            // eski STT/TTS döngüsünden çok daha iyi.
-                            if (onNeedMic()) voiceSheet = true
+                            // V3: kulaklık düğmesi Jarvis'i açar (Hermes beyni).
+                            // Gemini Live (Google) yalnız "Sesli konuşma" kısayolunda.
+                            if (onNeedMic()) jarvisOpen = true
                         },
                         onPickImage = onPickImage,
                         onPickFile = onPickFile,
@@ -1389,6 +1429,26 @@ private fun HermesApp(
             )
         }
 
+        if (jarvisOpen) {
+            val jst by jarvis.state.collectAsStateWithLifecycle()
+            BackHandler { jarvisOpen = false }
+            com.hermes.mobile.ui.JarvisOverlay(
+                state = jst,
+                onMic = jarvis::tapMic,
+                onClose = { jarvisOpen = false },
+                onNewTopic = jarvis::newTopic,
+                onOpenChat = {
+                    jarvisOpen = false
+                    jarvis.lastSessionId?.let { sid ->
+                        chatViewModel.openSessionWhenReady(sid, "Jarvis")
+                        tab = Tab.Chat
+                        showHome = false
+                    }
+                },
+                onAsk = jarvis::ask,
+                onCardBounds = { _, _, _, _ -> },
+            )
+        }
         if (voiceSheet) {
             LiveVoiceSheet(
                 state = voice,

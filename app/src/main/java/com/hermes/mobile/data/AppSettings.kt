@@ -303,6 +303,26 @@ data class AppSettings(
     val agentMayReply: Boolean = false,
     /** Android Auto ekran yansıtma: araç hareket ederken görüntüyü kes (varsayılan AÇIK). */
     val mirrorPauseWhileDriving: Boolean = true,
+
+    // ── Jarvis sesli asistan (V3) ──────────────────────────────────────
+    /** Beyin: "hermes" (ajan — araçlar, hafıza) ya da "yerel" (node1 LLM, hızlı). */
+    val assistantBrain: String = "hermes",
+    /** Asistan sesi motoru: "android" (telefon TTS, anında) | "yerel" | "kahya" | "kadin" | "chatterbox". */
+    val assistantVoiceEngine: String = "android",
+    /** Telefon TTS motor paketi (boş = sistem varsayılanı; ör. com.google.android.tts). */
+    val assistantTtsPackage: String = "",
+    /** Telefon TTS ses adı (boş = motorun Türkçe varsayılanı). */
+    val assistantVoiceName: String = "",
+    val assistantSpeechRate: Float = 1.0f,
+    val assistantPitch: Float = 1.0f,
+    /** Yanıttan sonra kendiliğinden yeniden dinle (sürekli sohbet). */
+    val assistantContinuous: Boolean = true,
+    /** Hitap ("efendim", "Gökhan Bey"…). Boşsa hitap yok. */
+    val assistantAddress: String = "efendim",
+    /** "Ekranda ne var / bunu özetle" sorularında ekran metnini ajana ekle. */
+    val assistantScreenContext: Boolean = true,
+    /** "Hey Jarvis" uyandırma kelimesi dinlensin mi (mikrofon ön plan servisi). */
+    val wakeWordEnabled: Boolean = false,
     /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
     val artemisProfile: String = "flash",
     /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */

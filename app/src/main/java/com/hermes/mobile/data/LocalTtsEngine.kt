@@ -87,12 +87,12 @@ class LocalTtsEngine(context: Context) {
      * boş dosya bırakmaz ( MediaPlayer boşta hata patlatırdı).
      */
     @Throws(IOException::class)
-    fun synthesize(text: String, target: File): File {
+    fun synthesize(text: String, target: File, speed: Float = 1.0f): File {
         val engine = tts ?: throw IOException("Yerel ses motoru yüklü değil")
         val clean = text.trim()
         if (clean.isBlank()) throw IOException("Okunacak metin boş")
         val audio: GeneratedAudio = try {
-            engine.generate(clean, sid = 0, speed = 1.0f)
+            engine.generate(clean, sid = 0, speed = speed.coerceIn(0.5f, 2.0f))
         } catch (e: Throwable) {
             throw IOException("Yerel sentez hatası: ${e.message}", e)
         }

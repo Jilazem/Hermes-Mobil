@@ -866,6 +866,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Aktif profil değiştiyse bağlantıyı yeniden kurar. */
+    /**
+     * V3 Jarvis "Sohbette aç": bağlantı hazırsa hemen bağlan, değilse (soğuk
+     * açılış) bağlantı ilk açıldığında bağlanılsın.
+     */
+    fun openSessionWhenReady(sid: String, title: String) {
+        if (profile != null && client != null) continueSession(sid, sid, title)
+        else restoreSessionId = sid
+    }
+
     fun bind(profile: ServerProfile?) {
         if (profile == null || profile.token.isBlank()) {
             teardown()

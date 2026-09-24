@@ -119,7 +119,10 @@ class VoiceController(private val context: Context) {
 
         stopSpeaking()
         recognizer?.destroy()
-        recognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+        // V3: Hermes varsayılan asistan olunca varsayılan tanıyıcı Hermes'in
+        // vekili olur — doğrudan gerçek tanıyıcıya git (çift atlama olmasın).
+        recognizer = (com.hermes.mobile.assistant.RecognizerPicker.create(context)
+            ?: SpeechRecognizer.createSpeechRecognizer(context)).apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
                     _mode.value = Mode.Listening
