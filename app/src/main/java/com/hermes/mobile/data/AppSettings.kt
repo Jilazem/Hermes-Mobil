@@ -444,3 +444,14 @@ class SettingsStore(context: Context) {
 
     fun exportTheme(palette: HermesPalette): String = json.encodeToString(palette)
 }
+
+/**
+ * "Tam kontrol" tek anahtar: açınca çalışması için gereken üç ayar birlikte
+ * ayarlanır (ajan telefonu kullanabilsin + yalnız-okuma kapalı + tam kontrol).
+ * Önceden üçü ayrı ayrıydı ve "Yalnız okuma" varsayılan AÇIK olduğu için
+ * dokunma/yazma araçları sessizce reddediliyordu. Kapatınca yalnız tam
+ * kontrol kapanır — diğer iki tercih kullanıcıda kalır.
+ */
+fun AppSettings.withFullControl(on: Boolean): AppSettings =
+    if (on) copy(fullControl = true, agentMayUsePhone = true, agentReadOnly = false)
+    else copy(fullControl = false)

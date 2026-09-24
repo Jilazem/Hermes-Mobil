@@ -55,6 +55,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hermes.mobile.data.AppSettings
+import com.hermes.mobile.data.withFullControl
 import com.hermes.mobile.data.BUILTIN_PERSONAS
 import com.hermes.mobile.data.HermesAccessibilityService
 import com.hermes.mobile.data.LIVE_VOICES
@@ -769,13 +770,13 @@ fun SettingsScreen(
                 }
             }
 
-            if (settings.agentMayUsePhone) {
-                item {
-                    FullControlRow(
-                        on = settings.fullControl,
-                        onToggle = { v -> onUpdate { it.copy(fullControl = v) } },
-                    )
-                }
+            // Tam kontrol her zaman görünür (önceden "Ajan telefonu
+            // kullanabilsin" kapalıyken gizliydi → "tam kontrol yok").
+            item {
+                FullControlRow(
+                    on = settings.fullControl && settings.agentMayUsePhone && !settings.agentReadOnly,
+                    onToggle = { v -> onUpdate { it.withFullControl(v) } },
+                )
             }
 
             if (settings.agentMayUsePhone) {
@@ -1945,6 +1946,42 @@ private fun FullControlRow(
                             .padding(horizontal = 11.dp, vertical = 6.dp),
                     )
                 }
+            }
+            if (!serviceOn && android.os.Build.VERSION.SDK_INT >= 33) {
+                // Android 13+: Play dışından kurulan uygulamada erişilebilirlik
+                // anahtarı gri ("Kısıtlanmış ayar"). Kilit yalnız Uygulama
+                // bilgisi → ⋮ menüsünden açılır; yol göstermezsek kullanıcı
+                // izni hiç veremiyor.
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    S.t2(
+                        "Erişilebilirlik anahtarı gri/kısıtlı görünüyorsa: Uygulama bilgisi → " +
+                            "sağ üst ⋮ → \"Kısıtlanmış ayarlara izin ver\" → sonra tekrar \"İzin ver\".",
+                        "If the accessibility switch is greyed out (restricted setting): App info → " +
+                            "top-right ⋮ → \"Allow restricted settings\" → then \"Grant\" again.",
+                    ),
+                    color = HermesColors.Busy,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    S.t2("Uygulama bilgisini aç", "Open app info"),
+                    color = HermesColors.Midground,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                        .clickable {
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        android.net.Uri.fromParts("package", context.packageName, null),
+                                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            }
+                        }
+                        .padding(horizontal = 11.dp, vertical = 6.dp),
+                )
             }
             Spacer(Modifier.height(8.dp))
             Text(

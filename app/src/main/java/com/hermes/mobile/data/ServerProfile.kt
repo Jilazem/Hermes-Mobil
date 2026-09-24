@@ -110,7 +110,8 @@ data class ServerProfile(
                 }
                 it = scheme + "://" + it.substring(idx + 3)
             }
-            if (it.isNotEmpty() && !it.contains("://")) "http://$it" else it
+            if (it.isNotEmpty() && !it.contains("://")) it = "http://$it"
+            stripQueryAndFragment(it)
         }
 
     val isHttps: Boolean get() = normalizedUrl.startsWith("https://", ignoreCase = true)
@@ -137,7 +138,17 @@ data class ServerProfile(
 
     /** Röle adresi — açık verilmemişse etkin host'tan türetilir. */
 
-    val normalizedRemote: String get() = remoteUrl.trim().trimEnd('/')
+    /**
+     * Dış adres — taban adresle AYNI temizlikten geçer. Önceden yalnız sondaki
+     * "/" kırpılıyordu: web arayüzünden kopyalanan
+     * "https://host/?profile=default" olduğu gibi kalıyor, istekler
+     * "https://host/?profile=default/api/sessions" oluyordu → sunucu API
+     * yerine web sayfasını döndürüyor, uygulama "sunucu hatası" veriyordu.
+     */
+    val normalizedRemote: String
+        get() = remoteUrl.trim().takeIf { it.isNotEmpty() }
+            ?.let { copy(baseUrl = it, remoteUrl = "").normalizedUrl }
+            .orEmpty()
 
     /**
      * Denenecek adresler, sırayla. LAN önce çünkü hızlı ve tünel kotası yakmıyor.
@@ -170,6 +181,16 @@ data class ServerProfile(
 }
 
 private const val PREFS_FILE = "hermes_profiles"
+
+/**
+ * Tarayıcıdan kopyalanan adresteki sorgu (`?profile=default`) ve parça
+ * (`#/chat`) kısmını atar; sondaki eğik çizgileri kırpar. API yolları bu
+ * tabana eklendiği için sorgu kısmı kalırsa bütün istekler bozulur.
+ */
+internal fun stripQueryAndFragment(url: String): String {
+    val cut = url.indexOfAny(charArrayOf('?', '#'))
+    return (if (cut >= 0) url.substring(0, cut) else url).trimEnd('/')
+}
 
 /**
  * RFC1918 + localhost + .local — "aynı ağdayım" denebilecek adresler.
