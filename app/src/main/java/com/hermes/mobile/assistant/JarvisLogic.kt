@@ -66,6 +66,9 @@ object JarvisLogic {
 
     const val MAX_SCREEN_CHARS = 4_000
 
+    /** Sesle okunacak en fazla yanıt uzunluğu; fazlası "devamı sohbette". */
+    const val MAX_SPOKEN_CHARS = 900
+
     // ── İlk mesaj yönergesi ────────────────────────────────────────────
 
     /**

@@ -81,7 +81,9 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         val full = StringBuilder()
         val done = CompletableDeferred<String>()
         running = done
-        val collector = scope.launch {
+        // UNDISPATCHED: abonelik soru gönderilmeden ÖNCE kurulur (SharedFlow
+        // geçmişi tutmaz; ilk parçalar kaçmasın).
+        val collector = scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
             client.events.collect { e ->
                 if (e.sessionId != null && e.sessionId != sid) return@collect
                 when (e.type) {

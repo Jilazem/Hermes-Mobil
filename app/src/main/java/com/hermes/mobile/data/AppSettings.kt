@@ -323,6 +323,8 @@ data class AppSettings(
     val assistantScreenContext: Boolean = true,
     /** "Hey Jarvis" uyandırma kelimesi dinlensin mi (mikrofon ön plan servisi). */
     val wakeWordEnabled: Boolean = false,
+    /** "yuksek" | "normal" | "siki" — bkz. WakeWordLogic.Sensitivity. */
+    val wakeWordSensitivity: String = "normal",
     /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
     val artemisProfile: String = "flash",
     /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */

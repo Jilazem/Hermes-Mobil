@@ -90,6 +90,11 @@ class JarvisEngine(
 
     /** Panel açıldı: Google gibi hemen dinlemeye başla. */
     fun start() {
+        // "Hey Jarvis" dinleyicisi mikrofonu bıraksın (tanıyıcı kullanacak).
+        WakeWordControl.pause()
+        // Ses stüdyosunda yapılan seçim her açılışta geçerli olsun.
+        voice.release()
+        voice = newVoice()
         silentFollowups = 0
         _state.value = JarvisState()
         listen(beep = true)
@@ -127,6 +132,7 @@ class JarvisEngine(
         interruptAll()
         _state.update { it.copy(phase = JarvisPhase.Idle, level = 0f) }
         releaseFocus()
+        WakeWordControl.resume()
     }
 
     fun release() {
@@ -256,16 +262,22 @@ class JarvisEngine(
             JarvisLogic.withScreen(text, screenText, screenApp) else text
 
         val splitter = JarvisLogic.SentenceSplitter()
-        voice = voice.also { it.stop() }
+        var spokenChars = 0
+        var truncated = false
+        fun speakChunk(sentence: String) {
+            // Uzun yanıtın tamamı okunmaz: ~900 karakterden sonra "devamı sohbette".
+            if (spokenChars >= JarvisLogic.MAX_SPOKEN_CHARS) { truncated = true; return }
+            spokenChars += sentence.length
+            if (_state.value.phase == JarvisPhase.Thinking) _state.update { it.copy(phase = JarvisPhase.Speaking) }
+            voice.say(sentence)
+        }
+        voice.stop()
         turn = scope.launch {
             val sink = object : JarvisBrain.Sink {
                 override fun onDelta(text: String) {
                     main.post {
                         _state.update { it.copy(answer = it.answer + text, tool = null) }
-                        splitter.push(text).forEach { sentence ->
-                            if (_state.value.phase == JarvisPhase.Thinking) _state.update { it.copy(phase = JarvisPhase.Speaking) }
-                            voice.say(sentence)
-                        }
+                        splitter.push(text).forEach(::speakChunk)
                     }
                 }
                 override fun onTool(name: String) {
@@ -283,7 +295,8 @@ class JarvisEngine(
                     speakOnce("Üzgünüm, ${e.message ?: "bir hata oldu"}") { afterSpeaking() }
                     return@post
                 }
-                splitter.flush()?.let { voice.say(it) }
+                splitter.flush()?.let(::speakChunk)
+                if (truncated) voice.say("Devamı sohbet ekranında.")
                 if (_state.value.answer.isBlank()) _state.update { it.copy(answer = "(yanıt yok)") }
                 if (_state.value.phase == JarvisPhase.Thinking) _state.update { it.copy(phase = JarvisPhase.Speaking) }
                 voice.finish()

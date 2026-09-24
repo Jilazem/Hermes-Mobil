@@ -457,6 +457,16 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(settings.fullControl, settings.agentMayUsePhone) {
                 com.hermes.mobile.data.HermesAccessibilityService.refreshNotice(this@MainActivity)
             }
+            // V3 "Hey Jarvis": ayar açıksa dinleyici uygulama ÖNDEYKEN başlatılır
+            // (Android 14+ mikrofon servisini arka plandan başlatmaya izin vermiyor).
+            LaunchedEffect(settings.wakeWordEnabled, settings.wakeWordSensitivity) {
+                if (settings.wakeWordEnabled && hasMicPermission()) {
+                    com.hermes.mobile.assistant.WakeWordService.stop(this@MainActivity)
+                    com.hermes.mobile.assistant.WakeWordService.start(this@MainActivity)
+                } else {
+                    com.hermes.mobile.assistant.WakeWordService.stop(this@MainActivity)
+                }
+            }
 
             HermesTheme(
                 palette = themeById(settings.themeId, customThemes),
@@ -860,6 +870,8 @@ private fun HermesApp(
             }
             "new" -> { tab = Tab.Chat; showHome = false; chatViewModel.newSession() }
             "chat" -> { tab = Tab.Chat; showHome = false }
+            // "Hey Jarvis" bildirimi (Hermes varsayılan asistan değilken).
+            "jarvis" -> { if (onNeedMic()) jarvisOpen = true }
             "camera" -> { tab = Tab.Chat; if (onNeedCamera()) cameraFullScreen = true }
         }
         if (pendingAction != null) chatViewModel.pendingAction.value = null

@@ -159,6 +159,12 @@
                 android:resource="@xml/recognition_service" />
         </service>
 
+        <!-- V3 "Hey Jarvis": uyandırma kelimesi dinleyicisi (ses telefonda işlenir). -->
+        <service
+            android:name=".assistant.WakeWordService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
         <!-- Sürüş kipi: ekran kapalıyken mikrofonun çalışmaya devam etmesi
              Android 14+'ta bu servisi zorunlu kılıyor. -->
         <service

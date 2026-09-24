@@ -831,6 +831,7 @@ fun SettingsScreen(
             item { JarvisSetupCard(role = assistantRole, onMakeDefault = onMakeDefaultAssistant) }
             item { JarvisBehaviorCard(settings, onUpdate) }
             item { VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload) }
+            item { WakeWordCard(settings, onUpdate) }
 
             item { Header(S.t2("Uygulama içi asistan kipi", "In-app assistant mode")) }
             item {
@@ -2535,5 +2536,62 @@ private fun VoiceStudioCard(
         SmallButton(if (playing == "sample") S.t2("■ Durdur", "■ Stop") else S.t2("▶ Seçili sesle örnek cümle", "▶ Sample with selected voice")) {
             listen("sample")
         }
+    }
+}
+
+
+/** "Hey Jarvis" uyandırma kelimesi — aç/kapat, durum, hassasiyet. */
+@Composable
+private fun WakeWordCard(
+    settings: AppSettings,
+    onUpdate: ((AppSettings) -> AppSettings) -> Unit,
+) {
+    val running by com.hermes.mobile.assistant.WakeWordControl.running.collectAsState()
+    HermesCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(S.t2("\"Hey Jarvis\" ile uyandır", "Wake with \"Hey Jarvis\""), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    when {
+                        !settings.wakeWordEnabled -> S.t2("kapalı", "off")
+                        running -> S.t2("dinleniyor ✓", "listening ✓")
+                        else -> S.t2("başlıyor… (ilk açılışta model iner, 3,7 MB)", "starting… (downloads a 3.7 MB model once)")
+                    },
+                    color = if (running && settings.wakeWordEnabled) HermesColors.Online else HermesColors.TextMuted,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            androidx.compose.material3.Switch(
+                checked = settings.wakeWordEnabled,
+                onCheckedChange = { v -> onUpdate { it.copy(wakeWordEnabled = v) } },
+            )
+        }
+        if (settings.wakeWordEnabled) {
+            Spacer(Modifier.height(8.dp))
+            Text(S.t2("Hassasiyet", "Sensitivity"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "yuksek" to S.t2("Yüksek", "High"),
+                    "normal" to S.t2("Normal", "Normal"),
+                    "siki" to S.t2("Sıkı", "Strict"),
+                ).forEach { (id, label) ->
+                    StudioChip(label, settings.wakeWordSensitivity == id) { onUpdate { it.copy(wakeWordSensitivity = id) } }
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            S.t2(
+                "\"Hey Jarvis\" (ya da \"Hey Carvis\") de; Jarvis paneli açılır. Ses tamamen telefonda " +
+                    "işlenir, hiçbir yere gönderilmez; açıkken kalıcı bir bildirim durur. Hermes varsayılan " +
+                    "asistan ise panel doğrudan açılır, değilse dokunulacak bir bildirim gelir. Pil: sürekli " +
+                    "küçük bir model çalışır — pil tasarrufunda Hermes'i \"kısıtlanmamış\" yap. " +
+                    "Model: openWakeWord hey_jarvis (CC BY-NC-SA 4.0, kişisel kullanım).",
+                "Say \"Hey Jarvis\" to open the Jarvis panel. Audio is processed on the phone only; a " +
+                    "persistent notification shows while it listens. Model: openWakeWord hey_jarvis (CC BY-NC-SA 4.0).",
+            ),
+            color = HermesColors.TextMuted,
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
