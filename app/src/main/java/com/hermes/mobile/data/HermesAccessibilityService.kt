@@ -645,6 +645,27 @@ class HermesAccessibilityService : AccessibilityService() {
         return dispatch(GestureDescription.Builder().addStroke(stroke).build(), 4)
     }
 
+    /**
+     * Android Auto yansıtmasından gelen dokunuş — BEKLEMEZ. Araç geri çağrıları
+     * ana iş parçacığında geliyor; [dispatch]'in latch beklemesi orada jest
+     * sonucunu (yine ana iş parçacığına gelen) kilitlerdi.
+     */
+    fun mirrorTap(x: Int, y: Int, long: Boolean = false): Boolean = runCatching {
+        val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+        val stroke = GestureDescription.StrokeDescription(path, 0, if (long) 700L else 60L)
+        dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+    }.getOrDefault(false)
+
+    /** Yansıtmadan kaydırma: [x1,y1,x2,y2], beklemez. */
+    fun mirrorSwipe(p: IntArray, durationMs: Long = 250): Boolean = runCatching {
+        val path = Path().apply {
+            moveTo(p[0].toFloat(), p[1].toFloat())
+            lineTo(p[2].toFloat(), p[3].toFloat())
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
+        dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+    }.getOrDefault(false)
+
     private fun dispatch(gesture: GestureDescription, waitSeconds: Long): Boolean {
         val latch = CountDownLatch(1)
         var done = false

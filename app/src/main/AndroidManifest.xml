@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- V3 Android Auto ekran yansıtma -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
+    <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
+    <uses-permission android:name="com.google.android.gms.permission.CAR_SPEED" />
     <!-- Uygulama durdurma: erişilebilirlik API'si başka bir uygulamayı zorla
          kapatamıyor (force-stop kabuk yetkisi ister). Bu izin yalnız arka
          plan sürecini öldürmeye yarıyor; sonuç mesajı da bunu açıkça yazıyor. -->
@@ -167,6 +172,17 @@
         </service>
 
         <!-- Ajan yanıt üretirken süreci ayakta tutar; yanıt gelince durur. -->
+        <!-- V3 Android Auto ekran yansıtma: izin ekranı + yakalama servisi. -->
+        <activity
+            android:name=".data.MirrorConsentActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <service
+            android:name=".data.MirrorProjectionService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
         <!-- Android Auto "okundu" eylemi (Hermes yanıt bildirimleri). -->
         <receiver
             android:name=".data.MarkReadReceiver"
@@ -224,7 +240,9 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
-                <category android:name="androidx.car.app.category.IOT" />
+                <!-- V3: NAVIGATION — serbest çizim yüzeyi (ekran yansıtma) yalnız
+                     bu kategoriye veriliyor. -->
+                <category android:name="androidx.car.app.category.NAVIGATION" />
             </intent-filter>
         </service>
 

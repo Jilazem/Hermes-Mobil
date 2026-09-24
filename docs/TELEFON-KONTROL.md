@@ -70,3 +70,27 @@ Sunucudaki phone MCP bu alanı okumuyorsa, Hermes'e aşağıdaki talimatı
 > Asistan'a izin veriyor. Hermes'e yeni bir konu açmak için telefondaki sürüş
 > kipi ya da Hızlı Ayarlar'daki "Hermes'e konuş" döşemesi kullanılır. Gelen
 > bir Hermes mesajına ise araçtan doğrudan yanıt verilebilir.
+
+## Android Auto'ya telefon ekranını yansıtma
+
+1. Telefonda: Hermes V3 → Ayarlar → **Android Auto'ya ekran yansıtma** →
+   **"İzin ver ve başlat"** → açılan pencerede **"Tüm ekran"**ı seç.
+   Kalıcı bir bildirim çıkar; yansıtmayı buradan durdurabilirsin.
+2. Araçta **Hermes**'i aç. Telefonun ekranı araç ekranında görünür. Dikey
+   telefon ortalanır, iki yanında siyah bant kalır.
+3. Dokunmak için telefonda **Tam kontrol** açık olmalı. Araç ekranında:
+   - **dokunma** telefona dokunur;
+   - **kaydırma** için sağdaki ✥ (kaydır) düğmesine bas, sonra sürükle ya da savur;
+   - üst düğmeler: **Geri**, **Ana** (ana ekran), **Hermes** (uygulamayı öne
+     getirir), **Durum** (sunucu durumu).
+4. İzin verilmediyse araçta "İzni iste"ye bas. Telefona bir bildirim gelir;
+   ona dokunup izin ver.
+
+**Güvenlik:** "Sürerken yansıtmayı durdur" varsayılan olarak açık. Araç
+~5 km/sa'yı geçince görüntü kesilir, durunca geri gelir. Araç hız bilgisini
+vermiyorsa bu koruma çalışmaz.
+
+Teknik not: Android Auto serbest çizimi yalnız navigasyon uygulamalarına
+açıyor. Bu yüzden Hermes araçta navigasyon uygulaması olarak görünür.
+Telefon ekranı kilitlenirse yansıma da kilit ekranını gösterir. Yansıtma
+sürerken ekranın kararmaması için bir ekran-açık kilidi tutulur.

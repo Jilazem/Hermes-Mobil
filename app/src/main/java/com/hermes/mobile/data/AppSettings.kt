@@ -301,6 +301,8 @@ data class AppSettings(
      * yazdığın "ali'ye … yaz" komutu bu ayardan bağımsız (yazmak zaten rıza).
      */
     val agentMayReply: Boolean = false,
+    /** Android Auto ekran yansıtma: araç hareket ederken görüntüyü kes (varsayılan AÇIK). */
+    val mirrorPauseWhileDriving: Boolean = true,
     /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
     val artemisProfile: String = "flash",
     /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */

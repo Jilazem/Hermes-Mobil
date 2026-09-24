@@ -771,6 +771,7 @@ fun SettingsScreen(
             }
 
             item { ArtemisCard(settings, onUpdate) }
+            item { AutoMirrorCard(settings, onUpdate) }
 
             // Tam kontrol her zaman görünür (önceden "Ajan telefonu
             // kullanabilsin" kapalıyken gizliydi → "tam kontrol yok").
@@ -2303,5 +2304,67 @@ private fun ArtemisCard(
             Spacer(Modifier.height(6.dp))
             Text(it, color = HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
         }
+    }
+}
+
+
+/**
+ * Android Auto ekran yansıtma: telefonun ekranı araç ekranında, araçtaki
+ * dokunuş telefona (Tam kontrol ile). İzin her yeniden başlatmada bir kez istenir.
+ */
+@Composable
+private fun AutoMirrorCard(
+    settings: AppSettings,
+    onUpdate: ((AppSettings) -> AppSettings) -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val status by com.hermes.mobile.data.ScreenMirror.status.collectAsState()
+    HermesCard(Modifier.fillMaxWidth()) {
+        Text(
+            S.t2("Android Auto'ya ekran yansıtma", "Mirror screen to Android Auto"),
+            color = HermesColors.TextPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            S.t2(
+                "Araçta Hermes'i aç: telefon ekranı araç ekranında görünür, dokunuşlar telefona geçer " +
+                    "(dokunma için Tam kontrol açık olmalı). İzin ekranında \"Tüm ekran\"ı seç.",
+                "Open Hermes in the car: the phone screen shows on the car display and touches are passed " +
+                    "back (needs Full control). Choose \"Entire screen\" when asked.",
+            ),
+            color = HermesColors.TextMuted,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        val (label, color) = when (status) {
+            com.hermes.mobile.data.ScreenMirror.Status.Mirroring -> S.t2("araca yansıtılıyor", "mirroring") to HermesColors.Online
+            com.hermes.mobile.data.ScreenMirror.Status.Ready -> S.t2("hazır — araçta Hermes'i aç", "ready — open Hermes in the car") to HermesColors.Online
+            com.hermes.mobile.data.ScreenMirror.Status.NoPermission -> S.t2("izin yok", "no permission") to HermesColors.TextMuted
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = color, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+            val on = status != com.hermes.mobile.data.ScreenMirror.Status.NoPermission
+            Text(
+                if (on) S.t2("Durdur", "Stop") else S.t2("İzin ver ve başlat", "Allow & start"),
+                color = HermesColors.Midground,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                    .clickable {
+                        if (on) com.hermes.mobile.data.MirrorProjectionService.stop(context)
+                        else com.hermes.mobile.data.MirrorProjectionService.start(context)
+                    }
+                    .padding(horizontal = 11.dp, vertical = 8.dp),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        SwitchRow(
+            S.t2("Sürerken yansıtmayı durdur", "Pause mirroring while driving"),
+            S.t2(
+                "Araç ~5 km/sa'yı geçince görüntü kesilir, durunca geri gelir. Güvenlik için açık tut.",
+                "The image stops above ~5 km/h and returns when parked. Keep on for safety.",
+            ),
+            settings.mirrorPauseWhileDriving,
+        ) { v -> onUpdate { it.copy(mirrorPauseWhileDriving = v) } }
     }
 }

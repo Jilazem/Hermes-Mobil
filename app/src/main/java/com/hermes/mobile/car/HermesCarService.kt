@@ -42,7 +42,8 @@ class HermesCarService : CarAppService() {
         HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
 
     override fun onCreateSession(): Session = object : Session() {
-        override fun onCreateScreen(intent: Intent): Screen = HermesCarScreen(carContext)
+        // V3: açılış ekranı telefon ekranı yansıtması; "Durum" ile bu ekrana geçilir.
+        override fun onCreateScreen(intent: Intent): Screen = MirrorScreen(carContext)
     }
 }
 
@@ -140,7 +141,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         return ListTemplate.Builder()
             .setTitle("Hermes")
             .setSingleList(list)
-            .setHeaderAction(Action.APP_ICON)
+            .setHeaderAction(Action.BACK)
             .setActionStrip(
                 androidx.car.app.model.ActionStrip.Builder()
                     .addAction(
