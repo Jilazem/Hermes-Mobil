@@ -63,8 +63,8 @@ Sunucudaki phone MCP bu alanı okumuyorsa, Hermes'e aşağıdaki talimatı
      **telefonda anında** yapılır ve sonuç yine sesli okunur.
    - Diğer her şey Hermes ajanına gider. Ajan gerekirse telefon araçlarını
      (yukarıdakiler) kullanır.
-3. Araç ekranındaki Hermes kutucuğu sunucu durumunu gösterir ve sürüş kipini
-   başlatır.
+3. Araç ekranındaki Hermes girişi telefon ekranının yansımasıyla açılır
+   (aşağıda). Sunucu durumu "Durum" düğmesinde.
 
 > Not: Android Auto kendi başına bir sohbeti *başlatmaya* yalnız Google
 > Asistan'a izin veriyor. Hermes'e yeni bir konu açmak için telefondaki sürüş
