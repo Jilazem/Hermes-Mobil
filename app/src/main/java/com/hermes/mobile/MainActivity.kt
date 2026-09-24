@@ -75,6 +75,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.hermes.mobile.ui.SessionDetailScreen
+import com.hermes.mobile.ui.HomeFeedScreen
 import com.hermes.mobile.ui.SessionDrawerContent
 import com.hermes.mobile.ui.SessionStatsStrip
 import com.hermes.mobile.ui.drawerListItems
@@ -652,6 +653,11 @@ private fun HermesApp(
     onMakeDefaultAssistant: () -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(Tab.Chat) }
+    // V3: uygulama ana duvar akışında açılır (ChatGPT/Claude tarzı); konu
+    // seçilince sohbete girilir, geri/☰ ile duvara dönülür.
+    var showHome by rememberSaveable { mutableStateOf(true) }
+    // Czip önerisi kapatılan oturumlar (bu süreç boyunca tekrar gösterilmez).
+    var czipDismissed by rememberSaveable { mutableStateOf(setOf<String>()) }
     // Tur-15: Outrun yarış WebView'i sekme kompozisyonunun DIŞINDA yaşar (sekme
     // değişince duraklar, dönüşte kaldığı yerden sürer); HermesApp kapanınca yok edilir.
     val outrunHolder = remember { com.hermes.mobile.ui.ArenaOutrunHolder() }
@@ -758,7 +764,7 @@ private fun HermesApp(
 
     // Paylaşım geldiğinde hangi sekmede olursak olalım sohbete geç.
     LaunchedEffect(sharedText) {
-        if (sharedText != null) tab = Tab.Chat
+        if (sharedText != null) { tab = Tab.Chat; showHome = false }
     }
 
     // Paylaşım hatası uyarısı (YENI-2): sessiz DiagLog değil, her sekmede
@@ -801,6 +807,7 @@ private fun HermesApp(
             // mikrofon izni sorulur. Kayıt KENDİLİĞİNDEN başlamaz.
             "assistant" -> {
                 tab = Tab.Chat
+                showHome = false
                 onEnterAssistantMode()
             }
             "voice" -> { tab = Tab.Chat; voiceSheet = true }
@@ -808,7 +815,7 @@ private fun HermesApp(
                 onNeedNotification()
                 voiceViewModel.startDriving()
             }
-            "new" -> { tab = Tab.Chat; chatViewModel.newSession() }
+            "new" -> { tab = Tab.Chat; showHome = false; chatViewModel.newSession() }
             "camera" -> { tab = Tab.Chat; if (onNeedCamera()) cameraFullScreen = true }
         }
         if (pendingAction != null) chatViewModel.pendingAction.value = null
@@ -844,10 +851,16 @@ private fun HermesApp(
     }
     // Kök ekranda geri = çıkış; yanlışlıkla basınca sohbet kaybolmasın diye
     // (ayarlardan kapatılabilir) önce sorulur. Çekmece kapalıyken sorulur.
+    val inChatOverHome = tab == Tab.Chat && !showHome && !serversScreen && !shareTargetVisible
     BackHandler(
         enabled = settings.confirmExit && detail == null && !cameraFullScreen &&
-            panel.section == null && !voice.driving && !drawerState.isOpen
+            panel.section == null && !voice.driving && !drawerState.isOpen && !inChatOverHome
     ) { exitDialog = true }
+    // V3: sohbetteyken geri = ana duvara dön (çıkış sorusu duvardayken gelir).
+    BackHandler(
+        enabled = inChatOverHome && detail == null && !cameraFullScreen &&
+            panel.section == null && !voice.driving && !drawerState.isOpen
+    ) { showHome = true }
 
     if (exitDialog) {
         androidx.compose.material3.AlertDialog(
@@ -890,7 +903,11 @@ private fun HermesApp(
                     Tab.entries.filter { it != Tab.Work }.forEach { entry ->
                         NavigationBarItem(
                             selected = tab == entry,
-                            onClick = { tab = entry },
+                            onClick = {
+                                // Sohbetteyken "Sohbet" sekmesine tekrar dokunmak duvara döndürür.
+                                if (entry == Tab.Chat && tab == Tab.Chat) showHome = true
+                                tab = entry
+                            },
                             icon = { Icon(entry.icon, contentDescription = entry.label()) },
                             label = {
                                 Text(entry.label(), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false)
@@ -947,7 +964,7 @@ private fun HermesApp(
         // back stack büyümez (SC-003d).
         ModalNavigationDrawer(
             drawerState = drawerState,
-            gesturesEnabled = tab == Tab.Chat && !serversScreen && detail == null && !shareTargetVisible,
+            gesturesEnabled = tab == Tab.Chat && !showHome && !serversScreen && detail == null && !shareTargetVisible,
             drawerContent = {
                 Box(
                     Modifier
@@ -1102,7 +1119,44 @@ private fun HermesApp(
                 )
             } else {
                 when (tab) {
-                    Tab.Chat -> {
+                    Tab.Chat -> if (showHome) {
+                        HomeFeedScreen(
+                            rows = drawerRowList,
+                            loading = state.loading && state.sessions.isEmpty(),
+                            refreshing = state.loading && state.sessions.isNotEmpty(),
+                            connection = chat.connection,
+                            serverName = state.active?.name.orEmpty(),
+                            sourceOf = { row -> restById[row.dbId]?.source ?: restById[row.liveId]?.source },
+                            messageCountOf = { row ->
+                                (restById[row.dbId] ?: restById[row.liveId])?.messageCount ?: 0
+                            },
+                            onOpen = { row ->
+                                chatViewModel.continueSession(
+                                    liveId = row.liveId.ifBlank { row.dbId },
+                                    dbId = row.dbId.ifBlank { row.liveId },
+                                    title = row.title,
+                                )
+                                showHome = false
+                            },
+                            onNewChat = { text ->
+                                chatViewModel.newSession()
+                                chatViewModel.send(text)
+                                showHome = false
+                            },
+                            onVoice = { if (onNeedMic()) voiceSheet = true },
+                            onRefresh = {
+                                viewModel.refreshAll()
+                                liveViewModel.refresh(quiet = true)
+                            },
+                            onOpenServers = { serversScreen = true },
+                            onTogglePin = { row -> viewModel.togglePin(row.dbId.ifBlank { row.liveId }) },
+                            onArchive = { row -> viewModel.setArchived(row.dbId.ifBlank { row.liveId }, true) },
+                            onCzip = { row ->
+                                chatViewModel.czipContinue(row.dbId.ifBlank { row.liveId }, row.title)
+                                showHome = false
+                            },
+                        )
+                    } else {
                         // Tur-16: sol ray KALDIRILDI — oturum değişimi soldan
                         // açılan çekmeceden (ModalNavigationDrawer, FR-007).
                         ChatScreen(
@@ -1182,9 +1236,26 @@ private fun HermesApp(
                         },
                         onExitAssistantMode = chatViewModel::exitAssistantMode,
                         // Tur-16: ☰ — oturum çekmecesini açar (FR-001).
-                        onOpenDrawer = { drawerScope.launch { drawerState.open() } },
+                        // V3: ☰ — ana duvar akışına döner (oturum çekmecesi
+                        // soldan kaydırarak hâlâ açılır).
+                        onOpenDrawer = { showHome = true },
                         // Tur-19 FR-003: eşzamanlılık istatistik şeridi (composer üstü).
                         statusStrip = {
+                            // V3 czip: açık oturum uzunsa (≥200 ileti) otomatik öneri.
+                            val currentRow = drawerRowList.firstOrNull { it.current }
+                            val currentId = currentRow?.let { it.dbId.ifBlank { it.liveId } }
+                            val count = currentRow?.let {
+                                (restById[it.dbId] ?: restById[it.liveId])?.messageCount
+                            } ?: 0
+                            if (currentRow != null && currentId != null &&
+                                com.hermes.mobile.ui.isLongSession(count) && currentId !in czipDismissed
+                            ) {
+                                com.hermes.mobile.ui.CzipBanner(
+                                    messageCount = count,
+                                    onCzip = { chatViewModel.czipContinue(currentId, currentRow.title) },
+                                    onDismiss = { czipDismissed = czipDismissed + currentId },
+                                )
+                            }
                             SessionStatsStrip(
                                 rows = drawerRowList,
                                 speed = chatViewModel.speed,

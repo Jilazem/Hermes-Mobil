@@ -1769,6 +1769,76 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Yeni bir oturum başlatır — mevcut akışı temizler. */
+    /**
+     * V3 czip taşıma: uzun oturumu (tüm geçmişi bağlama geri yüklemek yerine)
+     * czip ile paketler ve YENİ oturumda harita üzerinden sürdürür.
+     *
+     * Akış: yeni oturum → `/czip <dbId>` (sunucudaki czip plugin'i) → çıktıdan
+     * paket yolu → ilk mesaj olarak [czipHandoffPrompt]. Eski oturuma dokunulmaz.
+     * Plugin yoksa/çıktıda paket yolu yoksa açık hata gösterilir, sessiz geçiş yok.
+     */
+    fun czipContinue(dbId: String, title: String) {
+        val gw = client
+        if (gw == null || _state.value.connection !is ConnectionState.Open) {
+            _state.update { it.copy(notice = tr("Czip için sunucu bağlantısı gerekli", "Czip needs a server connection")) }
+            return
+        }
+        newSession()
+        _state.update {
+            it.copy(
+                topic = "$title · czip",
+                agentBusy = true,
+                items = listOf(
+                    ChatItem.Notice(nextKey("n"), tr("Czip: \"$title\" paketleniyor…", "Czip: packing \"$title\"…")),
+                ),
+            )
+        }
+        viewModelScope.launch {
+            runCatching {
+                val sid = createSessionWithProfile(gw).also { id ->
+                    _state.update { it.copy(sessionId = id) }
+                    onSessionChanged?.invoke(id)
+                }
+                gw.slashExec(sid, "/czip $dbId")
+            }.onSuccess { output ->
+                val path = com.hermes.mobile.ui.czipPackPath(output)
+                _state.update {
+                    it.copy(
+                        items = it.items + ChatItem.Assistant(nextKey("a"), output.ifBlank { "(çıktı yok)" }),
+                        agentBusy = false,
+                    )
+                }
+                if (path == null) {
+                    _state.update {
+                        it.copy(
+                            items = it.items + ChatItem.Notice(
+                                nextKey("n"),
+                                tr(
+                                    "Czip paket yolu bulunamadı — sunucuda czip plugin'i kurulu mu? (./install.sh, sonra Hermes'i yeniden başlat)",
+                                    "Czip pack path not found — is the czip plugin installed on the server?",
+                                ),
+                                isError = true,
+                            ),
+                        )
+                    }
+                } else {
+                    send(com.hermes.mobile.ui.czipHandoffPrompt(path, title))
+                }
+            }.onFailure { e ->
+                _state.update {
+                    it.copy(
+                        items = it.items + ChatItem.Notice(
+                            nextKey("n"),
+                            tr("Czip çalıştırılamadı: ", "Czip failed: ") + (e.message ?: ""),
+                            isError = true,
+                        ),
+                        agentBusy = false,
+                    )
+                }
+            }
+        }
+    }
+
     fun newSession() {
         _state.update { ChatState(connection = it.connection) }
         streamingKey = null

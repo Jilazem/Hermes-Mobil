@@ -256,7 +256,7 @@ fun ProfileEditorDialog(
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(S.t2("Adres", "Address")) },
-                    placeholder = { Text("http://192.168.1.10:9150") },
+                    placeholder = { Text("http://192.168.1.101:9150") },
                     singleLine = true,
                 )
                 OutlinedTextField(
@@ -281,13 +281,14 @@ fun ProfileEditorDialog(
                     value = remote,
                     onValueChange = { remote = it },
                     label = { Text(S.t2("Uzak adres (ev dışı)", "Remote address (off-network)")) },
-                    placeholder = { Text("http://100.x.y.z:9150") },
+                    placeholder = { Text("https://hermes.winterfell07.keenetic.pro") },
                     singleLine = true,
                 )
                 Text(
                     S.t2(
-                        "LAN adresine ulaşılamazsa buraya düşer. Tailscale IP'si ya da " +
-                            "tünel adresi yaz.",
+                        "LAN adresine ulaşılamazsa buraya düşer. Alan adı (DDNS), Tailscale " +
+                            "IP'si ya da tünel adresi yaz. Tarayıcıdan kopyalanan \"?profile=…\" " +
+                            "kısmı otomatik atılır.",
                         "Used when the LAN address is unreachable. Write a Tailscale IP " +
                             "or tunnel address.",
                     ),
