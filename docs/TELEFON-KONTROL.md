@@ -57,7 +57,7 @@ Sunucudaki phone MCP bu alanı okumuyorsa, Hermes'e aşağıdaki talimatı
 1. Telefonda Android Auto → **Ayarlar** → en alttaki *Sürüm*'e 10 kez dokun
    (geliştirici modu) → sağ üst ⋮ → **Geliştirici ayarları** →
    **Bilinmeyen kaynaklar**'ı aç. Uygulama Play Store'dan gelmediği için bu şart.
-2. Araçta Hermes'in yanıtları **mesaj** olarak görünür ve sesli okunur.
+2. (Kaldırıldı — aşağıdaki nota bak.) Araçta Hermes'in yanıtları **mesaj** olarak görünür ve sesli okunur.
    "Yanıtla" deyip sesle cevap verebilirsin. Cevap Hermes'e gider:
    - `WhatsApp mesajlarımı oku` ya da `Ali'ye geliyorum yaz` gibi komutlar
      **telefonda anında** yapılır ve sonuç yine sesli okunur.
@@ -71,6 +71,14 @@ Sunucudaki phone MCP bu alanı okumuyorsa, Hermes'e aşağıdaki talimatı
 > kipi ya da Hızlı Ayarlar'daki "Hermes'e konuş" döşemesi kullanılır. Gelen
 > bir Hermes mesajına ise araçtan doğrudan yanıt verilebilir.
 
+> **Güncelleme (V3):** Hermes'i araçta aynı anda mesajlaşma uygulaması olarak
+> da tanıtmak (`<uses name="notification"/>`), Android Auto'nun simgeye
+> dokununca kendi "yeni mesaj gelmedi" listesini açmasına ve yansıtma
+> ekranının hiç açılmamasına yol açtı. Bu yüzden araçta Hermes yalnız
+> **ekran yansıtma** olarak çalışır; Hermes'in yanıtları telefonda bildirim
+> olarak kalır, Jarvis zaten sesli okur. WhatsApp mesajlarını Android Auto
+> kendisi okumaya devam eder.
+
 ## Android Auto'ya telefon ekranını yansıtma
 
 1. Telefonda: Hermes V3 → Ayarlar → **Android Auto'ya ekran yansıtma** →
@@ -83,8 +91,9 @@ Sunucudaki phone MCP bu alanı okumuyorsa, Hermes'e aşağıdaki talimatı
    - **kaydırma** için sağdaki ✥ (kaydır) düğmesine bas, sonra sürükle ya da savur;
    - üst düğmeler: **Geri**, **Ana** (ana ekran), **Hermes** (uygulamayı öne
      getirir), **Durum** (sunucu durumu).
-4. İzin verilmediyse araçta "İzni iste"ye bas. Telefona bir bildirim gelir;
-   ona dokunup izin ver.
+4. İzin verilmediyse araçta **"Başlat"**a bas: telefonda izin penceresi
+   doğrudan açılır (telefonun kilidi açık olmalı), "Tüm ekran"ı seç.
+   Açılamazsa telefona dokunulacak bir bildirim gelir.
 
 **Güvenlik:** "Sürerken yansıtmayı durdur" varsayılan olarak açık. Araç
 ~5 km/sa'yı geçince görüntü kesilir, durunca geri gelir. Araç hız bilgisini

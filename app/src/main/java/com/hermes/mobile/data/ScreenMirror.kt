@@ -120,6 +120,24 @@ object ScreenMirror {
         return m.widthPixels to m.heightPixels
     }
 
+    /**
+     * Araçtaki "Başlat": telefonda izin penceresini DOĞRUDAN açar (Car App
+     * Library araç bağlamından telefon ekranında etkinlik başlatmaya izin
+     * veriyor — MirrorMobile'ın yolu). Olmazsa bildirime düşer.
+     */
+    fun requestFromCar(carContext: Context): Boolean {
+        val opened = runCatching {
+            carContext.startActivity(
+                Intent(carContext, MirrorConsentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                android.app.ActivityOptions.makeBasic()
+                    .setLaunchDisplayId(Display.DEFAULT_DISPLAY)
+                    .toBundle(),
+            )
+        }.isSuccess
+        if (!opened) postConsentNotification(carContext)
+        return opened
+    }
+
     /** Telefonda izin ekranını açan bildirim (araçtan "izin iste" dendiğinde). */
     fun postConsentNotification(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)

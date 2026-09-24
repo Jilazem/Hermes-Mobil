@@ -19,6 +19,8 @@ import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.hermes.mobile.MainActivity
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.FullControl
@@ -101,7 +103,28 @@ class MirrorScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycl
 
     override fun onCreate(owner: LifecycleOwner) {
         carContext.getCarService(AppManager::class.java).setSurfaceCallback(surfaceCallback)
-        // Hız verisi CAR_SPEED izni ister; yoksa/araç vermiyorsa null kalır.
+        // CAR_SPEED çalışma zamanı izni: yoksa araçtan iste (telefonda diyalog
+        // çıkar). İzin yokken hız hiç gelmez → sürüş koruması sessizce kapalı
+        // kalırdı (MirrorMobile'ın PermissionScreen dersi).
+        if (ContextCompat.checkSelfPermission(carContext, CAR_SPEED) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            registerSpeed()
+        } else {
+            runCatching {
+                carContext.requestPermissions(listOf(CAR_SPEED)) { granted, _ ->
+                    if (CAR_SPEED in granted) registerSpeed()
+                }
+            }.onFailure { DiagLog.w("mirror", "hız izni istenemedi: ${it.message}") }
+        }
+        // Telefonda izin verilince/durdurulunca araç ekranı hemen güncellensin.
+        owner.lifecycleScope.launch {
+            ScreenMirror.status.collect {
+                bind()
+                invalidate()
+            }
+        }
+    }
+
+    private fun registerSpeed() {
         runCatching {
             carContext.getCarService(CarHardwareManager::class.java).carInfo
                 .addSpeedListener(ContextCompat.getMainExecutor(carContext), speedListener)
@@ -151,15 +174,19 @@ class MirrorScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycl
     override fun onGetTemplate(): Template {
         if (!ScreenMirror.hasPermission) {
             return MessageTemplate.Builder(
-                "Telefon ekranını görmek için telefonda ekran paylaşımına izin ver " +
-                    "(\"Tüm ekran\"ı seç). Bildirim gönderildi.",
+                "Telefon ekranını burada görmek için \"Başlat\"a bas; telefonda çıkan pencerede " +
+                    "\"Tüm ekran\"ı seçip izin ver (telefonun kilidi açık olmalı).",
             )
                 .setTitle("Hermes Ekran")
                 .setHeaderAction(Action.APP_ICON)
                 .addAction(
-                    Action.Builder().setTitle("İzni iste").setOnClickListener {
-                        ScreenMirror.postConsentNotification(carContext)
-                        CarToast.makeText(carContext, "Telefondaki bildirime dokun", CarToast.LENGTH_LONG).show()
+                    Action.Builder().setTitle("Başlat").setOnClickListener {
+                        val direct = ScreenMirror.requestFromCar(carContext)
+                        CarToast.makeText(
+                            carContext,
+                            if (direct) "Telefonda izin ver" else "Telefondaki bildirime dokun",
+                            CarToast.LENGTH_LONG,
+                        ).show()
                     }.build(),
                 )
                 .addAction(
@@ -202,3 +229,5 @@ class MirrorScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycl
             .build()
     }
 }
+
+private const val CAR_SPEED = "com.google.android.gms.permission.CAR_SPEED"

@@ -2196,6 +2196,11 @@ private fun AutoMirrorCard(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val status by com.hermes.mobile.data.ScreenMirror.status.collectAsState()
+    // Araç hız izni (sürerken durdurma koruması için) → ardından ekran paylaşımı.
+    val carSpeed = "com.google.android.gms.permission.CAR_SPEED"
+    val speedPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { com.hermes.mobile.data.MirrorProjectionService.start(context) }
     HermesCard(Modifier.fillMaxWidth()) {
         Text(
             S.t2("Android Auto'ya ekran yansıtma", "Mirror screen to Android Auto"),
@@ -2228,8 +2233,15 @@ private fun AutoMirrorCard(
                 modifier = Modifier
                     .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
                     .clickable {
-                        if (on) com.hermes.mobile.data.MirrorProjectionService.stop(context)
-                        else com.hermes.mobile.data.MirrorProjectionService.start(context)
+                        if (on) {
+                            com.hermes.mobile.data.MirrorProjectionService.stop(context)
+                        } else if (androidx.core.content.ContextCompat.checkSelfPermission(context, carSpeed) !=
+                            android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            speedPermission.launch(carSpeed)
+                        } else {
+                            com.hermes.mobile.data.MirrorProjectionService.start(context)
+                        }
                     }
                     .padding(horizontal = 11.dp, vertical = 8.dp),
             )

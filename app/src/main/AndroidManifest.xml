@@ -217,6 +217,7 @@
         <activity
             android:name=".data.MirrorConsentActivity"
             android:exported="false"
+            android:taskAffinity=""
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <service

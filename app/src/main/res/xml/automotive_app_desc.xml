@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <automotiveApp>
-    <!-- Araç ekranı (durum + sürüş kipi) -->
+    <!-- Yalnız şablon (Car App Library): araçta Hermes = telefon ekranı yansıtma.
+         "notification" BİLEREK YOK: onu da bildirince Android Auto Hermes'i
+         mesajlaşma uygulaması sayıp simgeye dokununca kendi "yeni mesaj
+         gelmedi" listesini açıyordu (24.09 araç ekran görüntüsü:
+         Template: ListTemplate) ve yansıtma ekranımız hiç açılmıyordu.
+         Çalışan referans: chenxiaolong/MirrorMobile — yalnız "template". -->
     <uses name="template" />
-    <!-- V3: Hermes yanıtları mesajlaşma bildirimi olarak araçta okunur,
-         sesle yanıtlanır (MessagingStyle + REPLY/MARK_AS_READ eylemleri). -->
-    <uses name="notification" />
 </automotiveApp>
