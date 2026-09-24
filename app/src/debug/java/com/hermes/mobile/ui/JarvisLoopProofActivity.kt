@@ -153,17 +153,11 @@ class JarvisLoopProofActivity : ComponentActivity() {
         ctrl.onLoopEngine = { id -> step("ENGINE: $id") }
         ctrl.onLoopClosed = { reason ->
             step("CLOSED: $reason")
-            // Madde 4 kanıtı: gerçek Notifier — kapanışta kalıcı bildirim kalkmalı.
+            // Döngü kapandığında üretim bildirimi de kalkar (ChatViewModel.onLoopClosed ayni yol).
             Notifier.jarvisListening(this, false)
-            step("NOTIF: kaldirildi")
+            step("NOTIF: Notifier.jarvisListening(false) — bildirim kalkti")
             step("KANIT TAMAM: 2 tam tur + kapat komutu")
         }
-
-        // Madde 4 kanıtı: gerçek Notifier.jarvisListening — kalıcı "Jarvis
-        // dinliyor" bildirimi açılışta basılır (PNG'de durum çubuğunda görünür;
-        // denetim r1 MEDIUM-a: harness Notify'i baypas ediyordu).
-        Notifier.jarvisListening(this, true)
-        step("NOTIF: basilendi (ongoing 4815)")
 
         // Faz izleyicisi — her değişim ekrana ve logcat'e.
         lifecycleScope.launch {
@@ -174,5 +168,10 @@ class JarvisLoopProofActivity : ComponentActivity() {
 
         step("JARVIS-LOOP-PROOF: dongu aciliyor (gercek ticker, sahte cevre)")
         ctrl.start()
+        // Üretim bildirimi yolu (madde-4 kanıtı): ChatViewModel.toggleJarvisLoop
+        // döngüyü açarken tam olarak bunu çağırıyor — burada da aynı üretim
+        // fonksiyonu koşuyor, Harness bildirimi bayiltmiyor.
+        Notifier.jarvisListening(this, true)
+        step("NOTIF: Notifier.jarvisListening(true) cagrildi (uretim yolu)")
     }
 }
