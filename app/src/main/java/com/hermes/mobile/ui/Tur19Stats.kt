@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,7 +39,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.hermes.mobile.StreamMeter
 import com.hermes.mobile.ui.theme.HermesColors
 import kotlinx.coroutines.delay
@@ -104,14 +104,14 @@ fun SessionStatsStrip(
             Text(
                 S.t2("$active aktif ajan", "$active active agents"),
                 color = if (active > 0) HermesColors.TextPrimary else HermesColors.TextMuted,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.weight(1f))
             Text(
                 "≈${rateLabel(rate, decimalSeparator)}t/s",
                 color = if (rate != null) HermesColors.Midground else HermesColors.TextFaint,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
             )
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -127,7 +127,7 @@ fun SessionStatsStrip(
                 Text(
                     S.t2("Şu an aktif oturum yok.", "No active sessions."),
                     color = HermesColors.TextFaint,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(vertical = 4.dp),
                 )
             }
@@ -150,12 +150,12 @@ fun SessionStatsStrip(
                     Text(
                         row.title,
                         color = HermesColors.TextSecondary,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    Text(label, color = HermesColors.TextFaint, fontSize = 11.sp)
+                    Text(label, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }

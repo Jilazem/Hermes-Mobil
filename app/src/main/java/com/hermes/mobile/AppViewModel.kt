@@ -251,11 +251,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun seedDefaultProfileIfEmpty() {
         if (store.list().isNotEmpty()) return
+        // Ev ağında yerel sunucu (.101), dışarıda keenetic alan adı — LAN'a
+        // ulaşılamayınca otomatik olarak dış adrese düşülür (candidates).
         val server = ServerProfile(
-            name = "the server",
-            baseUrl = "http://192.168.1.10:9150",
+            name = "Hermes (ev)",
+            baseUrl = "http://192.168.1.101:9150",
+            remoteUrl = "https://hermes.winterfell07.keenetic.pro",
             token = "",
-            note = "Caddy → 127.0.0.1:9120 · token ~/.hermes/.env",
+            note = "Ev: 192.168.1.101 · Dışarıdan: hermes.winterfell07.keenetic.pro · token ~/.hermes/.env",
         )
         store.upsert(server)
         store.setActiveId(server.id)

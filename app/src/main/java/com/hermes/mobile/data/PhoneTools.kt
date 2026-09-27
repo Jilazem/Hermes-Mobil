@@ -74,6 +74,8 @@ class PhoneTools(
             // "bugun ne kacirdim" ise hic sorulamiyordu.
             "phone_contacts", "phone_notifications", "phone_calendar",
             "phone_location", "phone_clipboard_read", "phone_clipboard_write",
+            // V3: WhatsApp/Telegram/SMS okuma + bildirimden yanıt.
+            "phone_messages", "phone_reply",
         )
 
         /**
@@ -95,6 +97,7 @@ class PhoneTools(
          * sonucu zaten gozunle goruyorsun.
          */
         val READ_TOOL_NAMES = setOf(
+            "phone_messages",
             "phone_contacts", "phone_notifications", "phone_calendar",
             "phone_location", "phone_clipboard_read", "phone_status",
         )
@@ -155,6 +158,9 @@ class PhoneTools(
                 "phone_location" -> read.whereAmI()
                 "phone_clipboard_read" -> read.clipboardRead()
                 "phone_clipboard_write" -> read.clipboardWrite(arg("text"))
+                "phone_messages" ->
+                    MessageInbox.read(context, arg("app"), arg("chat"), arg("limit").toIntOrNull() ?: 10)
+                "phone_reply" -> MessageInbox.reply(context, arg("app"), arg("chat"), arg("text"))
                 "phone_notify" -> notifyUser(arg("title"), arg("text"))
                 "phone_speak" -> speak(arg("text"))
                 "phone_flashlight" -> flashlight(arg("state"))

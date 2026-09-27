@@ -78,10 +78,17 @@ class LocalTtsDownloader(
      * @throws IOException ağ/hash hatası; mesaj kullanıcıya gösterilebilir.
      */
     suspend fun ensureModel(): Unit = lock.withLock {
+        // Tüm ağ/disk işi IO'da: önceden downloadOne() çağıranın dispatcher'ında
+        // (viewModelScope = Main) koşuyordu → NetworkOnMainThreadException,
+        // indirme telefonda hiç başlamıyordu.
+        withContext(Dispatchers.IO) { ensureModelBlocking() }
+    }
+
+    private suspend fun ensureModelBlocking() {
         val disk = inspect()
         if (disk.present) {
             onProgress(disk.doneBytes, "")
-            return@withLock
+            return
         }
         modelDir.mkdirs()
         var done = 0L
@@ -95,7 +102,8 @@ class LocalTtsDownloader(
                 continue
             }
             runCatching { if (target.exists()) target.delete() }
-            downloadOne(meta, target)
+            val base = done
+            downloadOne(meta, target) { fileBytes -> onProgress(base + fileBytes, meta.relPath) }
             done += meta.bytes
             onProgress(done, meta.relPath)
         }
@@ -103,7 +111,11 @@ class LocalTtsDownloader(
         if (bad != null) throw IOException(LocalTtsLogic.shaMismatchMessage(bad, "?", null))
     }
 
-    private fun downloadOne(meta: LocalTtsLogic.ModelFile, target: File) {
+    private fun downloadOne(
+        meta: LocalTtsLogic.ModelFile,
+        target: File,
+        onBytes: (Long) -> Unit = {},
+    ) {
         val tmp = File(target.parentFile, target.name + ".part")
         runCatching { tmp.delete() }
         val req = Request.Builder().url(meta.url).get().build()
@@ -121,10 +133,19 @@ class LocalTtsDownloader(
                 tmp.parentFile?.mkdirs()
                 tmp.outputStream().use { out ->
                     val buf = ByteArray(64 * 1024)
+                    var written = 0L
+                    var lastReport = 0L
                     while (true) {
                         val n = stream.read(buf)
                         if (n <= 0) break
                         out.write(buf, 0, n)
+                        written += n
+                        // Büyük dosyada (63 MB) ilerleme dosya bitene kadar %0'da
+                        // donuk görünmesin: ~512 KB'de bir bildir.
+                        if (written - lastReport >= 512 * 1024) {
+                            lastReport = written
+                            onBytes(written)
+                        }
                     }
                 }
             }

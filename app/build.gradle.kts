@@ -17,18 +17,17 @@ android {
         versionName = "0.1.0"
         vectorDrawables { useSupportLibrary = true }
 
-        // Tur-21: yerel TTS motoru (sherpa-onnx, app/libs AAR) yalnız bu iki
-        // ABI'yi taşıyor — telefon arm64, emülatör x86_64. Diğerleri paketlenmez.
-        ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
-        }
+        // ABI seçimi aşağıdaki `splits.abi` bloğunda (arm64 telefon, x86_64 emülatör);
+        // sherpa-onnx AAR'ı yalnız bu ikisi için paketlenir.
     }
 
     buildTypes {
         debug {
-            // Mevcut yüklü Hermes ile ÇAKIŞMASIN: ayrı paket kimliği (V2) ve
-            // ayrı ad — telefonda ikinci uygulama olarak yanına kurulur.
-            applicationIdSuffix = ".v2"
+            // Telefonda yüklü Hermes / Hermes V2 ile ÇAKIŞMASIN: ayrı paket
+            // kimliği (V3) ve ayrı ad — üzerine yazmaz, yanına ayrı uygulama
+            // olarak kurulur (ayarları ve verisi de ayrıdır).
+            applicationIdSuffix = ".v3"
+            versionNameSuffix = "-v3"
             isMinifyEnabled = false
         }
         release {
@@ -49,6 +48,17 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     buildFeatures { compose = true }
+
+    // Mimariye göre ayrı APK: telefon (arm64) ~yarı boyut; x86_64 yalnız emülatör için.
+    // (Tek evrensel APK 100 MB'ı aşıyordu — GitHub dosya sınırı.)
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
 
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
@@ -80,6 +90,9 @@ dependencies {
     implementation("androidx.camera:camera-view:$cameraX")
 
     // Android Auto — şablon tabanlı araç arayüzü
+    // V3 "Hey Jarvis" uyandırma kelimesi — openWakeWord modelleri (TFLite).
+    // sherpa-onnx'in kendi onnxruntime'ı ile çakışmasın diye ONNX değil TFLite.
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.car.app:app-projected:1.7.0")
     // car.app, guava'yı yalnız çalışma zamanına koyup derlemede boş

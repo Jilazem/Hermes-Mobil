@@ -9,7 +9,7 @@
         android:shortcutShortLabel="@string/shortcut_voice">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile.debug"
+            android:targetPackage="com.hermes.mobile"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="voice" />
         </intent>
@@ -21,7 +21,7 @@
         android:shortcutShortLabel="@string/shortcut_driving">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile.debug"
+            android:targetPackage="com.hermes.mobile"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="driving" />
         </intent>
@@ -33,7 +33,7 @@
         android:shortcutShortLabel="@string/shortcut_camera">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile.debug"
+            android:targetPackage="com.hermes.mobile"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="camera" />
         </intent>
@@ -45,7 +45,7 @@
         android:shortcutShortLabel="@string/shortcut_new">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.hermes.mobile.debug"
+            android:targetPackage="com.hermes.mobile"
             android:targetClass="com.hermes.mobile.MainActivity">
             <extra android:name="hermes_action" android:value="new" />
         </intent>

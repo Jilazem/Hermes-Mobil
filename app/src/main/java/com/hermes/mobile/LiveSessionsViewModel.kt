@@ -135,9 +135,14 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
      * ulaştırmak.
      */
     fun intervene(session: LiveSession, kind: InterventionKind, text: String) {
-        val gw = client ?: return
         val body = text.trim()
         if (body.isEmpty()) return
+        // Bağlantı yokken sessizce dönmek hızlı yanıt sayfasını "Gönderiliyor"
+        // fazında kilitli bırakıyordu (sending hiç true→false düşmüyordu).
+        val gw = client ?: run {
+            _state.update { it.copy(notice = "Bağlantı yok — mesaj gönderilemedi", quickReply = null) }
+            return
+        }
 
         viewModelScope.launch {
             _state.update { it.copy(sending = true) }

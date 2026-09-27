@@ -5,6 +5,8 @@
          Uygulama adından AYRI: launcher'da "Hermes" kalır, asistan seçicide
          ne olduğu anlaşılsın diye "Hermes Asistan" yazıyor. -->
     <string name="assistant_label">Hermes Asistan</string>
+    <!-- Hızlı Ayarlar döşemesi adı (debug/V3'te ayrı ad). -->
+    <string name="tile_label">Hermes\'e konuş</string>
     <string name="shortcut_voice">Sesli konuşma</string>
     <string name="shortcut_driving">Sürüş kipi</string>
     <string name="shortcut_camera">Kamera</string>

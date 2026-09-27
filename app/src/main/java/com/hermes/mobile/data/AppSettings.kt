@@ -300,6 +300,48 @@ data class AppSettings(
     val fullControl: Boolean = false,
 
     /**
+     * Google Artemis daemon adresi (sunucuda, varsayılan port 8000). Sohbette
+     * "/telefon <görev>" bu adrese gider; Artemis telefonu kablosuz ADB ile
+     * kullanır. Boşsa özellik kapalı.
+     */
+    val artemisUrl: String = "http://192.168.1.101:8000",
+    /**
+     * Ajan (Telegram/cron/sohbet/Android Auto yanıtı) senin adına sohbetlere
+     * yanıt gönderebilsin mi (`phone_reply`). Geri alınamaz bir eylem olduğu
+     * için Tam kontrol'den AYRI ve varsayılan KAPALI. Uygulamada kendin
+     * yazdığın "ali'ye … yaz" komutu bu ayardan bağımsız (yazmak zaten rıza).
+     */
+    val agentMayReply: Boolean = false,
+    /** Android Auto ekran yansıtma: araç hareket ederken görüntüyü kes (varsayılan AÇIK). */
+    val mirrorPauseWhileDriving: Boolean = true,
+
+    // ── Jarvis sesli asistan (V3) ──────────────────────────────────────
+    /** Beyin: "hermes" (ajan — araçlar, hafıza) ya da "yerel" (node1 LLM, hızlı). */
+    val assistantBrain: String = "hermes",
+    /** Asistan sesi motoru: "android" (telefon TTS, anında) | "yerel" | "kahya" | "kadin" | "chatterbox". */
+    val assistantVoiceEngine: String = "android",
+    /** Telefon TTS motor paketi (boş = sistem varsayılanı; ör. com.google.android.tts). */
+    val assistantTtsPackage: String = "",
+    /** Telefon TTS ses adı (boş = motorun Türkçe varsayılanı). */
+    val assistantVoiceName: String = "",
+    val assistantSpeechRate: Float = 1.0f,
+    val assistantPitch: Float = 1.0f,
+    /** Yanıttan sonra kendiliğinden yeniden dinle (sürekli sohbet). */
+    val assistantContinuous: Boolean = true,
+    /** Hitap ("efendim", "Gökhan Bey"…). Boşsa hitap yok. */
+    val assistantAddress: String = "efendim",
+    /** "Ekranda ne var / bunu özetle" sorularında ekran metnini ajana ekle. */
+    val assistantScreenContext: Boolean = true,
+    /** "Hey Jarvis" uyandırma kelimesi dinlensin mi (mikrofon ön plan servisi). */
+    val wakeWordEnabled: Boolean = false,
+    /** "yuksek" | "normal" | "siki" — bkz. WakeWordLogic.Sensitivity. */
+    val wakeWordSensitivity: String = "normal",
+    /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
+    val artemisProfile: String = "flash",
+    /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */
+    val artemisDevice: String = "",
+
+    /**
      * Denenip başarısız olan modeller — "sağlayıcı/model" biçiminde.
      *
      * Sunucunun `unavailable_models` listesi yalnız kredi sorununu biliyor;
@@ -455,3 +497,14 @@ class SettingsStore(context: Context) {
 
     fun exportTheme(palette: HermesPalette): String = json.encodeToString(palette)
 }
+
+/**
+ * "Tam kontrol" tek anahtar: açınca çalışması için gereken üç ayar birlikte
+ * ayarlanır (ajan telefonu kullanabilsin + yalnız-okuma kapalı + tam kontrol).
+ * Önceden üçü ayrı ayrıydı ve "Yalnız okuma" varsayılan AÇIK olduğu için
+ * dokunma/yazma araçları sessizce reddediliyordu. Kapatınca yalnız tam
+ * kontrol kapanır — diğer iki tercih kullanıcıda kalır.
+ */
+fun AppSettings.withFullControl(on: Boolean): AppSettings =
+    if (on) copy(fullControl = true, agentMayUsePhone = true, agentReadOnly = false)
+    else copy(fullControl = false)

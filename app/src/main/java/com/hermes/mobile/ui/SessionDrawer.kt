@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -72,7 +71,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.hermes.mobile.InterventionKind
 import com.hermes.mobile.data.LiveSession
 import com.hermes.mobile.ui.theme.HermesColors
@@ -268,35 +266,44 @@ fun SessionDrawerContent(
             }
         }
 
-        // tab 0 = oturumlar, tab 2 = arşiv (aynı liste, farklı showArchived —
+        // tab 0 = Tümü, tab 2 = arşiv (aynı liste, farklı showArchived —
         // satırları MainActivity türetiyor); tab 1 = canlı.
         if (tab != 1) {
             // Tur-19 FR-001: "Tümü" = genel akış (varsayılan, grup başlıksız,
             // tam kronolojik). "Gruplar" = tur-16 zaman gruplu görünümü — tek
             // dokunuşla geri gelir; arama her ikisinde de geçerli (FR-004).
-            // Arşiv sekmesi (tab 2) daima klasik gruplu listedir.
-            if (tab == 0 && !groupedFeed) {
+            // Arşiv sekmesi (tab 2) her zaman gruplu kalır.
+            val flatFeed = tab == 0 && !groupedFeed
+            // Görünüm anahtarı iki yönlü: "Gruplar" ↔ "Akış" (önceden gruplu
+            // görünümden geri dönüş yoktu — rememberSaveable ile takılı kalıyordu).
+            if (tab == 0) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        S.t2("Genel akış", "All activity"),
+                        if (flatFeed) S.t2("Genel akış", "All activity")
+                        else S.t2("Zaman grupları", "Grouped by time"),
                         color = HermesColors.TextFaint,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(
-                        onClick = { groupedFeed = true },
+                        onClick = { groupedFeed = !groupedFeed },
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         modifier = Modifier.heightIn(min = 48.dp),
                     ) {
-                        Text(S.t2("Gruplar", "Groups"), color = HermesColors.Midground, fontSize = 12.sp)
+                        Text(
+                            if (flatFeed) S.t2("Gruplar", "Groups") else S.t2("Akış", "Feed"),
+                            color = HermesColors.Midground,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
                     }
                 }
             }
-            val feedRows = if (tab == 0 && !groupedFeed) drawerFeed(rows, query) else null
+            val feedRows = if (flatFeed) drawerFeed(rows, query) else null
+            val hasVisibleRows = feedRows?.isNotEmpty() ?: items.any { it is DrawerItem.RowItem }
             LazyColumn(
                 Modifier
                     .weight(1f)
@@ -319,39 +326,6 @@ fun SessionDrawerContent(
                                 undoRow = row
                             },
                         )
-                    }
-                    // Tur22 madde-3: yükleniyor VE akış boşsa "yok" YAZMA —
-                    // iskelet göster.
-                    if (skeletonRowCount(loading, feedRows.size, placeholder = 4) > 0 && query.isBlank()) {
-                        item(key = "feed-skeleton") {
-                            SessionListSkeleton(
-                                skeletonRowCount(loading, feedRows.size, placeholder = 4),
-                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            )
-                        }
-                    }
-                    val empty = feedRows.isEmpty()
-                    // Tur22 madde-4: boş durumlar TEK BİLEŞENDEN (uydurma veri yok).
-                    if (empty && query.isNotBlank() && !loading) {
-                        item(key = "feed-no-result") {
-                            EmptyState(
-                                icon = EmptyStateIcons.NoResults,
-                                message = emptyStateNoResults(query),
-                                modifier = Modifier.padding(20.dp),
-                                actionLabel = S.t2("Aramayı temizle", "Clear search"),
-                                onAction = { onQuery("") },
-                            )
-                        }
-                    } else if (empty && !loading) {
-                        item(key = "feed-empty") {
-                            EmptyState(
-                                icon = EmptyStateIcons.NoSessions,
-                                message = emptyStateNoSessions(),
-                                modifier = Modifier.padding(20.dp),
-                                actionLabel = S.t2("Yeni sohbet", "New chat"),
-                                onAction = onNewChat,
-                            )
-                        }
                     }
                 } else {
                     items.forEach { entry ->
@@ -390,48 +364,48 @@ fun SessionDrawerContent(
                             }
                         }
                     }
-                    // Boş durum + boş arama sonucu (FR-005 boş-durum metni).
-                    // Tur22 madde-3: yükleniyor VE liste boşsa "yok" YAZMA —
-                    // iskelet göster (skeletonRowCount kuralı: yok/henüz-yok ayrımı).
-                    if (skeletonRowCount(loading, rows.size, placeholder = 4) > 0 && query.isBlank()) {
-                        item(key = "skeleton") {
-                            SessionListSkeleton(
-                                skeletonRowCount(loading, rows.size, placeholder = 4),
-                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            )
-                        }
+                }
+                // Boş durum + boş arama sonucu (FR-005 boş-durum metni).
+                // Tur22 madde-3: yükleniyor VE liste boşsa "yok" YAZMA —
+                // iskelet göster (skeletonRowCount kuralı: yok/henüz-yok ayrımı).
+                if (skeletonRowCount(loading, rows.size, placeholder = 4) > 0 && query.isBlank()) {
+                    item(key = "skeleton") {
+                        SessionListSkeleton(
+                            skeletonRowCount(loading, rows.size, placeholder = 4),
+                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
                     }
-                    // Tur22 madde-4: boş durumlar TEK BİLEŞENDEN — ikon + tek
-                    // cümle + öneri aksiyonu (uydurma veri yok).
-                    if (rows.isEmpty() && query.isBlank() && !loading) {
-                        item(key = "empty") {
-                            if (tab == 2) {
-                                EmptyState(
-                                    icon = EmptyStateIcons.ArchiveEmpty,
-                                    message = emptyStateArchiveEmpty(),
-                                    modifier = Modifier.padding(20.dp),
-                                )
-                            } else {
-                                EmptyState(
-                                    icon = EmptyStateIcons.NoSessions,
-                                    message = emptyStateNoSessions(),
-                                    modifier = Modifier.padding(20.dp),
-                                    actionLabel = S.t2("Yeni sohbet", "New chat"),
-                                    onAction = onNewChat,
-                                )
-                            }
-                        }
-                    }
-                    if (query.isNotBlank() && items.none { it is DrawerItem.RowItem }) {
-                        item(key = "no-result") {
+                }
+                // Tur22 madde-4: boş durumlar TEK BİLEŞENDEN — ikon + tek
+                // cümle + öneri aksiyonu (uydurma veri yok).
+                if (rows.isEmpty() && query.isBlank() && !loading) {
+                    item(key = "empty") {
+                        if (tab == 2) {
                             EmptyState(
-                                icon = EmptyStateIcons.NoResults,
-                                message = emptyStateNoResults(query),
+                                icon = EmptyStateIcons.ArchiveEmpty,
+                                message = emptyStateArchiveEmpty(),
                                 modifier = Modifier.padding(20.dp),
-                                actionLabel = S.t2("Aramayı temizle", "Clear search"),
-                                onAction = { onQuery("") },
+                            )
+                        } else {
+                            EmptyState(
+                                icon = EmptyStateIcons.NoSessions,
+                                message = emptyStateNoSessions(),
+                                modifier = Modifier.padding(20.dp),
+                                actionLabel = S.t2("Yeni sohbet", "New chat"),
+                                onAction = onNewChat,
                             )
                         }
+                    }
+                }
+                if (query.isNotBlank() && !hasVisibleRows) {
+                    item(key = "no-result") {
+                        EmptyState(
+                            icon = EmptyStateIcons.NoResults,
+                            message = emptyStateNoResults(query),
+                            modifier = Modifier.padding(20.dp),
+                            actionLabel = S.t2("Aramayı temizle", "Clear search"),
+                            onAction = { onQuery("") },
+                        )
                     }
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(12.dp)) }
@@ -1122,7 +1096,7 @@ private fun QuickReplySheet(
             Text(
                 title,
                 color = HermesColors.TextPrimary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1139,12 +1113,12 @@ private fun QuickReplySheet(
                     Text(
                         S.t2("Yanıtını yaz…", "Type your reply…"),
                         color = HermesColors.TextFaint,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 },
                 minLines = 1,
                 maxLines = 3,
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.medium,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = HermesColors.TextPrimary,
                     unfocusedTextColor = HermesColors.TextPrimary,
@@ -1165,7 +1139,7 @@ private fun QuickReplySheet(
                     enabled = !sending,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
-                    Text(S.t2("Vazgeç", "Cancel"), color = HermesColors.TextMuted, fontSize = 13.sp)
+                    Text(S.t2("Vazgeç", "Cancel"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
                 }
                 TextButton(
                     onClick = {
@@ -1180,7 +1154,7 @@ private fun QuickReplySheet(
                     Text(
                         if (sending) S.t2("Gönderiliyor…", "Sending…") else S.t2("Gönder", "Send"),
                         color = HermesColors.Midground,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                     )
                 }
