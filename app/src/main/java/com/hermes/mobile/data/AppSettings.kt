@@ -336,6 +336,12 @@ data class AppSettings(
     val wakeWordEnabled: Boolean = false,
     /** "yuksek" | "normal" | "siki" — bkz. WakeWordLogic.Sensitivity. */
     val wakeWordSensitivity: String = "normal",
+    /**
+     * Seslenme kelimesi — kullanıcı değiştirir ("hey kitt", "hermes", …).
+     * Tetikleyici model `hey_jarvis_v0.1`; bu ayar STT sonrası **doğrulama**
+     * ve komuttan soyma için kullanılır (JarvisLogic.stripWake).
+     */
+    val wakeWord: String = "hey kitt",
     /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
     val artemisProfile: String = "flash",
     /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */

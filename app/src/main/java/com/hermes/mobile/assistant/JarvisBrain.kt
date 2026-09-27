@@ -142,6 +142,24 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         prefs.edit().remove(KEY_SID).remove(KEY_AT).apply()
     }
 
+    /**
+     * Sesli verilen Hermes slash komutu (`/branch`, `/steer`, `/undo`, `/new`).
+     * Çağıran cihazda yapılamayan iş sunucuda değilse çıktı boş döner —
+     * sesli katman "yapıldı" dese de doğrulanmamış olur; bu yüzden hata
+     * fırlatmaz, metni döner.
+     */
+    suspend fun slash(command: String): String {
+        val profile = ServerProfileStore(context).active()
+            ?: return "Sunucu profili yok — uygulamada sunucu ekle"
+        if (profile.token.isBlank()) return "Sunucu anahtarı (token) girilmemiş"
+        val c = client(profile)
+        val opened = withTimeoutOrNull(15_000) { c.connection.first { it is ConnectionState.Open } }
+            ?: return "Sunucuya bağlanılamadı"
+        check(opened is ConnectionState.Open)
+        val sid = sessionId ?: return "Açık oturum yok"
+        return runCatching { c.slashExec(sid, command) }.getOrElse { it.message ?: "Hata" }
+    }
+
     private fun client(p: ServerProfile): GatewayWsClient {
         val key = "${p.id}|${p.token}|${p.normalizedUrl}|${p.normalizedRemote}"
         gw?.takeIf { gwProfileKey == key }?.let { it.connect(); return it }

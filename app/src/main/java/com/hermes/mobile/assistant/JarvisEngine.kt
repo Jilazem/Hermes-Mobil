@@ -120,6 +120,18 @@ class JarvisEngine(
         handle(t)
     }
 
+    /**
+     * Sesli slash komutu — çıktıyı okur, sonra dinlemeye döner.
+     * Sunucu çıktısı boşsa (iş cihazda yapılmış olabilir) sessiz geçilmez:
+     * hoparlör ikonu çalışan balonu gösterir, ama "yapıldı" denmez.
+     */
+    private fun runSlash(command: String) {
+        turn = scope.launch {
+            val out = runCatching { brain.slash(command) }.getOrElse { it.message ?: "Hata" }
+            if (out.isBlank()) afterSpeaking() else speakOnce(out.take(400)) { afterSpeaking() }
+        }
+    }
+
     /** Yeni konu: bağlamı unut. */
     fun newTopic() {
         interruptAll()
@@ -238,8 +250,19 @@ class JarvisEngine(
         _state.update { it.copy(phase = JarvisPhase.Thinking, heard = text, answer = "", tool = null, error = null, hint = null, level = 0f) }
         DiagLog.i("jarvis", "soru (${text.length} krkt)")
 
-        if (JarvisLogic.isStopPhrase(text)) {
-            speakOnce(if (text.contains("teşekkür", true) || text.contains("sağ ol", true)) "Rica ederim." else "Tamam.") {
+        // Seslenme ayarı: tetikleyici "hey jarvis" modelini dinler ama komut
+        // ayardaki kelimeyle başlıyorsa soyulur ("hey kitt hava durumu" →
+        // "hava durumu"). Başlamıyorsa kullanıcı normal soru sormuştur.
+        val heard = JarvisLogic.stripWake(text, settings.wakeWord) ?: text
+
+        // Sesli Hermes komutu: "buna cevap verme", "ayri dal ac"…
+        JarvisLogic.voiceSlash(heard)?.let { cmd ->
+            speakOnce(if (cmd.startsWith("/steer")) "Tamam, ekliyorum." else "Tamam.") { runSlash(cmd) }
+            return
+        }
+
+        if (JarvisLogic.isStopPhrase(heard)) {
+            speakOnce(if (heard.contains("teşekkür", true) || heard.contains("sağ ol", true)) "Rica ederim." else "Tamam.") {
                 onHide()
             }
             return

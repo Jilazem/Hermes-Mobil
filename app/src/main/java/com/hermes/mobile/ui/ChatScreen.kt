@@ -197,6 +197,11 @@ fun ChatScreen(
     /** Asistan balonunu seslendir/durdur — (balon anahtarı, metin). */
     onSpeak: (String, String) -> Unit = { _, _ -> },
     /**
+     * Uzun basma menüsü eylemi (sesli/slash). `MainActivity` bunu
+     * `ChatViewModel.runSlash` ile bağlar; ChatItemView kendi menüsünü açar.
+     */
+    onBubbleAction: (BubbleAction, String) -> Unit = { _, _ -> },
+    /**
      * Tur-13: asistan modu şeridi — "yanıtı otomatik oku" anahtarının durumu
      * (`AppSettings.assistantAutoRead`).
      */
@@ -383,6 +388,7 @@ fun ChatScreen(
                                     onApproval,
                                     onOpenFile,
                                     onSpeak = onSpeak,
+                                    onBubbleAction = onBubbleAction,
                                     speakKey = voice.speak.key,
                                     speakBusy = voice.speak.phase ==
                                         com.hermes.mobile.data.VoiceSpeakLogic.Phase.Downloading,
@@ -1115,6 +1121,8 @@ private fun ChatItemView(
     onSpeak: (String, String) -> Unit = { _, _ -> },
     speakKey: String? = null,
     speakBusy: Boolean = false,
+    /** Uzun basma menüsü → sohbetin ortak slash hattı. */
+    onBubbleAction: (BubbleAction, String) -> Unit = { _, _ -> },
 ) {
     when (item) {
         is ChatItem.User -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -1131,20 +1139,44 @@ private fun ChatItemView(
             }
         }
 
-        is ChatItem.Assistant -> Column(
-            Modifier
-                .fillMaxWidth()
-                // Uzun basma = seslendir/durdur (kopyalama jesti burada yok;
-                // metin seçimi MarkdownText içinde kendi yolunda).
-                .combinedClickable(
-                    onLongClick = { if (!item.streaming) onSpeak(item.key, item.text) },
-                    onClick = {},
-                ),
-        ) {
-            MarkdownText(
-                markdown = item.text + if (item.streaming) " ▌" else "",
-                modifier = Modifier.fillMaxWidth(),
-            )
+        is ChatItem.Assistant -> {
+            var menu by remember(item.key) { mutableStateOf(false) }
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    // Uzun basma = menü (cevap verme / ayrı dal / seslendir).
+                    // Metin seçimi MarkdownText içinde kendi yolunda.
+                    .combinedClickable(
+                        onLongClick = { if (!item.streaming) menu = true },
+                        onClick = {},
+                    ),
+            ) {
+                Box {
+                    MarkdownText(
+                        markdown = item.text + if (item.streaming) " ▌" else "",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    DropdownMenu(
+                        expanded = menu,
+                        onDismissRequest = { menu = false },
+                        containerColor = HermesColors.Surface,
+                    ) {
+                        listOf(
+                            BubbleAction.Answer to S.t2("Buna cevap verme", "Answer this"),
+                            BubbleAction.Branch to S.t2("Ayrı dal aç", "Branch this"),
+                            BubbleAction.Speak to S.t2("Seslendir", "Read aloud"),
+                        ).forEach { (action, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium) },
+                                onClick = {
+                                    menu = false
+                                    if (action == BubbleAction.Speak) onSpeak(item.key, item.text)
+                                    else onBubbleAction(action, item.text)
+                                },
+                            )
+                        }
+                    }
+                }
             // Ajan dosya ürettiyse altına indirilebilir kart koy — masaüstünde
             // tıklanabilir olan bağlantının mobil karşılığı.
             if (!item.streaming) {
@@ -1189,6 +1221,7 @@ private fun ChatItemView(
                     )
                 }
             }
+        }
         }
 
         is ChatItem.Thinking -> {

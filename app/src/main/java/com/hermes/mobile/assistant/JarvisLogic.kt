@@ -44,6 +44,39 @@ object JarvisLogic {
             words.none { it in setOf("ama", "fakat", "sonra", "ve") }
     }
 
+    // ── Seslenme ayarı + sesli komut ──────────────────────────────────
+
+    /**
+     * Ayar yazımı hatalarını (büyük harf, "hey  kitt", nokta) toparlar:
+     * duyulan metinle eşleştirmek için tek biçim.
+     */
+    private fun norm(s: String): String =
+        fold(s).replace(Regex("\\s+"), " ").trim()
+
+    /**
+     * Seslenme kelimesini komuttan soyup kalanı döner. Komut yoksa null.
+     *
+     * Model `hey_jarvis_v0.1` üzerinden tetiklendiği için ayardaki kelime
+     * **doğrulama** görevi görür: kullanıcı "hey kedi" derse "KITT'e sor"
+     * yanlış yere düşmez, normal soru olarak devam eder.
+     */
+    fun stripWake(text: String, wake: String): String? {
+        val t = norm(text)
+        val w = norm(wake)
+        if (w.isEmpty() || !t.startsWith(w)) return null
+        return t.removePrefix(w).trim(' ', ',', '.', ':').takeIf { it.isNotEmpty() }
+    }
+
+    /** Sesli söylenen komut → Hermes slash komutu. Eşleşme yoksa null. */
+    fun voiceSlash(command: String): String? = when {
+        // "buna cevap verme" = turu kesmeden talimat ekle
+        norm(command) in setOf("cevap verme", "buna cevap verme", "cevap ver", "buna cevap ver", "devam et", "buna devam et") -> "/steer $command"
+        norm(command) in setOf("ayri dal ac", "dal ac", "ayri dal", "yeni dal ac", "ayri konu ac") -> "/branch"
+        norm(command) in setOf("geri al", "geri al 1", "bir geri al", "son turu geri al") -> "/undo"
+        norm(command) in setOf("yeni konu", "konuyu degistir", "yeni sohbet") -> "/new"
+        else -> null
+    }
+
     // ── Ekran bağlamı ──────────────────────────────────────────────────
 
     private val SCREEN = Regex(

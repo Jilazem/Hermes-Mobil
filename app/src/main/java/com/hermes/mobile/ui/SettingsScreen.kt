@@ -2559,10 +2559,13 @@ private fun WakeWordCard(
     onUpdate: ((AppSettings) -> AppSettings) -> Unit,
 ) {
     val running by com.hermes.mobile.assistant.WakeWordControl.running.collectAsState()
+    // Ayar boşsa tetikleyici adı gösterilir: metin alanı boş kalır ama
+    // kullanıcı ne söylemesi gerektiğini görür (normalleştirme fold() ile).
+    val wakeWord = settings.wakeWord.trim().ifEmpty { com.hermes.mobile.data.JarvisIdentity.NAME }
     HermesCard(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(S.t2("\"Hey Jarvis\" ile uyandır", "Wake with \"Hey Jarvis\""), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                Text(S.t2("\"$wakeWord\" ile uyandır", "Wake with \"$wakeWord\""), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
                 Text(
                     when {
                         !settings.wakeWordEnabled -> S.t2("kapalı", "off")
@@ -2580,6 +2583,28 @@ private fun WakeWordCard(
         }
         if (settings.wakeWordEnabled) {
             Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = settings.wakeWord,
+                onValueChange = { v -> onUpdate { it.copy(wakeWord = v.trim().take(24)) } },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text(S.t2("Seslenme kelimesi", "Wake word"), color = HermesColors.TextSecondary) },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = HermesColors.TextSecondary),
+            )
+            Text(
+                S.t2(
+                    "Büyük/küçük harf ve \"hey\" yazmadan da eşleşir: \"$wakeWord\" söyle, " +
+                        "geri kalanı komut olarak işlenir. Tetikleyici hâlâ openWakeWord " +
+                        "hey_jarvis (CC BY-NC-SA 4.0, kişisel) — kendi kelimen için model " +
+                        "eğitmek gerekirse nokta budur.",
+                    "Case and a leading \"hey\" are ignored: say \"$wakeWord\" and the rest runs " +
+                        "as the command. The trigger is still openWakeWord hey_jarvis " +
+                        "(CC BY-NC-SA 4.0); training a custom model is the open question.",
+                ),
+                color = HermesColors.TextMuted,
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Spacer(Modifier.height(8.dp))
             Text(S.t2("Hassasiyet", "Sensitivity"), color = HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
@@ -2594,12 +2619,12 @@ private fun WakeWordCard(
         Spacer(Modifier.height(8.dp))
         Text(
             S.t2(
-                "\"Hey Jarvis\" (ya da \"Hey Carvis\") de; Jarvis paneli açılır. Ses tamamen telefonda " +
+                "\"$wakeWord\" de; asistan paneli açılır. Ses tamamen telefonda " +
                     "işlenir, hiçbir yere gönderilmez; açıkken kalıcı bir bildirim durur. Hermes varsayılan " +
                     "asistan ise panel doğrudan açılır, değilse dokunulacak bir bildirim gelir. Pil: sürekli " +
                     "küçük bir model çalışır — pil tasarrufunda Hermes'i \"kısıtlanmamış\" yap. " +
                     "Model: openWakeWord hey_jarvis (CC BY-NC-SA 4.0, kişisel kullanım).",
-                "Say \"Hey Jarvis\" to open the Jarvis panel. Audio is processed on the phone only; a " +
+                "Say \"$wakeWord\" to open the assistant panel. Audio is processed on the phone only; a " +
                     "persistent notification shows while it listens. Model: openWakeWord hey_jarvis (CC BY-NC-SA 4.0).",
             ),
             color = HermesColors.TextMuted,

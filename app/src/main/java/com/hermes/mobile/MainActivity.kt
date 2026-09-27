@@ -1258,6 +1258,18 @@ private fun HermesApp(
                         // KALAN-2: ⋯ → Müdahale — çalışan ajana açık sohbetten
                         // talimat (session.steer / session.redirect).
                         onIntervene = chatViewModel::intervene,
+                        // Balona uzun basma → "Buna cevap verme" / "Ayrı dal aç"
+                        // (Hermes'in kendi /steer ve /branch komutları; sohbeti
+                        // kesmeden aynı hattan koşar).
+                        onBubbleAction = { action, text ->
+                            when (action) {
+                                com.hermes.mobile.ui.BubbleAction.Answer ->
+                                    chatViewModel.runSlash("/steer $text")
+                                com.hermes.mobile.ui.BubbleAction.Branch ->
+                                    chatViewModel.runSlash("/branch")
+                                com.hermes.mobile.ui.BubbleAction.Speak -> Unit
+                            }
+                        },
                         onOpenReasoning = {
                             reasoningSheet = true
                             // Sunucunun bildirdiği aktif çabayı öne al — panel
