@@ -11,6 +11,15 @@ package com.hermes.mobile.assistant
  */
 object WakeWordLogic {
 
+    /**
+     * Gerçek tetikleyici kelime — openWakeWord `hey_jarvis_v0.1` modelinin
+     * tanıdığı SES. Ayar (`AppSettings.wakeWord`) BUNUN AYNISI olmalı:
+     * kullanıcı ayarı "hey jarvis" yazıyorsa model uyandırır, farklı kelime
+     * yazarsa tetikleyici yine "hey jarvis"tir. `hey kitt` için eğitilmiş
+     * model yok — o ayar sessizce hiç işe yaramaz.
+     */
+    const val TRIGGER_PHRASE = "hey jarvis"
+
     /** 16 kHz'de 80 ms — modelin adım boyu. */
     const val CHUNK = 1280
 

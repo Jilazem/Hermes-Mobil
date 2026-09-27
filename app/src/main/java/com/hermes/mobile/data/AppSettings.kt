@@ -3,6 +3,7 @@ package com.hermes.mobile.data
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.hermes.mobile.assistant.WakeWordLogic
 import com.hermes.mobile.ui.theme.HermesPalette
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -337,11 +338,12 @@ data class AppSettings(
     /** "yuksek" | "normal" | "siki" — bkz. WakeWordLogic.Sensitivity. */
     val wakeWordSensitivity: String = "normal",
     /**
-     * Seslenme kelimesi — kullanıcı değiştirir ("hey kitt", "hermes", …).
-     * Tetikleyici model `hey_jarvis_v0.1`; bu ayar STT sonrası **doğrulama**
-     * ve komuttan soyma için kullanılır (JarvisLogic.stripWake).
+     * Uyandıktan sonra **söylenmesi gereken** komut ön eki — kullanıcı değiştirir
+     * ("hey kitt hava durumu" → "hava durumu"). Tetikleyici model sabittir
+     * (`hey_jarvis_v0.1`); bu ayar yalnız tetikleme SONRASI komutu ayırır.
+     * Gerçek tetikleyici kelime: [WakeWordLogic.TRIGGER_PHRASE].
      */
-    val wakeWord: String = "hey kitt",
+    val wakeWord: String = WakeWordLogic.TRIGGER_PHRASE,
     /** "flash" (hızlı, 3-5 sn/adım) ya da "pro" (planlı, doğrulamalı). */
     val artemisProfile: String = "flash",
     /** ADB seri numarası elle (boşsa telefonun Wi-Fi IP'sinden bulunur). */

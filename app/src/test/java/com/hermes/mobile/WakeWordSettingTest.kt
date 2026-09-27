@@ -1,6 +1,8 @@
 package com.hermes.mobile
 
 import com.hermes.mobile.assistant.JarvisLogic
+import com.hermes.mobile.assistant.WakeWordLogic
+import com.hermes.mobile.data.AppSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -8,11 +10,20 @@ import org.junit.Test
 /**
  * Seslenme kelimesi ayarı + sesli Hermes komutu (tur25.3).
  *
- * Tetikleyici TFLite modeli `hey_jarvis_v0.1`; kullanıcının ayardaki kelimesi
- * STT sonrası **doğrulama** ve komuttan soyma için kullanılır. Buradaki
- * sözleşme: farklı yazımlar eşleşir, komut soyulur, komut yoksa null döner.
+ * TETİKLEYİCİ MODEL SABİTTİR: openWakeWord `hey_jarvis_v0.1` yalnız
+ * [WakeWordLogic.TRIGGER_PHRASE] sesini tanır. Ayar (`AppSettings.wakeWord`)
+ * komutu ayırmak içindir; tetikleyiciden ayrı bir kelimeye ayarlanırsa
+ * uygulama o kelimeyi duysanız bile UYANMAZ. Varsayılan bu yüzden
+ * tetikleyicinin kendisidir.
  */
 class WakeWordSettingTest {
+
+    @Test
+    fun `varsayilan ayar gercek tetikleyici kelimeyle ayni`() {
+        // Ayar tetikleyiciden ayrı giderse tetikleyici yine "hey jarvis"tir:
+        // kullanıcı "hey kitt" yazarsa uygulama hiç uyanmaz.
+        assertEquals(WakeWordLogic.TRIGGER_PHRASE, AppSettings().wakeWord)
+    }
 
     @Test
     fun `seslenme kelimesi basinda ise komut soyulur`() {

@@ -2559,9 +2559,9 @@ private fun WakeWordCard(
     onUpdate: ((AppSettings) -> AppSettings) -> Unit,
 ) {
     val running by com.hermes.mobile.assistant.WakeWordControl.running.collectAsState()
-    // Ayar boşsa tetikleyici adı gösterilir: metin alanı boş kalır ama
-    // kullanıcı ne söylemesi gerektiğini görür (normalleştirme fold() ile).
-    val wakeWord = settings.wakeWord.trim().ifEmpty { com.hermes.mobile.data.JarvisIdentity.NAME }
+    // Ayar boşsa tetikleyici adı gösterilir: kullanıcı ne söylemesi
+    // gerektiğini görür (normalleştirme fold() ile).
+    val wakeWord = settings.wakeWord.trim().ifEmpty { com.hermes.mobile.assistant.WakeWordLogic.TRIGGER_PHRASE }
     HermesCard(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -2593,13 +2593,13 @@ private fun WakeWordCard(
             )
             Text(
                 S.t2(
-                    "Büyük/küçük harf ve \"hey\" yazmadan da eşleşir: \"$wakeWord\" söyle, " +
-                        "geri kalanı komut olarak işlenir. Tetikleyici hâlâ openWakeWord " +
-                        "hey_jarvis (CC BY-NC-SA 4.0, kişisel) — kendi kelimen için model " +
-                        "eğitmek gerekirse nokta budur.",
-                    "Case and a leading \"hey\" are ignored: say \"$wakeWord\" and the rest runs " +
-                        "as the command. The trigger is still openWakeWord hey_jarvis " +
-                        "(CC BY-NC-SA 4.0); training a custom model is the open question.",
+                    "UYANDIRAN KELİME SABİT: \"${com.hermes.mobile.assistant.WakeWordLogic.TRIGGER_PHRASE}\" " +
+                        "(openWakeWord hey_jarvis, CC BY-NC-SA 4.0). Yukarıdaki kutu tetikleyiciden " +
+                        "SONRA söylenen komutun başındaki kelimeyi ayırmak içindir — başka bir " +
+                        "kelime yazarsan uyanma yine aynı kelimeyle olur.",
+                    "The trigger is fixed: \"${com.hermes.mobile.assistant.WakeWordLogic.TRIGGER_PHRASE}\" " +
+                        "(openWakeWord hey_jarvis, CC BY-NC-SA 4.0). The box above only splits the " +
+                        "command that comes after it; another word will not change the trigger.",
                 ),
                 color = HermesColors.TextMuted,
                 style = MaterialTheme.typography.labelSmall,
