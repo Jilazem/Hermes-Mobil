@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.CrashGuardTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.01">
+  <properties/>
+  <testcase name="recoverSatirAyristirma" classname="com.hermes.mobile.CrashGuardTest" time="0.006"/>
+  <testcase name="stackTraceSinirliCerCeve" classname="com.hermes.mobile.CrashGuardTest" time="0.002"/>
+  <testcase name="reportTextOturumYoksaTire" classname="com.hermes.mobile.CrashGuardTest" time="0.002"/>
+  <testcase name="recoverCrashYoksaNull" classname="com.hermes.mobile.CrashGuardTest" time="0.0"/>
+  <testcase name="reportTextThreadOturumEkranIcerir" classname="com.hermes.mobile.CrashGuardTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

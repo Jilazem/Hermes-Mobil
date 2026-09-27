@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SendFeedbackTur22Test" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="pencere kapali — 1sn dolunca temizlenir" classname="com.hermes.mobile.SendFeedbackTur22Test" time="0.0"/>
+  <testcase name="pencere acik — gonderme ani 1sn gorunur" classname="com.hermes.mobile.SendFeedbackTur22Test" time="0.0"/>
+  <testcase name="pencere suresi kartla ayni — 1000ms" classname="com.hermes.mobile.SendFeedbackTur22Test" time="0.0"/>
+  <testcase name="fail-closed — saat geri sarsa takilmaz, hemen temiz" classname="com.hermes.mobile.SendFeedbackTur22Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

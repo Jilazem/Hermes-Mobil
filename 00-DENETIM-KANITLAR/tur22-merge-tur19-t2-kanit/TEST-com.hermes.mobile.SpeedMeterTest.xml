@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SpeedMeterTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="sure ilk deltadan itibaren sayilir" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="token sayaci yaklaşık dört karakter bir token" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="finish degerleri dondurur" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="ema yukselen hizi yavas takip eder" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="bos delta saati baslatmaz" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="hiz satiri bicimlendirmesi" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="reset yeni akis icin saati sifirlar" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="delta yalniz pencere kapaninca snapshot doner" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <testcase name="saniyede sabit akista ham hiz dogru" classname="com.hermes.mobile.SpeedMeterTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

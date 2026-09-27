@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.Tur5KalanTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="taninmayan ic kaynak adi icin ikon cizilmez" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="sayac tek ifade - once toplam sonra acik" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="kaynak ikonu ve kaynak etiketi ayni sozlukten gelir" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="kaynak ikonlari bilinen adlar icin cozulur" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="gercek kullanici mesaji gorunur kalir" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="yuklenirken ve liste bosken iskelet cizilir" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="cron sistem istemi dokumde balon olarak cizilmez" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="acik yoksa ikinci sayi yazilmaz" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="acik sayisi toplami asmaz" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="liste bosken sayac hic yazilmaz" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="eski iki-adli ifade kalmadi" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <testcase name="veri gelince ya da yuklenmiyorken iskelet cizilmez" classname="com.hermes.mobile.Tur5KalanTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

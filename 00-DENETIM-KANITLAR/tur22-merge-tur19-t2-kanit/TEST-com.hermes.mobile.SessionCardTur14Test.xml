@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SessionCardTur14Test" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="sayacBasligiIcerikSayilir" classname="com.hermes.mobile.SessionCardTur14Test" time="0.0"/>
+  <testcase name="hamIdBaslikIcerikSayilmaz" classname="com.hermes.mobile.SessionCardTur14Test" time="0.0"/>
+  <testcase name="kaynakChipEtiketleri" classname="com.hermes.mobile.SessionCardTur14Test" time="0.0"/>
+  <testcase name="mesajliKartYerTutucuDegildir" classname="com.hermes.mobile.SessionCardTur14Test" time="0.0"/>
+  <testcase name="canliKartAslaElemez" classname="com.hermes.mobile.SessionCardTur14Test" time="0.0"/>
+  <testcase name="onizlemeliKartYerTutucuDegildir" classname="com.hermes.mobile.SessionCardTur14Test" time="0.0"/>
+  <testcase name="tamamenBosKartYerTutucudur" classname="com.hermes.mobile.SessionCardTur14Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

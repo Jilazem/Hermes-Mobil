@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.PhoneReadIntentTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="bildirim sorulari cihazda cozulur" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.0"/>
+  <testcase name="konum sorulari cihazda cozulur" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.0"/>
+  <testcase name="takvim okuma" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.0"/>
+  <testcase name="pano okuma" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.0"/>
+  <testcase name="yarin sorulunca 48 saate bakilir" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.0"/>
+  <testcase name="ajana ait sorular cihazda kalmaz" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.001"/>
+  <testcase name="takvime ekleme okuma sayilmaz" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.0"/>
+  <testcase name="isimden numara" classname="com.hermes.mobile.PhoneReadIntentTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.VoiceApiEndpointsTest" tests="23" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:48" hostname="Gokhan-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="elle verilen adres tek basina kazanir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="adres bos ya da bozuksa aday uretilmez" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="401 de token mesajina duser" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.001"/>
+  <testcase name="erisilemeyen adres 8174 ve voice-api yi anlatir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="uc url leri dogru kurulur" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="LAN once uzak sonra - sira korunur" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="denenen adresler mesaja gomulur" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="sozlesme tavanlari sabit" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="taban sonundaki egik cizgi url i bozmaz" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="son calisan adres ilk aday olur" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="codeText iki bicimi ayirir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="hicbir adres yoksa ayar mesaji" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="dis adres voice-api yolundan gider" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="hatirlanan lan adresi voice-api tekrari uretmez" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="health motorlar kapaliysa ilk cagri uyarisi verir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="403 token mesaji uretir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="health satiri motorlari listeler" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.001"/>
+  <testcase name="elle verilen adreste sondaki egik cizgi kirpilir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="join yol uretir ve cift egik cizgi olmaz" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="hatirlanan 8174 adresi normalize edilir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="attempt ok ve reachable ayrimi" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="404 ses ucu yok mesaji uretir" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <testcase name="ev agi adresi dogrudan 8174 portuna gider" classname="com.hermes.mobile.VoiceApiEndpointsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

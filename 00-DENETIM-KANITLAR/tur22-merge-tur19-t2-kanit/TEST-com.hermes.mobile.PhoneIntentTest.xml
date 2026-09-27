@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.PhoneIntentTest" tests="23" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.006">
+  <properties/>
+  <testcase name="yol tarifi verir" classname="com.hermes.mobile.PhoneIntentTest" time="0.002"/>
+  <testcase name="turkce karakter olmadan da anlar" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="english volume and media" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="sayac kurar" classname="com.hermes.mobile.PhoneIntentTest" time="0.001"/>
+  <testcase name="sesi ayarlar" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="medyayi yonetir" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="english agent requests are untouched" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="english navigates" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="alarm kurar" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="english opens apps" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="normal istekleri ajana birakir" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="english flashlight" classname="com.hermes.mobile.PhoneIntentTest" time="0.001"/>
+  <testcase name="web aramasi yapar" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="uzun metni ajana birakir" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="sorulari ajana birakir" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="cihaz durumunu okur" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="english status timer settings search" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="uygulama acar" classname="com.hermes.mobile.PhoneIntentTest" time="0.001"/>
+  <testcase name="numara cevirir ama isimden aramaz" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="ayarlari acar" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="argumani ozgun metinden keser" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="feneri yakar sondurur" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <testcase name="english questions go to the agent" classname="com.hermes.mobile.PhoneIntentTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

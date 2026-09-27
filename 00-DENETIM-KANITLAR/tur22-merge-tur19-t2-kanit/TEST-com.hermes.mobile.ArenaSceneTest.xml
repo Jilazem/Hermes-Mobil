@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ArenaSceneTest" tests="34" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.015">
+  <properties/>
+  <testcase name="canliOturumlarDbIdIleTekillesirVeSekizleSinirlanir" classname="com.hermes.mobile.ArenaSceneTest" time="0.001"/>
+  <testcase name="idleFazindaCanliOturumlarFigurOlur" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="webglYoksaKartListesi" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="jsonBosFigurListesiGecerli" classname="com.hermes.mobile.ArenaSceneTest" time="0.009"/>
+  <testcase name="arenaKosusuVarkenCanliOturumlarSahneyeKarismaz" classname="com.hermes.mobile.ArenaSceneTest" time="0.001"/>
+  <testcase name="jsonKacisliMetinYenidenAyniOkunur" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="jsonKacislari" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="readyFazi" classname="com.hermes.mobile.ArenaSceneTest" time="0.001"/>
+  <testcase name="runningFazi" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="runningFazindaIzlenenFigurlerAynen" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="canliOturumAdiKirpilirVeBosBaslikKimligeDuser" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="durduruluncaStoppedFazi" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="durdurulanKosudaFigurlerSilinmezSakineDoner" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="idleFazi" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="beyinFirtinasindaSentezRozetiVeKimligi" classname="com.hermes.mobile.ArenaSceneTest" time="0.001"/>
+  <testcase name="jsKacisiTirnakVeTersBoluIkiKezKacirir" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="jsHatasindaKartListesi" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="zamanAsimindaKartListesi" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="doneFazindaOkHata" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="sahneHazirsaKartListesineDusulmez" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="figurKimlikleriKararli" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="doneFazi" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="jsCagrisiSahnedeSetDataCagirir" classname="com.hermes.mobile.ArenaSceneTest" time="0.001"/>
+  <testcase name="yuklenirkenHenuzKararYok" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="sahneHazirOluncaKartListesiGeriCekilir" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="runningdenDoneaKimliklerKorunur" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="readyFazindaSeciliBotlarBekliyor" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="idleFazindaCanliVeriYoksaSahneBos" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="kapismadaTurRozetleri" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="turRozetiDileGore" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="cevapsizHataBitisindeFigurlerKesintiyeUgrar" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="jsCagrisiAsciiDisiKarakterIceremez" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="aktiflikKomutlari" classname="com.hermes.mobile.ArenaSceneTest" time="0.0"/>
+  <testcase name="jsonGecerliVeAlanlarDogru" classname="com.hermes.mobile.ArenaSceneTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

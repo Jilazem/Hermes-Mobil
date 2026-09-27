@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.LocalTtsLogicTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="toplam boyat 60-70 MB bandinda" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.0"/>
+  <testcase name="silme yalniz alt agaci sayar, yoksa sifir" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.003"/>
+  <testcase name="fallback karari — bulut hatasi + model varsa YERELE DUSER" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.0"/>
+  <testcase name="ilerleme yuzdesi 0-99 arasi kisi" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.0"/>
+  <testcase name="fallback karari — yerel secili + model yoksa buluta GECMEZ" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.0"/>
+  <testcase name="fallback karari — yerel secili + model hazirsa yerel uretir" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.0"/>
+  <testcase name="fallback karari — bulut hatasi + model yoksa hata kalir" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.0"/>
+  <testcase name="model dosyalari sha256 ile sabit" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.001"/>
+  <testcase name="sha tutmama fail-closed" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.0"/>
+  <testcase name="durum satirlari faz basina farkli" classname="com.hermes.mobile.LocalTtsLogicTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

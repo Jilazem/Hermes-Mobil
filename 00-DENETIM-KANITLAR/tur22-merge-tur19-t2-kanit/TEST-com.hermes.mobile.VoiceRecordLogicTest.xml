@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.VoiceRecordLogicTest" tests="20" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:51" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="bastan kayit baslar ve zaman damgasi tutulur" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="metinlestirme surerken birakma yok sayilir" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="sayaç etiketi dakika formatinda" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.001"/>
+  <testcase name="basarili metinlestirme durumu sifirlar" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="sure tazelenir ve 60 sn tavaninda durur" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="kisa basis atilir" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="sozlesme siniri 60 sn" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="60 sn dolunca kendiliginden durur" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="kayit satiri dinliyorum ve metne cevriliyor der" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="ilerleme 0 ile 1 arasinda" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="iptal kaydi temizler" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="hata mesaji tasinir" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="kayit yokken birakma hicbir sey yapmaz" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="kayit dosya adi zaman damgali" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="kayit surerken ikinci basis yok sayilir" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="kayit yokken otomatik durma olmaz" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="uzun basista yukleme karari cikar" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="tam sinir 800 ms yuklemeye gider" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="kayit yokken tik bir sey yapmaz" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <testcase name="hatali durumdan yeniden baslanabilir" classname="com.hermes.mobile.VoiceRecordLogicTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

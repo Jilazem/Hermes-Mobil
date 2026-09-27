@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ArenaCageTest" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.008">
+  <properties/>
+  <testcase name="samplePulseNullWindowIsZeroNotCrash" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="activityTimeoutFiresOnlyAfterSilence" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="speedNeverNegativeOrNaN" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="driveCommandNullWhenNoWorkingBot" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="cageKindIsRegistered" classname="com.hermes.mobile.ArenaCageTest" time="0.001"/>
+  <testcase name="samplePulseTimeJitterClampsToFloor" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="cageUrlStaysInAssetRoot" classname="com.hermes.mobile.ArenaCageTest" time="0.002"/>
+  <testcase name="idleBotCrawlsAtFloor" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="workRemainsDefaultKind" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="passWindowExpires" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="speedScalesWithCharsPerSec" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="laneIsDeterministicAndBounded" classname="com.hermes.mobile.ArenaCageTest" time="0.001"/>
+  <testcase name="driveCommandFlagsPass" classname="com.hermes.mobile.ArenaCageTest" time="0.002"/>
+  <testcase name="jsCallForTargetsPerKind" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="samplePulseRotatesWindow" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="laneDiffersPerId" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="cageTimeoutMatchesHeavySceneBudget" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="jsActiveIsPerKind" classname="com.hermes.mobile.ArenaCageTest" time="0.002"/>
+  <testcase name="driveCommandTargetsFastestWorkingBot" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="samplePulseSecondWindowStartsClean" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <testcase name="driveCommandIsAsciiSafe" classname="com.hermes.mobile.ArenaCageTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

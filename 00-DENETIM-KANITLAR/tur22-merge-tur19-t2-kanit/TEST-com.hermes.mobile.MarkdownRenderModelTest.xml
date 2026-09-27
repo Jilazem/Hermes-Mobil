@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.MarkdownRenderModelTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="tekMaddeSolo" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.002"/>
+  <testcase name="bloklarArasiKirilimSoloGrupUretir" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.001"/>
+  <testcase name="yarimKodCitiBlokUretir" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="numberedDevamSatiriMaddeyeBirlesir" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="icIceMaddeGirintisi" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="bosSatirsizDuzSatirLazimDevamdir" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="ardIsikIkiMaddeAyriKorunur" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="kodBloguListeDegildir" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="listeSonuParagraflaKirilir" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="paragrafBirlesmesiKorundu" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="devamSatiriBlokIsaretiyleBaslarsaBirlesmez" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <testcase name="bulletDevamSatiriMaddeyeBirlesir" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.001"/>
+  <testcase name="bitisikMaddelerTekTightGrup" classname="com.hermes.mobile.MarkdownRenderModelTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

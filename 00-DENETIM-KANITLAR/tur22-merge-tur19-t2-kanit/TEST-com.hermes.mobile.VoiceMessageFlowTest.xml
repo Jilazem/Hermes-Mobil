@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.VoiceMessageFlowTest" tests="27" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:48" hostname="Gokhan-Mac-mini.local" time="3.066">
+  <properties/>
+  <testcase name="probe health durumunu yapilandirilmis doner" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.002"/>
+  <testcase name="sunucu yoksa metne cevirmede acik hata" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.001"/>
+  <testcase name="varsayilanlar sozlesmeye uygun" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.0"/>
+  <testcase name="mikrofon acilmazsa kayit hata verir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.003"/>
+  <testcase name="mesaji seslendirir ve onbellege yazar" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.141"/>
+  <testcase name="asset kaydi dogrudan metne cevrilir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.001"/>
+  <testcase name="60 sn tavani dolunca kayit kendiliginden yuklenir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.29"/>
+  <testcase name="motor degisince hazir isareti sifirlanir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.17"/>
+  <testcase name="indirme hatasi durum satirina ve bildirime duser" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.149"/>
+  <testcase name="bos yanit hata sayilir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.172"/>
+  <testcase name="selftest sentezi dosyaya yazar" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.003"/>
+  <testcase name="kisa basis yukleme uretmez" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.337"/>
+  <testcase name="kayit dosyasi olusmazsa hata bildirilir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.002"/>
+  <testcase name="ayarlanan motor sentezlenir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.166"/>
+  <testcase name="okunacak metin yoksa hic istek atilmaz" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.294"/>
+  <testcase name="ikinci calma indirme yapmaz - onbellekten gelir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.172"/>
+  <testcase name="sunucu yoksa seslendirme acik hata verir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.17"/>
+  <testcase name="isitma surerken ikinci tik ikinci istek uretmez" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.502"/>
+  <testcase name="calma hatasi bildirilir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.158"/>
+  <testcase name="isitma sabit cumleyi sentezler ve hazir olur" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.002"/>
+  <testcase name="isitma hatasi duruma ve bildirime duser" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.002"/>
+  <testcase name="probe hata firlatmaz hata satirini doldurur" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.002"/>
+  <testcase name="yukleme hatasi sohbete bildirilir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.003"/>
+  <testcase name="calisan adres hatirlanir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.002"/>
+  <testcase name="ayni balona ikinci dokunus durdurur" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.163"/>
+  <testcase name="bas-konus kayit baslatir ve birakinca metne cevirir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.002"/>
+  <testcase name="calma bitince durum temizlenir" classname="com.hermes.mobile.VoiceMessageFlowTest" time="0.155"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

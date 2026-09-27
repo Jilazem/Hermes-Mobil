@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.VoiceStatusLogicTest" tests="25" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:51" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="ingilizce etiketler de dogru" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.001"/>
+  <testcase name="isOn degerleri" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="probe saglik bilgisini tasir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="isitma surerken motor degisse de is kaybolmaz" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="durum satiri kullanicinin istedigi bicimde" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="acik motor yesil yolu icin isaretlenir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="zaman asimi satiri tavani soyler" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="motor kapaliysa isit gorunur aciksa gorunmez" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="motor degisince hazir isareti sifirlanir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="isitma baslarken motor ve baslangic zamani kaydedilir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="eksik motor anahtari bilinmiyor ve kapali sayilir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="kapali motor ipucu isit onerir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="isitma cumlesi kisa sabit cumle" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="parca sirasi metinlestirme kahya kadin chatterbox" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="basarili isitma hazir durumuna ve sure satirina gecer" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="hata tasiyan probe ok degildir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="saniye metni kirpilir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="uc yanit vermiyorsa isit gosterilmez" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="isitma surerken ikinci istek yok sayilir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="isitma tavani sentez zaman asimiyla ayni 420 sn" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="canli yenileme 4-5 saniye araliginda" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="metinlestirme kapaliysa satirda kapali yazar" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="motor anahtari buyuk harfli gelse de okunur" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="dugme etiketleri dort durumu ayirir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <testcase name="hata sonrasi yeniden isitilabilir" classname="com.hermes.mobile.VoiceStatusLogicTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

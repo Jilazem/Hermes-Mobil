@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SessionCardAnatomyTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="durum etiketi sinyal — bosta ve bitmis etiketsiz" classname="com.hermes.mobile.SessionCardAnatomyTest" time="0.0"/>
+  <testcase name="bosta oturumda eylem yigini yok, satir sohbeti acar" classname="com.hermes.mobile.SessionCardAnatomyTest" time="0.0"/>
+  <testcase name="canli kelimesi hicbir etikette gecmez" classname="com.hermes.mobile.SessionCardAnatomyTest" time="0.0"/>
+  <testcase name="calisan ve bekleyen durumlari etiketlidir" classname="com.hermes.mobile.SessionCardAnatomyTest" time="0.0"/>
+  <testcase name="calisan oturumda tek birincil eylem Dur" classname="com.hermes.mobile.SessionCardAnatomyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

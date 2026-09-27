@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SessionCardTopicTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="previewKisaAynen" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="previewKirkilir" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="cronSistemMetniAtilirIsAdiKalir" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="ikisiDeYokSohbetDamgasi" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="renameHerZamanOncelikli" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="hamJsonOnizlemesiKonuOlmaz" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="titleHamIdIsePreviewKullanilir" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="hamIdAslaBaslikOlamaz" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="subtitleYalnizKonuVarsa" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="titleYokPreviewVar" classname="com.hermes.mobile.SessionCardTopicTest" time="0.001"/>
+  <testcase name="titleVarKonuOlarakGosterilir" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="kullaniciCumlesiCronIsAdindanOnce" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <testcase name="previewTekSatiraDuzlesir" classname="com.hermes.mobile.SessionCardTopicTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

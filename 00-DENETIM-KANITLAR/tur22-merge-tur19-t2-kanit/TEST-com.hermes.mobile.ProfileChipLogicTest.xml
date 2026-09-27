@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ProfileChipLogicTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="bos profil listesi bos doner" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="profil listesi bosa yalniz varsayilan chip kalir" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="varsayilan yonlendirici cipi secilirse profil golgelenmez" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="ic profil adlari cip olarak cizilmez" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="kilitli durumda mevcut profil goruntulenir" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="secilen profil kalici selectedProfile olur" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.001"/>
+  <testcase name="profil cipi secilirse createSession profil alinir" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="insan adi olan profil gorunur ve secim gercek adi tasir" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="mevcut oturumda chip kilitlidir" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <testcase name="varsayilan cip her durumda gizlenir" classname="com.hermes.mobile.ProfileChipLogicTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

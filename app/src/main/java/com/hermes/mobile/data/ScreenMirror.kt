@@ -134,7 +134,11 @@ object ScreenMirror {
                     .toBundle(),
             )
         }.isSuccess
-        if (!opened) postConsentNotification(carContext)
+        // Android 10+ arka plandan etkinlik başlatma SİZLİCE engellenir
+        // (istisna fırlatmaz; isSuccess = "açıldı" demek DEĞİL). Fail-safe:
+        // bildirim HER koşulda düşer — araçta "Başlat"a basan kullanıcı
+        // her zaman telefondaki bildirime dokunup izni verebilir.
+        postConsentNotification(carContext)
         return opened
     }
 

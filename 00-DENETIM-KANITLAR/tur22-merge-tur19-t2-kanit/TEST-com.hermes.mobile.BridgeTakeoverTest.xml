@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.BridgeTakeoverTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.007">
+  <properties/>
+  <testcase name="taken_over karesi gorulduyse ag hatasi bile devralma sayilir" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.001"/>
+  <testcase name="normal kopmalar yeniden baglanma sayilir" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="disaridan ters vekil yolu kullanilir" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.001"/>
+  <testcase name="geri cekilme merdiveni 2-5-15-30-60 saniye" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="bozuk ya da ilgisiz kare istisna firlatmaz" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.003"/>
+  <testcase name="ev aginda varsayilan 9180 portu kullanilir" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="denemesiz hal hemen dener" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="arac cagrisi karesi devralma sayilmaz" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="cozumlenemeyen adres bos doner" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="kullanici kapattiysa hicbir kod yeniden baglanma baslatmaz" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="merdiven 60 saniyede tavan yapar ve tasmaz" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="relay devralma karesi taninir" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="acik kopru adresi profil adresini ezer" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <testcase name="4001 close kodu devralma sayilir" classname="com.hermes.mobile.BridgeTakeoverTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

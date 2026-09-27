@@ -174,7 +174,7 @@ class JarvisUiWiringTest {
     @Test
     fun `wiring persona SYSTEM_PROMPT icerik dogrulugu`() {
         val p = JarvisIdentity.SYSTEM_PROMPT
-        assertTrue("ad geçmiyor", p.startsWith("Sen Jarvis"))
+        assertTrue("ad geçmiyor", p.startsWith("Sen ${JarvisIdentity.NAME}"))
         assertTrue("Türkçe yönerge", p.contains("Türkçe konuş"))
         assertTrue("NAME ile tutarlı", p.contains(JarvisIdentity.NAME))
     }

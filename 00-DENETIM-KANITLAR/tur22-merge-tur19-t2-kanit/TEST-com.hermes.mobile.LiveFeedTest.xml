@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.LiveFeedTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="canli ile eslesen gecmis kayit tek satira_dusur" classname="com.hermes.mobile.LiveFeedTest" time="0.0"/>
+  <testcase name="bos_girdi_bos_liste" classname="com.hermes.mobile.LiveFeedTest" time="0.0"/>
+  <testcase name="bitmemis_gecmis_kaydi_canli_sayilmaz_ama_yer_almaz" classname="com.hermes.mobile.LiveFeedTest" time="0.0"/>
+  <testcase name="ayni_dbId_iki_canli_kayit_tek_satir_olur" classname="com.hermes.mobile.LiveFeedTest" time="0.0"/>
+  <testcase name="canlilar ustte sirali gecmisler altta" classname="com.hermes.mobile.LiveFeedTest" time="0.0"/>
+  <testcase name="kaynak_etiketi_dil_kontrolu" classname="com.hermes.mobile.LiveFeedTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

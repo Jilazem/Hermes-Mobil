@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SocketTuningTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="sarsinti sonrasi tavan 5 saniye" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="jitter araligi disindaki unit kirpilir" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="uzun suredir kopuksa merdiven buyur" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="sarsinti penceresinin disinda kalan sure normal merdivene doner" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="kopru ilk basamak sifir degil" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="ping penceresi sifir ya da negatif olamaz" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="ilk kopma denemesi hizli" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="merdiven tavani 30 saniyeyi asmaz" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="ping pencereleri kurallı_ws kisa kopru orta rolet uzun" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="kopru merdiveni korunur ve sarsintida 15 sn tavan" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <testcase name="jitter sinirlari yuzde yirmi bes" classname="com.hermes.mobile.SocketTuningTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

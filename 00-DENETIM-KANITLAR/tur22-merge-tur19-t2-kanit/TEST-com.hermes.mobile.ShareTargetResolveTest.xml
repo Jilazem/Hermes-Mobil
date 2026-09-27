@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ShareTargetResolveTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="bos string girdileri null gibi sayilir" classname="com.hermes.mobile.ShareTargetResolveTest" time="0.0"/>
+  <testcase name="bos paylasim sessiz yeni konudur ve picker acmaz" classname="com.hermes.mobile.ShareTargetResolveTest" time="0.0"/>
+  <testcase name="dosya var oturum yoksa Yeni konusu icer ve picker acar" classname="com.hermes.mobile.ShareTargetResolveTest" time="0.0"/>
+  <testcase name="yalniz metin ve oturum varken Existing olir ve dosya degildir" classname="com.hermes.mobile.ShareTargetResolveTest" time="0.0"/>
+  <testcase name="dosya ve oturum varken Existing icerir ve picker acmaz" classname="com.hermes.mobile.ShareTargetResolveTest" time="0.001"/>
+  <testcase name="etiket mevcut oturumda ad gosterir" classname="com.hermes.mobile.ShareTargetResolveTest" time="0.0"/>
+  <testcase name="yalniz metin ve oturum yoksa Yeni konusu icer ve picker acar" classname="com.hermes.mobile.ShareTargetResolveTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

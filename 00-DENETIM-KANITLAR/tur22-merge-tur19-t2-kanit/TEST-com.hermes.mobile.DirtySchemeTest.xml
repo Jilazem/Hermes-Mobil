@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.DirtySchemeTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="sonundaki kirli sema kalintisi ve kirmalar temizlenir" classname="com.hermes.mobile.DirtySchemeTest" time="0.0"/>
+  <testcase name="semasiz adres http oneki alir" classname="com.hermes.mobile.DirtySchemeTest" time="0.0"/>
+  <testcase name="temiz sema aynen kalir - buyuk harf HTTPS downgrade olmaz" classname="com.hermes.mobile.DirtySchemeTest" time="0.001"/>
+  <testcase name="kirli httphttps temizlenir - son yazilan sema esas" classname="com.hermes.mobile.DirtySchemeTest" time="0.0"/>
+  <testcase name="bos alan bos kalir" classname="com.hermes.mobile.DirtySchemeTest" time="0.0"/>
+  <testcase name="kirli httphttp temizlenir" classname="com.hermes.mobile.DirtySchemeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

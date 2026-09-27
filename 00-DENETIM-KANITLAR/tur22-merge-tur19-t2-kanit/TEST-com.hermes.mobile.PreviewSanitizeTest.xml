@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.PreviewSanitizeTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="kelime sinirinda kirpilir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="sistem promptu isaretleri ayiklanir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="cron oturumunun ikinci satiri kurtarilir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="json dizi de makine ciktisidir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="cron sistem mesaji onizlemede gosterilmez" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="ham json ciktisi onizleme olmaz" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="markdown susleri temizlenir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="konu 40 karakter civarinda kirpilir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="kisa metin kirpilmaz" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="kisi ve kanal adlari konu degildir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="gercek konu basliklari korunur" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="satir sonlari tek satira iner" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="tool sonucu govdesi ayiklanir ama metin varsa kurtarilir" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <testcase name="bos ve yalniz noktalama girdisi bos doner" classname="com.hermes.mobile.PreviewSanitizeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

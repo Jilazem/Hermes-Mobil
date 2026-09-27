@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.AssistantModeTest" tests="24" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="normal sohbette ayar acik olsa bile okunmaz" classname="com.hermes.mobile.AssistantModeTest" time="0.001"/>
+  <testcase name="kayitli asistan ipucu Google ise Google yazilir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="varsayilanlar sozlesmeye uygun" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="calan ses AwaitingReplydan once gelir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="izin yoksa istenir izin varsa istenmez" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="baska bir uygulama tutuyorsa okunabilir adi gosterilir" classname="com.hermes.mobile.AssistantModeTest" time="0.001"/>
+  <testcase name="asistan akisinda metin dogrudan gonderilir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="hermes rol sahibiyse varsayilan asistan satiri cikar" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="normal sohbette karar kullanici ayarinda" classname="com.hermes.mobile.AssistantModeTest" time="0.001"/>
+  <testcase name="her fazin bir ipucu satiri var ve hepsi farkli" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="ayarlardan tercihe donusum oto-okumayi tasir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="debug paket kimligi tam eslesmeyle taninir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="mod kapaliyken faz Off" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="rol atanmamissa atanmamis yazilir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="bilinmeyen paket adi uydurulmaz" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="api 29 ve ustunde rol istenebilir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="isRoleHeld kesin cevap - ipuclari bos olsa da Hermes" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="ayar kapaliysa asistan modunda da okunmaz" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="okunacak metin yoksa seslendirme denenmez" classname="com.hermes.mobile.AssistantModeTest" time="0.001"/>
+  <testcase name="api 29 altinda rol desteklenmez ve elle adimlar gosterilir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="kayit cekimi ve ceviri her seyin onunde" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="asistan modunda ayar aciksa yanit okunur" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="mod acik ve sakin halde faz Ready" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <testcase name="bos ve kirli kayitlar atanmamis sayilir" classname="com.hermes.mobile.AssistantModeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

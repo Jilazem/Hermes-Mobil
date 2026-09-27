@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ShareUploadPlanTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="onay unreadable gorunur uyari uretir metin dusmez" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="normalizedUrl truth table" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="iptal plan-upload iken yukleme URETMEZ taslak BOS kopya silinir" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.001"/>
+  <testcase name="sozlesme anahtarlari tek kaynakta durur" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="kopya okunamazsa Unreadable - sessiz kayip yerine uyarı" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="dosya etiketi ve kopya varsa Upload plani dogar" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.001"/>
+  <testcase name="ad cikarma parantezli ve parantezsiz girdilerde saglam" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="onay plan-upload iken yukleme URETIR temizlik VM de (yaris korumasi)" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="el sikisma yalniz gercek secret ile kabul edilir" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="iptal unreadable planinda bile sessiz temizlik" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="etiket var kopya yoksa Unreadable" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="onay profil yoksa upload yerine gorunur uyari + temizlik" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <testcase name="dosya yoksa plan None ve temizlik yolu yok" classname="com.hermes.mobile.ShareUploadPlanTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ShareStagingTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.006">
+  <properties/>
+  <testcase name="boyut sinirini asan akis yarisda kesilir ve yarim kopya silinir" classname="com.hermes.mobile.ShareStagingTest" time="0.001"/>
+  <testcase name="kopya bayt bayt ayni ve adi token ile temizlenmis" classname="com.hermes.mobile.ShareStagingTest" time="0.003"/>
+  <testcase name="bayat kopyalar supurulur, yeniler kalir" classname="com.hermes.mobile.ShareStagingTest" time="0.001"/>
+  <testcase name="null akis ve bos akis kopya uretmez" classname="com.hermes.mobile.ShareStagingTest" time="0.0"/>
+  <testcase name="sanitize yol ve bos ad tuzaklarini yutar" classname="com.hermes.mobile.ShareStagingTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

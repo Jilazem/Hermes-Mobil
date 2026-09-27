@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.EmptyStateTur22Test" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="arama sonucu metni sorguyu icerir — kullanici ne aradigini gorur" classname="com.hermes.mobile.EmptyStateTur22Test" time="0.0"/>
+  <testcase name="EN bos durumlar tanimli ve farkli" classname="com.hermes.mobile.EmptyStateTur22Test" time="0.0"/>
+  <testcase name="TR boş durumlar tek cumle" classname="com.hermes.mobile.EmptyStateTur22Test" time="0.0"/>
+  <testcase name="uydurma veri kelimesi gecmez — sablon metin sabitleri" classname="com.hermes.mobile.EmptyStateTur22Test" time="0.0"/>
+  <testcase name="tur22 cekmece 3 secmeli sekme kurali — arsiv sekmesi tab 2" classname="com.hermes.mobile.EmptyStateTur22Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

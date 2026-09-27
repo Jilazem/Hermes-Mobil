@@ -146,11 +146,19 @@ fun ArenaScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
-                S.t2("Bot Arena", "Bot Arena"),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
+            Column {
+                Text(
+                    "ARENA",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 3.sp,
+                )
+                Text(
+                    S.t2("Müdahale & Eğlence", "Intervene & Play"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             when (st.phase) {
                 is com.hermes.mobile.ArenaPhase.Running -> TextButton(
                     onClick = { arenaViewModel.stop() }
@@ -179,6 +187,15 @@ fun ArenaScreen(
                 }
             }
         }
+
+        // Eğlence bölümü — sahne (tur25.1: bölüm kimliği "Müdahale & Eğlence").
+        Text(
+            S.t2("EĞLENCE — sahne", "PLAY — stage"),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         // Tur-15: sahne kipi seçici (kalıcı).
         Row(
@@ -264,6 +281,15 @@ fun ArenaScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+
+        // Müdahale bölümü — konu, kip, botlar, başlat (tur25.1: bölüm kimliği).
+        Text(
+            S.t2("MÜDAHALE — konu ve botlar", "INTERVENE — topic & bots"),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         // Konu girişi
         TextField(

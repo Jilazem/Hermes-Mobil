@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.LiveModelChoiceTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="adres yoksa ayri hata — yine YEREL'de kalir" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.001"/>
+  <testcase name="govde ipucu 200 ile sinirli" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="model adi farkliysa null — sessiz baska model YOK" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="kilit — saglik bozukken bile YEREL'de kalir, Gemini'ye gecmez" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="secenekler iki dilde ve sirali" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="registry sozlesmesi — beklenen model esleşirse secilir" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="saglik etiketleri" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="http hata satiri kodu tasir" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="ulasilamama satiri adresi ve aksiyonu soyler" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="chat govdesi — kacislar dogru, icerik geri cozulur" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.001"/>
+  <testcase name="unicode kacisi cozulur" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="gemini seciliyse saglik tek etkisi yoktur" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="saglayici varsayilani gemini — eski davranis bozulmaz" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="kullanicinin istegi baska model — uyari mesaji net" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="durum noktasi renkleri eslemesi" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <testcase name="content yoksa null — cagiran hata uretir" classname="com.hermes.mobile.LiveModelChoiceTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

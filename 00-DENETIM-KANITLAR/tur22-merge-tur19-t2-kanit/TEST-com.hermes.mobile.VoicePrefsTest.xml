@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.VoicePrefsTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:51" hostname="Gokhan-Mac-mini.local" time="0.0">
+  <properties/>
+  <testcase name="varsayilanlar kapali gonder ve yerel motor" classname="com.hermes.mobile.VoicePrefsTest" time="0.0"/>
+  <testcase name="tercihlerin varsayilani da kapali" classname="com.hermes.mobile.VoicePrefsTest" time="0.0"/>
+  <testcase name="bilinmeyen motor kimligi varsayilana duser" classname="com.hermes.mobile.VoicePrefsTest" time="0.0"/>
+  <testcase name="tercihler ayardan cozulur" classname="com.hermes.mobile.VoicePrefsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

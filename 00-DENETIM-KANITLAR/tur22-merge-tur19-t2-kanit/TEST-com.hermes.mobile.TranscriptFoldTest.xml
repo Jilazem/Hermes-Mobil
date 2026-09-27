@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.TranscriptFoldTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="arac hatasi Failed olarak isaretlenir" classname="com.hermes.mobile.TranscriptFoldTest" time="0.001"/>
+  <testcase name="asistan nihai metni one cikar, dusunme tek ayrintiya katlanir" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="gercekten bos oturumda sifir yazilmaz" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="mesajsiz girdi bos liste" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="arac cagrilari ve sonuclari ayni ayrintida" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="yuklenirken sayac yazilmaz" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="sistem mesaji one cikmaz" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="kart ve detay ayni sayiyi gosterir" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="dusunme ve araclar tek ayrinti satirinda toplanir" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <testcase name="hata varsa sayac yazilmaz" classname="com.hermes.mobile.TranscriptFoldTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

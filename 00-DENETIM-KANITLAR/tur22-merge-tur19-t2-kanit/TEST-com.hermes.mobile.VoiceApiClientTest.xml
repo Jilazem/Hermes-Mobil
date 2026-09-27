@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.VoiceApiClientTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.161">
+  <properties/>
+  <testcase name="token bos ise baslik gonderilmez" classname="com.hermes.mobile.VoiceApiClientTest" time="0.137"/>
+  <testcase name="sentez zaman asimi guvenlik payiyla 420 sn" classname="com.hermes.mobile.VoiceApiClientTest" time="0.002"/>
+  <testcase name="transcribe multipart alan adi audio ve mime dogru" classname="com.hermes.mobile.VoiceApiClientTest" time="0.004"/>
+  <testcase name="iki adresli istemci calisan adrese duser" classname="com.hermes.mobile.VoiceApiClientTest" time="0.002"/>
+  <testcase name="404 ucu yok mesajina cevrilir" classname="com.hermes.mobile.VoiceApiClientTest" time="0.003"/>
+  <testcase name="her istekte oturum tokeni basligi gider" classname="com.hermes.mobile.VoiceApiClientTest" time="0.001"/>
+  <testcase name="health sozlesme alanlarini cozer" classname="com.hermes.mobile.VoiceApiClientTest" time="0.002"/>
+  <testcase name="transport arayuzu ayni yolu kullanir" classname="com.hermes.mobile.VoiceApiClientTest" time="0.002"/>
+  <testcase name="synthesize sozlesme govdesi ve ogg baytlari" classname="com.hermes.mobile.VoiceApiClientTest" time="0.002"/>
+  <testcase name="calisan adres hatirlanir" classname="com.hermes.mobile.VoiceApiClientTest" time="0.002"/>
+  <testcase name="transcribe ogg baytlarini bozmadan yukler" classname="com.hermes.mobile.VoiceApiClientTest" time="0.001"/>
+  <testcase name="kahya motoru istegi kahya olarak gider" classname="com.hermes.mobile.VoiceApiClientTest" time="0.001"/>
+  <testcase name="403 token mesajina cevrilir" classname="com.hermes.mobile.VoiceApiClientTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

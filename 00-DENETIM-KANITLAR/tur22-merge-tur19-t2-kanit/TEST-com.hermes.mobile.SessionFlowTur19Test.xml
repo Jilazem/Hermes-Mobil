@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SessionFlowTur19Test" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.003">
+  <properties/>
+  <testcase name="gönder düğmesi boş metin ve gönderim sürerken kapalı" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="pencere 60 örnekten fazlasını kırpar - eski uç düşer" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="akışta arama başlık ve önizlemede süzer" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="akış kronolojik en yeni önce sıralanır" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.001"/>
+  <testcase name="rate etiketi TR virgül ve 100 üstü tam sayı" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.001"/>
+  <testcase name="akış boş girdide boş döner - başlık uydurma yok" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="pencere ortalaması boşta null - sıfır DEĞİL (uydurma yasağı)" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="durum makinesi akışı Idle-Sending-Sent ve hata yolu" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="notice metninden başarı hükmü - iletildi true, hata false" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="akışta grup başlığı YOKTUR - düz liste döner" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="akışta ham id sızıntısı YOK - tüm başlıklar displayLabel filtresinden geçer" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.001"/>
+  <testcase name="aktif ajan sayısı tur16 canlı filtresiyle aynı yargı" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <testcase name="canQuickReply yalnız canlı ve müdahaleye açık satırda true" classname="com.hermes.mobile.SessionFlowTur19Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ChatMenuTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="durdurma her zaman en sonda" classname="com.hermes.mobile.ChatMenuTest" time="0.0"/>
+  <testcase name="bosta menude model ve dusunme var" classname="com.hermes.mobile.ChatMenuTest" time="0.0"/>
+  <testcase name="mudahale diyalogu acik sohbetin kimligini tasir" classname="com.hermes.mobile.ChatMenuTest" time="0.001"/>
+  <testcase name="calisan ajanda mudahale ve durdurma eklenir" classname="com.hermes.mobile.ChatMenuTest" time="0.0"/>
+  <testcase name="mudahale sonucu sessiz kalmaz" classname="com.hermes.mobile.ChatMenuTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

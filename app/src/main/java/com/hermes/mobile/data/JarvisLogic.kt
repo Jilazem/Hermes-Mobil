@@ -183,7 +183,7 @@ object JarvisIdentity {
      * Asistan", Settings→Default apps) OS sınırlaması gereğidir ve
      * DEĞİŞMEZ; persona adı ayrıdır.
      */
-    const val NAME = "Jarvis"
+    const val NAME = "KITT"
 
     /**
      * Tur-23 r1: persona sistem yönergesi — yerel asistan turunun `system`

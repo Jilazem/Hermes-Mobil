@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ReasoningPanelTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="reasoning ciktisi basit bicimde ayrisatair" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="canli kuyruk tek satirlik metni bozmadan verir" classname="com.hermes.mobile.ReasoningPanelTest" time="0.001"/>
+  <testcase name="reasoning ciktisi display kapatilmis durumda ayrisatair" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="reasoning slash komutu tam seviye ipucuyla kayitlidir" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="reasoningLevel varsayilani nulltr" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="stream meter dusunce fazi thinking etiketiyle raporlar" classname="com.hermes.mobile.ReasoningPanelTest" time="0.001"/>
+  <testcase name="canli kuyruk son dort dolu satiri verir" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="canli thinking blokta live dogru, bitenden sonrasinda yanlis" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="canli kuyruk bos metinde bos doner" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="reasoning ciktisi bilinmeyen display degeri null olarak ayrisatair" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="stream meter faz gecisinde sayaclar devam eder" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="showLiveThinking varsayilani aciktr" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <testcase name="reasoning ciktisi bos metinde null degerleri dondurur" classname="com.hermes.mobile.ReasoningPanelTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

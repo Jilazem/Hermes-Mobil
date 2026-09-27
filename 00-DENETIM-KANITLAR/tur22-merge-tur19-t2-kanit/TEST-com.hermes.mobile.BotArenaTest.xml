@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.BotArenaTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="kapismaTur2PromptuDigerCevaplariIcerir" classname="com.hermes.mobile.BotArenaTest" time="0.001"/>
+  <testcase name="tekBotPromptKonuIcerir" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="botSinirKoyulmusSeciliBotCalisir" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="bosSpaceKonuReddedilir" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="kapismaTur2PromptuTekBotDegilseDegisken" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="bosKonuReddedilir" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="bosBotListeReddedilir" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="sentezPromptu5Madde" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="botSinirDortEsimle" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="botSinirKoyulmusYeniBotEklemeIslemez" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="kapismaModuRevizeEmriIcerir" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="sentezPromptuTumFikirleriIcerir" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="arenaModlari" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <testcase name="tekBotCevapHedef" classname="com.hermes.mobile.BotArenaTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

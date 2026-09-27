@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.FullControlTest" tests="42" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.012">
+  <properties/>
+  <testcase name="buyuk kare icin olcekler azalan sirada" classname="com.hermes.mobile.FullControlTest" time="0.001"/>
+  <testcase name="global eylem adlari iki dilli" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="turkce katlama uzunlugu korur" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="base64 boyutu dogru hesaplanir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="screen size en buyuk siniri verir" classname="com.hermes.mobile.FullControlTest" time="0.003"/>
+  <testcase name="metin tek basina gecerli hedef" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="kanal kapaliyken hicbir arac calismaz" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="esitlikte tiklanabilir ve kucuk alan tercih edilir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="id tam ve son-parca eslesmesi" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="walk tum dugumleri gezer" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="ekran disi ogeler ozete ve kaydirma farkina girmez" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="tus adlari iki dilli" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="onemli sinif bos olsa da korunur" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="ne yon ne koordinat varsa jest uretilmez" classname="com.hermes.mobile.FullControlTest" time="0.001"/>
+  <testcase name="koordinat verilince arama yapilmaz" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="bos kapsayicilar ayiklanir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="karakter siniri asilinca agac atilir ozet kalir" classname="com.hermes.mobile.FullControlTest" time="0.002"/>
+  <testcase name="uc anahtar da acikken her sey serbest" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="araç adlari kapsamda" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="koordinatli kaydirma dogrudan gecer" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="dugum siniri asilinca truncated isaretlenir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="ingilizce yon adlari da calisir" classname="com.hermes.mobile.FullControlTest" time="0.001"/>
+  <testcase name="kucuk kare icin kucultme yapilmaz" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="bos args gecersiz hedef" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="ekran disi isaretlenir dokumde" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="tam kontrol araclari yalniz iki anahtar da acikken duyurulur" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="id metinden once gelir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="bulunamayan metin null doner - tahmin yok" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="desteklenmeyen tusler acikca reddedilir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="sure sinirlanir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="buyuk-kucuk harf duyarsiz eslesme" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="tam kontrol kapaliyken reddedilir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="sifir alanli dugumler hedef olmaz" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="dokum gecerli json" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="dokum paket ve ozet tasir" classname="com.hermes.mobile.FullControlTest" time="0.001"/>
+  <testcase name="yazi alani yoksa null" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="odakli yazi alani yoksa ilk duzenlenebilir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="salt okunur kipte yazma araclari reddedilir okuma araclari gecer" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="yon kisayollari ekran oranindan jest uretir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="tam eslesme iceren eslesmeden once gelir" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="yazi alani odakli olani secer" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <testcase name="red gerekceleri kopru ile ayni metin" classname="com.hermes.mobile.FullControlTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

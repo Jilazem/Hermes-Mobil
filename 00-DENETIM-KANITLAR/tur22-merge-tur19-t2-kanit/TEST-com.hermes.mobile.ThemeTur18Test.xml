@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ThemeTur18Test" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.021">
+  <properties/>
+  <testcase name="satir araligi - tight 1_2 body 1_43 prose 1_45" classname="com.hermes.mobile.ThemeTur18Test" time="0.019"/>
+  <testcase name="fontScale 1_15 - her rol taban x 1_15 ile olceklenir" classname="com.hermes.mobile.ThemeTur18Test" time="0.0"/>
+  <testcase name="agirlıklar - body prolleri 400 title ve display 500" classname="com.hermes.mobile.ThemeTur18Test" time="0.0"/>
+  <testcase name="fontScale 0_85 kucuk - tabanlarin altina iner ama sifir degil" classname="com.hermes.mobile.ThemeTur18Test" time="0.0"/>
+  <testcase name="tur17 LOW kapanisi - test dosyasi artik platform-null-safe derleniyor" classname="com.hermes.mobile.ThemeTur18Test" time="0.0"/>
+  <testcase name="tipografi 6 rol taban degerleri 1 11 12 14 15 17 22" classname="com.hermes.mobile.ThemeTur18Test" time="0.0"/>
+  <testcase name="tur3 prose bandi - govde 15sp satir 22sp bandinda kalir" classname="com.hermes.mobile.ThemeTur18Test" time="0.001"/>
+  <testcase name="HermesShapes slot haritasi - extraSmall 4 medium 10 large 16" classname="com.hermes.mobile.ThemeTur18Test" time="0.001"/>
+  <testcase name="HermesRadius 4 adim - 4 10 16 999" classname="com.hermes.mobile.ThemeTur18Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

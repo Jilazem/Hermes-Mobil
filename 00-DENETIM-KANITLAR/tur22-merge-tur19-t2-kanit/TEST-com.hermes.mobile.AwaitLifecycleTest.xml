@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.AwaitLifecycleTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.002">
+  <properties/>
+  <testcase name="onay sonrasi bekleyen durdurma yok" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.001"/>
+  <testcase name="onay beklerken gelen stop stopService cagirmaz" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="onay geldiyse zaman asimi temizlemez" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="cift start ikinci bir startForegroundService uretmez" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="bos durumda stop hicbir sey yapmaz" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="stop sonrasi gec start yeni servis baslatmaz" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="onay sonrasi desen - start stop start dongusu" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="servis yok edilince durum bastan baslar" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="durdurma istegi onaydan once iptal edilirse servis calismaya devam eder" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="onay sonrasi stop stopService ister" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="ilk start servisi baslatir ve onay bekler" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.0"/>
+  <testcase name="zaman asimi bayragi serbest birakir" classname="com.hermes.mobile.AwaitLifecycleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

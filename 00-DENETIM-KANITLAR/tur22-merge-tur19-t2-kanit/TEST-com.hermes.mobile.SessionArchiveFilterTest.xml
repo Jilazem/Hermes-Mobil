@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SessionArchiveFilterTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="arşivCikar" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="calisanOturumdaYalnizRenameVesabitle" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="yenidenAdlandirmabaSlkBaslik" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="arşivEkle" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="bayraGsizBaslikOturumAdiOlarakKullanilir" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="bitmisOturumdaDurdurVBudaAcik" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="yenidenAdlandirmaYoksaSunucuBaslikAlinir" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="gizliOturumArşivFiltresindenBagimsizDisari" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="arşivliOturumGizli" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="arşivliOturumGoster" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.001"/>
+  <testcase name="arşivliOturumAramadaDaGorunmez" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <testcase name="arşivliOturumdaEtiketDegisir" classname="com.hermes.mobile.SessionArchiveFilterTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

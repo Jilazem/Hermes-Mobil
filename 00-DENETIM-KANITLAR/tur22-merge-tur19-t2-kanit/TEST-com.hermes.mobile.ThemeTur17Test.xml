@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ThemeTur17Test" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.006">
+  <properties/>
+  <testcase name="isaret yoksa luminans karar verir - koyu zemin koyu kalicidir" classname="com.hermes.mobile.ThemeTur17Test" time="0.001"/>
+  <testcase name="isAccentDistinct ayni hexi reddeder" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="15x4 kontrast matrisi - 4 sutun da esik ust ve dosyaya yazilir" classname="com.hermes.mobile.ThemeTur17Test" time="0.003"/>
+  <testcase name="resolveOnAccent kurtarici - iki taban aday da AA alti ise koyulastirir" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="hermes dolgulu CTA koyu zeminli on-accent alir - parlak dolguda metin koyu" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="onColorFor taban aday - iki adaydan iyisini secer" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="varsayilan hermes 20 - bolum 3_1 degerleri birebir" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="tumu preset arka planlari ayni kumede - isaret olmasa da luminans ayni sonucu verirdi" classname="com.hermes.mobile.ThemeTur17Test" time="0.001"/>
+  <testcase name="isaret luminansi ezer - skin isik=false ise koyu cizilir" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="dolgulu CTA on-accent her preset'te WCAG AA 4_5 ustu" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="metin rolleri zemin ustu en az baslik-disi AA - textPrimary Secondary Muted" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="her preset aksan metinden hex olarak ayrik" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="kontrast orani bilinen deger - siyah beyaz 21" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="resolveOnAccent tabanini korur - AA gecen degeri degistirmez" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="hexToArgb 6 ve 8 hane + bozuk" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="eski skin verisi isLight alani olmadan deserialize olur ve luminansla karar" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="nous 20 - bolum 3_1 acik token seti (aksan AA icin koyulasti)" classname="com.hermes.mobile.ThemeTur17Test" time="0.001"/>
+  <testcase name="argbWithAlpha alfa kanalini degistirir RGB kalarak" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="her preset aksan metinden gorulur sekilde ayrik" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="isaretli preset dogru semayi secer - 6 koyu 1 acik" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <testcase name="nous dolgulu CTA beyaz on-accent alir - koyu dolguda metin acik olmali" classname="com.hermes.mobile.ThemeTur17Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

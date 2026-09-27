@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SessionFlagsLogicTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="sabitlenenler uste, zaman gruplari sirali baslik alir" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="bugun dun ve oncesi dogru gruba duser" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="arsivdeki sabitlenen arsiv acikken sabitlenenler basliginda kalir" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="rename basligi overrideler, title'a dokunmaz" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="null ve sifir zaman Oncekilere duser" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="hidden her zaman, archived tercihe gore elenir" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="esik altinda baslik yok" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="sabitlenen en ustte, sonra yeniden eskiye" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.0"/>
+  <testcase name="sorgu aktifken baslik kalkar, sabitleme sirasi kalir" classname="com.hermes.mobile.SessionFlagsLogicTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

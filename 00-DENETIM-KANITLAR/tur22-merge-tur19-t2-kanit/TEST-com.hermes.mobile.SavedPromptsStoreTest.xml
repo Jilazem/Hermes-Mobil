@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SavedPromptsStoreTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.008">
+  <properties/>
+  <testcase name="etiket bos ise ilk satirdan turetilir" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.003"/>
+  <testcase name="etiket uzunsa ilk satirin kirpilmis hali kalir" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.0"/>
+  <testcase name="kaydet yukle ile doner" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.001"/>
+  <testcase name="olmayan id guncelle ve sil sessiz gecilir" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.001"/>
+  <testcase name="bozuk dosya akisi kirmez, ilk kaydet yigini kurar" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.0"/>
+  <testcase name="guncelle kaydi yerinde degistirir" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.001"/>
+  <testcase name="sil kaydi kaldirir" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.001"/>
+  <testcase name="yeni store ayni dizinden geri okur" classname="com.hermes.mobile.SavedPromptsStoreTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

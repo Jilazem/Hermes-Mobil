@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ServerProfileRelayTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="172 blogunun disi ozel sayilmaz" classname="com.hermes.mobile.ServerProfileRelayTest" time="0.0"/>
+  <testcase name="ev agindan dogrudan role portuna gider" classname="com.hermes.mobile.ServerProfileRelayTest" time="0.0"/>
+  <testcase name="disaridan ters vekil yolunu kullanir" classname="com.hermes.mobile.ServerProfileRelayTest" time="0.0"/>
+  <testcase name="cozumlenemeyen adres bos doner" classname="com.hermes.mobile.ServerProfileRelayTest" time="0.0"/>
+  <testcase name="elle girilen adres her seyi ezer" classname="com.hermes.mobile.ServerProfileRelayTest" time="0.0"/>
+  <testcase name="disaridan acik port verilmisse korunur" classname="com.hermes.mobile.ServerProfileRelayTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

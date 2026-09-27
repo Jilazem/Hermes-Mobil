@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.AddressHealthTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.024">
+  <properties/>
+  <testcase name="ayni adres tekrarlanirsa plan tekil tutar" classname="com.hermes.mobile.AddressHealthTest" time="0.017"/>
+  <testcase name="son calisan adres one alinir" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <testcase name="hic saglikli adres kalmazsa en erken acilacak tek adres denenir" classname="com.hermes.mobile.AddressHealthTest" time="0.001"/>
+  <testcase name="saglikli adresler sirayla doner" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <testcase name="tekrarlanan basarisizlikta devre disi sure uzar" classname="com.hermes.mobile.AddressHealthTest" time="0.001"/>
+  <testcase name="profil kimlikleri birbirini etkilemez" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <testcase name="tek basarisizlik adresi gecici olarak devre disi birakir" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <testcase name="neden kaydedilir ve kirpilir" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <testcase name="kayit sayisi sinirlidir" classname="com.hermes.mobile.AddressHealthTest" time="0.003"/>
+  <testcase name="basari sayaci ve devre disiligi sifirlar" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <testcase name="bos aday listesi bos plan doner" classname="com.hermes.mobile.AddressHealthTest" time="0.001"/>
+  <testcase name="devre disi sure dolunca adres tekrar denenir" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <testcase name="statuses devre disi kalan adresi isaretler" classname="com.hermes.mobile.AddressHealthTest" time="0.001"/>
+  <testcase name="reset bekleyen devre disiligi temizler" classname="com.hermes.mobile.AddressHealthTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

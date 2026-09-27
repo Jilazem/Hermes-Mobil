@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.LocalTtsFlowTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.509">
+  <properties/>
+  <testcase name="bulut motoru hata + model hazir — yerele duser ve oynatir" classname="com.hermes.mobile.LocalTtsFlowTest" time="0.182"/>
+  <testcase name="yerel onbellek — ikinci sonda port cagrisi yok" classname="com.hermes.mobile.LocalTtsFlowTest" time="0.003"/>
+  <testcase name="yerel motor — model yoksa ACIK hata, bulut denemesi yok" classname="com.hermes.mobile.LocalTtsFlowTest" time="0.001"/>
+  <testcase name="yerel motor yuklenemezse hata metni acik" classname="com.hermes.mobile.LocalTtsFlowTest" time="0.161"/>
+  <testcase name="yerel motor — model hazirsa buluta hic gidilmez" classname="com.hermes.mobile.LocalTtsFlowTest" time="0.162"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

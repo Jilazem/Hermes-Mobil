@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.MotionTur22Test" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.004">
+  <properties/>
+  <testcase name="nabız sabit alfası aralık içinde — reduced'ta statik değer tanımlı" classname="com.hermes.mobile.MotionTur22Test" time="0.0"/>
+  <testcase name="animasyon ölçeği sıfır ise reduced-motion açık" classname="com.hermes.mobile.MotionTur22Test" time="0.001"/>
+  <testcase name="ölçek 1 veya aralıksa reduced-motion kapalı" classname="com.hermes.mobile.MotionTur22Test" time="0.0"/>
+  <testcase name="tweenSpec reduced ile 0ms ve LineerEasing döndürür (patlamaz)" classname="com.hermes.mobile.MotionTur22Test" time="0.003"/>
+  <testcase name="reduced-motion kapalıyken süreler token değerinde kalır" classname="com.hermes.mobile.MotionTur22Test" time="0.0"/>
+  <testcase name="reduced-motion açıkken her süre sıfıra iner — içerik anında görünür" classname="com.hermes.mobile.MotionTur22Test" time="0.0"/>
+  <testcase name="crossfade süresi spec bandında 150-200ms" classname="com.hermes.mobile.MotionTur22Test" time="0.0"/>
+  <testcase name="springSpec reduced ile tween(0) olur" classname="com.hermes.mobile.MotionTur22Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

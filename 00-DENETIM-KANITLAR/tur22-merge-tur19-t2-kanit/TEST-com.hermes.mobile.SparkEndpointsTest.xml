@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SparkEndpointsTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.003">
+  <properties/>
+  <testcase name="ayardaki acik adres tek basina kazanir" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="hicbiri ulasilamazsa adres ipucu verir" classname="com.hermes.mobile.SparkEndpointsTest" time="0.001"/>
+  <testcase name="403 sunucu tarafi is notu verir" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="kod metni okunur" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="turetilmis bicimde verilen son calisan adres de one alinir" classname="com.hermes.mobile.SparkEndpointsTest" time="0.001"/>
+  <testcase name="karisik hata durumunda kapı hatasi oncelikli" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="LAN sonra uzak - sira korunur" classname="com.hermes.mobile.SparkEndpointsTest" time="0.001"/>
+  <testcase name="ev agi adresi dogrudan 5555 portuna gider" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="deneme listesi bos ise adres sorulur" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="calisan adres one alinir" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="dis adres spark-api yolundan gider" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="ayni host iki kez uretilmez" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="attempt basari ve erisim durumunu bilir" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="hata metni denenen her adresi ve kodu icerir" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <testcase name="404 sparkDash ucu yok der" classname="com.hermes.mobile.SparkEndpointsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

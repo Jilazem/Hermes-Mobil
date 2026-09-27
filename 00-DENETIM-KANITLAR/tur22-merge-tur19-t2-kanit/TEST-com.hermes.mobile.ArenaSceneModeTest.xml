@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.ArenaSceneModeTest" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.024">
+  <properties/>
+  <testcase name="appPauseInMenuStopsRenderingWithoutPauseCommand" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.004"/>
+  <testcase name="outrunTimeoutIsLongerThanWorkScene" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="selectionSurvivesSettingsJsonRoundTrip" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.016"/>
+  <testcase name="persistedIdsAreStable" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="jsEventNamesMapAndUnknownsAreIgnored" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="failureIsTerminalUntilReload" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="tabHideDuringRacePausesAndStopsRenderingThenShowKeepsPause" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="defaultModeIsWorkScene" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="requestFilterAllowsOnlyArenaAssets" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="workSceneNeverGetsOutrunPauseCommand" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.001"/>
+  <testcase name="assetPathAcceptsPlainFileNamesOnly" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="readyStartGameOverFlow" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="sceneUrlsForBothKindsShareOneRoot" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="fromIdToleratesUnknownBlankAndCase" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="jsCommandsTargetTheRightObject" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <testcase name="backPausesRunningRaceOnceThenReleases" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.001"/>
+  <testcase name="sceneUrlParamsAreSortedAndEncoded" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.002"/>
+  <testcase name="oldSettingsWithoutFieldFallBackToWork" classname="com.hermes.mobile.ArenaSceneModeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

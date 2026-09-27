@@ -1,0 +1,57 @@
+{
+  "verdict": "fail",
+  "gorev": "tur23-jarvis-1",
+  "tarih": "2026-09-21T18:50:12Z",
+  "uzman": "android-uzman",
+  "deneme_no": "1",
+  "devir": false,
+  "test_sonucu": "Kendi koştum (JAVA_HOME=20-ARACLAR/jdk/jdk-17, :app:testDebugUnitTest): JarvisSpeakLevelTest 20 passed / 0 failed. İDDİA 40 test (24+16) — GERÇEK 20. ChatScreenTest dosyası commit'te YOK (git ls-tree + find: 0 sonuç), 16 LiveVoiceState testi hiç yok.",
+  "findings": [
+    {
+      "sev": "HIGH",
+      "id": "KAPSAM-1",
+      "bulgu": "Persona sistem prompt'a bağlı DEĞİL: JarvisLogic.systemPrompt (app/src/main/java/com/hermes/mobile/data/JarvisLogic.kt:160) hiçbir yerden tüketilmiyor (grep systemPrompt|JARVIS_LOGIC_VERSION|JarvisLogic tüm app/src/main: 0 çağrı). Asistanın 'Jarvis gibi davranması' fiilen sağlanmıyor; sadece ekran adı değişti. Görev 'persona sistem prompt + ekran adı' diyordu — yarısı eksik."
+    },
+    {
+      "sev": "HIGH",
+      "id": "SC-1",
+      "bulgu": "Test sayısı iddiası doğru değil: el-değerlendirmesi '40 saf test: JarvisSpeakLevelTest 24 + ChatScreenTest LiveVoiceState 16'. Gerçek: JarvisSpeakLevelTest'te 20 @Test (XML: tests=20 failures=0), ChatScreenTest dosyası worktree+commit'te mevcut değil (git ls-tree -r afda446: 0 eşleşme). Karşılıksız görev = eksik iş."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "SC-2",
+      "bulgu": "Sohbet (VoiceMessageController) tarafında seviye hattı yarım: VoiceAudioPlayer.play() frames+onLevel desteği eklenmiş ama hiçbir çağıran frames geçirmiyor, setSpeakLevelMs() hiç çağrılmıyor (grep: 0), VoiceMessageController._speakLevel'in tüketicisi yok (ChatViewModel grep boş). Sonuç: ChatScreen'deki 4-faz barı konuşmada hep 0 → effectiveSpeakLevel fallback sabitine düşer (ChatScreen.kt:1526). Handoff 'sohbet ekranı barı konuşmayla senkron oynar' iddiası bu yolda DOĞRULANAMADI; yalnız LiveVoice yolu (LiveVoiceClient AudioTrack RMS → LiveVoiceSheet.kt:319) gerçekten bağlı."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "TESLIM",
+      "bulgu": "APK teslim yolu boş: /Volumes/EX/007-HERMES-M4-LIVE/05-GEICICI/t23-jarvis/ dizini YOK (05-GEICICI'da yalnız 'x-inceleme'). Build worktree'de mevcut (app-debug.apk md5=590ab27b1726d66652b888d15400b50c, 21.09 20:33) ama görevin istediği teslim konumuna kopyalanmamış."
+    },
+    {
+      "sev": "LOW",
+      "id": "KANIT",
+      "bulgu": "audit-tur-kanit.sh görevde belirtilen yolda yok (00-SISTEM/scripts/ altında grep/mdfind: 0). Denetmen diff'i kendisi yaptı: 4 kare çiftler halinde farklı (faz1↔2 bbox=(162,961,917,1505); faz4_a↔4_b bbox=(123,47,981,1498)) — 4-faz görsel ayrışma KANITLI. log.txt boş."
+    }
+  ],
+  "dogrulananlar": [
+    "4-faz ayrı görsel kimlik: kendi PIL diff'imle 4 karenin de birbirinden farklı olduğu doğrulandı (üretici diff'ine güvenilmedi).",
+    "LiveVoice yolu gerçek seviye: LiveVoiceClient.kt AudioTrack yazımında rms(pcm) → _speakLevel → LiveVoiceViewModel.kt:150 → LiveVoiceSheet.kt:319 effectiveSpeakLevel — uçtan uca bağlı.",
+    "Yerel TTS (piper) 16-bit WAV sınırlaması korundu; LiveVoice 24kHz PCM16 hattına dokunulmadı (diff incelemesi).",
+    "diffRenderedFrames 20ms pencere + son kare tekrarı + negatif/kısa kare koruması testli (rmsFrames testleri 20/20 geçiyor).",
+    "JarvisVisualizer Canvas + frameElapsed, LaunchedEffect kullanmıyor — görev kuralına uygun.",
+    "main @dec7af0'dan branch'lenmiş, commit afda446 tek, worktree temiz (git status boş)."
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/JarvisLogic.kt": "68b882f11e9d151d",
+    "app/src/main/java/com/hermes/mobile/ui/JarvisVisualizer.kt": "fbe6ccac0b8d23de",
+    "app/src/test/java/com/hermes/mobile/JarvisSpeakLevelTest.kt": "4e879750a88e21a5",
+    "app/src/main/java/com/hermes/mobile/data/VoiceAudioPorts.kt": "24912cfe3a70962c",
+    "app/src/main/java/com/hermes/mobile/data/VoiceMessageController.kt": "56379adcfd931b25",
+    "app/src/main/java/com/hermes/mobile/data/LiveVoiceClient.kt": "3cea92ef8f976633",
+    "app/src/main/java/com/hermes/mobile/LiveVoiceViewModel.kt": "f11521bfe2a5b6d5",
+    "app/src/main/java/com/hermes/mobile/ui/LiveVoiceSheet.kt": "518431545a341f92",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "f6b54054017d7a42",
+    "tools/kanit/jarvis-proof.sh": "b10b42f679784135"
+  },
+  "lesson": "El-değerlendirmesindeki test sayıları dosyada gerçekten var olan @Test sayısıyla (20) değil iddia edilenle (40) eşleştirilmeli; ayrıca UI'a bağlanan her yeni StateFlow'un tüketicisi grep'le doğrulanmalı — speakLevelMs ve systemPrompt gibi 'tanımlı ama çağrısız' uçlar sessiz ölü koddur."
+}

@@ -1,0 +1,7 @@
+
+ERROR: JAVA_HOME is set to an invalid directory: /Volumes/EX/007-HERMES-M4-LIVE/20-ARACLAR/jdk/jdk-17
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation.
+
+EXIT=1

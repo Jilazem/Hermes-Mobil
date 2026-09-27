@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.VoiceSpeakLogicTest" tests="20" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:51" hostname="Gokhan-Mac-mini.local" time="0.005">
+  <properties/>
+  <testcase name="onbellek adi ayni metin ve motorda sabit" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="idle durumda mesaj yoksa satir yok" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.001"/>
+  <testcase name="motor etiketi cozulur" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="kod bloklari sesli okunmaz" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="caliyor satiri durdurmayi soyler" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="varsayilan motor yerel" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="markdown isaretleri sese girmez" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.001"/>
+  <testcase name="prepare kisa metni aynen gecirir" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="motor adi buyuk harf ve boslukla da cozulur" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="motor kimlikleri sozlesmeyle ayni" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="motor secenekleri etiketli" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="baslik ve alinti isaretleri temizlenir" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="bekleme suresi birikir" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="prepare bos metinde null doner" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="soğuk motor uyarisi 8 sn sonra cikar" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="ayni balona ikinci dokunus durdurur" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.001"/>
+  <testcase name="durum gecisleri tutarli" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="motor ipucu chatterbox uyarisini soyler" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="motor ya da metin degisince onbellek adi degisir" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.0"/>
+  <testcase name="prepare uzun metni kirpar" classname="com.hermes.mobile.VoiceSpeakLogicTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

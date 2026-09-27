@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hermes.mobile.SessionDrawerTur16Test" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-09-21T09:39:47" hostname="Gokhan-Mac-mini.local" time="0.001">
+  <properties/>
+  <testcase name="grup basliklari sabitlenen-sonra-zaman tertibi cizilir" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="son oturum geri yuklenir, silinmis veya eksik kayıt yüklenmez" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.001"/>
+  <testcase name="canli suzgesi aktif satirlari tutar, arama basligi kaldirir" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="arsivli satir tercihe gore gelir, hidden hep elenir" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="zaman gruplari tur16 esikleriyle dogru" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="durum noktasi yesil sari gri bos kararları" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="arama baslik ve onizlemede anlik suzer, baslik kaldirilir" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="satirlarda sabit en ustte sonra yeni eskiye" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="ham id baslik olamaz soru isareti olur" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <testcase name="canli kaydın durumlari satira yansir" classname="com.hermes.mobile.SessionDrawerTur16Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
