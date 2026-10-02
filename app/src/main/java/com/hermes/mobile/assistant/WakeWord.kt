@@ -217,12 +217,14 @@ class WakeWordService : Service() {
             DiagLog.e("wakeword", "motor açılamadı", it); stopSelf(); return
         }
         WakeWordControl.setRunning(true)
-        val sens = WakeWordLogic.Sensitivity.fromId(SettingsStore(this).settings.value.wakeWordSensitivity)
-        val detector = WakeWordLogic.Detector(sens.threshold, sens.consecutive)
         val chunk = ShortArray(WakeWordLogic.CHUNK)
         try {
             while (scope.isActive) {
                 if (WakeWordControl.paused.value) { delay(300); continue }
+                // P7: hassasiyet her kayıt açılışında yeniden okunsun — ayar
+                // değişince servisi yeniden başlatmaya gerek kalmasın.
+                val sens = WakeWordLogic.Sensitivity.fromId(SettingsStore(this).settings.value.wakeWordSensitivity)
+                val detector = WakeWordLogic.Detector(sens.threshold, sens.consecutive)
                 val rec = openRecorder()
                 if (rec == null) { delay(2_000); continue }
                 engine.reset(); detector.reset()

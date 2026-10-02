@@ -19,6 +19,7 @@ import com.hermes.mobile.data.ServerProfileStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
@@ -64,19 +65,27 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     private var sessionLines: List<String> = emptyList()
 
     init {
+        // P5: Screen onDestroy override etmez; DefaultLifecycleObserver ile
+        // ekran yığından çıkarken scope iptal edilir.
+        lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) {
+                scope.cancel()
+            }
+        })
         refresh()
     }
 
     private fun refresh() {
-        val profile = store.active()
-        if (profile == null || profile.token.isBlank()) {
-            loading = false
-            error = "Telefonda sunucu profili ayarlanmamış"
-            invalidate()
-            return
-        }
-
+        // P5: store.active() disk I/O yapabilir; ana thread'de değil scope'ta oku.
         scope.launch {
+            val profile = runCatching { store.active() }.getOrNull()
+            if (profile == null || profile.token.isBlank()) {
+                loading = false
+                error = "Telefonda sunucu profili ayarlanmamış"
+                invalidate()
+                return@launch
+            }
+
             val client = HermesClient(profile)
             runCatching {
                 val status = client.status()

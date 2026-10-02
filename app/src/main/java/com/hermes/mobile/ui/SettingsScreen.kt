@@ -2585,7 +2585,7 @@ private fun WakeWordCard(
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = settings.wakeWord,
-                onValueChange = { v -> onUpdate { it.copy(wakeWord = v.trim().take(24)) } },
+                onValueChange = { v -> onUpdate { it.copy(wakeWord = v.take(24)) } },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text(S.t2("Seslenme kelimesi", "Wake word"), color = HermesColors.TextSecondary) },

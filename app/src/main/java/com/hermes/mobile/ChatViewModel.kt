@@ -1206,6 +1206,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val gw = client ?: return
+        // UI-2: slash komutu uzun sürebilir; bittiğinde gerçek meşgul durumunu
+        // ezmesin (koşulsuz false yerine işaretleme öncesi değeri koru).
+        val wasBusy = _state.value.agentBusy
         _state.update {
             it.copy(items = it.items + ChatItem.User(nextKey("u"), command), agentBusy = true)
         }
@@ -1223,9 +1226,14 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         streamingKey = null
                         thinkingKey = null
                         _state.update {
+                            // P6: sıfırlamada mod/etkileşim bayraklarını koru —
+                            // tam ChatState sıfırlaması onları kaybediyordu.
                             ChatState(
                                 connection = it.connection,
                                 currentModel = it.currentModel,
+                                assistantMode = it.assistantMode,
+                                handsFree = it.handsFree,
+                                voiceMode = it.voiceMode,
                                 items = listOf(
                                     ChatItem.Notice(nextKey("n"), output.ifBlank { "Yeni oturum" })
                                 ),
@@ -1238,7 +1246,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                                     nextKey("a"),
                                     output.ifBlank { "(çıktı yok)" },
                                 ),
-                                agentBusy = false,
+                                agentBusy = wasBusy,
                             )
                         }
                     }
@@ -1251,7 +1259,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                                 e.message ?: "Komut çalıştırılamadı",
                                 isError = true,
                             ),
-                            agentBusy = false,
+                            agentBusy = wasBusy,
                         )
                     }
                 }

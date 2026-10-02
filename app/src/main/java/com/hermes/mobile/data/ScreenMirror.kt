@@ -25,6 +25,8 @@ import android.view.Surface
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.hermes.mobile.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,7 +58,7 @@ object ScreenMirror {
 
     val hasPermission: Boolean get() = projection != null
 
-    internal fun onProjection(p: MediaProjection) {
+    internal fun onProjection(p: MediaProjection, context: Context) {
         release()
         // Android 14+: sanal ekrandan ÖNCE geri çağrı kaydı zorunlu.
         p.registerCallback(object : MediaProjection.Callback() {
@@ -66,6 +68,13 @@ object ScreenMirror {
                 display = null
                 projection = null
                 _status.value = Status.NoPermission
+                // P1: sistem paylaşımı kestiğinde ön plan servisi de dursun —
+                // aksi halde kalıcı bildirim havada kalır.
+                runCatching {
+                    context.startService(
+                        Intent(context, MirrorProjectionService::class.java).setAction(MirrorProjectionService.ACTION_STOP),
+                    )
+                }
             }
         }, main)
         projection = p
@@ -116,7 +125,9 @@ object ScreenMirror {
     fun phoneSize(context: Context): Pair<Int, Int> {
         val dm = context.getSystemService(DisplayManager::class.java)
         val m = DisplayMetrics()
-        dm.getDisplay(Display.DEFAULT_DISPLAY).getRealMetrics(m)
+        // P6: getDisplay bazı cihazlarda null döner; resources.displayMetrics'e düş.
+        val d = dm.getDisplay(Display.DEFAULT_DISPLAY)
+        if (d != null) d.getRealMetrics(m) else context.resources.displayMetrics.let { m.setTo(it) }
         return m.widthPixels to m.heightPixels
     }
 
@@ -144,10 +155,26 @@ object ScreenMirror {
 
     /** Telefonda izin ekranını açan bildirim (araçtan "izin iste" dendiğinde). */
     fun postConsentNotification(context: Context) {
+        // P3: Android 13+ bildirim izni yoksa sessiz notify çöpe gider;
+        // kullanıcıyı MainActivity'deki izin akışına yönlendir.
+        if (Build.VERSION.SDK_INT >= 33) {
+            val granted = ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.POST_NOTIFICATIONS,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                context.startActivity(
+                    Intent(context, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra("hermes_action", "mirror_consent"),
+                )
+                return
+            }
+        }
         val nm = context.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(
-                NotificationChannel(MirrorProjectionService.CHANNEL, "Android Auto yansıtma", NotificationManager.IMPORTANCE_HIGH),
+                // P2: izin bildirimi HIGH kanaldan düşer; ön plan kanalı ayrı (LOW).
+                NotificationChannel(MirrorProjectionService.CHANNEL_CONSENT, "Android Auto yansıtma izni", NotificationManager.IMPORTANCE_HIGH),
             )
         }
         val pi = PendingIntent.getActivity(
@@ -157,7 +184,7 @@ object ScreenMirror {
         )
         nm.notify(
             7710,
-            NotificationCompat.Builder(context, MirrorProjectionService.CHANNEL)
+            NotificationCompat.Builder(context, MirrorProjectionService.CHANNEL_CONSENT)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
                 .setContentTitle("Ekranı araca yansıt")
                 .setContentText("Dokun → \"Tüm ekran\"ı seçip izin ver")
@@ -230,11 +257,15 @@ class MirrorProjectionService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        ScreenMirror.onProjection(p)
+        ScreenMirror.onProjection(p, this)
         @Suppress("DEPRECATION")
         wake = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE, "hermes:mirror")
-            .apply { acquire(4 * 60 * 60 * 1000L) }
+            .apply {
+                // P7: eski kilit hâlâ tutuluyorsa önce bırak (çift acquire sayacı şişirir).
+                wake?.takeIf { it.isHeld }?.release()
+                acquire(4 * 60 * 60 * 1000L)
+            }
         return START_NOT_STICKY
     }
 
@@ -247,14 +278,14 @@ class MirrorProjectionService : Service() {
     private fun notification(): Notification {
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) {
-            nm.createNotificationChannel(NotificationChannel(CHANNEL, "Android Auto yansıtma", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL_FG, "Android Auto yansıtma", NotificationManager.IMPORTANCE_LOW))
         }
         val stop = PendingIntent.getService(
             this, 7711,
             Intent(this, MirrorProjectionService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(this, CHANNEL)
+        return NotificationCompat.Builder(this, CHANNEL_FG)
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setContentTitle("Ekran Android Auto'ya yansıtılabilir")
             .setContentText("Araçta \"Hermes Ekran\"ı aç. Durdurmak için dokun.")
@@ -264,7 +295,9 @@ class MirrorProjectionService : Service() {
     }
 
     companion object {
-        const val CHANNEL = "hermes-mirror"
+        // P2: izin (HIGH) ve ön plan (LOW) bildirimleri ayrı kanal kullanır.
+        const val CHANNEL_CONSENT = "hermes-mirror-consent"
+        const val CHANNEL_FG = "hermes-mirror-fg"
         const val EXTRA_CODE = "code"
         const val EXTRA_DATA = "data"
         const val ACTION_STOP = "com.hermes.mobile.MIRROR_STOP"

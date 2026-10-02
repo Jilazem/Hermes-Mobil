@@ -132,7 +132,8 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
     fun interrupt() {
         val sid = sessionId ?: return
         val c = gw ?: return
-        running?.complete("")
+        // P4: boş string döndürmek "yanıt bitti" sanılır; kesildiği istisnayla belli olsun.
+        running?.completeExceptionally(IllegalStateException("Kesildi"))
         scope.launch { runCatching { c.interrupt(sid) } }
     }
 
@@ -156,7 +157,16 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         val opened = withTimeoutOrNull(15_000) { c.connection.first { it is ConnectionState.Open } }
             ?: return "Sunucuya bağlanılamadı"
         check(opened is ConnectionState.Open)
-        val sid = sessionId ?: return "Açık oturum yok"
+        // P3: sessionId bellekte null kalmışsa prefs'ten TTL kontrolüyle geri yükle.
+        var sid = sessionId
+        if (sid == null) {
+            val saved = prefs.getString(KEY_SID, null)
+            if (JarvisLogic.sessionReusable(prefs.getLong(KEY_AT, 0), System.currentTimeMillis(), saved)) {
+                sid = saved
+                sessionId = saved
+            }
+        }
+        sid ?: return "Açık oturum yok"
         return runCatching { c.slashExec(sid, command) }.getOrElse { it.message ?: "Hata" }
     }
 

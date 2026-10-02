@@ -269,7 +269,7 @@ class JarvisEngine(
         }
 
         // Telefon komutu: sunucuya gitmeden, anında.
-        PhoneIntent.parse(text)?.let { act ->
+        PhoneIntent.parse(heard)?.let { act ->
             turn = scope.launch {
                 val out = withContext(Dispatchers.IO) { runCatching { tools.execute(act.tool, act.toJson()) }.getOrElse { it.message ?: "Hata" } }
                 val spoken = if (PhoneTools.isReadTool(act.tool)) out.take(700) else out.take(200)

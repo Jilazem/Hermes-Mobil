@@ -136,6 +136,8 @@ class MirrorScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycl
             carContext.getCarService(CarHardwareManager::class.java).carInfo.removeSpeedListener(speedListener)
         }
         handler.removeCallbacks(flushScroll)
+        // P4: yüzey geri çağrısı kalırsa servis yok edildikten sonra da çizim dener.
+        runCatching { carContext.getCarService(AppManager::class.java).setSurfaceCallback(null) }
         ScreenMirror.detach()
     }
 

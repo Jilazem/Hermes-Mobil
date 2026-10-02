@@ -66,6 +66,7 @@ class GatewayWsClient(private val profile: ServerProfile) {
 
     private var socket: WebSocket? = null
     private var closedByUser = false
+    private val openLock = Any()
     private var reconnectAttempt = 0
 
     /** Son BAŞARILI açılışın zamanı — sarsıntı (flap) tespiti için. */
@@ -98,33 +99,40 @@ class GatewayWsClient(private val profile: ServerProfile) {
     }
 
     private fun openSocket() {
-        _connection.value = ConnectionState.Connecting
-        // Bozuk adres (kullanıcı 'httphttp://…' gibi girerse) eskiden
-        // Request.Builder.url ile FATAL EXCEPTION üretiyordu (2026-09-14
-        // emülatör denetimi kanıtı: httpws:// şeması). Artık çökme YOK —
-        // görünen hata durumu.
-        val request = runCatching {
-            Request.Builder().url("${profile.wsBase}/api/ws?token=${profile.token}").build()
-        }.getOrElse {
-            DiagLog.w("ws", "gecersiz ws adresi: ${profile.wsBase}")
-            _connection.value = ConnectionState.Error(
-                com.hermes.mobile.ui.tr(
-                    "Sunucu adresi geçersiz — Sunucular ekranından düzeltin",
-                    "Invalid server address — fix it on the Servers screen",
+        synchronized(openLock) {
+            // P5: aynı anda iki açılış (connect + reconnect) eski soketi sızdırmasın;
+            // eskisini iptal et, yenisini aç.
+            socket?.cancel()
+            _connection.value = ConnectionState.Connecting
+            // Bozuk adres (kullanıcı 'httphttp://…' gibi girerse) eskiden
+            // Request.Builder.url ile FATAL EXCEPTION üretiyordu (2026-09-14
+            // emülatör denetimi kanıtı: httpws:// şeması). Artık çökme YOK —
+            // görünen hata durumu.
+            val request = runCatching {
+                Request.Builder().url("${profile.wsBase}/api/ws?token=${profile.token}").build()
+            }.getOrElse {
+                DiagLog.w("ws", "gecersiz ws adresi: ${profile.wsBase}")
+                _connection.value = ConnectionState.Error(
+                    com.hermes.mobile.ui.tr(
+                        "Sunucu adresi geçersiz — Sunucular ekranından düzeltin",
+                        "Invalid server address — fix it on the Servers screen",
+                    )
                 )
-            )
-            return
+                return
+            }
+            socket = http.newWebSocket(request, Listener())
         }
-        socket = http.newWebSocket(request, Listener())
     }
 
     fun close() {
         closedByUser = true
-        socket?.close(1000, "client closed")
+        socket?.cancel()
         socket = null
         _connection.value = ConnectionState.Closed
+        // P1: scope.cancel() burada kalıcıydı — connect() geri çağrılsa bile
+        // reconnect coroutine'leri ölü sokette kalırdı. Scope canlı kalsın;
+        // bekleyen istekleri failAllPending ile bırak.
         failAllPending("bağlantı kapatıldı")
-        scope.cancel()
     }
 
     /** Bir JSON-RPC çağrısı yapar ve sonucu bekler. */

@@ -699,7 +699,7 @@ private fun HermesApp(
     /** Tur-13: "Hermes'i varsayılan asistan yap" — sistem rol diyaloğu. */
     onMakeDefaultAssistant: () -> Unit = {},
 ) {
-    var tab by remember { mutableStateOf(Tab.Chat) }
+    var tab by rememberSaveable { mutableStateOf(Tab.Chat) }
     // V3: uygulama ana duvar akışında açılır (ChatGPT/Claude tarzı); konu
     // seçilince sohbete girilir, geri/☰ ile duvara dönülür.
     var showHome by rememberSaveable { mutableStateOf(true) }
@@ -889,7 +889,7 @@ private fun HermesApp(
     }
     var profileSheet by remember { mutableStateOf(false) }
     /** Ayarlar→Sunucular / boş-sohbet CTA: ConnectScreen tam ekranı. */
-    var serversScreen by remember { mutableStateOf(false) }
+    var serversScreen by rememberSaveable { mutableStateOf(false) }
     val hermesProfiles by viewModel.profiles.collectAsStateWithLifecycle()
     val activeHermesProfile by viewModel.activeProfile.collectAsStateWithLifecycle()
     val profilesLoading by viewModel.profilesLoading.collectAsStateWithLifecycle()
@@ -1384,9 +1384,13 @@ private fun HermesApp(
                             )
                         },
                     )
-                    Tab.Arena -> ArenaScreen(
+                    Tab.Arena -> {
+                        // UI-5: gateway StateFlow'u .value ile okunursa Arena
+                        // değişimde taze kopya almaz; akış olarak gözlemlensin.
+                        val arenaGateway by chatViewModel.gateway.collectAsStateWithLifecycle()
+                        ArenaScreen(
                         arenaViewModel = arenaViewModel,
-                        gateway = chatViewModel.gateway.value,
+                        gateway = arenaGateway,
                         // Tur-9: Arena boştayken sahne sunucunun çalışan oturumlarını
                         // gösterir (LiveSessions kaynağı, salt okuma).
                         liveSessions = live.sessions,
@@ -1398,6 +1402,7 @@ private fun HermesApp(
                         },
                         outrunHolder = outrunHolder,
                     )
+                    }
                     Tab.Settings -> SettingsScreen(
                         shizukuState = shizukuState,
                         onRequestShizuku = chatViewModel.shizuku::requestPermission,
