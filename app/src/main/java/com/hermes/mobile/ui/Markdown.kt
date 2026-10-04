@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,18 @@ import com.hermes.mobile.ui.theme.HermesColors
  * listeler, alıntılar, yatay çizgi ve bağlantı metni. Harici bağımlılık yok —
  * tema tamamen Hermes paletine bağlı kalır.
  */
+/**
+ * Akış imleci soneki — TUR-29A (TokenFlow deseni).
+ *
+ * İmleç " ▌" artık ham markdown'a EKLENİP yeniden ayrıştırılmaz; yalnız SON
+ * bloğun çizim metnine render sırasında eklenir. Böylece (1) akan kod bloğunun
+ * kopyalanan içeriği imleçle bozulmaz, (2) tamamlanan blokların çizim girdileri
+ * token'dan token'a değişmez — Compose bunları atlar (skip), yerleşim yalnız
+ * değişen son blokta yeniden yapılır.
+ */
+internal fun streamCursorSuffix(streaming: Boolean, isLastBlock: Boolean): String =
+    if (streaming && isLastBlock) " ▌" else ""
+
 @Composable
 fun MarkdownText(
     markdown: String,
@@ -55,6 +68,12 @@ fun MarkdownText(
     // Tur18 B3: sabit 15.sp yerine prose rolu (15 x fontScale) — sohbet govdesi
     // de artik sistem/app yazi olcegiyle olceklenir (tur3 prose noktasi sabit).
     fontSize: androidx.compose.ui.unit.TextUnit = MaterialTheme.typography.bodyLarge.fontSize,
+    /**
+     * TUR-29A: metin hâlâ akıyor mu? true ise imleç yalnız son bloğa çizilir;
+     * ayrıştırıcı ham metni olduğu gibi görür (imleç içerik karışmaz).
+     * Tamamlanan balonlar için varsayılan false — davranış değişmez.
+     */
+    streaming: Boolean = false,
 ) {
     val blocks = remember(markdown) { parseMarkdown(markdown) }
     // Telegram: ardışık maddeler BİTİŞİK, bloklar arası boş satır. Tek sabit
@@ -66,20 +85,26 @@ fun MarkdownText(
     val bodyLine = fontSize * 1.45f
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        groups.forEach { group ->
+        groups.forEachIndexed { groupIndex, group ->
+            // TUR-29A: imleç YALNIZ son grupta çizilir; tamamlanan grupların
+            // çizim girdileri token'dan token'a aynı kalır → çocuklar skip.
+            val lastGroup = streaming && groupIndex == groups.lastIndex
             when (group) {
                 is MdGroup.Tight -> Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    group.items.forEach { ListItemRow(it, inline, color, fontSize, bodyLine) }
+                    group.items.forEachIndexed { itemIndex, item ->
+                        val suffix = streamCursorSuffix(lastGroup, itemIndex == group.items.lastIndex)
+                        ListItemRow(item, inline, color, fontSize, bodyLine, cursorSuffix = suffix)
+                    }
                 }
 
                 is MdGroup.Solo -> when (val block = group.block) {
-                    is MdBlock.Code -> CodeBlock(block)
+                    is MdBlock.Code -> CodeBlock(block, cursorSuffix = streamCursorSuffix(lastGroup, true))
 
                     // FR-001: hiyerarşi KALINLIKLA, boyutla değil — başlık gövdeyle
                     // aynı punto, yalnız daha ağır (SemiBold). Eski 19/17/15.sp
                     // boyut şişirmesi kaldırıldı.
                     is MdBlock.Heading -> Text(
-                        inlineMarkdown(block.text, inline),
+                        inlineMarkdown(block.text, inline) + AnnotatedString(streamCursorSuffix(lastGroup, true)),
                         color = HermesColors.TextPrimary,
                         fontSize = fontSize,
                         fontWeight = FontWeight.SemiBold,
@@ -88,7 +113,7 @@ fun MarkdownText(
 
                     // FR-005: gövde Telegram ikincil tonu (#d1d1d1 civarı), 15sp.
                     is MdBlock.Paragraph -> Text(
-                        inlineMarkdown(block.text, inline),
+                        inlineMarkdown(block.text, inline) + AnnotatedString(streamCursorSuffix(lastGroup, true)),
                         color = color,
                         fontSize = fontSize,
                         lineHeight = bodyLine,
@@ -108,7 +133,7 @@ fun MarkdownText(
                         )
                         Text(
                             // Alıntı içi devam satırları da \n taşır; tek Text.
-                            inlineMarkdown(block.text, inline),
+                            inlineMarkdown(block.text, inline) + AnnotatedString(streamCursorSuffix(lastGroup, true)),
                             color = HermesColors.TextMuted,
                             fontSize = fontSize,
                             lineHeight = bodyLine,
@@ -147,6 +172,8 @@ private fun ListItemRow(
     color: Color,
     fontSize: androidx.compose.ui.unit.TextUnit,
     bodyLine: androidx.compose.ui.unit.TextUnit,
+    // TUR-29A: akış imleci — yalnız çağıranın belirlediği son blokta boş değil.
+    cursorSuffix: String = "",
 ) {
     val level = block.levelIndentDp
     val mark = when (block) {
@@ -168,7 +195,7 @@ private fun ListItemRow(
             modifier = Modifier.width(LIST_MARK_GUTTER_DP.dp),
         )
         Text(
-            inlineMarkdown(block.textForItem(), inline),
+            inlineMarkdown(block.textForItem(), inline) + AnnotatedString(cursorSuffix),
             color = color,
             fontSize = fontSize,
             lineHeight = bodyLine,
@@ -185,7 +212,11 @@ private fun MdBlock.textForItem(): String = when (this) {
 }
 
 @Composable
-private fun CodeBlock(block: MdBlock.Code) {
+private fun CodeBlock(
+    block: MdBlock.Code,
+    // TUR-29A: akış imleci yalnız çizimde; kopyalanan içerik (block.code) ham kalır.
+    cursorSuffix: String = "",
+) {
     val clipboard = LocalClipboardManager.current
     val scroll = rememberScrollState()
 
@@ -486,7 +517,13 @@ internal fun parseMarkdown(source: String): List<MdBlock> {
  * Tema desteği gelince `HermesColors` `@Composable` okumaya dönüştü; ayrıştırıcı
  * ise düz bir fonksiyon. Renkleri çağrı yerinde toplayıp buradan geçiriyoruz —
  * ayrıştırıcıyı composable yapmak `buildAnnotatedString` ile uyumsuz olurdu.
+ *
+ * TUR-29A: `@Immutable` — akış sırasında ([MarkdownText] `streaming`) üst
+ * kompozabl her tokenda yeniden koşar; bu sınıf değişmez işaretli olmadan
+ * çocuk kompozabllar (ListItemRow, CodeBlock) atlanamaz ve TÜM bloklar her
+ * tokenda yeniden ölçülürdü (TokenFlow deseninin önlediği relayout).
  */
+@Immutable
 private data class InlineColors(
     val code: Color,
     val codeBackground: Color,
