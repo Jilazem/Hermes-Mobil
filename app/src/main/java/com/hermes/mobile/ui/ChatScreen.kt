@@ -415,6 +415,13 @@ fun ChatScreen(
             )
         }
 
+        // TUR-29A: AITypingIndicator benzeri durum göstergesi — ajan meşgul ama
+        // hiçbir şey akmıyorsa (araç çağrısı sürüyor / ilk token bekleniyor)
+        // üç nokta nabız atar; akış başlayınca imleç zaten var, gösterge çekilir.
+        if (typingIndicatorVisible(state.agentBusy, state.items)) {
+            TypingIndicator(Modifier.padding(horizontal = 18.dp, vertical = 3.dp))
+        }
+
         state.statusLine?.let { line ->
             Text(
                 line,
