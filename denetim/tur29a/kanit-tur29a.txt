@@ -1,0 +1,24 @@
+== TUR-29A kanıt 04.10.2026 21:43 ==
+
+-- derleme+test (taze, --rerun-tasks) --
+> Task :app:testDebugUnitTest
+BUİLD SUCCESSFUL in 1m 45s
+EXIT=0
+
+-- XML sayımı --
+suites=78 tests=897 fail=0 err=0 skip=0 (python ET, test-results/testDebugUnitTest)
+app-arm64-v8a-debug.apk cbc742e32cd710541c201870883f68b8
+app-x86_64-debug.apk 8068cf8057640fe5d1f396cca6608956
+
+-- emülatör kanıtı 21:45 --
+Performing Streamed Install
+Success
+-- am start önce crash buffer --
+       0
+Starting: Intent { cmp=com.hermes.mobile.v3/com.hermes.mobile.MainActivity }
+    topResumedActivity=ActivityRecord{5128f5d u0 com.hermes.mobile.v3/com.hermes.mobile.MainActivity t222}
+-- am start sonrası crash buffer --
+       0
+
+-- HEAD derleme dogrulamasi (tur28 kalintilari HARIC) --
+git worktree /tmp/wt29a-check @ bcf9161: ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin -> BUILD SUCCESSFUL (main + test kaynaklari tur28'siz derlendi)

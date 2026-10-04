@@ -195,3 +195,35 @@ Denetim r1 FAIL (denetim/verdict-tur24-jarvis2.json) → dört madde kapatıldı
 - Test sayısı GERÇEK: 64 suite / 821 test / 0 fail / 0 err / 0 skip (--rerun-tasks,
   23.09 XML sayımı; +1 = canlı-payload regresyon testi).
 - Commitler: fix+kanıt+RAPOR bu committe; branch wt/t24-fix, push YOK.
+
+## TUR-29A — UI streaming katmanı (2026-10-04)
+
+Dal: `feat/tur29a-ui-streaming` (local-only, push/merge YOK). Kaynaklar (desen alındı, kod kopyalanmadı, hepsi Apache-2.0):
+- GetStream/stream-chat-android-ai (StreamingText, AITypingIndicator)
+- maturapoj/TokenFlow (blok bazlı relayout, yalnız son blok)
+- hossain-khan/compose-highlight (akış toleranslı vurgulama + kopyalama)
+
+### Envanter (gerçek kod, tahmin yok)
+
+| Yetenek | Önce | Kaynak dosya:satır | TUR-29A sonrası |
+|---|---|---|---|
+| Streaming metin | Tüm markdown her tokenda yeniden ayrıştırılıp tüm bloklar yeniden ölçülüyordu; imleç ham markdown'a ekleniyor (kopyalanan kod bozulur) | Markdown.kt MarkdownText (eski: imleç parse öncesi eklenirdi) | `MarkdownText(streaming=)` — imleç YALNIZ son bloğa çizilir; `InlineColors` @Immutable → tamamlanan bloklar skip, yalnız son blok relayout (TokenFlow deseni) | 
+| Düşünme bloğu | Satır içi, ChatScreen'e gömülü; geçmişte ayrı CollapsedBlock (iki kopya) | ChatScreen.kt ChatItemView Thinking; MessageViews.kt CollapsedBlock | Yeni `ui/ThinkingBlock.kt` — tek kaynak; ChatScreen canlı (live) + MessageViews tarih (live=false) kullanıyor |
+| Kod vurgulama | YOK — düz metin; kopyalama vardı | Markdown.kt CodeBlock | Yeni `ui/CodeHighlight.kt` — kural tabanlı tokenizör (harici bağımlılık yok), akış toleranslı (yarım dizge/yorum güvenli); CodeBlock çizimde vurgulu, kopyada ham |
+| Durum göstergesi | statusLine düz metin + SpeedRow tok/s | ChatScreen.kt statusLine | Yeni `ui/TypingIndicator.kt` — üç nokta nabız; `typingIndicatorVisible(agentBusy, items)`: meşgul + akış yoksa (araç çağrısı/ilk token) görünür; hareket azaltma duyarlı |
+
+### Doğrulama (kanıt: denetim/tur29a/kanit-tur29a.txt)
+- Taze test + paket: `./gradlew :app:testDebugUnitTest --rerun-tasks :app:assembleDebug`
+  → BUILD SUCCESSFUL in 1m 45s (41 task, hepsi executed; UP-TO-DATE sayılmadı).
+  XML sayımı (test-results/testDebugUnitTest, ElementTree): 78 suite / 897 test /
+  0 fail / 0 err / 0 skip (taban 883 + 14 yeni: StreamingMarkdownTest 4,
+  CodeHighlightTest, TypingIndicatorLogicTest 4...).
+- APK: arm64 md5 cbc742e32cd710541c201870883f68b8; x86_64 md5
+  8068cf8057640fe5d1f396cca6608956.
+- Emülatör kurulum + am start: Status: ok; `logcat -d -b crash` boş (aşağıda kanıt).
+- Düzeltme notu: ilk koşumda 2 derleme hatası yakalandı ve giderildi —
+  (1) yeni UI dosyalarında yanlış paket importu (`com.hermes.mobile.HermesColors`
+  yerine `com.hermes.mobile.ui.theme.HermesColors`; `S` aynı paketten gelir,
+  import gereksizdi), (2) `inlineMarkdown(...) + String` → `AnnotatedString`
+  tip uyumu. Ayrıca CodeHighlightTest'te assertion kendi yorumuyla çelişiyordu
+  (6..11 yerine 5/10 yazılmıştı); tırnak-dahil aralık 6..11 (end exclusive) doğrudur.
