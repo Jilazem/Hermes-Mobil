@@ -252,7 +252,9 @@ private fun CodeBlock(
                     )
                 }
                 Text(
-                    block.code,
+                    // TUR-29A: akış sırasında da renklendirilir; kopyalanan
+                    // içerik hâlâ ham block.code (imleçsiz).
+                    rememberCodeHighlight(block.code, cursorSuffix),
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodySmall,
                     color = HermesColors.TextSecondary,
