@@ -92,7 +92,8 @@ private fun AssistantBlock(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (withReasoning && !message.reasoning.isNullOrBlank()) {
-            CollapsedBlock(S.t2("Düşünme", "Thinking"), message.reasoning, Modifier.fillMaxWidth())
+            // TUR-29A: ortak ThinkingBlock — canlı ChatScreen bloğuyla aynı tek kaynak.
+            ThinkingBlock(text = message.reasoning, live = false, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(6.dp))
         }
         if (!message.content.isNullOrBlank()) {

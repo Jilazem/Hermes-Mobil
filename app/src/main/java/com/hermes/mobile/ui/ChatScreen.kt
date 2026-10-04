@@ -1225,60 +1225,12 @@ private fun ChatItemView(
         }
 
         is ChatItem.Thinking -> {
-            var expanded by remember(item.key) {
-                // Canlı (hâlâ akan) blok varsayılanı AÇIK: son satırları
-                // izlemek için; biten blok kapanır (katlanır davranış).
-                mutableStateOf(item.live)
-            }
-            // Canlı kuyruk: metin uzadıkça her yeniden çizimde son dolu
-            // satırlar yeniden hesaplanır — LazyColumn kaydırması değil,
-            // içerik kendini günceller (4 satır, ucu ' ▌' ile işaretli).
-            val liveTail = liveThinkingTail(item.text)
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
-                    .clickable { expanded = !expanded }
-                    .padding(horizontal = 10.dp, vertical = 7.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(S.t2("Düşünüyor", "Thinking"), color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
-                    Spacer(Modifier.weight(1f))
-                    Icon(
-                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = null,
-                        tint = HermesColors.TextFaint,
-                        modifier = Modifier.width(16.dp),
-                    )
-                }
-                if (item.live) {
-                    // Canlı görünüm: açık blok + son 3-4 dolu satır + sonda imleç.
-                    // Kullanıcı en alttayken LazyColumn kendiliğinden izler.
-                    val shown = liveTail.ifEmpty { "…" }
-                    Text(
-                        buildString {
-                            if (item.text.length > liveTail.length) {
-                                append("…\n")
-                            }
-                            append(shown)
-                            append(" ▌")
-                        },
-                        color = HermesColors.TextMuted,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                } else {
-                    // Katlanabilir tarih: mevcut davranış aynen.
-                    AnimatedVisibility(expanded) {
-                        Text(
-                            item.text,
-                            color = HermesColors.TextMuted,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-                }
-            }
+            // TUR-29A: blok ThinkingBlock'a taşındı — aynı davranış, tek kaynak.
+            ThinkingBlock(
+                text = item.text,
+                live = item.live,
+                stateKey = item.key,
+            )
         }
 
         // Normalde `foldToolRuns` araçları gruplar; buraya yalnız tek başına
