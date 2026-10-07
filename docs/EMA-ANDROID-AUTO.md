@@ -48,3 +48,9 @@ python3 -m unittest discover -s relay -p test_ema_tts_service.py
 `relay/install_ema_voice_api.py /path/to/voice_api.py` mevcut v2 ses API'sine denetimli bir hook kurar; kaynak şablonu farklıysa yazmadan hata verir, özgün dosyayı `voice_api.pre-ema.py` olarak saklar. Yanındaki `hermes_ema_adapter.py` EMA'ya anahtarlı `/speak` çağrısı yapar ve mevcut istemcilerin beklediği OGG/Opus biçimine geçici dosyalarla dönüştürür. EMA çağrısı disk ses önbelleğine yazılmaz. Varsayılan motor EMA olur; eski motorlar ancak açıkça seçilirse kullanılır.
 
 `EMA_URL` varsayılanı `http://127.0.0.1:8176`; `EMA_TOKEN_FILE` ile özel anahtar dosyasını belirtin. Mac kurulumunda varsayılan dosya `~/Library/Application Support/HermesEMA/ema-service-token` olur. Doğrudan `EMA_TOKEN` ortam değişkeni de desteklenir. Mevcut STT yönlendirmesi korunur.
+
+## Hermes'in kendi TTS aracı
+
+Hermes command-provider desteği ile `tts.provider: ema` seçilir. `tts.providers.ema` alanları: `type: command`, `output_format: ogg`, `voice_compatible: true`, `timeout: 150`. `command` alanında Python ve `hermes_ema_command.py` dosyasının tam yolları ile `--input {input_path} --output {output_path} --format {format}` kullanılır. Metin işlem argümanına konmaz; Hermes'in geçici girdi dosyasından okunur. WAV/OGG/Opus/MP3/FLAC/AAC çıktıları desteklenir. EMA hatasında komut başarısız olur; başka sağlayıcı denenmez.
+
+Mac'teki config dosyasının özgün hali `~/.hermes/config.pre-ema.yaml` olarak saklandı. Yalnız TTS sağlayıcısı ve `tts.providers.ema` değiştirildi; diğer ayar değerleri korundu. YAML yorumları yeniden yazımda korunmayabilir. Çalışan Hermes oturumları sonlandırılmadı; TTS aracı çağrısında config yeniden okunur.

@@ -30,13 +30,18 @@ def health():
         return False
 
 
-def synthesize_ogg(text, ffmpeg):
+def synthesize_wav(text):
     req = urllib.request.Request(endpoint() + '/speak', headers=headers(),
         data=json.dumps({'text': text, 'sample_rate': 48000}).encode())
     with urllib.request.urlopen(req, timeout=120) as response:
         wav = response.read(40_000_001)
     if len(wav) > 40_000_000 or not wav.startswith(b'RIFF') or wav[8:12] != b'WAVE':
         raise RuntimeError('Invalid EMA WAV response')
+    return wav
+
+
+def synthesize_ogg(text, ffmpeg):
+    wav = synthesize_wav(text)
     # Existing clients expect OGG/Opus. Temporary content is removed on every exit.
     with tempfile.TemporaryDirectory() as temp:
         src, dst = Path(temp) / 'voice.wav', Path(temp) / 'voice.ogg'
