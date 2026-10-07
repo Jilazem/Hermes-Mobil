@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "name": "config.json",
+      "bytes": 584,
+      "sha256": "e8d20ee8458fc4c583af7ced3e52e151c2efd8ddac92443fa39ab73b346fb512"
+    },
+    {
+      "name": "decoder.onnx",
+      "bytes": 12040974,
+      "sha256": "89c6b502181b39aa69f208bfe5715e6f8de2790ba69de7a57c63cbfb2be61fdf"
+    },
+    {
+      "name": "sound.onnx",
+      "bytes": 18134687,
+      "sha256": "553fb64ecd2e2178b88fff9de0b80f949601a09f132bea1528bcd0c56010502c"
+    },
+    {
+      "name": "text.onnx",
+      "bytes": 4808338,
+      "sha256": "a5418a36318ae00048f2506c5c0e17a70da3834b59a35f3f94955f8eac2765a2"
+    }
+  ]
+}

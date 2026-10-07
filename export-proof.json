@@ -1,0 +1,24 @@
+[
+  {
+    "text": "Merhaba Gökhan, bugün hava çok güzel.",
+    "letters": 37,
+    "frames": 55,
+    "errors": {
+      "text": 1.0728836059570312e-06,
+      "latent": 0.0003975033760070801,
+      "audio": 5.066394805908203e-07
+    },
+    "seconds": 0.1046459170174785
+  },
+  {
+    "text": "İnternet olmadan da konuşabiliyorum.",
+    "letters": 36,
+    "frames": 46,
+    "errors": {
+      "text": 1.0728836059570312e-06,
+      "latent": 0.00014466047286987305,
+      "audio": 6.239861249923706e-07
+    },
+    "seconds": 0.10299024998676032
+  }
+]
