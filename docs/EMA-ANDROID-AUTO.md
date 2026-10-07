@@ -42,3 +42,9 @@ python3 -m unittest discover -s relay -p test_ema_tts_service.py
 ```
 
 `EmaSelfTestActivity`: gerçek servis, WAV, akışlı iki cümle, tamamlanma, iptal ve servis kesintisi. `FullControlSelfTestActivity`: yalnız kendi geçici formunda ekran okuma, tıklama, yazma ve izin kapıları. `UnifiedSessionSelfTestActivity`: gerçek sunucuda iki tur ve asistan yeniden oluşturulduğunda aynı geçmişin korunması. Bu etkinlikler yalnız debug manifestinde bulunur; üretim uygulamasına dahil edilmez.
+
+## Mevcut Hermes ses API'si
+
+`relay/install_ema_voice_api.py /path/to/voice_api.py` mevcut v2 ses API'sine denetimli bir hook kurar; kaynak şablonu farklıysa yazmadan hata verir, özgün dosyayı `voice_api.pre-ema.py` olarak saklar. Yanındaki `hermes_ema_adapter.py` EMA'ya anahtarlı `/speak` çağrısı yapar ve mevcut istemcilerin beklediği OGG/Opus biçimine geçici dosyalarla dönüştürür. EMA çağrısı disk ses önbelleğine yazılmaz. Varsayılan motor EMA olur; eski motorlar ancak açıkça seçilirse kullanılır.
+
+`EMA_URL` varsayılanı `http://127.0.0.1:8176`; `EMA_TOKEN_FILE` ile özel anahtar dosyasını belirtin. Mac kurulumunda varsayılan dosya `~/Library/Application Support/HermesEMA/ema-service-token` olur. Doğrudan `EMA_TOKEN` ortam değişkeni de desteklenir. Mevcut STT yönlendirmesi korunur.
