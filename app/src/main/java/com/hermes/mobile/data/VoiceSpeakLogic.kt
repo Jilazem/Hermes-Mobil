@@ -22,6 +22,7 @@ object VoiceSpeakLogic {
 
     /** Motorlar — sözleşmedeki dizgi kimlikleri. */
     enum class Engine(val id: String) {
+        EMA("ema"),
         KAHYA("kahya"),
         CHATTERBOX("chatterbox"),
         KADIN("kadin"),
@@ -75,6 +76,7 @@ object VoiceSpeakLogic {
 
     /** Ayarlardaki motor seçeneği için etiketler. */
     fun engineOptions(t: (String, String) -> String): List<Pair<String, String>> = listOf(
+        Engine.EMA.id to "EMA Lightning",
         Engine.YEREL.id to LocalTtsLogic.engineLabel(t),
         Engine.KAHYA.id to t("Kahya (bulut)", "Kahya (cloud)"),
         Engine.KADIN.id to t("Kadın (bulut)", "Female (cloud)"),
@@ -86,6 +88,7 @@ object VoiceSpeakLogic {
 
     /** Motor açıklaması — Ayarlar satırının altı. */
     fun engineHint(engine: Engine, t: (String, String) -> String): String = when (engine) {
+        Engine.EMA -> t("Hermes’in tek sesi; yerel EMA servisi.", "The Hermes voice; local EMA service.")
         Engine.YEREL -> LocalTtsLogic.engineHint(t)
         Engine.KAHYA -> t(
             "Ana motor. İlk sentez motoru ısıtır: 2-3 dk sürebilir (bazen 5 dk'ya kadar).",

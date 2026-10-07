@@ -2,8 +2,11 @@ package com.hermes.mobile.data
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,6 +68,15 @@ class JarvisLoopController(
     var onLoopClosed: (reason: String) -> Unit = {}
 
     private var tickJob: Job? = null
+    private val turnJobs = java.util.concurrent.ConcurrentHashMap.newKeySet<Job>()
+
+    private fun launchTurn(block: suspend CoroutineScope.() -> Unit): Job {
+        val job = scope.launch(start = CoroutineStart.LAZY, block = block)
+        turnJobs.add(job)
+        job.invokeOnCompletion { turnJobs.remove(job) }
+        job.start()
+        return job
+    }
 
     /** true → ticker hiç başlatılmaz; VAD'ı çağıran `tick()` ile sürer (test yolu). */
     private var manualVad = false
@@ -115,6 +127,7 @@ class JarvisLoopController(
 
     /** Durdur düğmesi / geri hareketi / "kapat" komutu — güvenli kapanış. */
     fun stop(reason: String = "kullanici") {
+        turnJobs.toList().forEach { it.cancel() }
         tickJob?.cancel()
         tickJob = null
         when (_state.value.phase) {
@@ -191,7 +204,7 @@ class JarvisLoopController(
             sttFailure()
             return
         }
-        scope.launch {
+        launchTurn {
             val text = runCatching {
                 val t = transport()
                     ?: throw VoiceApiException(
@@ -202,18 +215,19 @@ class JarvisLoopController(
                 if (e is CancellationException) throw e
                 diag("jarvis-loop: STT hatasi ${e.message?.take(120)}")
                 sttFailure()
-                return@launch
+                return@launchTurn
             }
+            currentCoroutineContext().ensureActive()
             if (text.isBlank()) {
                 diag("jarvis-loop: STT bos")
                 sttFailure()
-                return@launch
+                return@launchTurn
             }
             // Komut eşiği: "kapat" / "dur" / "bitti" → selam vermeden çık (görev 1).
             if (JarvisLoopLogic.isStopCommand(text)) {
                 diag("jarvis-loop: kapat komutu '$text'")
                 stop("komut")
-                return@launch
+                return@launchTurn
             }
             // Başarı: hata sayacı sıfırlanır, yanıt beklemeye geçilir.
             _state.value = JarvisLoopLogic.toWaitReplyOk(_state.value)
@@ -284,7 +298,7 @@ class JarvisLoopController(
             ))
             return
         }
-        scope.launch {
+        launchTurn {
             val engines = runCatching { healthEngines() }.getOrDefault(emptyMap())
             val preferred = currentLoopEngineId
             val resolved = JarvisLoopLogic.resolveLoopEngine(preferred, engines)
@@ -296,7 +310,7 @@ class JarvisLoopController(
                 diag("jarvis-loop: motor cozulmedi (tercih=$preferred)")
                 onNotice(msg)
                 stop("hata")
-                return@launch
+                return@launchTurn
             }
             if (resolved != preferred) onLoopEngine(resolved)
             speakReply(resolved, text, engines, attempt = 0)
@@ -317,12 +331,12 @@ class JarvisLoopController(
         attempt: Int,
     ) {
         _state.value = JarvisLoopLogic.toSpeaking(_state.value)
-        scope.launch {
+        launchTurn {
             val engine = VoiceSpeakLogic.Engine.fromId(engineId)
             val dir = File(cacheDir(), "sesli").apply { mkdirs() }
             val file = runCatching {
-                val target = File(dir, VoiceSpeakLogic.cacheName(text, engine))
-                if (target.exists() && target.length() > 0) {
+                val target = File(dir, VoiceSpeakLogic.cacheName(text, engine, if (engine == VoiceSpeakLogic.Engine.EMA) "wav" else "ogg"))
+                if (engine != VoiceSpeakLogic.Engine.EMA && target.exists() && target.length() > 0) {
                     target
                 } else {
                     val t = transport()
@@ -330,6 +344,7 @@ class JarvisLoopController(
                             "Sunucu bağlı değil", "No server connected",
                         ))
                     val bytes = t.synthesize(text, engine)
+                    currentCoroutineContext().ensureActive()
                     require(bytes.isNotEmpty()) {
                         lang("Ses ucu boş yanıt döndü", "The voice endpoint returned an empty body")
                     }
@@ -339,7 +354,7 @@ class JarvisLoopController(
             }.getOrElse { e ->
                 if (e is CancellationException) throw e
                 speakFallback(engineId, text, engines, attempt, e.message)
-                return@launch
+                return@launchTurn
             }
             // Çalma — bittiğinde (ya da hata) hook devreye girer.
             var hooked = false
@@ -357,9 +372,10 @@ class JarvisLoopController(
 
     /** Oynatma başarıyla bitti → otomatik tekrar dinlemeye geç (görev 1). */
     private fun onPlaybackDone() {
+        if (_state.value.phase != JarvisLoopLogic.Phase.Speaking) return
         _state.value = JarvisLoopLogic.onSpeakDone(_state.value, now())
         diag("jarvis-loop: oynatma bitti - dinlemeye donuldu")
-        scope.launch { resumeListening() }
+        launchTurn { resumeListening() }
     }
 
     /**
@@ -386,6 +402,7 @@ class JarvisLoopController(
 
     /** ViewModel döngüyü dışarıdan kapatırken player'ı da durdurmalı: kancayı temizle. */
     fun onSpeakInterrupted() {
+        turnJobs.toList().forEach { it.cancel() }
         if (_state.value.phase == JarvisLoopLogic.Phase.Speaking) {
             _state.value = JarvisLoopLogic.toOff(_state.value)
         }

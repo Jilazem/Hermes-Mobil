@@ -540,7 +540,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         set(value) {
             field = value
             voiceMsg.autoSend = value.autoSend
-            voiceMsg.engine = value.engine
+            voiceMsg.engine = if (value.emaUrl.isNotBlank()) VoiceSpeakLogic.Engine.EMA else value.engine
+            jarvisLoop.setPreferredEngine(if (value.emaUrl.isNotBlank()) "ema" else value.engine.id)
         }
 
     /**
@@ -614,7 +615,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             // Döngü kendi motoruyla okur — eşzamanlı çalma + taze altyazı.
             voiceMsg.stopSpeaking()
             _captions.value = emptyList()
-            _jarvisMode.value = true
+            _jarvisMode.value = voicePrefs.emaUrl.isBlank()
             jarvisLoop.start()
             Notifier.jarvisListening(getApplication(), true)
             DiagLog.i("jarvis-loop", "dongu acildi")
@@ -647,7 +648,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val existing = voiceClient?.takeIf { voiceClientKey == key }
         val client = existing ?: VoiceApiClient(candidates, p.token, p.id)
             .also { voiceClient = it; voiceClientKey = key }
-        return HttpVoiceTransport(client)
+        val stt = HttpVoiceTransport(client)
+        return if (voicePrefs.emaUrl.isNotBlank()) com.hermes.mobile.data.EmaVoiceTransport(stt,
+            com.hermes.mobile.data.EmaTtsClient(voicePrefs.emaUrl, voicePrefs.emaToken.ifBlank { p.token })) else stt
     }
 
     init {

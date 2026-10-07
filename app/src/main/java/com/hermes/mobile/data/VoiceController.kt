@@ -37,6 +37,17 @@ class VoiceController(private val context: Context) {
          * omurlu bir motor kuruluyor, konusma bitince kapatiliyor.
          */
         fun speakOnce(context: Context, text: String) {
+            EmaConfig.from(context)?.let { config ->
+                val voice = com.hermes.mobile.assistant.EmaVoice(context, config.client())
+                voice.onDone = { voice.release() }
+                voice.onError = { message ->
+                    DiagLog.w("ema", "speech failed")
+                    Notifier.agentMessage(context, "Hermes EMA", message)
+                    voice.release()
+                }
+                voice.say(text.take(3000)); voice.finish()
+                return
+            }
             val clean = text.take(3_000)
             var engine: TextToSpeech? = null
             engine = TextToSpeech(context.applicationContext) { status ->
@@ -76,11 +87,36 @@ class VoiceController(private val context: Context) {
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+    private var ema: com.hermes.mobile.assistant.JarvisVoice? = null
+    private var emaConfig: EmaConfig? = null
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private fun refreshEma(): Boolean {
+        val config = EmaConfig.from(context) ?: run {
+            if (ema != null) ttsReady = false
+            ema?.release(); ema = null; emaConfig = null
+            return false
+        }
+        if (config != emaConfig) {
+            ema?.release()
+            tts?.stop(); tts?.shutdown(); tts = null
+            emaConfig = config
+            ema = com.hermes.mobile.assistant.EmaVoice(context, config.client()).also { v ->
+                v.onDone = { main.post {
+                    if (handsFree) onFinalText?.let { startListening(it) } else _mode.value = Mode.Off
+                } }
+                v.onError = { error -> main.post { handsFree = false; _error.value = error; _mode.value = Mode.Off } }
+            }
+        }
+        ttsReady = true
+        return true
+    }
     private var onFinalText: ((String) -> Unit)? = null
 
     val isAvailable: Boolean get() = SpeechRecognizer.isRecognitionAvailable(context)
 
     fun initTts(onReady: (Boolean) -> Unit = {}) {
+        if (refreshEma()) { onReady(true); return }
         if (tts != null) return
         tts = TextToSpeech(context) { status ->
             ttsReady = status == TextToSpeech.SUCCESS
@@ -193,17 +229,21 @@ class VoiceController(private val context: Context) {
 
     /** Ajan yanıtını seslendirir. Markdown işaretleri sesli okumada gürültü olur, temizlenir. */
     fun speak(text: String) {
-        if (!ttsReady) return
+        val useEma = refreshEma()
+        if (!ttsReady && !useEma) return
         val clean = stripMarkdownForSpeech(text)
         if (clean.isBlank()) {
             if (handsFree) startListening(onFinalText ?: return)
             return
         }
         _mode.value = Mode.Speaking
-        tts?.speak(clean.take(3_000), TextToSpeech.QUEUE_FLUSH, null, "hermes-reply")
+        if (useEma) {
+            ema?.stop(); ema?.say(clean.take(3000)); ema?.finish()
+        } else tts?.speak(clean.take(3_000), TextToSpeech.QUEUE_FLUSH, null, "hermes-reply")
     }
 
     fun stopSpeaking() {
+        ema?.stop()
         tts?.stop()
         if (_mode.value == Mode.Speaking) _mode.value = Mode.Off
     }
@@ -220,6 +260,7 @@ class VoiceController(private val context: Context) {
 
     fun release() {
         handsFree = false
+        ema?.release(); ema = null; emaConfig = null
         recognizer?.destroy()
         recognizer = null
         tts?.stop()

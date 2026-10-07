@@ -67,6 +67,7 @@ class LiveVoiceClient(
     private val phoneTools: PhoneTools? = null,
     /** Shizuku hazır mı — derin araçların tanıtılıp tanıtılmayacağını belirler. */
     private val shizukuReady: Boolean = false,
+    private val emaVoice: com.hermes.mobile.assistant.JarvisVoice? = null,
 ) {
     enum class State { Idle, Connecting, Listening, Speaking, Error }
 
@@ -97,6 +98,14 @@ class LiveVoiceClient(
     private var player: AudioTrack? = null
     private var captureJob: Job? = null
     private var closedByUser = false
+    private var emaSplitter = com.hermes.mobile.assistant.JarvisLogic.SentenceSplitter()
+    private var emaSpoke = false
+
+    init {
+        emaVoice?.onDone = { if (!closedByUser) { _state.value = State.Listening; _speakLevel.value = 0f } }
+        emaVoice?.onLevel = { _speakLevel.value = it }
+        emaVoice?.onError = { _error.value = it; _state.value = State.Error }
+    }
 
     private val _state = MutableStateFlow(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
@@ -175,6 +184,9 @@ class LiveVoiceClient(
 
     fun stop() {
         closedByUser = true
+        emaVoice?.stop()
+        emaSplitter = com.hermes.mobile.assistant.JarvisLogic.SentenceSplitter()
+        emaSpoke = false
         captureJob?.cancel()
         stopCapture()
         stopPlayback()
@@ -187,6 +199,7 @@ class LiveVoiceClient(
     }
 
     fun release() {
+        emaVoice?.release()
         stop()
         scope.cancel()
     }
@@ -431,6 +444,9 @@ class LiveVoiceClient(
 
         // Model konuşurken kullanıcı araya girdi — biriken sesi at.
         if (server["interrupted"]?.jsonPrimitive?.booleanOrNull() == true) {
+            emaVoice?.stop()
+            emaSplitter = com.hermes.mobile.assistant.JarvisLogic.SentenceSplitter()
+            emaSpoke = false
             flushPlayback()
             _state.value = State.Listening
             return
@@ -442,12 +458,19 @@ class LiveVoiceClient(
 
         server["outputTranscription"]?.jsonObject
             ?.get("text")?.jsonPrimitive?.contentOrNull()
-            ?.let { chunk -> _modelTranscript.update { it + chunk } }
+            ?.let { chunk ->
+                _modelTranscript.update { it + chunk }
+                if (emaVoice != null) {
+                    emaSplitter.push(chunk).forEach { sentence ->
+                        emaSpoke = true; _state.value = State.Speaking; emaVoice.say(sentence)
+                    }
+                }
+            }
 
         server["modelTurn"]?.jsonObject?.get("parts")?.jsonArray?.forEach { part ->
             val inline = part.jsonObject["inlineData"]?.jsonObject ?: return@forEach
             val mime = inline["mimeType"]?.jsonPrimitive?.contentOrNull().orEmpty()
-            if (!mime.startsWith("audio/pcm")) return@forEach
+            if (emaVoice != null || !mime.startsWith("audio/pcm")) return@forEach
             val data = inline["data"]?.jsonPrimitive?.contentOrNull() ?: return@forEach
             val pcm = runCatching { Base64.decode(data, Base64.DEFAULT) }.getOrNull() ?: return@forEach
             _state.value = State.Speaking
@@ -459,7 +482,13 @@ class LiveVoiceClient(
         }
 
         if (server["turnComplete"]?.jsonPrimitive?.booleanOrNull() == true) {
-            _state.value = State.Listening
+            if (emaVoice != null) {
+                emaSplitter.flush()?.let { emaSpoke = true; _state.value = State.Speaking; emaVoice.say(it) }
+                if (emaSpoke) emaVoice.finish()
+                else { _error.value = "EMA için canlı yanıt metni gelmedi"; _state.value = State.Error }
+                emaSplitter = com.hermes.mobile.assistant.JarvisLogic.SentenceSplitter()
+                emaSpoke = false
+            } else _state.value = State.Listening
             _speakLevel.value = 0f
             // Yeni tur için altyazıyı sıfırla, eskisi ekranda birikmesin.
             _userTranscript.value = ""

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import java.io.File
@@ -241,6 +242,7 @@ class VoiceMessageController(
             }
             val file = runCatching { ensureAudio(key, text) }.getOrElse { e ->
                 tick.cancel()
+                if (e is CancellationException) throw e
                 val msg = e.message ?: lang("Ses indirilemedi", "Could not download audio")
                 _state.value = _state.value.copy(speak = VoiceSpeakLogic.failed(msg))
                 onNotice(msg)
@@ -265,6 +267,14 @@ class VoiceMessageController(
      */
     suspend fun ensureAudio(key: String, text: String): File {
         val dir = File(cacheDir(), "sesli").apply { mkdirs() }
+        if (engine == VoiceSpeakLogic.Engine.EMA) {
+            val target = File(dir, VoiceSpeakLogic.cacheName(text, engine, "wav"))
+            val bytes = requireTransport().synthesize(text, engine)
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (bytes.size < 44) throw VoiceApiException("EMA ses yanıtı boş")
+            target.writeBytes(bytes)
+            return target
+        }
         // 1) Yerel istenmişse buluta hiç dokunma.
         val want = LocalTtsLogic.decideSpeak(engine, localSynth.isReady(), null, lang)
         if (want.error != null) throw VoiceApiException(want.error)

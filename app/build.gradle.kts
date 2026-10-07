@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.hermes.mobile"
     compileSdk = 35
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "com.hermes.mobile"
@@ -26,8 +27,8 @@ android {
             // Telefonda yüklü Hermes / Hermes V2 ile ÇAKIŞMASIN: ayrı paket
             // kimliği (V3) ve ayrı ad — üzerine yazmaz, yanına ayrı uygulama
             // olarak kurulur (ayarları ve verisi de ayrıdır).
-            applicationIdSuffix = ".v3"
-            versionNameSuffix = "-v3"
+            applicationIdSuffix = providers.gradleProperty("hermesDebugSuffix").getOrElse(".v3")
+            versionNameSuffix = "-ema-preview"
             isMinifyEnabled = false
         }
         release {
@@ -92,7 +93,7 @@ dependencies {
     // Android Auto — şablon tabanlı araç arayüzü
     // V3 "Hey Jarvis" uyandırma kelimesi — openWakeWord modelleri (TFLite).
     // sherpa-onnx'in kendi onnxruntime'ı ile çakışmasın diye ONNX değil TFLite.
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.car.app:app-projected:1.7.0")
     // car.app, guava'yı yalnız çalışma zamanına koyup derlemede boş

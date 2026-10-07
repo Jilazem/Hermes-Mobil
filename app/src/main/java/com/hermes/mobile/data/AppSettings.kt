@@ -215,6 +215,10 @@ data class AppSettings(
      */
     val voiceUrl: String = "",
 
+    /** Local EMA service; an explicit address activates the unified voice. */
+    val emaUrl: String = "",
+    val emaToken: String = "",
+
     /** Son çalıştığı doğrulanan ses ucu — sonraki açılışta öne alınır. */
     val voiceLastOk: String = "",
 
@@ -417,6 +421,8 @@ data class VoicePrefs(
     val url: String = "",
     /** Son çalışan adres — ilk aday olur. */
     val lastOk: String = "",
+    val emaUrl: String = "",
+    val emaToken: String = "",
     /**
      * Asistan akışında yanıt otomatik okunsun mu — varsayılan AÇIK, ama
      * yalnız asistan bağlamında etkili ([AssistantModeLogic.shouldAutoRead]).
@@ -430,6 +436,8 @@ fun AppSettings.toVoicePrefs(): VoicePrefs = VoicePrefs(
     engine = VoiceSpeakLogic.Engine.fromId(voiceEngine),
     url = voiceUrl,
     lastOk = voiceLastOk,
+    emaUrl = emaUrl,
+    emaToken = emaToken,
     assistantAutoRead = assistantAutoRead,
 )
 

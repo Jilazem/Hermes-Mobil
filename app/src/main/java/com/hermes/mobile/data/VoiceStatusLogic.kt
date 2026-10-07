@@ -80,6 +80,7 @@ object VoiceStatusLogic {
         when (engine) {
             // Tur-21: yerel motor — "/health" bulut ucunun motoru DEĞİL;
             // kısa ad cihaz içi motoru anlatır.
+            VoiceSpeakLogic.Engine.EMA -> "EMA Lightning"
             VoiceSpeakLogic.Engine.YEREL -> t("Yerel", "Local")
             VoiceSpeakLogic.Engine.KAHYA -> t("Kahya", "Kahya")
             VoiceSpeakLogic.Engine.KADIN -> t("Kadın", "Female")

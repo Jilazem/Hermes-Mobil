@@ -21,7 +21,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * Hermes: tek bir "Jarvis" oturumu [JarvisLogic.SESSION_TTL_MS] boyunca
  * yeniden kullanılır — "peki yarın?" gibi devam soruları bağlamı bilir.
- * Oturum kimliği SharedPreferences'ta; uygulama sohbetinden ayrı.
+ * EMA yapılandırıldığında uygulama sohbetinin kayıtlı oturumu kullanılır.
  */
 class JarvisBrain(private val context: Context, private val scope: CoroutineScope) {
 
@@ -47,9 +47,9 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
      * Soruyu sorar, yanıt tamamlanınca TAM metni döner. Parçalar [sink]'e akar.
      * Hata: açıklayıcı mesajlı istisna (çağıran sesle söyler).
      */
-    suspend fun ask(question: String, sink: Sink): String {
+    suspend fun ask(question: String, sink: Sink, forceHermes: Boolean = false): String {
         val s = SettingsStore(context).settings.value
-        return if (s.assistantBrain == "yerel") askLocal(question, s.localLlmUrl, s.localLlmModel, s.assistantAddress, sink)
+        return if (!forceHermes && s.assistantBrain == "yerel") askLocal(question, s.localLlmUrl, s.localLlmModel, s.assistantAddress, sink)
         else askHermes(question, s.assistantAddress, sink)
     }
 
@@ -65,6 +65,16 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         val now = System.currentTimeMillis()
         var sid = sessionId
         var fresh = false
+        val settings = SettingsStore(context)
+        val unified = settings.settings.value.emaUrl.isNotBlank()
+        if (unified) {
+            val saved = settings.settings.value.lastSession.takeIf { it.startsWith(profile.id + "|") }
+                ?.substringAfter('|')?.takeIf { it.isNotBlank() }
+            sid = if (saved != null) com.hermes.mobile.data.restoreConversation(
+                sid?.takeIf { client.storedSessionId(it) == saved } ?: saved, saved,
+                client::activateSession, client::resumeSession,
+            ) else null
+        } else {
         if (sid == null) {
             val saved = prefs.getString(KEY_SID, null)
             val savedProfile = prefs.getString(KEY_PROFILE, null)
@@ -77,11 +87,13 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         } else {
             sid = client.activateSession(sid)
         }
+        }
         if (sid == null) {
             sid = client.createSession(null)
             fresh = true
         }
         sessionId = sid
+        if (unified) settings.update { it.copy(lastSession = "${profile.id}|${client.storedSessionId(sid)}") }
         prefs.edit().putString(KEY_SID, client.storedSessionId(sid)).putString(KEY_PROFILE, profile.id).putLong(KEY_AT, now).apply()
 
         val full = StringBuilder()
@@ -142,6 +154,7 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
 
     /** Süren yanıtı keser (kullanıcı araya girdi). */
     fun interrupt() {
+        if (running == null) return
         val sid = sessionId ?: return
         val c = gw ?: return
         // P4: boş string döndürmek "yanıt bitti" sanılır; kesildiği istisnayla belli olsun.
@@ -153,6 +166,8 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
     fun forgetSession() {
         sessionId = null
         localHistory.clear()
+        val settings = SettingsStore(context)
+        if (settings.settings.value.emaUrl.isNotBlank()) settings.update { it.copy(lastSession = "") }
         prefs.edit().remove(KEY_SID).remove(KEY_AT).remove(KEY_PROFILE).apply()
     }
 

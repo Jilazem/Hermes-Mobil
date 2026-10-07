@@ -299,6 +299,25 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Voice) {
+    item { Header("Hermes Sesi: EMA Lightning") }
+            item {
+                TextRow("EMA servis adresi", S.t2("Mac üzerindeki EMA adresi (ör. http://192.168.1.101:8176)",
+                    "EMA address on your Mac (e.g. http://192.168.1.101:8176)"), settings.emaUrl) { v ->
+                    onUpdate { it.copy(emaUrl = v.trim()) }
+                }
+            }
+            item {
+                TextRow("EMA erişim anahtarı", S.t2("EMA servisinde tanımladığın erişim anahtarı",
+                    "The access token configured on your EMA service"), settings.emaToken) { v ->
+                    onUpdate { it.copy(emaToken = v.trim()) }
+                }
+            }
+            item {
+                Text(S.t2(if (settings.emaUrl.isBlank()) "EMA bağlantısını tamamla; önceki ses yolu geçiş sırasında kullanılabilir."
+                    else "Sohbet, telefon asistanı ve araç yanıtları EMA kullanır.",
+                    if (settings.emaUrl.isBlank()) "Complete the EMA connection; the previous voice remains available during migration."
+                    else "Chat, phone assistant and car replies use EMA."), color = HermesColors.TextMuted)
+            }
     item { Header(S.t2("Canlı ses ve görüntü", "Live voice and vision")) }
 
             item {
@@ -318,7 +337,7 @@ fun SettingsScreen(
                 ) { v -> onUpdate { it.copy(customPersona = v) } }
             }
 
-            item {
+            if (settings.emaUrl.isBlank()) item {
                 ChoiceRow(
                     "Ses karakteri",
                     LIVE_VOICES.map { it to it },
@@ -448,8 +467,8 @@ fun SettingsScreen(
             item {
                 ChoiceRow(
                     S.t2("Seslendirme motoru", "Speech engine"),
-                    VoiceSpeakLogic.engineOptions(::tr),
-                    VoiceSpeakLogic.Engine.fromId(settings.voiceEngine).id,
+                    if (settings.emaUrl.isNotBlank()) listOf("ema" to "EMA Lightning") else VoiceSpeakLogic.engineOptions(::tr).filterNot { it.first == "ema" },
+                    if (settings.emaUrl.isNotBlank()) "ema" else VoiceSpeakLogic.Engine.fromId(settings.voiceEngine).id,
                 ) { v ->
                     onUpdate { it.copy(voiceEngine = v) }
                     // Tur-12: motor değişti — eski motora ait "Hazır ✓" kalmasın.
@@ -830,7 +849,7 @@ fun SettingsScreen(
             // Jarvis panelini açar; kurulum + deneme tek kartta.
             item { JarvisSetupCard(role = assistantRole, onMakeDefault = onMakeDefaultAssistant) }
             item { JarvisBehaviorCard(settings, onUpdate) }
-            item { VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload) }
+            if (settings.emaUrl.isBlank()) item { VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload) }
             item { WakeWordCard(settings, onUpdate) }
 
             item { Header(S.t2("Uygulama içi asistan kipi", "In-app assistant mode")) }

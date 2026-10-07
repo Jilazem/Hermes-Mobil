@@ -380,9 +380,9 @@ class PhoneBridgeService : Service() {
             if (fullTools.handles(tool)) {
                 // Ekran görüntüsü base64'ü log'a YAZILMAZ: kanıt değeri yok,
                 // günlüğü megabaytlarca şişirir.
-                DiagLog.i("a11y", "eylem $tool ${briefArgs(tool, args)}")
+                DiagLog.i("a11y", "eylem $tool")
                 val out = fullTools.execute(tool, args)
-                DiagLog.i("a11y", "$tool → ${if (out.ok) "tamam" else "hata"}: ${out.text.take(200)}")
+                DiagLog.i("a11y", "$tool → ${if (out.ok) "tamam" else "hata"}")
                 reply(webSocket, id, out.ok, out.text)
                 return
             }

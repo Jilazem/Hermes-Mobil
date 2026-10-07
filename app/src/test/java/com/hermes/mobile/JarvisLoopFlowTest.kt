@@ -36,6 +36,33 @@ import java.util.concurrent.atomic.AtomicLong
  *  6. Çalma sırasında kullanıcı kapatırsa player durdurulur (yarım ses yok).
  */
 class JarvisLoopFlowTest {
+    @Test fun `stopping during EMA synthesis cancels request and never starts playback`() {
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val cancelled = java.util.concurrent.CountDownLatch(1)
+        val cloud = object : VoiceTransport {
+            override val working: String? = null
+            override suspend fun health() = VoiceHealth(ok = true)
+            override suspend fun transcribe(audio: ByteArray, fileName: String, mime: String) = "merhaba"
+            override suspend fun synthesize(text: String, engine: VoiceSpeakLogic.Engine): ByteArray {
+                started.complete(Unit)
+                try { kotlinx.coroutines.awaitCancellation() }
+                finally { cancelled.countDown() }
+            }
+        }
+        val rec = FakeRec()
+        val player = FakePlayer()
+        val ctrl = controller(rec, player, cloud, mapOf("ema" to "hazir"), mutableListOf(), mutableListOf())
+        ctrl.setPreferredEngine("ema")
+        ctrl.start(manualVad = true)
+        speakThenSilence(ctrl, rec)
+        waitUntil { ctrl.state.value.phase == Phase.WaitReply }
+        ctrl.onAgentReply("Uzun yanıt")
+        waitUntil { started.isCompleted }
+        ctrl.stop()
+        assertTrue(cancelled.await(2, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals(0, player.plays.get())
+        assertEquals(Phase.Off, ctrl.state.value.phase)
+    }
 
     private class FakeRec(private var last: File? = null) : RecorderPort {
         val started = AtomicInteger()

@@ -23,19 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Android Auto servisi.
- *
- * Android Auto yalnız **şablon** çizdirir — kendi görünümünü koyamazsın, liste /
- * mesaj / gezinme şablonlarından seçersin ve sürüş sırasında satır sayısı
- * sınırlıdır. Bu yüzden buradaki amaç sohbet etmek değil: **durumu göstermek ve
- * sürüş kipini telefonda başlatmak.** Asıl sesli sohbet telefonun Hermes asistanı
- * üzerinden yürüyor (araç hoparlörüne Bluetooth'tan çıkıyor).
- *
- * ⚠️ Play Store'un onaylı kategorileri navigasyon/ses/mesajlaşma. Genel amaçlı
- * asistan için resmî yol yok — bu uygulama yan yüklendiği için çalışıyor.
- * Android Auto geliştirici ayarlarında "Bilinmeyen kaynaklar" açık olmalı.
- */
+/** Android Auto screen and direct car-microphone Hermes assistant. */
 class HermesCarService : CarAppService() {
 
     override fun createHostValidator(): HostValidator =
@@ -59,6 +47,12 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
     private val store = ServerProfileStore(carContext)
 
+    private var voiceLine: String? = null
+    private val voice = CarVoiceSession(carContext) { line, _ ->
+        voiceLine = line
+        android.os.Handler(android.os.Looper.getMainLooper()).post { invalidate() }
+    }
+
     private var loading = true
     private var error: String? = null
     private var statusLine = ""
@@ -70,6 +64,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         // ekran yığından çıkarken scope iptal edilir.
         lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
             override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) {
+                voice.release()
                 scope.cancel()
             }
         })
@@ -83,7 +78,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             if (profile == null || profile.token.isBlank()) {
                 withContext(Dispatchers.Main) {
                     loading = false
-                    error = "Hermes'i telefonda açıp sunucu profilini seç. Yerel asistan için Konuş'a dokunabilirsin."
+                    error = "Hermes'i telefonda açıp sunucu adresini, anahtarını ve EMA bağlantısını tamamla."
                     invalidate()
                 }
                 return@launch
@@ -118,6 +113,14 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     override fun onGetTemplate(): Template {
+        voiceLine?.let { line ->
+            return MessageTemplate.Builder(line).setTitle("Hermes · EMA").setHeaderAction(Action.APP_ICON)
+                .addAction(Action.Builder().setTitle(if (voice.busy) "İptal" else "Konuş")
+                    .setOnClickListener { voice.toggle() }.build())
+                .addAction(Action.Builder().setTitle("Durum")
+                    .setOnClickListener { voice.cancel(); voiceLine = null; invalidate() }.build())
+                .build()
+        }
         if (loading) {
             return MessageTemplate.Builder("Hermes'e bağlanılıyor…")
                 .setTitle("Hermes")
@@ -130,7 +133,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             return MessageTemplate.Builder(message)
                 .setTitle("Hermes")
                 .setHeaderAction(Action.APP_ICON)
-                .addAction(Action.Builder().setTitle("Konuş").setOnClickListener { startVoiceOnPhone() }.build())
+                .addAction(Action.Builder().setTitle("Konuş").setOnClickListener { startCarVoice() }.build())
                 .addAction(
                     Action.Builder()
                         .setTitle("Yeniden dene")
@@ -142,8 +145,8 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
 
         val list = ItemList.Builder().apply {
             addItem(Row.Builder().setTitle("Hermes Asistan")
-                .addText("Sesli konuşmayı telefonda başlat")
-                .setOnClickListener { startVoiceOnPhone() }.build())
+                .addText("Araç mikrofonuyla Hermes’e sor")
+                .setOnClickListener { startCarVoice() }.build())
             addItem(
                 Row.Builder()
                     .setTitle("Durum")
@@ -169,7 +172,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                     .addAction(
                         Action.Builder()
                             .setTitle("Konuş")
-                            .setOnClickListener { startVoiceOnPhone() }
+                            .setOnClickListener { startCarVoice() }
                             .build()
                     )
                     .addAction(
@@ -183,28 +186,5 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             .build()
     }
 
-    /**
-     * Telefonda Hermes asistanını başlatır (bulut ses anahtarı gerektirmez).
-     *
-     * Sesli konuşma araç ekranında değil telefonda yürüyor: Car App Library
-     * yalnız şablon çizdiriyor, mikrofon/hoparlör akışına karışamıyor. Ses
-     * zaten Bluetooth üzerinden aracın hoparlörüne gidiyor, dolayısıyla
-     * kullanıcı açısından fark yok — araçtaki düğme sadece tetikleyici.
-     */
-    private fun startVoiceOnPhone() {
-        runCatching {
-            carContext.startActivity(
-                android.content.Intent(carContext, com.hermes.mobile.MainActivity::class.java)
-                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    .putExtra("hermes_action", "jarvis")
-            )
-            androidx.car.app.CarToast
-                .makeText(carContext, "Telefonda Hermes asistan açılıyor", androidx.car.app.CarToast.LENGTH_SHORT)
-                .show()
-        }.onFailure {
-            androidx.car.app.CarToast
-                .makeText(carContext, "Telefon kilitliyse önce açman gerekir", androidx.car.app.CarToast.LENGTH_LONG)
-                .show()
-        }
-    }
+    private fun startCarVoice() { voice.toggle() }
 }

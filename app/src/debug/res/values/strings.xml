@@ -2,7 +2,7 @@
 <resources>
     <!-- Debug/V3 yapılandırması: yüklü Hermes ve Hermes V2'den ayırt
          edilebilir ad (launcher, asistan seçici, erişilebilirlik, döşeme). -->
-    <string name="app_name">Hermes V3</string>
-    <string name="assistant_label">Hermes V3 Asistan</string>
-    <string name="tile_label">Hermes V3\'e konuş</string>
+    <string name="app_name">Hermes EMA</string>
+    <string name="assistant_label">Hermes EMA Asistan</string>
+    <string name="tile_label">Hermes EMA\'ya konuş</string>
 </resources>

@@ -17,6 +17,8 @@ import com.hermes.mobile.data.VoiceSpeakLogic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +51,7 @@ interface JarvisVoice {
     companion object {
         /** Ayardaki motora göre ses; yerel/sunucu kurulamazsa telefon TTS'e düşer. */
         fun create(context: Context): JarvisVoice {
+            com.hermes.mobile.data.EmaConfig.from(context)?.let { return EmaVoice(context, it.client()) }
             val s = SettingsStore(context).settings.value
             return when (s.assistantVoiceEngine) {
                 "yerel" -> {
@@ -235,7 +238,7 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
 
     protected val appContext: Context = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var queue = Channel<String>(Channel.UNLIMITED)
+    @Volatile private var queue = Channel<String>(Channel.UNLIMITED)
     private var worker: Job? = null
     private var player: MediaPlayer? = null
     private val dir = File(appContext.cacheDir, "jarvis").apply { mkdirs() }
@@ -244,15 +247,22 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
 
     /** Metni [target] dosyasına seslendirir (IO iş parçacığında çağrılır). */
     protected abstract suspend fun synth(text: String, target: File): File
+    protected open val allowAndroidFallback: Boolean = true
+    protected open fun stopOutput() = Unit
+    protected open suspend fun speakSentence(text: String, target: File) {
+        val file = synth(text, target)
+        try { play(file) } finally { file.delete() }
+    }
 
-    override fun say(sentence: String) {
+    @Synchronized override fun say(sentence: String) {
         val clean = JarvisLogic.speakable(sentence)
         if (clean.isBlank()) return
         ensureWorker()
         queue.trySend(clean)
     }
 
-    override fun finish() {
+    @Synchronized override fun finish() {
+        if (queue.isClosedForSend) return
         ensureWorker()
         queue.close()
     }
@@ -262,20 +272,29 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
         if (worker?.isActive == true && !queue.isClosedForSend) return
         if (queue.isClosedForSend) queue = Channel(Channel.UNLIMITED)
         val q = queue
+        val previous = worker
         worker = scope.launch {
+            previous?.join()
+            var failed = false
             for (text in q) {
                 try {
-                    val file = synth(text, File(dir, "c${n++}.audio"))
-                    try { play(file) } finally { file.delete() }
+                    speakSentence(text, File(dir, "c${n++}.audio"))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    if (!allowAndroidFallback) {
+                        failed = true
+                        if (queue === q) onError?.invoke("EMA sesi kullanılamıyor — servis bağlantısını kontrol et")
+                        q.cancel()
+                        break
+                    }
                     DiagLog.w("jarvis", "sentez/çalma hatası, telefon sesi kullanılıyor: ${e.message}")
                     speakFallback(text)
                 }
             }
             onLevel?.invoke(0f)
-            onDone?.invoke()
+            if (!failed && queue === q) onDone?.invoke()
         }
     }
 
@@ -333,11 +352,12 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
         cont.invokeOnCancellation { pulse.cancel(); runCatching { mp.stop(); mp.release() } }
     }
 
-    override fun stop() {
+    @Synchronized override fun stop() {
         worker?.cancel()
+        stopOutput()
         worker = null
         fallback?.stop()
-        queue.close()
+        queue.cancel()
         queue = Channel(Channel.UNLIMITED)
         runCatching { player?.stop(); player?.release() }
         player = null

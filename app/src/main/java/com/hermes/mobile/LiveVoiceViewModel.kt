@@ -139,6 +139,9 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
             systemInstruction = settings.resolveInstruction(),
             phoneTools = phoneTools.takeIf { settings.phoneTools },
             shizukuReady = settings.shizukuEnabled && shizuku?.isReady == true,
+            emaVoice = com.hermes.mobile.data.EmaConfig.from(getApplication())?.let {
+                com.hermes.mobile.assistant.EmaVoice(getApplication(), it.client())
+            },
         )
         client = c
 

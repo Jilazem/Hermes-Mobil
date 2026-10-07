@@ -432,7 +432,7 @@ class PhoneTools(
     private fun speak(text: String): String {
         if (text.isBlank()) return tr("Okunacak metin bos.", "Nothing to read out.")
         VoiceController.speakOnce(context, text)
-        return tr("Sesli okundu.", "Read out loud.")
+        return tr("Seslendirme başlatıldı.", "Speech started.")
     }
 
     private fun status(what: String): String {

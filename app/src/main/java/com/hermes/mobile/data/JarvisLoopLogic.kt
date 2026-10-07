@@ -180,6 +180,7 @@ object JarvisLoopLogic {
      * "bilinmiyor" ≠ "kapalı" — denemeye değer, hata olursa akış zaten sayar.
      */
     fun resolveLoopEngine(preferredId: String, engines: Map<String, String>): String? {
+        if (preferredId == "ema") return "ema".takeIf { engines.isEmpty() || engineOn(engines, it) }
         if (engines.isEmpty()) return preferredId
         if (engineOn(engines, preferredId)) return preferredId
         return LOOP_FALLBACK.firstOrNull { engineOn(engines, it) }
@@ -187,6 +188,7 @@ object JarvisLoopLogic {
 
     /** Düşüş zinciri: `from`'dan sonraki açık motor; tükendiyse null. */
     fun nextEngineOn(fromId: String, engines: Map<String, String>): String? {
+        if (fromId == "ema") return null
         val i = LOOP_FALLBACK.indexOf(fromId)
         if (i < 0) return null
         return LOOP_FALLBACK.drop(i + 1).firstOrNull { engineOn(engines, it) }

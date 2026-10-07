@@ -32,7 +32,7 @@ class VoiceSpeakLogicTest {
     @Test
     fun `motor kimlikleri sozlesmeyle ayni`() {
         assertEquals(
-            listOf("kahya", "chatterbox", "kadin", "pocket-kadin", "pocket-erkek", "yerel"),
+            listOf("ema", "kahya", "chatterbox", "kadin", "pocket-kadin", "pocket-erkek", "yerel"),
             VoiceSpeakLogic.Engine.ids,
         )
     }
@@ -47,9 +47,11 @@ class VoiceSpeakLogicTest {
     @Test
     fun `motor secenekleri etiketli`() {
         val options = VoiceSpeakLogic.engineOptions(t)
-        assertEquals(6, options.size)   // tur24: pocket-kadin + pocket-erkek eklendi
-        assertEquals("yerel", options[0].first)
-        assertTrue(options[0].second.contains("Yerel kadın"))
+        assertEquals(7, options.size)
+        assertEquals("ema", options[0].first)
+        assertEquals("EMA Lightning", options[0].second)
+        assertEquals("yerel", options[1].first)
+        assertTrue(options[1].second.contains("Yerel kadın"))
     }
 
     @Test

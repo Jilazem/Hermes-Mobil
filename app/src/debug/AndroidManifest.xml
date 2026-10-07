@@ -6,6 +6,12 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name=".ui.EmaSelfTestActivity" android:exported="true"
+            android:label="EMA Öz-Testi" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.FullControlSelfTestActivity" android:exported="true"
+            android:label="Kontrol Öz-Testi" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.UnifiedSessionSelfTestActivity" android:exported="true"
+            android:label="Oturum Öz-Testi" android:theme="@style/Theme.HermesMobile" />
         <activity
             android:name=".ui.MarkdownRenderDebugActivity"
             android:exported="true"
