@@ -1,0 +1,31 @@
+{
+  "verdict": "pass",
+  "gorev": "tur27-oturum-inceleme",
+  "tarih": "2026-10-03T17:10+03:00",
+  "test_sonucu": "LiveModelChoiceTest: 17 tests, 0 failures, 0 errors (gradle testDebugUnitTest, kendi koşumum; JAVA_HOME=openjdk@17)",
+  "findings": [
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "sendLocalAssistant geçmişi ana thread'de mapNotNull ile kuruyor; 150 balonu aşan oturumlarda takeLast(20) öncesi tam liste dolaşılıyor — O(n) ama n küçük, pratikte sorun değil (ChatViewModel.kt:843-856)"
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "chatBody history rol değerleri çağıran tarafın kontrolünde ('user'/'assistant' literal); LocalModelLogic doğrulama yapmıyor (LocalModelClient.kt:136-140) — yalnız iç kullanım, risk düşük"
+    }
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ChatViewModel.kt": "sha256:git-diff-ile-dogrulandi",
+    "app/src/main/java/com/hermes/mobile/data/LocalModelClient.kt": "sha256:git-diff-ile-dogrulandi",
+    "docs/oturum-inceleme-tur27.md": "sha256:okundu"
+  },
+  "dogrulama": [
+    "Bulgu raporu iddiası 1: history YENİ kullanıcı turu EKLENMEDEN önce okunuyor — diff teyit etti (sendLocalAssistant içinde _state.update'ten önce)",
+    "Bulgu raporu iddiası 2: yerel yanıt seslendirme zinciri Jarvis WaitReply → onAgentReply, handsFree → voice.speak, aksi halde AssistantModeLogic.shouldAutoRead — diff teyit etti",
+    "Bulgu raporu iddiası 3: GatewayWsClient submitPrompt session_id+text gönderiyor (data/GatewayWsClient.kt:184-192) — kaynak okundu",
+    "Test: gradle :app:testDebugUnitTest LiveModelChoiceTest 17/17 geçti (app/build/test-results/testDebugUnitTest/TEST-...xml)"
+  ],
+  "lesson": "Tur-27 bulguları kodda gerçek; test kanıtı kendi koşumumuzla doğrulandı.",
+  "not": "Bu tur yalnız inceleme + test doğrulaması; kod değişikliği yapılmadı."
+}

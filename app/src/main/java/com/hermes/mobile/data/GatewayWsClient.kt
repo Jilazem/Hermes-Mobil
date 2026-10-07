@@ -54,6 +54,18 @@ class GatewayWsClient(private val profile: ServerProfile) {
     private val nextId = AtomicLong(0)
     private val pending = mutableMapOf<String, CompletableDeferred<JsonElement?>>()
     private val pendingLock = Any()
+    private val sessionBindings = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    fun storedSessionId(runtimeId: String): String = sessionBindings[runtimeId] ?: runtimeId
+
+    private fun bindSession(result: JsonElement?, requestedId: String): String {
+        val binding = SessionBinding.parse(result, requestedId)
+        sessionBindings[binding.runtimeId] = binding.storedId
+        return binding.runtimeId
+    }
+
+    suspend fun attachSession(runtimeId: String, storedId: String = storedSessionId(runtimeId)): String =
+        restoreConversation(runtimeId, storedId, ::activateSession, ::resumeSession)
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(SocketTuning.GATEWAY_CONNECT_SECONDS, TimeUnit.SECONDS)
@@ -176,8 +188,7 @@ class GatewayWsClient(private val profile: ServerProfile) {
             profile?.takeIf { it.isNotBlank() }?.let { put("profile", JsonPrimitive(it)) }
         }
         val result = request("session.create", params)
-        return result?.jsonObject?.get("session_id")?.jsonPrimitive?.content
-            ?: throw IllegalStateException("session.create session_id döndürmedi")
+        return bindSession(result, "")
     }
 
     /** Kullanıcı mesajını gönderir; yanıt `message.delta` olaylarıyla akar. */
@@ -217,11 +228,16 @@ class GatewayWsClient(private val profile: ServerProfile) {
     }
 
     /** Geçmiş bir oturuma bağlanıp kaldığı yerden devam eder. */
-    suspend fun resumeSession(sessionId: String) {
-        request(
+    suspend fun resumeSession(sessionId: String): String {
+        val result = request(
             "session.resume",
-            buildJsonObject { put("session_id", JsonPrimitive(sessionId)) },
+            buildJsonObject {
+                put("session_id", JsonPrimitive(sessionId))
+                put("omit_messages", JsonPrimitive(true))
+            },
+            timeoutMs = 60_000,
         )
+        return bindSession(result, sessionId)
     }
 
     // ── Canlı oturum müdahalesi ───────────────────────────────────────
@@ -274,11 +290,15 @@ class GatewayWsClient(private val profile: ServerProfile) {
     }
 
     /** Canlı bir oturuma bağlanır — öncekini kapatmaz. */
-    suspend fun activateSession(sessionId: String) {
-        request(
+    suspend fun activateSession(sessionId: String): String {
+        val result = request(
             "session.activate",
-            buildJsonObject { put("session_id", JsonPrimitive(sessionId)) },
+            buildJsonObject {
+                put("session_id", JsonPrimitive(sessionId))
+                put("omit_messages", JsonPrimitive(true))
+            },
         )
+        return bindSession(result, storedSessionId(sessionId))
     }
 
     /**

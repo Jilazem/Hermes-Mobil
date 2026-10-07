@@ -1,0 +1,14 @@
+{
+  "fail_sayisi": 0,
+  "devir": false,
+  "turlar": [
+    {
+      "tarih": "2026-10-04T20:08:56",
+      "yapan": "cd-denetmen",
+      "sonuc": "pass"
+    }
+  ],
+  "uzman": "cd-denetmen",
+  "slug": "tur28-webapp-kalip",
+  "kapandi": true
+}

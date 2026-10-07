@@ -98,9 +98,23 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Figürün durumunu yazar ve state'e yayar (sahne bu listeden çizilir). */
     private fun markFigure(id: String, name: String, state: ArenaFigureState, badge: String?) {
-        figureStates[id] = ArenaFigure(id = id, name = name, state = state, badge = badge)
+        val previous = figureStates[id]
+        figureStates[id] = ArenaFigure(
+            id = id, name = name, state = state, badge = badge,
+            excerpt = previous?.excerpt.orEmpty(),
+            activityVersion = previous?.activityVersion ?: 0,
+        )
         val snapshot = figureStates.values.toList()
         _state.update { it.copy(figures = snapshot) }
+    }
+
+    private fun noteSceneActivity(id: String, text: String? = null) {
+        val figure = figureStates[id] ?: return
+        figureStates[id] = figure.copy(
+            excerpt = text?.let { com.hermes.mobile.ui.arenaResponseExcerpt(it) } ?: figure.excerpt,
+            activityVersion = figure.activityVersion + 1,
+        )
+        _state.update { it.copy(figures = figureStates.values.toList()) }
     }
 
     /** Tüm figürleri verilen duruma çeker (durdurma/kesinti). */
@@ -399,15 +413,24 @@ class ArenaViewModel(app: Application) : AndroidViewModel(app) {
                         buf.append(t)
                         lastActivityMs.set(System.currentTimeMillis())
                         // Tur-20: yarış nabzı — delta karakterleri sayaçlanır.
-                        raceFid?.let { raceNote(it, t.length) }
+                        raceFid?.let {
+                            raceNote(it, t.length)
+                            // Publish at most every 48 new characters, keeping stream UI light.
+                            if (buf.length / 48 != (buf.length - t.length) / 48) {
+                                noteSceneActivity(it, buf.toString())
+                            }
+                        }
                     }
                     "tool.start" -> {
                         // Tur-20: araç çağrısı = geçiş anı (sol şeride geçiş sembolü).
                         lastActivityMs.set(System.currentTimeMillis())
-                        raceFid?.let { racePass(it) }
+                        raceFid?.let { racePass(it); noteSceneActivity(it) }
                     }
-                    "message.complete" ->
-                        done.complete(buf.toString().ifBlank { e.text.orEmpty() })
+                    "message.complete" -> {
+                        val answer = buf.toString().ifBlank { e.text.orEmpty() }
+                        raceFid?.let { noteSceneActivity(it, answer) }
+                        done.complete(answer)
+                    }
                     "error" ->
                         done.completeExceptionally(IllegalStateException(e.text ?: "AI hatası"))
                 }

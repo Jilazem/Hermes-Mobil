@@ -1,0 +1,54 @@
+{
+  "verdict": "pass",
+  "gorev": "tur28-webapp-kalip",
+  "tarih": "2026-10-04T16:40+03:00",
+  "test_sonucu": "Kendi koşumum: ./gradlew :app:testDebugUnitTest --rerun-tasks → BUILD SUCCESSFUL 2m 8s; XML sayımı 75 suite / 883 test / 0 fail / 0 err / 0 skip (taze koşum, --rerun-tasks). SessionContinuationTest 6/0/0, ChatMenuTest dahil. Üretici iddiası (75/883/0) BİREBİR doğrulandı.",
+  "findings": [
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "restoreConversation (SessionBinding.kt:27-33) activate hatasını yutup resume'a düşerken orijinal exception'ı taşımıyor (addSuppressed yok); resume da patlarsa kök neden kayboluyor. İkinci göz GECTI-KOSULLU verdi, koşul bu: hata suppressed olarak taşınmalı + storedId boşsa kör resume yerine gerçek hata. Yedekleme tasarımı 'başarısızlık boş sohbet açmaz' sözünü koruyor (SessionContinuationTest `restore failure propagates` kanıtlıyor) — merge'i engelleyecek HIGH değil, izleyen turda düzeltilmeli.",
+      "conditions": "SessionBinding.kt restoreConversation: primary exception addSuppressed ile taşınmalı; storedId.isBlank() iken resume çağrılmamalı."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "JarvisBrain.ask (JarvisBrain.kt:75-80) resume/activate artık exception fırlatıyor (eski sessiz create'e düşme kalktı). Çağıran JarvisEngine.kt:332-343 hatayı yakalayıp sesli bildiriyor; ChatViewModel.ensureConversation (ChatViewModel.kt:1140-1142) da check ile reddedip mesajı kaybetmiyor — davranış değişikliği bilinçli ve yönetilmiş.",
+      "conditions": null
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "ReplyService olay filtresi (ReplyService.kt:84) `e.sessionId != sid` ile başka oturum olaylarını kesiyor; GatewayEvent.sessionId sunucu olayından okunuyor (GatewayWsClient.kt:373, 478). JarvisBrain filtresi `e.sessionId != null && e.sessionId != sid` (null-tolerant) — iki filtre arasındaki tutarsızlık zararsız (ReplyService'te sid her zaman non-null).",
+      "conditions": null
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "Preflight: bu denetim kartı czip promt'udur, preflight.py receipt bloğu taşımaz; denetmen olarak build YAPMADIM (salt-okunur inceleme + test koşumu). Üreticinin build kanıtı denetim/tur28-build.log içinde mevcut. Tur-27 usulüyle uyumlu.",
+      "conditions": null
+    }
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/SessionBinding.kt": "e6f721e110886a63501955fdaed198b1ef7d027a2f048ad9e3652ff1e6b9992c",
+    "app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt": "ec9f9d2b892427a664c937709c2bf59a3316173b584ee297f1cb5a63f3ae4d50",
+    "app/src/main/java/com/hermes/mobile/data/ReplyService.kt": "99789b6a1d024989bc5222e07cd196ddf89a22dad1dba3687773202c55f9b613",
+    "app/src/main/java/com/hermes/mobile/assistant/JarvisBrain.kt": "4d5455dff5d63e4906b3413af4b77dca8606d8e5c3e306c09efea4a97ca3d387",
+    "app/src/main/java/com/hermes/mobile/ChatViewModel.kt": "242cc4380d4a065a3608bab59c36efee9cb1b1f58690af413418768692f658c1",
+    "app/src/test/java/com/hermes/mobile/SessionContinuationTest.kt": "7c4e3658bb230063ebfb065090cc1df3597d439cb32fcdccaa10e10f859eadd3",
+    "app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt": "7526c6cd20898261e7d8368b69d2271881ffe556e65217ba4451fdda08582622",
+    "app/src/main/java/com/hermes/mobile/ui/ChatMenu.kt": "41bad815b3eb31086dd7d67e9ca868c67325172ac76ad5b5402a425bd95d7e60",
+    "denetim/tur28/kanit-tur28.txt": "2c481e60326eab3bfc7876898f1394a3841696891baa6814249239ca696100d2"
+  },
+  "dogrulama": [
+    "TUR-28A (9c2fd21): ChatScreen.kt Speak dokunma alanı sizeIn(44dp,44dp) görsel ikon 16dp — kaynak okundu; ChatMenu.kt BubbleAction.Copy eklendi; MainActivity.kt:1272 Copy -> Unit (panoya yazar, sohbet hattına düşmez); kullanıcı balonu combinedClickable uzun basış = kopyala (ChatScreen.kt:1141).",
+    "Oturum kimliği bağlama: SessionBinding.parse runtime/stored ayrımı + bozuk yanıt reddi (6 test, kendi koşumumla geçti); GatewayWsClient bindSession create/resume/activate yanıt bağlıyor, resume omit_messages:true + 60 sn timeout (GatewayWsClient.kt:59-67, 231-241, 293-301).",
+    "ensureConversation yarış koruması (ChatViewModel.kt:1129-1146): oturum değişmişse check ile reddediyor, ensureActive() iptale saygılı; send() içinde onFailure Notice ile kullanıcıya yazılıyor (ChatViewModel.kt:1237-1248).",
+    "ReplyService attachSession + olay filtresi okundu (ReplyService.kt:74-84); JarvisBrain KEY_PROFILE profil koruması + stored id saklama okundu (JarvisBrain.kt:67-85, 187-205).",
+    "Test sayımı: kendi koşumum 75/883/0 — iddia birebir; SessionContinuationTest XML 6 test 0 fail.",
+    "Merge/push KARARI alınmadı — denetim kapsamı dışı (kabul ölçütü gereği)."
+  ],
+  "lesson": "Oturum kimliği bağlama işi iddia edilen gibi: test kanıtı kendi koşumumuzla 75/883/0 doğrulandı; tek koşul activate hatasının suppressed taşınması.",
+  "ikinci_goz": "GECTI-KOSULLU — koşul findings[0].conditions alanında (SessionBinding restoreConversation addSuppressed + blank-id kör resume koruması).",
+  "not": "Bu tur yalnız inceleme + test doğrulaması; kod değişikliği yapılmadı. Devir yok (ilk tur pass)."
+}

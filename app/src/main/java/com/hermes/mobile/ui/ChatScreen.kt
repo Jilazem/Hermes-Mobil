@@ -71,9 +71,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -493,7 +496,7 @@ fun ChatScreen(
         ChatComposer(
             draft = draft,
             // Yazmak her zaman açık; kopukken mesaj kuyruğa giriyor.
-            enabled = true,
+            enabled = !state.historyLoading,
             online = state.connection is ConnectionState.Open,
             agentBusy = state.agentBusy,
             attachments = state.attachments,
@@ -1133,6 +1136,8 @@ private fun ChatItemView(
 ) {
     when (item) {
         is ChatItem.User -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            // PR 93508: kullanıcı balonunda da Kopyala erişimi — uzun basış panoya yazar.
+            val userClipboard = LocalClipboardManager.current
             Box(
                 Modifier
                     .widthIn(max = 300.dp)
@@ -1140,6 +1145,7 @@ private fun ChatItemView(
                     // (§3; varsayilan surface — piksel ayni, semantik bag).
                     .background(HermesColors.BubbleUser, MaterialTheme.shapes.medium)
                     .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
+                    .combinedClickable(onClick = {}, onLongClick = { userClipboard.setText(AnnotatedString(item.text)) })
                     .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
                 Text(item.text, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
@@ -1148,6 +1154,7 @@ private fun ChatItemView(
 
         is ChatItem.Assistant -> {
             var menu by remember(item.key) { mutableStateOf(false) }
+            val clipboard = LocalClipboardManager.current
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -1160,7 +1167,8 @@ private fun ChatItemView(
             ) {
                 Box {
                     MarkdownText(
-                        markdown = item.text + if (item.streaming) " ▌" else "",
+                        markdown = item.text,
+                        streaming = item.streaming,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     DropdownMenu(
@@ -1168,7 +1176,10 @@ private fun ChatItemView(
                         onDismissRequest = { menu = false },
                         containerColor = HermesColors.Surface,
                     ) {
+                        // PR 93508: mesaj eylemleri Kopyala/More erişimi — Kopyala
+                        // panoya yazar, menüyü kapatır; sohbet ekranda kalır.
                         listOf(
+                            BubbleAction.Copy to S.t2("Kopyala", "Copy"),
                             BubbleAction.Answer to S.t2("Buna cevap verme", "Answer this"),
                             BubbleAction.Branch to S.t2("Ayrı dal aç", "Branch this"),
                             BubbleAction.Speak to S.t2("Seslendir", "Read aloud"),
@@ -1177,8 +1188,12 @@ private fun ChatItemView(
                                 text = { Text(label, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium) },
                                 onClick = {
                                     menu = false
-                                    if (action == BubbleAction.Speak) onSpeak(item.key, item.text)
-                                    else onBubbleAction(action, item.text)
+                                    when (action) {
+                                        BubbleAction.Copy ->
+                                            clipboard.setText(AnnotatedString(item.text))
+                                        BubbleAction.Speak -> onSpeak(item.key, item.text)
+                                        else -> onBubbleAction(action, item.text)
+                                    }
                                 },
                             )
                         }
@@ -1196,7 +1211,9 @@ private fun ChatItemView(
                 ) {
                     Box(
                         Modifier
-                            .size(26.dp)
+                            // PR 93508: 44px dokunma hedefi — görsel ikon 16dp kalır,
+                            // dokunma alanı en az 44dp (erişilebilirlik standardı).
+                            .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
                             .clip(MaterialTheme.shapes.medium)
                             .clickable { onSpeak(item.key, item.text) },
                         contentAlignment = Alignment.Center,

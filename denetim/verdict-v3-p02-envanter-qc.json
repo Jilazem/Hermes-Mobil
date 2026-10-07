@@ -1,0 +1,32 @@
+{
+  "verdict": "pass",
+  "gorev": "v3-p02-envanter-qc (kart t_25090fc8; denetlenen: t_2498b8ea / czip v5fzxp)",
+  "tarih": "2026-10-07T10:55:00+03:00",
+  "test_sonucu": "51 dogrulama kontrolu: 45 PASS / 6 FAIL; 6 fail'in 3'u denetcinin tahmini yol hatasi (APK gercek konum app/build/outputs/apk/debug/, rapor iddiasini destekler), 3'u gercek LOW sapma (asagida). Tumu 13 dosya yolu, 13 sembol satiri, 24 dal varligi, 21 modified + untracked listesi, .gradle 14M / app-build 602M / kok build yok, app/src 231 .kt + 18 .xml, /Volumes EX+Macintosh HD diskte dogrulandi.",
+  "findings": [
+    {"sev": "LOW", "id": "genel", "bulgu": "Rapor §1 ve §3.c'de wt/t22-parlaklik dal ucu '328c572'; gercek 328c571 (328c572 diye nesne yok, git cat-file -t fatal). Son commit 21.09.2026'dan beri dal sabit; rapor yazim/sayim hatasi."},
+    {"sev": "LOW", "id": "genel", "bulgu": "Rapor satir 71 'JarvisVoice yalniz main, merge/v3-hat, tur28-webapp-kalip dallarinda'; gercek 4. dal da var: feat/tur29a-ui-streaming (git ls-tree dogrulandi, blob a54b5ae). Ikinci gozun isaret ettigi madde 8/11 sayim celiskisinin kaynagi."},
+    {"sev": "LOW", "id": "genel", "bulgu": "Rapor satir 76 'CrashGuard.kt 18 dalda ok'; gercek 17/24 yerel dalda ok (YOK listesindeki 7 dal dogru). 18+7=25>24, ic tutarsiz sayim."}
+  ],
+  "artifacts": {
+    "denetim/v3-p02-envanter.md": "115f6481e71efe8da6d089aaa27196cc7a1fce5c59a822ece1bfb1b8c2529f12"
+  },
+  "lesson": "Envanter QC'da dal-kanit hucrelerini capraz satirlarla (madde 8/11/13) tutarli oku; sayim iddialarini tek tek cat-file ile yeniden saymadan gecirme.",
+  "preflight": "YOK",
+  "uzman": "cd-android",
+  "deneme_no": "0",
+  "devir": "false",
+  "ikinci_goz": {
+    "karar": "GECTI-KOSULLU",
+    "session": "session-22d2088f-24fa-476f-b17a-54272b79708c",
+    "conditions": [
+      "(a) Madde 8/11/13 dal-kanit sayim celiskisi giderilsin: JarvisVoice gercek kumesi main, merge/v3-hat, tur28-webapp-kalip, tur29a-ui-streaming (4 dal); CrashGuard 17/24 dal; dal basina ok/yok matrisi eklensin.",
+      "(b) §3.b/3.c'ye ahead/behind sayilari ve tur28 unmerged-commit listesi ekstensin (tur28 ahead=1, benim olcum) — yoksa P03 birlestirme dal durumunu yanlis varsayar."
+    ]
+  },
+  "qc_kanit": {
+    "script": "profiles/cd-denetmen/cache/scratch/v3p02_qc.py (salt-okunur git/ls/du/dogrulama, 51 kontrol)",
+    "head": "36f895bdeb65703f30a0c2bbd9cc2e8f04b4443a @ feat/tur29a-ui-streaming",
+    "sha256_rapor": "115f6481e71efe8da6d089aaa27196cc7a1fce5c59a822ece1bfb1b8c2529f12"
+  }
+}

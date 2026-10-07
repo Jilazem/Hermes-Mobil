@@ -116,11 +116,31 @@ object LocalModelLogic {
         }
     }
 
-    /** Chat isteği gövdesi: system + kullanıcı turu (OpenAI messages). */
+    /**
+     * Chat isteği gövdesi: system + kullanıcı turu (OpenAI messages).
+     * [LocalModelLogic.chatBody] geçmişsiz kısayol — tek tur istekler için.
+     */
     fun chatBody(model: String, system: String, userText: String): String =
-        "{\"model\":\"${jsonEscape(model)}\",\"stream\":false,\"messages\":[" +
-            "{\"role\":\"system\",\"content\":\"${jsonEscape(system)}\"}," +
-            "{\"role\":\"user\",\"content\":\"${jsonEscape(userText)}\"}]}"
+        chatBody(model, system, emptyList(), userText)
+
+    /**
+     * Geçmişli chat gövdesi (tur-27): [history] role→metin çiftleri — sırayla
+     * "user"/"assistant" eklenir, en son kullanıcı turu gelir. Böylece yerel
+     * model önceki turları görür; "her mesaj ilk mesaj gibi gitmez".
+     */
+    fun chatBody(
+        model: String,
+        system: String,
+        history: List<Pair<String, String>>,
+        userText: String,
+    ): String = buildString {
+        append("{\"model\":\"${jsonEscape(model)}\",\"stream\":false,\"messages\":[")
+        append("{\"role\":\"system\",\"content\":\"${jsonEscape(system)}\"}")
+        history.forEach { (role, content) ->
+            append(",{\"role\":\"$role\",\"content\":\"${jsonEscape(content)}\"}")
+        }
+        append(",{\"role\":\"user\",\"content\":\"${jsonEscape(userText)}\"}]}")
+    }
 
     /**
      * `choices[0].message.content` — tam parser yerine hedefli regex; dönüşte
@@ -236,9 +256,11 @@ class LocalModelClient(
         text: String,
         model: String = LocalModelLogic.DEFAULT_MODEL,
         system: String = LocalModelLogic.SYSTEM_PROMPT,
+        /** Önceki turlar (role→metin) — boşsa tek tur (tur-27 oturum sürekliliği). */
+        history: List<Pair<String, String>> = emptyList(),
     ): String = withContext(Dispatchers.IO) {
         val url = url("/v1/chat/completions")
-        val payload = LocalModelLogic.chatBody(model, system, text)
+        val payload = LocalModelLogic.chatBody(model, system, history, text)
             .toRequestBody(JSON_MEDIA)
         DiagLog.i("LocalLLM", "POST $url · model=$model · azami sn=${readTimeoutMs / 1000}")
         try {

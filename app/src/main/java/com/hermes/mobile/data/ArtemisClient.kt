@@ -44,7 +44,7 @@ class ArtemisClient(baseUrl: String) {
                 .header("Accept", "application/json").build()
             http.newCall(req).execute().use { res ->
                 val text = res.body?.string().orEmpty()
-                if (!res.isSuccessful) throw IOException("Artemis $path → HTTP ${res.code} ${text.take(160)}")
+                if (!res.isSuccessful) throw ArtemisHttpException(res.code, "Artemis $path → HTTP ${res.code} ${text.take(160)}")
                 json.parseToJsonElement(text.ifBlank { "{}" })
             }
         }
@@ -67,10 +67,20 @@ class ArtemisClient(baseUrl: String) {
         return ArtemisLogic.parseSubmit(call("POST", "/api/run", payload).jsonObject, id).getOrThrow()
     }
 
-    suspend fun task(id: String): ArtemisLogic.Task =
+    suspend fun task(id: String): ArtemisLogic.Task = try {
         ArtemisLogic.parseTask(call("GET", "/api/sessions/$id").jsonObject, id)
+    } catch (e: ArtemisHttpException) {
+        if (e.code != 404) throw e
+        // The official client also consults the scheduler during admission.
+        ArtemisLogic.parseLiveTask(call("GET", "/api/status").jsonObject, id)
+    }
 
     suspend fun stop(id: String) {
-        call("POST", "/api/stop", buildJsonObject { put("session_id", id) })
+        val response = call("POST", "/api/stop", buildJsonObject { put("session_id", id) }).jsonObject
+        check(response["status"]?.toString()?.trim('"')?.lowercase() == "stopped") {
+            "Artemis görevin durduğunu doğrulamadı; görev sürüyor olabilir."
+        }
     }
 }
+
+private class ArtemisHttpException(val code: Int, message: String) : IOException(message)

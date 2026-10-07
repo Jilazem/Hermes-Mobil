@@ -43,6 +43,7 @@ import com.hermes.mobile.data.planShareUpload
 import com.hermes.mobile.data.settleShare
 import com.hermes.mobile.data.resolveShareTarget
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -170,6 +171,12 @@ private const val QUEUE_NOTICE_KEY = "queue-notice"
 /** Devam ettirilen oturumda geri yüklenecek azami mesaj sayısı. */
 private const val HISTORY_LIMIT = 150
 
+/**
+ * Yerel modele (node1) giden istekte taşınan azami ÖNCEKİ tur sayısı (tur-27).
+ * Son N user/assistant balonu sohbet akışından kesilir; bu turun kendisi hariç.
+ */
+private const val LOCAL_HISTORY_LIMIT = 20
+
 /** Gönderilmeyi bekleyen ek. */
 data class PendingAttachment(
     val label: String,
@@ -186,6 +193,7 @@ data class ChatState(
     val items: List<ChatItem> = emptyList(),
     val connection: ConnectionState = ConnectionState.Idle,
     val sessionId: String? = null,
+    val storedSessionId: String? = null,
     val sending: Boolean = false,
     val agentBusy: Boolean = false,
     val statusLine: String? = null,
@@ -459,6 +467,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private var profileId: String? = null
     private var eventJob: Job? = null
     private var stateJob: Job? = null
+    private var sessionLoadJob: Job? = null
     private var seq = 0
     private var streamingKey: String? = null
     private var thinkingKey: String? = null
@@ -834,6 +843,20 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun sendLocalAssistant(label: String) {
         val client = localModelClient
+        // Tur-27 oturum sürekliliği: yerel model TURLER ARASI geçmişi görür.
+        // Geçmiş YENİ kullanıcı turu EKLENMEDEN önce okunur (aksi halde bu tur
+        // iki kez gider); sohbette çizilen User/Assistant balonlarından kurulur
+        // (Notice/Tool/Thinking hariç), son [LOCAL_HISTORY_LIMIT] tur yeterli.
+        val history = _state.value.items
+            .mapNotNull { item ->
+                when (item) {
+                    is ChatItem.User -> "user" to item.text
+                    is ChatItem.Assistant ->
+                        if (item.text.isNotBlank()) "assistant" to item.text else null
+                    else -> null
+                }
+            }
+            .takeLast(LOCAL_HISTORY_LIMIT)
         _state.update {
             it.copy(
                 items = it.items + ChatItem.User(nextKey("u"), label),
@@ -870,6 +893,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     label,
                     settings_localModelName,
                     system = JarvisIdentity.SYSTEM_PROMPT,
+                    history = history,
                 )
             }
                 .onSuccess { answer ->
@@ -883,6 +907,24 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         )
                     }
                     Notifier.agentReply(getApplication(), answer, sessionId = _state.value.sessionId)
+                    // Tur-27 (ses hattı): yerel yanıt da SESLENDİRİLİR —
+                    // gateway yolundaki message.complete okuma kararının aynısı.
+                    // Önceden bu yol hiç okumuyordu: asistan modunda/hands-free'de
+                    // Jarvis döngüsünde cevap sessizce ekranda kalıyordu.
+                    if (jarvisLoop.state.value.phase == JarvisLoopLogic.Phase.WaitReply) {
+                        addCaption(JarvisLoopLogic.Caption("agent", answer))
+                        jarvisLoop.onAgentReply(answer)
+                    } else if (_state.value.handsFree && answer.isNotBlank()) {
+                        voice.speak(answer)
+                    } else if (
+                        AssistantModeLogic.shouldAutoRead(
+                            assistantMode = _state.value.assistantMode,
+                            settingOn = assistantAutoRead,
+                            reply = answer,
+                        )
+                    ) {
+                        voiceMsg.speak(key, answer)
+                    }
                 }
                 .onFailure { e ->
                     if (e is kotlinx.coroutines.CancellationException) throw e
@@ -1050,6 +1092,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun teardown() {
+        sessionLoadJob?.cancel()
         eventJob?.cancel()
         stateJob?.cancel()
         client?.close()
@@ -1083,7 +1126,30 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             .onSuccess { _state.update { it.copy(currentModel = parts[1]) } }
     }
 
+    private suspend fun ensureConversation(gw: GatewayWsClient): String {
+        val current = _state.value
+        val existing = current.sessionId
+        val sid = if (existing != null) {
+            gw.attachSession(existing, current.storedSessionId ?: gw.storedSessionId(existing))
+        } else if (current.storedSessionId != null) {
+            gw.resumeSession(current.storedSessionId)
+        } else {
+            createSessionWithProfile(gw).also { applyPreferredModel(gw, it) }
+        }
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        check(_state.value.sessionId == current.sessionId && _state.value.storedSessionId == current.storedSessionId) {
+            "Gönderirken oturum değişti; mesajı seçtiğiniz konuşmada tekrar gönderin"
+        }
+        _state.update { it.copy(sessionId = sid, storedSessionId = gw.storedSessionId(sid)) }
+        onSessionChanged?.invoke(gw.storedSessionId(sid))
+        return sid
+    }
+
     fun send(text: String) {
+        if (_state.value.historyLoading) {
+            _state.update { it.copy(notice = tr("Oturum yükleniyor; birkaç saniye bekleyin", "Session is loading; please wait")) }
+            return
+        }
         val body = text.trim()
         val ready = _state.value.attachments.filter { it.remotePath != null }
         if (body.isEmpty() && ready.isEmpty()) return
@@ -1122,7 +1188,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         // uçtan geçer. Hata olursa AÇIK gösterilir ve YEREL'de kalınır —
         // sessiz Gemini'ye geçiş YOK (kullanıcı onaylı geçiş, D-04/d-06
         // disiplini: hata yutulmaz, kullanıcı formatlı mesaj üretilir).
-        if (liveProvider == LiveModelLogic.Provider.YEREL) {
+        if (liveProvider == LiveModelLogic.Provider.YEREL &&
+            _state.value.sessionId == null && _state.value.storedSessionId == null) {
             sendLocalAssistant(label)
             return
         }
@@ -1161,11 +1228,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
-                    _state.update { it.copy(sessionId = id) }
-                    onSessionChanged?.invoke(id)
-                    applyPreferredModel(gw, id)
-                }
+                val sid = ensureConversation(gw)
                 // Görseller ajana TUI'nin `/image <path>` komutuyla verilir —
                 // dashboard'ın yapıştırma akışının aynısı. Diğer dosyalar yolla
                 // birlikte metne gömülür; ajan kendi dosya araçlarıyla açar.
@@ -1214,10 +1277,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
-                    _state.update { it.copy(sessionId = id) }
-                    onSessionChanged?.invoke(id)
-                }
+                val sid = ensureConversation(gw)
                 gw.slashExec(sid, command)
             }
                 .onSuccess { output ->
@@ -1834,11 +1894,20 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         // `it` ve dıştakini gölgeliyor — oturum kimliği yerine istisna geçerdi.
         if (sid != null) {
             runCatching { gw.activateSession(sid) }
-                .recoverCatching { gw.resumeSession(sid) }
+                .recoverCatching { gw.resumeSession(_state.value.storedSessionId ?: gw.storedSessionId(sid)) }
+                .onSuccess { runtimeId ->
+                    if (_state.value.sessionId == sid) {
+                        _state.update { it.copy(sessionId = runtimeId, storedSessionId = gw.storedSessionId(runtimeId)) }
+                        onSessionChanged?.invoke(gw.storedSessionId(runtimeId))
+                    }
+                }
                 // Bu sessizce başarısız olursa `prompt.submit` boşa gidiyor ve
                 // kullanıcı sonsuza kadar "Düşünüyor" görüyor — hiçbir yerde iz
                 // kalmadığı için tam olarak bu, teşhis edilemeyen şikayetti.
-                .onFailure { e -> DiagLog.e("chat", "could not re-attach to session", e) }
+                .onFailure { e ->
+                    DiagLog.e("chat", "could not re-attach to session", e)
+                    _state.update { it.copy(notice = tr("Oturuma yeniden bağlanılamadı: ", "Could not reconnect to session: ") + e.message) }
+                }
         }
         syncPending()
         flushOutbox()
@@ -1852,11 +1921,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         outbox.clear()
         for (body in queued) {
             runCatching {
-                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
-                    _state.update { it.copy(sessionId = id) }
-                    onSessionChanged?.invoke(id)
-                    applyPreferredModel(gw, id)
-                }
+                val sid = ensureConversation(gw)
                 gw.submitPrompt(sid, body)
             }.onFailure { e ->
                 // Gönderemediysek geri koy; bir dahaki bağlanmada denenir.
@@ -2068,6 +2133,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }.getOrNull()
 
     fun newSession() {
+        sessionLoadJob?.cancel()
         _state.update { ChatState(connection = it.connection) }
         streamingKey = null
         thinkingKey = null
@@ -2089,7 +2155,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     fun continueSession(liveId: String, dbId: String, title: String) {
         val p = profile ?: return
         val gw = client ?: return
-        onSessionChanged?.invoke(liveId)
+        sessionLoadJob?.cancel()
+        onSessionChanged?.invoke(dbId.ifBlank { liveId })
         // Tur-16: sol ray kaldırıldı — son açık oturum kalıcılığı artık
         // settings.lastSession + çekmece (lastSessionToRestore) üzerinden.
 
@@ -2107,6 +2174,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 connection = it.connection,
                 currentModel = it.currentModel,
                 sessionId = liveId,
+                storedSessionId = dbId.ifBlank { liveId },
                 // Tur-4 (P3 #8): üst şerit KONUYU gösterir — model orada durmaz.
                 topic = title,
                 // KALAN-1: geçmiş gelene kadar iskelet balonlar (aşağıda
@@ -2118,52 +2186,40 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
 
-        viewModelScope.launch {
+        sessionLoadJob = viewModelScope.launch {
             // Oturum gateway'in belleğinde hâlâ duruyor mu? Duruyorsa tam
             // süreklilik (aynı bağlam); durmuyorsa geçmişi yine gösteririz ama
             // sonraki mesaj yeni oturum açmalı — ölü kimliğe prompt göndermek
             // sessizce başarısız olurdu.
-            val alive = runCatching { gw.activateSession(liveId) }
-                .recoverCatching { gw.resumeSession(liveId) }
-                .isSuccess
-
-            if (!alive) {
-                _state.update { it.copy(sessionId = null) }
-                onSessionChanged?.invoke("")
+            val attached = runCatching { gw.attachSession(liveId, dbId.ifBlank { gw.storedSessionId(liveId) }) }
+            if (attached.exceptionOrNull() is kotlinx.coroutines.CancellationException) throw attached.exceptionOrNull()!!
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            val runtimeId = attached.getOrNull()
+            val alive = runtimeId != null
+            if (runtimeId != null) {
+                _state.update { it.copy(sessionId = runtimeId, storedSessionId = gw.storedSessionId(runtimeId)) }
+                onSessionChanged?.invoke(gw.storedSessionId(runtimeId))
             }
 
             // Canlı oturumun geçmişi gateway belleğinde; REST'te görünmüyor.
             // Oturum düştüyse veritabanına düşüyoruz.
             val fromLive =
-                if (alive) runCatching { gw.sessionHistory(liveId) }.getOrDefault(emptyList())
+                if (runtimeId != null) runCatching { gw.sessionHistory(runtimeId) }.getOrDefault(emptyList())
                 else emptyList()
             val all = fromLive.ifEmpty {
                 runCatching { HermesClient(p).sessionMessages(dbId) }
                     .getOrDefault(emptyList())
-                    .ifEmpty {
-                        // Süreç içi kimlik ile veritabanı kimliği farklı olabiliyor
-                        // (`id` vs `session_key`). Açılışta elimizde yalnız
-                        // birincisi var; eşleşmezse en son konuşmaya düşüyoruz —
-                        // kullanıcının "kaldığım yer" dediği şey zaten o.
-                        runCatching {
-                            val client = HermesClient(p)
-                            // En son başlayan, mesajı olan oturum — "kaldığım
-                            // yer" bu. En büyük oturum değil.
-                            val newest = client.sessions()
-                                .filter { it.messageCount > 0 }
-                                .maxByOrNull { it.startedAt ?: 0.0 }
-                            newest?.let { client.sessionMessages(it.id) }.orEmpty()
-                        }.getOrDefault(emptyList())
-                    }
             }
 
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (all.isEmpty()) {
                 // Ne canlı ne veritabanı — kullanıcıyı hata metniyle karşılamak
                 // yerine temiz bir sohbetle başlat.
                 _state.update { st ->
                     st.copy(
-                        items = if (alive) st.items else emptyList(),
-                        sessionId = if (alive) st.sessionId else null,
+                        items = st.items + if (!alive) listOf(ChatItem.Notice(nextKey("n"),
+                            tr("Bu oturum geri yüklenemedi: ", "Could not restore this session: ") +
+                                (attached.exceptionOrNull()?.message ?: ""), isError = true)) else emptyList(),
                         historyLoading = false,
                     )
                 }
@@ -2214,8 +2270,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 nextKey("n"),
                 if (alive) tr("— buradan devam —", "— continue here —")
                 else tr(
-                    "— önceki oturum sunucuda kapanmış; yazınca yeni oturum açılır —",
-                    "— previous session closed on the server; typing starts a new one —",
+                    "— oturuma bağlanılamadı; yanıt gönderirken aynı oturum tekrar denenecek —",
+                    "— session unavailable; replying retries this same conversation —",
                 ),
             )
 

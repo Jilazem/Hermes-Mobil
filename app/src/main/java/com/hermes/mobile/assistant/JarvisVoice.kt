@@ -14,6 +14,11 @@ import com.hermes.mobile.data.SettingsStore
 import com.hermes.mobile.data.VoiceApiClient
 import com.hermes.mobile.data.VoiceApiEndpoints
 import com.hermes.mobile.data.VoiceSpeakLogic
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,6 +40,7 @@ import kotlin.math.sqrt
 interface JarvisVoice {
     var onDone: (() -> Unit)?
     var onLevel: ((Float) -> Unit)?
+    var onError: ((String) -> Unit)?
     fun say(sentence: String)
     fun finish()
     fun stop()
@@ -79,6 +85,7 @@ class AndroidTtsVoice(
 
     override var onDone: (() -> Unit)? = null
     override var onLevel: ((Float) -> Unit)? = null
+    override var onError: ((String) -> Unit)? = null
 
     private var ready = false
     private var failed = false
@@ -86,6 +93,7 @@ class AndroidTtsVoice(
     private val pending = AtomicInteger(0)
     @Volatile private var finished = false
     private var seq = 0
+    private val activeUtterances = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     private val tts: TextToSpeech = TextToSpeech(
         context.applicationContext,
@@ -106,6 +114,7 @@ class AndroidTtsVoice(
         if (status != TextToSpeech.SUCCESS) {
             failed = true
             DiagLog.w("jarvis", "TTS açılamadı ($status)")
+            onError?.invoke("Telefon ses motoru açılamadı. Ayarlar → Metin okuma'dan bir ses motoru yükle veya seç.")
             synchronized(waiting) { waiting.clear() }
             pending.set(0)
             maybeDone()
@@ -122,10 +131,10 @@ class AndroidTtsVoice(
         )
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) = Unit
-            override fun onDone(utteranceId: String?) = utteranceEnded()
+            override fun onDone(utteranceId: String?) = utteranceEnded(utteranceId)
             @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) = utteranceEnded()
-            override fun onError(utteranceId: String?, errorCode: Int) = utteranceEnded()
+            override fun onError(utteranceId: String?) = utteranceFailed(utteranceId)
+            override fun onError(utteranceId: String?, errorCode: Int) = utteranceFailed(utteranceId)
             override fun onStop(utteranceId: String?, interrupted: Boolean) = Unit
             override fun onAudioAvailable(utteranceId: String?, audio: ByteArray?) {
                 audio?.let { onLevel?.invoke(pcm16Level(it)) }
@@ -137,7 +146,14 @@ class AndroidTtsVoice(
         maybeDone()
     }
 
-    private fun utteranceEnded() {
+    private fun utteranceFailed(id: String?) {
+        if (id == null || id !in activeUtterances) return
+        onError?.invoke("Ses okunamadı. Telefonun Türkçe ses paketini ve metin okuma ayarlarını kontrol et.")
+        utteranceEnded(id)
+    }
+
+    private fun utteranceEnded(id: String?) {
+        if (id == null || !activeUtterances.remove(id)) return
         onLevel?.invoke(0f)
         pending.decrementAndGet()
         maybeDone()
@@ -156,8 +172,9 @@ class AndroidTtsVoice(
 
     private fun speakNow(text: String) {
         val id = "jarvis-${seq++}"
+        activeUtterances.add(id)
         val r = tts.speak(text, TextToSpeech.QUEUE_ADD, Bundle(), id)
-        if (r != TextToSpeech.SUCCESS) utteranceEnded()
+        if (r != TextToSpeech.SUCCESS) utteranceFailed(id)
     }
 
     override fun finish() {
@@ -168,6 +185,7 @@ class AndroidTtsVoice(
     override fun stop() {
         synchronized(waiting) { waiting.clear() }
         pending.set(0)
+        activeUtterances.clear()
         finished = false
         runCatching { tts.stop() }
         onLevel?.invoke(0f)
@@ -213,6 +231,7 @@ class AndroidTtsVoice(
 abstract class FileQueueVoice(context: Context) : JarvisVoice {
     override var onDone: (() -> Unit)? = null
     override var onLevel: ((Float) -> Unit)? = null
+    override var onError: ((String) -> Unit)? = null
 
     protected val appContext: Context = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -221,6 +240,7 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
     private var player: MediaPlayer? = null
     private val dir = File(appContext.cacheDir, "jarvis").apply { mkdirs() }
     private var n = 0
+    private var fallback: AndroidTtsVoice? = null
 
     /** Metni [target] dosyasına seslendirir (IO iş parçacığında çağrılır). */
     protected abstract suspend fun synth(text: String, target: File): File
@@ -244,13 +264,37 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
         val q = queue
         worker = scope.launch {
             for (text in q) {
-                val file = runCatching { synth(text, File(dir, "c${n++}.audio")) }
-                    .onFailure { DiagLog.w("jarvis", "sentez hatası: ${it.message}") }
-                    .getOrNull() ?: continue
-                play(file)
+                try {
+                    val file = synth(text, File(dir, "c${n++}.audio"))
+                    try { play(file) } finally { file.delete() }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    DiagLog.w("jarvis", "sentez/çalma hatası, telefon sesi kullanılıyor: ${e.message}")
+                    speakFallback(text)
+                }
             }
             onLevel?.invoke(0f)
             onDone?.invoke()
+        }
+    }
+
+    private suspend fun speakFallback(text: String) = withContext(Dispatchers.Main) {
+        val settings = SettingsStore(appContext).settings.value
+        val v = fallback ?: AndroidTtsVoice(appContext, settings.assistantTtsPackage,
+            settings.assistantVoiceName, settings.assistantSpeechRate, settings.assistantPitch)
+            .also { fallback = it }
+        val done = CompletableDeferred<Unit>()
+        v.onLevel = { onLevel?.invoke(it) }
+        v.onError = { onError?.invoke(it) }
+        v.onDone = { done.complete(Unit) }
+        try {
+            v.say(text)
+            v.finish()
+            withTimeout(90_000) { done.await() }
+        } finally {
+            v.onDone = null
+            v.stop()
         }
     }
 
@@ -266,11 +310,14 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
                 kotlinx.coroutines.delay(60)
             }
         }
-        fun end() {
+        fun end(error: Exception? = null) {
             pulse.cancel()
             runCatching { mp.release() }
             if (player === mp) player = null
-            if (cont.isActive) cont.resume(Unit)
+            if (cont.isActive) {
+                if (error == null) cont.resume(Unit)
+                else cont.resumeWith(Result.failure(error))
+            }
         }
         runCatching {
             mp.setAudioAttributes(
@@ -279,16 +326,17 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
             )
             mp.setDataSource(file.absolutePath)
             mp.setOnCompletionListener { end() }
-            mp.setOnErrorListener { _, _, _ -> end(); true }
+            mp.setOnErrorListener { _, what, extra -> end(IllegalStateException("Ses dosyası çalınamadı ($what/$extra)")); true }
             mp.prepare()
             mp.start()
-        }.onFailure { end() }
+        }.onFailure { end(IllegalStateException("Ses dosyası açılamadı", it)) }
         cont.invokeOnCancellation { pulse.cancel(); runCatching { mp.stop(); mp.release() } }
     }
 
     override fun stop() {
         worker?.cancel()
         worker = null
+        fallback?.stop()
         queue.close()
         queue = Channel(Channel.UNLIMITED)
         runCatching { player?.stop(); player?.release() }
@@ -298,6 +346,9 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
 
     override fun release() {
         stop()
+        fallback?.release()
+        fallback = null
+        scope.cancel()
     }
 }
 

@@ -111,6 +111,29 @@ object ArtemisLogic {
         return ready.singleOrNull()?.serial
     }
 
+    /** ADB cihazı yokken veya hedef belirsizken sunucunun başka telefonu seçmesini engeller. */
+    fun requireDevice(devices: List<Device>, configured: String, phoneIp: String?): String {
+        val serial = pickDevice(devices, configured, phoneIp)
+            ?: throw IllegalStateException(if (devices.isEmpty())
+                "Artemis'e bağlı telefon yok. USB veya kablosuz ADB bağlantısını kur; Ayarlar → Artemis'ten cihazı seç."
+                else "Birden fazla telefon bağlı. Ayarlar → Artemis'ten bu telefonun ADB seri numarasını seç.")
+        val device = devices.firstOrNull { it.serial == serial }
+            ?: throw IllegalStateException("Seçilen ADB cihazı bağlı değil: $serial. Ayarlar → Artemis'ten cihazı güncelle.")
+        check(device.state in setOf("device", "online", "idle") && !device.busy) {
+            "ADB cihazı hazır değil: ${device.state}. Telefon kilidini aç, USB hata ayıklama iznini onayla veya süren görevi bekle."
+        }
+        return serial
+    }
+
+    /** Yeni kabul edilen görev henüz sessions veritabanına yazılmamış olabilir. */
+    fun parseLiveTask(scheduler: JsonObject, id: String): Task {
+        val live = listOf("queue", "active_tasks").asSequence()
+            .flatMap { (scheduler[it] as? JsonArray).orEmpty().asSequence() }
+            .filterIsInstance<JsonObject>()
+            .firstOrNull { (it["task_id"] ?: it["session_id"]).str() == id }
+        return live?.let { parseTask(it, id) } ?: Task(id, "launching", null, null, null)
+    }
+
     /** Sohbete yazılacak sonuç metni. */
     fun resultText(t: Task, en: Boolean): String = when {
         t.succeeded -> (if (en) "📱 Artemis done" else "📱 Artemis tamamladı") +

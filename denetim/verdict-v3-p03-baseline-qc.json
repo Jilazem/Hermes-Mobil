@@ -1,0 +1,28 @@
+{
+  "verdict": "pass",
+  "gorev": "v3-p03-baseline-qc",
+  "tarih": "2026-10-07T13:30:00+03:00",
+  "test_sonucu": "Kart t_d704d40d salt-okunur dogrulama: denetim/v3-p03-apk-baseline.md'deki iki APK yolu, sha256, boyut ve mtime denetmenin kendi shasum -a 256 + stat ciktiyla birebir tutuyor (app-x86_64 65455220 B, app-arm64-v8a 60086127 B, mtime 2026-10-04 21:42:40). APK mevcut; hash uyumu 2/2. HEAD 36f895bdeb65703f30a0c2bbd9cc2e8f04b4443a ve dal feat/tur29a-ui-streaming raporla ayni. Kaynak dosyaya yazilmadi, commit/push yok.",
+  "findings": [
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "Gradle sayisal exit kodu yakalanmamis (GRADLE_EXIT bos, v3-p03-offline.exit yalniz satir sonu 0x0a); 'basarili' hükmü yalniz logdaki 'BUiLD SUCCESSFUL in 7s' satirina dayaniyor. Rapor bunu seffaf sekilde belirtiyor; kart kapsamindaki hash dogrulamasini etkilemiyor."
+    }
+  ],
+  "conditions": [
+    "Ikinci goz (dsh kod-ikinci-goz) GECTI-KOSULLU dedi: baseline 2026-10-04 paketinden (35 task UP-TO-DATE, taze paketleme yok). Sonraki is 'temiz baseline' üzerine kuruluysa taze paketleme (--rerun-tasks) + yakalanmis GRADLE_EXIT ile yeniden kanitlayin. Bu kartta eksik degil."
+  ],
+  "artifacts": {
+    "denetim/v3-p03-apk-baseline.md": "3b9689370a3b563ffa1569f58172657f1db6495850f60d8254a57627ab39eac0",
+    "app/build/outputs/apk/debug/app-x86_64-debug.apk": "be42732965607bff44e9134e4e47d71ce17b1679a4f542e4e78cfa9372b80fd6",
+    "app/build/outputs/apk/debug/app-arm64-v8a-debug.apk": "2a36a6a7f4ead9c55a6c9545b4f36d90032e5dc23ca6b4f20c3dfb2132ec7603",
+    "cd-android scratch v3-p03-assembleDebug-offline.log": "fae0fc611ff526c94d9b078a913416c5b92ac33a8438d04e6750445e85c0d780"
+  },
+  "lesson": "Hash dogrulamasindan gecen bir baseline, paketleme tazeligini kanitlamadigi surece 'temiz derleme' degil 'mevcut artefakt envanteri'dir; mtime'i raporla ayni sekilde dogrula.",
+  "preflight": "YOK",
+  "uzman": "cd-android",
+  "deneme_no": "0",
+  "devir": false,
+  "ikinci_goz": "GECTI-KOSULLU (conditions alaninda); ikinci goz erisildi, KALDI yok"
+}

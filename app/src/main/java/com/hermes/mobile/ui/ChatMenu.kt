@@ -38,6 +38,9 @@ enum class BubbleAction {
 
     /** Seslendir / durdur (mevcut davranış, menüye taşındı). */
     Speak,
+
+    /** Balon metnini panoya kopyala (PR 93508: Copy/More erişimi). */
+    Copy,
 }
 
 fun chatMenuActions(agentBusy: Boolean): List<ChatMenuAction> =

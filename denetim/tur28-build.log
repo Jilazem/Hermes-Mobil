@@ -1,0 +1,98 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/Users/gokhanuzman/.gradle/wrapper/dists/gradle-8.9-bin/90cnw93cvbtalezasaz0blq0a/gradle-8.9/lib/native-platform-0.22-milestone-26.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Starting a Gradle Daemon, 1 incompatible Daemon could not be reused, use --status for details
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugAarMetadata
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeLibDexDebug
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libimage_processing_util_jni.so, libonnxruntime.so, libsherpa-onnx-c-api.so, libsherpa-onnx-cxx-api.so, libsherpa-onnx-jni.so, libsurface_util_jni.so, libtensorflowlite_jni.so.
+
+> Task :app:processDebugResources
+> Task :app:desugarDebugFileDependencies
+> Task :app:mergeExtDexDebug
+> Task :app:compileDebugKotlin
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/assistant/JarvisVoice.kt:262:48 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/assistant/JarvisVoice.kt:263:19 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:123:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:124:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:131:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:132:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:164:14 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:166:14 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:167:14 'fun setActionStrip(p0: @NonNull() ActionStrip!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:182:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:183:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:203:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:204:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:258:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:283:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1223:59 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1645:31 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/Composer.kt:283:48 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/Composer.kt:574:36 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/DrivingScreen.kt:99:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/LiveVoiceSheet.kt:155:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:68:40 'val Icons.Filled.Subject: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Subject.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:454:76 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/PermissionRows.kt:60:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:262:40 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:800:53 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:58:42 'val Icons.Filled.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Send.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:59:38 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/test/java/com/hermes/mobile/CrashGuardTest.kt:39:52 Division by zero.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/test/java/com/hermes/mobile/ProfileChipLogicTest.kt:87:9 'static fun assertEquals(p0: (Array<Any!>..Array<out Any!>?), p1: (Array<Any!>..Array<out Any!>?)): Unit' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/test/java/com/hermes/mobile/SessionFlowTur19Test.kt:141:46 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///Volumes/EX/80-YEREL/hermes-workspace/Hermes-Mobil/app/src/test/java/com/hermes/mobile/SessionFlowTur19Test.kt:143:21 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+
+BUİLD SUCCESSFUL in 1m 57s
+41 actionable tasks: 41 executed

@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Android Auto servisi.
@@ -28,8 +29,8 @@ import kotlinx.coroutines.launch
  * Android Auto yalnız **şablon** çizdirir — kendi görünümünü koyamazsın, liste /
  * mesaj / gezinme şablonlarından seçersin ve sürüş sırasında satır sayısı
  * sınırlıdır. Bu yüzden buradaki amaç sohbet etmek değil: **durumu göstermek ve
- * sürüş kipini telefonda başlatmak.** Asıl sesli sohbet telefonun Gemini Live
- * bağlantısı üzerinden yürüyor (araç hoparlörüne Bluetooth'tan çıkıyor).
+ * sürüş kipini telefonda başlatmak.** Asıl sesli sohbet telefonun Hermes asistanı
+ * üzerinden yürüyor (araç hoparlörüne Bluetooth'tan çıkıyor).
  *
  * ⚠️ Play Store'un onaylı kategorileri navigasyon/ses/mesajlaşma. Genel amaçlı
  * asistan için resmî yol yok — bu uygulama yan yüklendiği için çalışıyor.
@@ -43,8 +44,8 @@ class HermesCarService : CarAppService() {
         HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
 
     override fun onCreateSession(): Session = object : Session() {
-        // V3: açılış ekranı telefon ekranı yansıtması; "Durum" ile bu ekrana geçilir.
-        override fun onCreateScreen(intent: Intent): Screen = MirrorScreen(carContext)
+        // Always render a supported template; screen projection needs a separate phone consent.
+        override fun onCreateScreen(intent: Intent): Screen = HermesCarScreen(carContext)
     }
 }
 
@@ -80,33 +81,39 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         scope.launch {
             val profile = runCatching { store.active() }.getOrNull()
             if (profile == null || profile.token.isBlank()) {
-                loading = false
-                error = "Telefonda sunucu profili ayarlanmamış"
-                invalidate()
+                withContext(Dispatchers.Main) {
+                    loading = false
+                    error = "Hermes'i telefonda açıp sunucu profilini seç. Yerel asistan için Konuş'a dokunabilirsin."
+                    invalidate()
+                }
                 return@launch
             }
 
             val client = HermesClient(profile)
-            runCatching {
+            val result = runCatching {
                 val status = client.status()
-                val stats = client.systemStats()
-                val sessions = client.sessions()
+                val stats = runCatching { client.systemStats() }.getOrNull()
+                val sessions = runCatching { client.sessions() }.getOrDefault(emptyList())
 
-                statusLine = "Gateway ${status.gatewayState} · v${status.version}" +
-                    " · ${status.activeAgents} ajan"
-                systemLine = "CPU %${stats.cpuPercent.toInt()} · " +
-                    "RAM %${stats.memory.percent.toInt()} · " +
-                    "Disk %${stats.disk.percent.toInt()}"
-                sessionLines = sessions
-                    .filter { it.isActive }
-                    .take(4)
-                    .map { "${it.title.take(40)} · ${it.messageCount} mesaj" }
-                error = null
-            }.onFailure {
-                error = "Sunucuya ulaşılamadı"
+                Triple(
+                    "Gateway ${status.gatewayState} · v${status.version} · ${status.activeAgents} ajan",
+                    stats?.let { "CPU %${it.cpuPercent.toInt()} · RAM %${it.memory.percent.toInt()} · Disk %${it.disk.percent.toInt()}" }
+                        ?: "Sistem istatistikleri alınamadı",
+                    sessions.filter { it.isActive }.take(3).map { "${it.title.take(40)} · ${it.messageCount} mesaj" },
+                )
             }
-            loading = false
-            invalidate()
+            withContext(Dispatchers.Main) {
+                result.onSuccess { (status, system, sessions) ->
+                    statusLine = status
+                    systemLine = system
+                    sessionLines = sessions
+                    error = null
+                }.onFailure {
+                    error = "Sunucuya ulaşılamadı. Telefonun ağını ve Hermes sunucu profilini kontrol et."
+                }
+                loading = false
+                invalidate()
+            }
         }
     }
 
@@ -114,6 +121,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         if (loading) {
             return MessageTemplate.Builder("Hermes'e bağlanılıyor…")
                 .setTitle("Hermes")
+                .setHeaderAction(Action.APP_ICON)
                 .setLoading(true)
                 .build()
         }
@@ -121,6 +129,8 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         error?.let { message ->
             return MessageTemplate.Builder(message)
                 .setTitle("Hermes")
+                .setHeaderAction(Action.APP_ICON)
+                .addAction(Action.Builder().setTitle("Konuş").setOnClickListener { startVoiceOnPhone() }.build())
                 .addAction(
                     Action.Builder()
                         .setTitle("Yeniden dene")
@@ -131,6 +141,9 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         }
 
         val list = ItemList.Builder().apply {
+            addItem(Row.Builder().setTitle("Hermes Asistan")
+                .addText("Sesli konuşmayı telefonda başlat")
+                .setOnClickListener { startVoiceOnPhone() }.build())
             addItem(
                 Row.Builder()
                     .setTitle("Durum")
@@ -150,7 +163,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         return ListTemplate.Builder()
             .setTitle("Hermes")
             .setSingleList(list)
-            .setHeaderAction(Action.BACK)
+            .setHeaderAction(Action.APP_ICON)
             .setActionStrip(
                 androidx.car.app.model.ActionStrip.Builder()
                     .addAction(
@@ -171,7 +184,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     /**
-     * Telefonda sürüş kipini başlatır.
+     * Telefonda Hermes asistanını başlatır (bulut ses anahtarı gerektirmez).
      *
      * Sesli konuşma araç ekranında değil telefonda yürüyor: Car App Library
      * yalnız şablon çizdiriyor, mikrofon/hoparlör akışına karışamıyor. Ses
@@ -183,10 +196,10 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             carContext.startActivity(
                 android.content.Intent(carContext, com.hermes.mobile.MainActivity::class.java)
                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    .putExtra("hermes_action", "driving")
+                    .putExtra("hermes_action", "jarvis")
             )
             androidx.car.app.CarToast
-                .makeText(carContext, "Telefonda sürüş kipi açıldı", androidx.car.app.CarToast.LENGTH_SHORT)
+                .makeText(carContext, "Telefonda Hermes asistan açılıyor", androidx.car.app.CarToast.LENGTH_SHORT)
                 .show()
         }.onFailure {
             androidx.car.app.CarToast

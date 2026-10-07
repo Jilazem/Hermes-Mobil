@@ -157,4 +157,29 @@ class LiveModelChoiceTest {
         assertEquals(200, LocalModelLogic.bodySnippet("z".repeat(999))?.length)
         assertNull(LocalModelLogic.bodySnippet("   "))
     }
+
+    @Test
+    fun `chat govdesi gecmisi tasiyabilir — user assistant sirali, son tur en sonda`() {
+        val body = LocalModelLogic.chatBody(
+            model = "Qwen/Qwen3.8-Flash-Next",
+            system = "Sen Hermes'sin",
+            history = listOf(
+                "user" to "bugün hava nasıl",
+                "assistant" to "Güneşli.",
+            ),
+            userText = "peki yarın",
+        )
+        // Sıra: system → geçmiş user → geçmiş assistant → son kullanıcı turu.
+        val sys = body.indexOf("\"system\"")
+        val u1 = body.indexOf("bugün hava nasıl")
+        val a1 = body.indexOf("Güneşli.")
+        val u2 = body.indexOf("peki yarın")
+        assertTrue(sys in 0 until u1)
+        assertTrue(u1 < a1 && a1 < u2)
+        assertTrue(body.contains("\"role\":\"user\""))
+        assertTrue(body.contains("\"role\":\"assistant\""))
+        // Geçmişsiz kısayol aynı gövdeyi üretir (geriye uyum).
+        val plain = LocalModelLogic.chatBody("m", "s", "u")
+        assertTrue(plain.contains("\"messages\":[{\"role\":\"system\",\"content\":\"s\"},{\"role\":\"user\",\"content\":\"u\"}]"))
+    }
 }

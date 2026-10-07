@@ -1,0 +1,13 @@
+TUR-28 kanit — PR 93508 kalip aktarimi (2026-10-04)
+Komut : ./gradlew :app:testDebugUnitTest --rerun-tasks :app:assembleDebug
+Sonuc : BUILD SUCCESSFUL in 1m 57s, 41 actionable tasks: 41 executed (denetim/tur28-build.log)
+Test  : 75 suite / 883 test / 0 fail / 0 err / 0 skip (taze XML, --rerun-tasks, UP-TO-DATE yok)
+        Yeni: TEST-com.hermes.mobile.SessionContinuationTest.xml, TEST-com.hermes.mobile.ChatMenuTest.xml
+APK   : app-arm64-v8a-debug.apk md5 d3d6c1e681e55e3d7e5aeda23de0ca99
+        app-x86_64-debug.apk md5 2ab35d194f2378ee7f37ff450584cdb1
+Emulator: emulator-5554 (sdk_gphone64_arm64)
+  adb install -r app-arm64-v8a-debug.apk -> Success
+  logcat -b crash -d (once) -> bos
+  am start -n com.hermes.mobile.v3/com.hermes.mobile.MainActivity -> Starting: Intent (Status ok)
+  logcat -b crash -d (sonra, 8 sn bekleme sonrasi) -> bos
+  dumpsys: topResumedActivity=...com.hermes.mobile.v3/com.hermes.mobile.MainActivity t221

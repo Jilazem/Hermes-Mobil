@@ -74,15 +74,12 @@ class ReplyService : Service() {
                     gw.connection.first { it is ConnectionState.Open }
                 }
                 checkNotNull(opened) { "Bağlantı açılmadı" }
-                val sid = sessionId?.takeIf { it.isNotBlank() } ?: gw.createSession(null)
-                // Oturum canlı değilse devam ettir; olmazsa yine de dene.
-                if (sessionId != null) {
-                    runCatching { gw.activateSession(sid) }
-                        .recoverCatching { gw.resumeSession(sid) }
-                }
+                val target = sessionId?.takeIf { it.isNotBlank() }
+                val sid = if (target != null) gw.attachSession(target) else gw.createSession(null)
 
                 val collector = scope.launch {
                     gw.events.collect { e ->
+                        if (e.sessionId != sid) return@collect
                         if (e.type == "message.complete" || e.type == "message.delta") {
                             e.text?.takeIf { it.isNotBlank() }?.let { reply = it }
                         }

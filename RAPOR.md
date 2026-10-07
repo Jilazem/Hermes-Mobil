@@ -196,6 +196,80 @@ Denetim r1 FAIL (denetim/verdict-tur24-jarvis2.json) → dört madde kapatıldı
   23.09 XML sayımı; +1 = canlı-payload regresyon testi).
 - Commitler: fix+kanıt+RAPOR bu committe; branch wt/t24-fix, push YOK.
 
+## TUR-28 — PR 93508 webapp kalıp aktarımı (04.10.2026 15:20)
+
+Üst kaynak: NousResearch/hermes-agent PR #93508 (hermes webapp, MERGED) — tarayıcı-hosted
+Desktop renderer'ın taşıdığı kalıpların mobil (Hermes-Mobil) karşılıkları. Önce mevcut
+durum grep + test XML ile ölçüldü, sonra eksik uygulandı (tahmin yok).
+
+### Kalıp envanteri (dosya:satır kaynaklı)
+
+1. Reconnect grace / kopma sürekliliği — ZATEN VARDI (tur26):
+   `ChatViewModel.kt:1061` onReconnected → `reattach` (ChatViewModel.kt:1890-1916,
+   activate→resume recoverCatching zinciri) + outbox kuyruğu (ChatViewModel.kt:979,
+   1200-1210, 1918+). Kopan tur kuyruğu saklanıp soket açılınca gönderiliyor.
+2. 44px dokunma hedefleri + Copy/More — TUR-28A dalında uygulandı
+   (branch feat/tur28-webapp-kalip, commit 9c2fd21; bu turda çalışma ağacına da
+   uygulandı): `ChatScreen.kt:1208` Speak dokunma alanı sizeIn(44dp×44dp) — görsel
+   ikon 16dp kalır; `ChatScreen.kt:647` heightIn(min=44dp); `ChatMenu.kt:42-43`
+   BubbleAction.Copy; kullanıcı balonunda uzun basış = kopyala
+   (ChatScreen.kt:1141 combinedClickable); menüde "Kopyala" girişi
+   (ChatScreen.kt:1171-1187); `MainActivity.kt:1272` Copy -> Unit (panoya yazar,
+   sohbet hattına düşmez). Test: ChatMenuTest.
+3. Authenticated stream + Range medya — MOBİLDE EŞDEĞERİ VAR, ayrı oynatıcı YOK
+   (bilinçli): medya/dosya token-sorgu-parametreli kimlikli URL ile dış oynatıcıya/
+   tarayıcıya verilir (FileLinks.kt:69-73 downloadUrl; MainActivity.kt:305-316
+   ACTION_VIEW). Range desteği sunucu tarafındadır (upstream), istemci Range
+   göndermez; uygulama içi video oynatıcı kapsam dışı bırakıldı (WebView gömme
+   pilotu gibi ayrı karar).
+4. Dosya indirme köprüsü — ZATEN VARDI: FileLinks.kt (yol→indirilebilir kart,
+   `/_QUERY_TOKEN_API_PATHS` sorgu-token sözleşmesi) + MainActivity.kt:313-316.
+5. Oturum rayı birleşimi (açılanlar ∪ aktifler) — ZATEN VARDI (tur16):
+   SessionDrawerLogic.kt:141+ drawerRows(sessions ∪ live) — REST /api/sessions
+   ("açılanlar") ile session.active_list ("aktifler") tek listede, dot/epoch birleşik.
+6. IME çift-inset — ZATEN VARDI: MainActivity.kt:1133 consumeWindowInsets
+   (imePadding ikinci kez ekleniyordu; düzeltme mevcut).
+7. OTURUM KİMLİĞİ BAĞLAMA — BU TURUN YENİ İŞİ (PR'ın "(profile, id)" kimliği +
+   "reused stream IDs" kalıbının mobil karşılığı):
+   - YENİ `SessionBinding.kt`: sunucudan dönen runtime `session_id` ile kalıcı
+     `session_key/stored_session_id` AYRI taşınır; `restoreConversation` activate
+     başarısızsa resume'a düşer, başarısızlık boş sohbet AÇMAZ, CancellationException
+     birebir geçer.
+   - `GatewayWsClient.kt:59-67`: runtime→stored bağlama haritası (ConcurrentHashMap),
+     `bindSession` create/resume/activate yanıtlarında (191, 240, 301),
+     `attachSession(runtimeId, storedId)` (67) — resume `omit_messages:true` +
+     60 sn timeout ile hafif.
+   - `ChatViewModel.kt:1129-1146` `ensureConversation`: gönderim anında oturum
+     değişirse `check` ile reddeder (sessiz yanlış-sohbete yazma yok),
+     `ensureActive()` ile iptale saygılı; storedSessionId ChatState'te
+     (ChatViewModel.kt:196) kalıcı kayda onSessionChanged ile yazılır.
+   - `ReplyService.kt:74-82`: attachSession + olay filtresi `e.sessionId != sid`
+     (başka oturumun olayı yanıta karışamaz).
+   - `JarvisBrain.kt:67-85`: profil koruması (KEY_PROFILE eşleşmezse resume yok)
+     + stored id saklama; resume/activate artık dönen runtime id'yi döndürür.
+   - Test: SessionContinuationTest (6 test: soğuk dönüş, başarılı activate resume
+     ÇAĞIRMAZ, başarısızlık boş sohbet açmaz, iptal resume tetiklemez,
+     stored-key ayrıştırma, bozuk yanıt eski kimliği kullanamaz).
+
+### Doğrulama (kanıt: denetim/tur28/kanit-tur28.txt)
+- Test: `./gradlew :app:testDebugUnitTest --rerun-tasks :app:assembleDebug` →
+  BUILD SUCCESSFUL 1m 57s; XML sayımı: 75 suite / 883 test / 0 fail / 0 err /
+  0 skip (taze koşum, UP-TO-DATE sayılmadı).
+- Emülatör (emulator-5554, sdk_gphone64_arm64): arm64 APK install → Success;
+  `am start -n com.hermes.mobile.v3/com.hermes.mobile.MainActivity` ok;
+  topResumedActivity doğrulandı; `logcat -b crash -d` önce/sonra BOŞ.
+- APK: arm64 md5 d3d6c1e681e55e3d7e5aeda23de0ca99, x86_64 md5
+  2ab35d194f2378ee7f37ff450584cdb1; teslim
+  /Volumes/EX/007-HERMES-M4-LIVE/05-GEICICI/t28-webapp-kalip/.
+
+### Kapsam dışı / notlar
+- `hermes webapp` komutu yerel hermes-agent'a güncelleme ile gelir — BU TURA
+  DAHİL EDİLMEDİ (Mac'te tarayıcı erişimi ayrı iş).
+- Push/merge ana dala YOK: 44px turu feat/tur28-webapp-kalip dalında (9c2fd21),
+  oturum-kimliği işi çalışma ağacında denetim bekliyor (tur27 usulü).
+- Çalışma ağacındaki diğer değişiklikler (arena/jarvis/car — tur27 öncesi işler)
+  bu turun kapsamı değildir, dokunulmadı.
+
 ## TUR-29A — UI streaming katmanı (2026-10-04)
 
 Dal: `feat/tur29a-ui-streaming` (local-only, push/merge YOK). Kaynaklar (desen alındı, kod kopyalanmadı, hepsi Apache-2.0):

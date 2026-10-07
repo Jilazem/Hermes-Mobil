@@ -1268,6 +1268,8 @@ private fun HermesApp(
                                 com.hermes.mobile.ui.BubbleAction.Branch ->
                                     chatViewModel.runSlash("/branch")
                                 com.hermes.mobile.ui.BubbleAction.Speak -> Unit
+                                // Kopyala balon içinde panoya yazılır; sohbet hattına düşmez.
+                                com.hermes.mobile.ui.BubbleAction.Copy -> Unit
                             }
                         },
                         onOpenReasoning = {

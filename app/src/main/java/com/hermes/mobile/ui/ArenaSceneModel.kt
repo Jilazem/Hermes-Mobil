@@ -36,6 +36,10 @@ data class ArenaFigure(
     val name: String,
     val state: ArenaFigureState,
     val badge: String? = null,
+    /** Actual response preview, never a generated animation quote. */
+    val excerpt: String = "",
+    /** Monotonic stream/tool activity counter; renderers react once per change. */
+    val activityVersion: Int = 0,
 )
 
 /** Sahne fazı — JS tarafı bunu kamera/ışık/arena halkası için kullanır. */
@@ -149,6 +153,10 @@ fun arenaSceneFigures(
                     name = a.bot,
                     state = if (a.ok) ArenaFigureState.DONE else ArenaFigureState.ERROR,
                     badge = if (isSynth) labels.synthesis else arenaRoundBadge(a.round, labels),
+                    excerpt = arenaResponseExcerpt(a.text),
+                    activityVersion = st.figures.firstOrNull {
+                        it.id == if (isSynth) arenaSynthFigureId(a.bot) else arenaFigureId(a.bot, a.round)
+                    }?.activityVersion ?: 0,
                 )
             }
         }
@@ -182,6 +190,12 @@ fun arenaLiveFigures(
 fun arenaLiveName(s: LiveSession, maxLen: Int = 28): String {
     val n = s.title.trim().ifBlank { s.id.trim() }.ifBlank { "?" }
     return if (n.length <= maxLen) n else n.take(maxLen - 1) + "…"
+}
+
+/** Bound real streamed text before crossing the WebView bridge. */
+fun arenaResponseExcerpt(text: String, limit: Int = 132): String {
+    val plain = text.replace(Regex("[\\s]+"), " ").trim()
+    return if (plain.length <= limit) plain else plain.take(limit - 1) + "…"
 }
 
 // ── JSON köprüsü ────────────────────────────────────────────────────────────
@@ -222,6 +236,8 @@ object ArenaSceneJson {
         sb.append("\"state\":\"").append(f.state.wire).append("\",")
         sb.append("\"badge\":")
         if (f.badge == null) sb.append("null") else sb.append('"').append(str(f.badge)).append('"')
+        sb.append(",\"excerpt\":\"").append(str(f.excerpt)).append('"')
+        sb.append(",\"activityVersion\":").append(f.activityVersion.coerceAtLeast(0))
         sb.append('}')
         return sb.toString()
     }

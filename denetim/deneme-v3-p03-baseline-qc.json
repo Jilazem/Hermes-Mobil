@@ -1,0 +1,14 @@
+{
+  "fail_sayisi": 0,
+  "devir": false,
+  "turlar": [
+    {
+      "tarih": "2026-10-07T13:43:30",
+      "yapan": "cd-android",
+      "sonuc": "pass"
+    }
+  ],
+  "uzman": "cd-android",
+  "slug": "v3-p03-baseline-qc",
+  "kapandi": true
+}

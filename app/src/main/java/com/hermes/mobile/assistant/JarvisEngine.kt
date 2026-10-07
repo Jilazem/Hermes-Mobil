@@ -21,6 +21,7 @@ import com.hermes.mobile.data.PhoneIntent
 import com.hermes.mobile.data.PhoneTools
 import com.hermes.mobile.data.SettingsStore
 import com.hermes.mobile.data.ShizukuBridge
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -68,6 +69,8 @@ class JarvisEngine(
     private val settings get() = SettingsStore(context).settings.value
     private val brain = JarvisBrain(context, scope)
     private val tools by lazy { PhoneTools(context, ShizukuBridge()) }
+    private var generation = 0L
+    private var recognitionGeneration = 0L
     private var voice: JarvisVoice = newVoice()
     private var recognizer: SpeechRecognizer? = null
     private var turn: Job? = null
@@ -83,6 +86,7 @@ class JarvisEngine(
 
     private fun newVoice(): JarvisVoice = JarvisVoice.create(context).also { v ->
         v.onLevel = { lvl -> _state.update { it.copy(level = lvl) } }
+        v.onError = { message -> main.post { _state.update { it.copy(error = message) } } }
         v.onDone = { main.post { afterSpeaking() } }
     }
 
@@ -92,6 +96,7 @@ class JarvisEngine(
     fun start() {
         // "Hey Jarvis" dinleyicisi mikrofonu bıraksın (tanıyıcı kullanacak).
         WakeWordControl.pause()
+        interruptAll()
         // Ses stüdyosunda yapılan seçim her açılışta geçerli olsun.
         voice.release()
         voice = newVoice()
@@ -158,7 +163,8 @@ class JarvisEngine(
 
     // ── Dinleme ────────────────────────────────────────────────────────
 
-    private fun listen(beep: Boolean) {
+    private fun listen(beep: Boolean, retry: Boolean = false) {
+        val recognitionToken = ++recognitionGeneration
         voice.stop()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
@@ -167,18 +173,18 @@ class JarvisEngine(
             return
         }
         val rec = recognizer ?: RecognizerPicker.create(context)?.also { r ->
-            r.setRecognitionListener(listener)
             recognizer = r
         }
         if (rec == null) {
             fail("Bu telefonda ses tanıma servisi bulunamadı (Google uygulaması gerekli)")
             return
         }
+        rec.setRecognitionListener(listenerFor(recognitionToken, retry))
         grabFocus()
         _state.update { it.copy(phase = JarvisPhase.Listening, heard = "", error = null, level = 0f, tool = null) }
         if (beep) earcon()
         main.postDelayed({
-            if (_state.value.phase != JarvisPhase.Listening) return@postDelayed
+            if (recognitionToken != recognitionGeneration || _state.value.phase != JarvisPhase.Listening) return@postDelayed
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
@@ -191,11 +197,12 @@ class JarvisEngine(
         }, if (beep) 160L else 0L)
     }
 
-    private val listener = object : RecognitionListener {
+    private fun listenerFor(token: Long, retried: Boolean) = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) = Unit
         override fun onBeginningOfSpeech() = Unit
         override fun onRmsChanged(rmsdB: Float) {
-            _state.update { it.copy(level = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)) }
+            if (token == recognitionGeneration && _state.value.phase == JarvisPhase.Listening)
+                _state.update { it.copy(level = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)) }
         }
         override fun onBufferReceived(buffer: ByteArray?) = Unit
         override fun onEndOfSpeech() {
@@ -203,7 +210,7 @@ class JarvisEngine(
         }
 
         override fun onError(error: Int) {
-            if (_state.value.phase != JarvisPhase.Listening) return
+            if (token != recognitionGeneration || _state.value.phase != JarvisPhase.Listening) return
             when (error) {
                 SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
                     silentFollowups++
@@ -214,7 +221,14 @@ class JarvisEngine(
                     // Önceki oturumun artığı: tanıyıcıyı yenileyip bir kez daha dene.
                     recognizer?.destroy()
                     recognizer = null
-                    main.postDelayed({ listen(beep = false) }, 350)
+                    if (retried) {
+                        fail("Ses tanıyıcı başlatılamadı. Google/Samsung ses tanıma servisini ve mikrofon iznini kontrol et.")
+                    } else {
+                        main.postDelayed({
+                            if (token == recognitionGeneration && _state.value.phase == JarvisPhase.Listening)
+                                listen(beep = false, retry = true)
+                        }, 350)
+                    }
                 }
                 SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
                     fail("Mikrofon izni yok — Hermes uygulamasını açıp izin ver")
@@ -225,6 +239,7 @@ class JarvisEngine(
         }
 
         override fun onResults(results: Bundle?) {
+            if (token != recognitionGeneration || _state.value.phase != JarvisPhase.Listening) return
             val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 ?.firstOrNull().orEmpty().trim()
             if (text.isEmpty()) {
@@ -236,6 +251,7 @@ class JarvisEngine(
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
+            if (token != recognitionGeneration || _state.value.phase != JarvisPhase.Listening) return
             val p = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 ?.firstOrNull().orEmpty()
             if (p.isNotBlank()) _state.update { it.copy(heard = p) }
@@ -247,6 +263,8 @@ class JarvisEngine(
     // ── Karar ─────────────────────────────────────────────────────────
 
     private fun handle(text: String) {
+        val turnToken = ++generation
+        ++recognitionGeneration
         _state.update { it.copy(phase = JarvisPhase.Thinking, heard = text, answer = "", tool = null, error = null, hint = null, level = 0f) }
         DiagLog.i("jarvis", "soru (${text.length} krkt)")
 
@@ -299,19 +317,23 @@ class JarvisEngine(
             val sink = object : JarvisBrain.Sink {
                 override fun onDelta(text: String) {
                     main.post {
+                        if (turnToken != generation) return@post
                         _state.update { it.copy(answer = it.answer + text, tool = null) }
                         splitter.push(text).forEach(::speakChunk)
                     }
                 }
                 override fun onTool(name: String) {
-                    main.post { _state.update { it.copy(tool = name) } }
+                    main.post { if (turnToken == generation) _state.update { it.copy(tool = name) } }
                 }
                 override fun onNeedsApproval(text: String) {
-                    main.post { _state.update { it.copy(hint = "Ajan onay/bilgi istiyor — \"Sohbette aç\" ile yanıtla") } }
+                    main.post { if (turnToken == generation) _state.update { it.copy(hint = "Ajan onay/bilgi istiyor — \"Sohbette aç\" ile yanıtla") } }
                 }
             }
-            val result = runCatching { brain.ask(question, sink) }
+            val result = try { Result.success(brain.ask(question, sink)) }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) { Result.failure(e) }
             main.post {
+                if (turnToken != generation) return@post
                 result.onFailure { e ->
                     DiagLog.w("jarvis", "beyin hatası: ${e.message}")
                     _state.update { it.copy(error = e.message) }
@@ -329,7 +351,12 @@ class JarvisEngine(
 
     /** Tek seferlik konuşma; bitince [then]. */
     private fun speakOnce(text: String, then: () -> Unit) {
-        voice.onDone = { main.post { voice.onDone = { main.post { afterSpeaking() } }; then() } }
+        val token = generation
+        voice.onDone = { main.post {
+            if (token != generation) return@post
+            voice.onDone = { main.post { afterSpeaking() } }
+            then()
+        } }
         _state.update { it.copy(phase = JarvisPhase.Speaking) }
         voice.say(text)
         voice.finish()
@@ -347,10 +374,13 @@ class JarvisEngine(
     }
 
     private fun interruptAll() {
+        ++generation
+        ++recognitionGeneration
         turn?.cancel()
         turn = null
         if (_state.value.phase == JarvisPhase.Thinking || _state.value.phase == JarvisPhase.Speaking) brain.interrupt()
-        runCatching { recognizer?.cancel() }
+        runCatching { recognizer?.cancel(); recognizer?.destroy() }
+        recognizer = null
         voice.stop()
         voice.onDone = { main.post { afterSpeaking() } }
     }

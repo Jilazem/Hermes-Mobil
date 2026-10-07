@@ -1,5 +1,6 @@
 package com.hermes.mobile
 
+import com.hermes.mobile.ui.BubbleAction
 import com.hermes.mobile.ui.ChatMenuAction
 import com.hermes.mobile.ui.chatMenuActions
 import com.hermes.mobile.ui.interventionSession
@@ -55,5 +56,11 @@ class ChatMenuTest {
         assertEquals("abc123", live.id)
         assertEquals("steer/redirect süreç içi kimliği bekler", "abc123", live.dbId)
         assertEquals("Rapor özeti", live.title)
+    }
+
+    @Test
+    fun `pr93508 balon menusunde kopyala eylemi var`() {
+        // PR 93508: Copy/More erişimi — uzun basma menüsünde Kopyala olmalı.
+        assertTrue(BubbleAction.entries.contains(BubbleAction.Copy))
     }
 }

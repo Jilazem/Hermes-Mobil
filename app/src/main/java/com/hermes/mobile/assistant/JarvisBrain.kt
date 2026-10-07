@@ -37,6 +37,8 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
     private var gwProfileKey: String? = null
     @Volatile private var sessionId: String? = null
     @Volatile private var running: CompletableDeferred<String>? = null
+    private val localHistory = mutableListOf<Pair<String, String>>()
+    private var localKey: String? = null
 
     /** Son kullanılan asistan oturumu — "sohbette aç" için. */
     val lastSessionId: String? get() = sessionId ?: prefs.getString(KEY_SID, null)
@@ -65,18 +67,22 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         var fresh = false
         if (sid == null) {
             val saved = prefs.getString(KEY_SID, null)
-            if (JarvisLogic.sessionReusable(prefs.getLong(KEY_AT, 0), now, saved)) {
-                val alive = runCatching { client.activateSession(saved!!) }
-                    .recoverCatching { client.resumeSession(saved!!) }.isSuccess
-                if (alive) sid = saved
+            val savedProfile = prefs.getString(KEY_PROFILE, null)
+            if ((savedProfile == null || savedProfile == profile.id) &&
+                JarvisLogic.sessionReusable(prefs.getLong(KEY_AT, 0), now, saved)) {
+                // Resume returns the live runtime ID, which can differ from the stored DB ID.
+                // A failed restore must not silently create an empty conversation.
+                sid = client.resumeSession(saved!!)
             }
+        } else {
+            sid = client.activateSession(sid)
         }
         if (sid == null) {
             sid = client.createSession(null)
             fresh = true
         }
         sessionId = sid
-        prefs.edit().putString(KEY_SID, sid).putLong(KEY_AT, now).apply()
+        prefs.edit().putString(KEY_SID, client.storedSessionId(sid)).putString(KEY_PROFILE, profile.id).putLong(KEY_AT, now).apply()
 
         val full = StringBuilder()
         val done = CompletableDeferred<String>()
@@ -119,11 +125,17 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
     private suspend fun askLocal(q: String, url: String, model: String, address: String, sink: Sink): String {
         val llm = LocalModelClient(url.trim())
         if (!llm.isConfigured()) throw IllegalStateException("Yerel model adresi girilmemiş")
+        val key = "${url.trim()}|$model"
+        if (localKey != key) { localHistory.clear(); localKey = key }
         val answer = llm.chat(
             text = q,
             model = model.ifBlank { LocalModelLogic.DEFAULT_MODEL },
             system = JarvisLogic.voicePrefix(address).trim(),
+            history = localHistory.toList(),
         )
+        localHistory += "user" to q
+        localHistory += "assistant" to answer
+        while (localHistory.size > 20) { localHistory.removeAt(0); localHistory.removeAt(0) }
         sink.onDelta(answer)
         return answer
     }
@@ -140,7 +152,8 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
     /** Yeni konu: bir sonraki soru yeni oturumda. */
     fun forgetSession() {
         sessionId = null
-        prefs.edit().remove(KEY_SID).remove(KEY_AT).apply()
+        localHistory.clear()
+        prefs.edit().remove(KEY_SID).remove(KEY_AT).remove(KEY_PROFILE).apply()
     }
 
     /**
@@ -174,6 +187,8 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         val key = "${p.id}|${p.token}|${p.normalizedUrl}|${p.normalizedRemote}"
         gw?.takeIf { gwProfileKey == key }?.let { it.connect(); return it }
         gw?.close()
+        // Session IDs are scoped to a server profile.
+        if (gwProfileKey != null && gwProfileKey != key) sessionId = null
         return GatewayWsClient(p).also {
             gw = it
             gwProfileKey = key
@@ -188,6 +203,7 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
     }
 
     private companion object {
+        const val KEY_PROFILE = "profile"
         const val KEY_SID = "sid"
         const val KEY_AT = "at"
     }
