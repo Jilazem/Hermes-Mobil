@@ -290,7 +290,7 @@ class ThemeTur17Test {
     fun `15x4 kontrast matrisi - 4 sutun da esik ust ve dosyaya yazilir`() {
         val sb = StringBuilder()
         sb.appendLine("Tur-17 B2 — 15 tema x 4 sutun WCAG matrisi (ThemeTur17Test uretimi, java.util)")
-        sb.appendLine("Satirlar: 7 BUILTIN preset + 8 fixture skin (customThemes/skin akisi senaryosu;")
+        sb.appendLine("Satirlar: ${BUILTIN_THEMES.size} BUILTIN preset + 8 fixture skin (customThemes/skin akisi senaryosu;")
         sb.appendLine("  fixture degerleri Desktop preset'lerinden: agent-maintenance apps/desktop + web presets.ts).")
         sb.appendLine("Sutunlar/esikler: 1) textPrimary/bg >=4.5  2) accent/bg >=3.0  3) accent/textPrimary >=1.30  4) CTA onAccent/dolgu >=4.5")
         sb.appendLine("Sutun 4 onAccent = resolveOnAccent(accent,bg) — taban AA alti ise kazanan aday siyaha karistirilir (tur17 denetim B2-CTA fix).")
@@ -328,7 +328,7 @@ class ThemeTur17Test {
         val outDir = java.io.File(repoRoot, "denetim/tur17").apply { mkdirs() }
         java.io.File(outDir, "15x4-matris-ciktisi.txt").writeText(sb.toString())
 
-        assertTrue("matris satirlari 15 olmali", matrixThemes.size == 15)
-        assertEquals("4. sutun dahil 15/15 gecmeli — eksik sutun dusurulemez:\n" + sb, 0, failures)
+        assertTrue("matris bütün presetleri ve 8 fixture içermeli", matrixThemes.size == BUILTIN_THEMES.size + 8)
+        assertEquals("4. sutun dahil bütün temalar geçmeli — eksik sutun dusurulemez:\n" + sb, 0, failures)
     }
 }

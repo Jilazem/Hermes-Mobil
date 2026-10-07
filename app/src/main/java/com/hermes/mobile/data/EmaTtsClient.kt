@@ -17,25 +17,27 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** Local Mac EMA service; authenticated, cancellable, no alternative voice. */
-class EmaTtsClient(private val base: String, private val token: String) {
+class EmaTtsClient(private val bases: List<String>, private val token: String) : EmaSpeech {
+    constructor(base: String, token: String) : this(listOf(base), token)
+    private class ConnectionFailure(cause: IOException) : IOException("EMA ses servisine ulaşılamadı", cause)
     companion object {
         private val http = OkHttpClient.Builder().connectTimeout(6, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS).callTimeout(420, TimeUnit.SECONDS).build()
     }
 
-    private fun request(path: String, payload: String? = null): Request = Request.Builder()
+    private fun request(base: String, path: String, payload: String? = null): Request = Request.Builder()
         .url(base.trim().trimEnd('/') + path)
         .header(HermesClient.SESSION_HEADER, token)
         .apply { if (payload != null) post(payload.toRequestBody("application/json".toMediaType())) }
         .build()
 
-    suspend fun health(): Boolean = exchange("/health", "") { response ->
+    override suspend fun health(): Boolean = exchange("/health", "") { response ->
         val body = response.body?.string().orEmpty()
         val obj = kotlinx.serialization.json.Json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject
         obj?.get("ok")?.toString() == "true" && obj["engine"]?.toString() == "\"ema-lightning\""
     }
 
-    suspend fun speak(text: String): ByteArray = exchange("/speak", text) { response ->
+    override suspend fun speak(text: String): ByteArray = exchange("/speak", text) { response ->
         if (response.header("Content-Type")?.substringBefore(';') != "audio/wav") {
             throw IOException("EMA beklenen WAV sesini döndürmedi")
         }
@@ -46,7 +48,7 @@ class EmaTtsClient(private val base: String, private val token: String) {
         bytes
     }
 
-    suspend fun stream(text: String, onPcm: (ByteArray, Int) -> Unit) = exchange("/stream", text) { response ->
+    override suspend fun stream(text: String, onPcm: (ByteArray, Int) -> Unit) = exchange("/stream", text) { response ->
         val rate = response.header("X-Audio-Sample-Rate")?.toIntOrNull()
         if (rate !in listOf(8000, 16000, 24000, 48000) ||
             response.header("X-Audio-Format") != "pcm_s16le" ||
@@ -65,18 +67,27 @@ class EmaTtsClient(private val base: String, private val token: String) {
         if (tail != null || total == 0L) throw IOException("EMA PCM yanıtı eksik")
     }
 
-    private suspend fun <T> exchange(path: String, text: String, consume: (Response) -> T): T =
+    private suspend fun <T> exchange(path: String, text: String, consume: (Response) -> T): T {
+        var error: IOException? = null
+        for (base in bases.distinct()) {
+            try { return exchangeAt(base, path, text, consume) }
+            catch (e: ConnectionFailure) { error = e }
+        }
+        throw error ?: IOException("EMA adresi tanımlanmamış")
+    }
+
+    private suspend fun <T> exchangeAt(base: String, path: String, text: String, consume: (Response) -> T): T =
         suspendCancellableCoroutine { cont ->
             val id = UUID.randomUUID().toString()
             val payload = buildJsonObject {
                 put("text", text.take(3000)); put("request_id", id)
                 put("sample_rate", 48000); put("seed", 0)
             }.toString()
-            val call = http.newCall(request(path, payload.takeUnless { path == "/health" }))
+            val call = http.newCall(request(base, path, payload.takeUnless { path == "/health" }))
             cont.invokeOnCancellation {
                 call.cancel()
                 // The producer may still be in inference; explicitly drop its remaining work.
-                http.newCall(request("/cancel", buildJsonObject { put("request_id", id) }.toString()))
+                http.newCall(request(base, "/cancel", buildJsonObject { put("request_id", id) }.toString()))
                     .enqueue(object : Callback {
                         override fun onFailure(call: Call, e: IOException) = Unit
                         override fun onResponse(call: Call, response: Response) { response.close() }
@@ -84,7 +95,7 @@ class EmaTtsClient(private val base: String, private val token: String) {
             }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    if (cont.isActive) cont.resumeWithException(IOException("EMA ses servisine ulaşılamadı", e))
+                    if (cont.isActive) cont.resumeWithException(ConnectionFailure(e))
                 }
                 override fun onResponse(call: Call, response: Response) {
                     response.use {

@@ -1,5 +1,8 @@
 package com.hermes.mobile
 
+import com.hermes.mobile.data.emaEnabled
+import com.hermes.mobile.data.modelSwitchAccepted
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -615,7 +618,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             // Döngü kendi motoruyla okur — eşzamanlı çalma + taze altyazı.
             voiceMsg.stopSpeaking()
             _captions.value = emptyList()
-            _jarvisMode.value = voicePrefs.emaUrl.isBlank()
+            _jarvisMode.value = !voicePrefs.emaEnabled
             jarvisLoop.start()
             Notifier.jarvisListening(getApplication(), true)
             DiagLog.i("jarvis-loop", "dongu acildi")
@@ -642,15 +645,17 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     val voicePrefill: StateFlow<String?> = _voicePrefill.asStateFlow()
 
     private fun voiceTransport(): VoiceTransport? {
-        val p = profile ?: return null
+        val p = profile ?: return com.hermes.mobile.data.EmaConfig.from(getApplication())?.let {
+            com.hermes.mobile.data.EmaVoiceTransport(null, it.client())
+        }
         val candidates = VoiceApiEndpoints.candidates(p, voicePrefs.url, voicePrefs.lastOk)
         val key = "${p.id}|${p.token}|${candidates.joinToString(",")}"
         val existing = voiceClient?.takeIf { voiceClientKey == key }
         val client = existing ?: VoiceApiClient(candidates, p.token, p.id)
             .also { voiceClient = it; voiceClientKey = key }
         val stt = HttpVoiceTransport(client)
-        return if (voicePrefs.emaUrl.isNotBlank()) com.hermes.mobile.data.EmaVoiceTransport(stt,
-            com.hermes.mobile.data.EmaTtsClient(voicePrefs.emaUrl, voicePrefs.emaToken.ifBlank { p.token })) else stt
+        return if (voicePrefs.emaEnabled) com.hermes.mobile.data.EmaVoiceTransport(stt,
+            com.hermes.mobile.data.EmaConfig.from(getApplication())?.client() ?: throw java.io.IOException("EMA bağlantısını tamamla")) else stt
     }
 
     init {
@@ -1068,7 +1073,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { HermesClient(profile).modelInfo() }
                 .onSuccess { info ->
-                    _state.update { it.copy(currentModel = info.model) }
+                    _state.update { it.copy(currentModel = if (it.sessionId == null && preferredModel.contains("|")) preferredModel.substringAfter("|") else info.model) }
                 }
         }
 
@@ -1125,8 +1130,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         if (pref.isBlank()) return
         val parts = pref.split("|", limit = 2)
         if (parts.size != 2) return
-        runCatching { gw.slashExec(sid, "/model ${parts[1]} --provider ${parts[0]}") }
-            .onSuccess { _state.update { it.copy(currentModel = parts[1]) } }
+        val output = gw.slashExec(sid, "/model ${parts[1]} --provider ${parts[0]}")
+        check(modelSwitchAccepted(output)) { output.trim().ifBlank { "Kayıtlı model seçilemedi" } }
+        _state.update { it.copy(currentModel = parts[1]) }
     }
 
     private suspend fun ensureConversation(gw: GatewayWsClient): String {
@@ -1732,6 +1738,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Uygulama açılışında ayarlardan yüklenen son seçim — "sağlayıcı|model". */
     var preferredModel: String = ""
+        set(value) {
+            field = value
+            if (_state.value.sessionId == null && value.contains("|"))
+                _state.update { it.copy(currentModel = value.substringAfter("|")) }
+        }
 
     /** Yeni oturumların açılacağı Hermes profili; boşsa varsayılan. */
     var activeProfile: String = ""
@@ -1796,54 +1807,24 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
 
     fun selectModel(provider: String, model: String, persist: Boolean = false) {
+        if (_state.value.sessionId == null && !persist) {
+            preferredModel = "$provider|$model"
+            _state.update { it.copy(currentModel = model) }
+            onModelChosen?.invoke(provider, model)
+            return
+        }
         val gw = client ?: return
-        val previous = _state.value.currentModel
         viewModelScope.launch {
             runCatching {
                 val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
                     _state.update { it.copy(sessionId = id) }
                 }
-                val cmd = buildString {
-                    append("/model ").append(model)
-                    append(" --provider ").append(provider)
-                    if (persist) append(" --global")
-                }
-                gw.slashExec(sid, cmd)
-            }
-                .onSuccess { output ->
-                    // Gateway "✓ Model switched: X" döner; hata metni de gelebilir.
-                    // Kredi yetersizliği gibi durumlarda "requires available credits"
-                    // geçiyor — bunu başarı sayarsak ajan ilk mesajda çöküyor.
-                    val credit = output.contains("credit", ignoreCase = true) ||
-                        output.contains("balance", ignoreCase = true)
-                    val switched = !credit &&
-                        (output.contains("switched", ignoreCase = true) || output.contains("✓"))
-
-                    if (!switched) {
-                        onModelBroken?.invoke("$provider/$model")
-                        _state.update {
-                            it.copy(
-                                items = it.items + ChatItem.Notice(
-                                    nextKey("n"),
-                                    output.trim().ifBlank { "Model değiştirilemedi" },
-                                    isError = true,
-                                ),
-                            )
-                        }
-                        return@onSuccess
-                    }
-
-                    _state.update {
-                        it.copy(
-                            currentModel = model,
-                            items = it.items + ChatItem.Notice(nextKey("n"), "$model deneniyor…"),
-                        )
-                    }
-                    verifyModel(provider, model, previous)
-                }
-                .onFailure { e ->
-                    _state.update { it.copy(notice = e.message ?: "Model değiştirilemedi") }
-                }
+                val output = gw.slashExec(sid, "/model $model --provider $provider" + if (persist) " --global" else "")
+                check(modelSwitchAccepted(output)) { output.trim().ifBlank { "Model değiştirilemedi" } }
+                preferredModel = "$provider|$model"
+                _state.update { it.copy(currentModel = model) }
+                onModelChosen?.invoke(provider, model)
+            }.onFailure { e -> _state.update { it.copy(notice = e.message ?: "Model değiştirilemedi") } }
         }
     }
 
@@ -2137,7 +2118,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun newSession() {
         sessionLoadJob?.cancel()
-        _state.update { ChatState(connection = it.connection) }
+        _state.update { ChatState(connection = it.connection, currentModel = preferredModel.substringAfter("|", "").takeIf { m -> m.isNotBlank() }) }
         streamingKey = null
         thinkingKey = null
         streamMeter.reset()

@@ -6,6 +6,7 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name=".ui.EmaOfflineSelfTestActivity" android:exported="true" android:label="EMA Çevrimdışı Öz-Testi" android:theme="@style/Theme.HermesMobile" />
         <activity android:name=".ui.EmaSelfTestActivity" android:exported="true"
             android:label="EMA Öz-Testi" android:theme="@style/Theme.HermesMobile" />
         <activity android:name=".ui.FullControlSelfTestActivity" android:exported="true"

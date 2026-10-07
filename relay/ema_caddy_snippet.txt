@@ -1,0 +1,10 @@
+	# EMA: same authenticated voice service at home and away.
+	handle_path /ema-api/* {
+		reverse_proxy 127.0.0.1:8176 {
+			flush_interval -1
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 120s
+			}
+		}
+	}

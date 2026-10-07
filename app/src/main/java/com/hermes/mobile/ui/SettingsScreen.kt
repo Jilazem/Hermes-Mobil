@@ -1,5 +1,7 @@
 package com.hermes.mobile.ui
 
+import com.hermes.mobile.data.emaEnabled
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -170,6 +172,7 @@ fun SettingsScreen(
 
     // Açık kategori; null ise kategori listesi gösteriliyor.
     var open by remember { mutableStateOf<SettingsCategory?>(null) }
+    var showAdvanced by remember { mutableStateOf(false) }
     BackHandler(enabled = open != null) { open = null }
 
     LazyColumn(
@@ -235,7 +238,7 @@ fun SettingsScreen(
                     )
                 }
             }
-            items(SettingsCategory.entries.toList(), key = { it.name }) { cat ->
+            items(SettingsCategory.entries.filter { showAdvanced || it !in listOf(SettingsCategory.General, SettingsCategory.Privacy, SettingsCategory.Developer) }, key = { it.name }) { cat ->
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -251,6 +254,9 @@ fun SettingsScreen(
                     }
                 }
             }
+            item { TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                Text(S.t2(if (showAdvanced) "Gelişmiş ayarları gizle" else "Gelişmiş ayarlar", if (showAdvanced) "Hide advanced settings" else "Advanced settings"))
+            } }
             item { Spacer(Modifier.height(24.dp)) }
         }
 
@@ -299,25 +305,7 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Voice) {
-    item { Header("Hermes Sesi: EMA Lightning") }
-            item {
-                TextRow("EMA servis adresi", S.t2("Mac üzerindeki EMA adresi (ör. http://192.168.1.101:8176)",
-                    "EMA address on your Mac (e.g. http://192.168.1.101:8176)"), settings.emaUrl) { v ->
-                    onUpdate { it.copy(emaUrl = v.trim()) }
-                }
-            }
-            item {
-                TextRow("EMA erişim anahtarı", S.t2("EMA servisinde tanımladığın erişim anahtarı",
-                    "The access token configured on your EMA service"), settings.emaToken) { v ->
-                    onUpdate { it.copy(emaToken = v.trim()) }
-                }
-            }
-            item {
-                Text(S.t2(if (settings.emaUrl.isBlank()) "EMA bağlantısını tamamla; önceki ses yolu geçiş sırasında kullanılabilir."
-                    else "Sohbet, telefon asistanı ve araç yanıtları EMA kullanır.",
-                    if (settings.emaUrl.isBlank()) "Complete the EMA connection; the previous voice remains available during migration."
-                    else "Chat, phone assistant and car replies use EMA."), color = HermesColors.TextMuted)
-            }
+            item { EmaSettingsCard(settings, onUpdate) }
     item { Header(S.t2("Canlı ses ve görüntü", "Live voice and vision")) }
 
             item {
@@ -337,7 +325,7 @@ fun SettingsScreen(
                 ) { v -> onUpdate { it.copy(customPersona = v) } }
             }
 
-            if (settings.emaUrl.isBlank()) item {
+            if (!settings.emaEnabled) item {
                 ChoiceRow(
                     "Ses karakteri",
                     LIVE_VOICES.map { it to it },
@@ -467,8 +455,8 @@ fun SettingsScreen(
             item {
                 ChoiceRow(
                     S.t2("Seslendirme motoru", "Speech engine"),
-                    if (settings.emaUrl.isNotBlank()) listOf("ema" to "EMA Lightning") else VoiceSpeakLogic.engineOptions(::tr).filterNot { it.first == "ema" },
-                    if (settings.emaUrl.isNotBlank()) "ema" else VoiceSpeakLogic.Engine.fromId(settings.voiceEngine).id,
+                    if (settings.emaEnabled) listOf("ema" to "EMA Lightning") else VoiceSpeakLogic.engineOptions(::tr).filterNot { it.first == "ema" },
+                    if (settings.emaEnabled) "ema" else VoiceSpeakLogic.Engine.fromId(settings.voiceEngine).id,
                 ) { v ->
                     onUpdate { it.copy(voiceEngine = v) }
                     // Tur-12: motor değişti — eski motora ait "Hazır ✓" kalmasın.
@@ -849,7 +837,7 @@ fun SettingsScreen(
             // Jarvis panelini açar; kurulum + deneme tek kartta.
             item { JarvisSetupCard(role = assistantRole, onMakeDefault = onMakeDefaultAssistant) }
             item { JarvisBehaviorCard(settings, onUpdate) }
-            if (settings.emaUrl.isBlank()) item { VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload) }
+            if (!settings.emaEnabled) item { VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload) }
             item { WakeWordCard(settings, onUpdate) }
 
             item { Header(S.t2("Uygulama içi asistan kipi", "In-app assistant mode")) }
@@ -1517,12 +1505,12 @@ enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant
 @Composable
 private fun catLabel(c: SettingsCategory): String = when (c) {
     SettingsCategory.Appearance -> S.t2(S.t2("Görünüm", "Appearance"), "Appearance")
-    SettingsCategory.Voice -> S.t2(S.t2("Canlı ses ve görüntü", "Live voice and vision"), "Voice & camera")
+    SettingsCategory.Voice -> S.t2("Ses · EMA ve mikrofon", "Voice · EMA & microphone")
     SettingsCategory.Chat -> S.t2("Sohbet", "Chat")
     SettingsCategory.General -> S.t2("Genel", "General")
     SettingsCategory.Phone -> S.t2("Telefon denetimi", "Phone control")
-    SettingsCategory.Assistant -> S.t2("Jarvis asistan", "Jarvis assistant")
-    SettingsCategory.Server -> S.t2("Sunucu", "Server")
+    SettingsCategory.Assistant -> S.t2("Varsayılan asistan", "Default assistant")
+    SettingsCategory.Server -> S.t2("Bağlantı", "Connection")
     SettingsCategory.Privacy -> S.t2("Gizlilik ve bildirim", "Privacy & notifications")
     SettingsCategory.Developer -> S.t2(S.t2("Geliştirici", "Developer"), "Developer")
 }
@@ -1535,7 +1523,7 @@ private fun catHint(c: SettingsCategory): String = when (c) {
     SettingsCategory.General -> S.t2("Arayüz dili, çıkış onayı", "Interface language, exit confirmation")
     SettingsCategory.Phone -> S.t2("Sesli asistanın telefonu kullanması", "Letting voice use the phone")
     SettingsCategory.Assistant -> S.t2("Google yerine Hermes, ses stüdyosu, Hey Jarvis", "Hermes instead of Google, voice studio, Hey Jarvis")
-    SettingsCategory.Server -> S.t2("Spark izleme, yenileme aralıkları", "Spark monitoring, refresh intervals")
+    SettingsCategory.Server -> S.t2("Ev ve dış erişim, kayıtlı sunucular", "Home and remote access, saved servers")
     SettingsCategory.Privacy -> S.t2("Kilit, token, bildirimler", "Lock, token, notifications")
     SettingsCategory.Developer -> S.t2("Ham olaylar", "Raw events")
 }

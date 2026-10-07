@@ -152,6 +152,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                     .setTitle("Durum")
                     .addText(statusLine)
                     .addText(systemLine)
+                    .setOnClickListener { loading = true; invalidate(); refresh() }
                     .build()
             )
             if (sessionLines.isEmpty()) {
@@ -173,12 +174,6 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                         Action.Builder()
                             .setTitle("Konuş")
                             .setOnClickListener { startCarVoice() }
-                            .build()
-                    )
-                    .addAction(
-                        Action.Builder()
-                            .setTitle("Yenile")
-                            .setOnClickListener { loading = true; invalidate(); refresh() }
                             .build()
                     )
                     .build()

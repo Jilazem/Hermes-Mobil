@@ -56,7 +56,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.mobile.ui.CameraScreen
 import com.hermes.mobile.ui.ChatScreen
-import com.hermes.mobile.ui.ArenaScreen
 import com.hermes.mobile.ui.CommandPalette
 import com.hermes.mobile.ui.ConnectScreen
 import com.hermes.mobile.ui.FileRef
@@ -78,7 +77,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import com.hermes.mobile.ui.SessionDetailScreen
 import com.hermes.mobile.ui.HomeFeedScreen
 import com.hermes.mobile.ui.SessionDrawerContent
-import com.hermes.mobile.ui.SessionStatsStrip
 import com.hermes.mobile.ui.drawerListItems
 import com.hermes.mobile.ui.drawerRows
 import com.hermes.mobile.ui.lastSessionToRestore
@@ -114,7 +112,6 @@ class MainActivity : ComponentActivity() {
     private val liveViewModel: LiveSessionsViewModel by viewModels()
     private val voiceViewModel: LiveVoiceViewModel by viewModels()
     private val panelViewModel: PanelViewModel by viewModels()
-    private val arenaViewModel: ArenaViewModel by viewModels()
 
     /** Sistem foto seçici — Android 13+ izin istemez. */
     private val pickImage = registerForActivityResult(
@@ -496,9 +493,10 @@ class MainActivity : ComponentActivity() {
                 // Canlı-oturum ekranı sohbetle aynı soketi paylaşır.
                 // Ayarlar değişince canlı ses bir sonraki oturumda yeni
                 // kişiliği/sesi kullanır.
-                LaunchedEffect(settings) {
+                LaunchedEffect(settings, state.active?.id) {
                     voiceViewModel.settings = settings
-                    chatViewModel.preferredModel = settings.lastModel
+                    chatViewModel.preferredModel = settings.modelsByServer[state.active?.id]
+                        ?: settings.lastModel.takeIf { settings.modelsByServer.isEmpty() }.orEmpty()
                     // Bot (profil) ataması kalıcı — son kullanılan çip
                     // açılışta geri yüklenir.
                     chatViewModel.selectedProfileValue = settings.selectedProfile
@@ -534,7 +532,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     chatViewModel.onSessionChanged = { sid ->
                         viewModel.settingsStore.update { st ->
-                            val pid = state.active?.id
+                            val pid = viewModel.state.value.active?.id
                             st.copy(
                                 lastSession = if (sid.isBlank() || pid == null) "" else "$pid|$sid"
                             )
@@ -546,7 +544,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     chatViewModel.onModelChosen = { prov, model ->
-                        viewModel.settingsStore.update { it.copy(lastModel = "$prov|$model") }
+                        viewModel.settingsStore.update { st ->
+                            val id = viewModel.state.value.active?.id
+                            st.copy(lastModel = "$prov|$model", modelsByServer =
+                                if (id == null) st.modelsByServer else st.modelsByServer + (id to "$prov|$model"))
+                        }
                     }
                     // Bot (profil) ataması kalıcı — çipten seçilen profil
                     // ayarlara yazılır; sonraki açılışta geri yüklenir.
@@ -585,7 +587,6 @@ class MainActivity : ComponentActivity() {
                     liveViewModel = liveViewModel,
                     voiceViewModel = voiceViewModel,
                     panelViewModel = panelViewModel,
-                    arenaViewModel = arenaViewModel,
                     onPickImage = { pickImage.launch("image/*") },
                     onPickFile = { pickFile.launch(arrayOf("*/*")) },
                     onNeedMic = ::ensureMicPermission,
@@ -646,7 +647,6 @@ private enum class Tab(val icon: ImageVector) {
     Chat(Icons.AutoMirrored.Filled.Message),
     Work(Icons.AutoMirrored.Filled.List),
     Panel(Icons.Default.GridView),
-    Arena(Icons.Default.Bolt),
     Settings(Icons.Default.Tune),
 }
 
@@ -656,7 +656,6 @@ private fun Tab.label(): String = when (this) {
     Tab.Chat -> S.tabChat
     Tab.Work -> S.tabSessions
     Tab.Panel -> S.tabPanel
-    Tab.Arena -> S.tabArena
     Tab.Settings -> S.tabSettings
 }
 
@@ -672,7 +671,6 @@ private fun HermesApp(
     liveViewModel: LiveSessionsViewModel,
     voiceViewModel: LiveVoiceViewModel,
     panelViewModel: PanelViewModel,
-    arenaViewModel: ArenaViewModel,
     onPickImage: () -> Unit,
     onPickFile: () -> Unit,
     onNeedMic: () -> Boolean,
@@ -700,17 +698,8 @@ private fun HermesApp(
     onMakeDefaultAssistant: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Chat) }
-    // V3: uygulama ana duvar akışında açılır (ChatGPT/Claude tarzı); konu
-    // seçilince sohbete girilir, geri/☰ ile duvara dönülür.
-    var showHome by rememberSaveable { mutableStateOf(true) }
-    // Czip önerisi kapatılan oturumlar (bu süreç boyunca tekrar gösterilmez).
-    var czipDismissed by rememberSaveable { mutableStateOf(setOf<String>()) }
-    // Tur-15: Outrun yarış WebView'i sekme kompozisyonunun DIŞINDA yaşar (sekme
-    // değişince duraklar, dönüşte kaldığı yerden sürer); HermesApp kapanınca yok edilir.
-    val outrunHolder = remember { com.hermes.mobile.ui.ArenaOutrunHolder() }
-    androidx.compose.runtime.DisposableEffect(outrunHolder) {
-        onDispose { outrunHolder.release() }
-    }
+    // Sohbet açılış ekranıdır; oturumlar ☰ çekmecesinde yer alır.
+    var showHome by rememberSaveable { mutableStateOf(false) }
     // Tur-11: sesli mesaj durumu (kayıt sayacı + seslendirme fazı) ve sesle
     // yazılan metin. HermesApp gövdesinde toplanıyor: ChatScreen çağrısı bu
     // kapsamda (setContent lambda'sındaki val'lar burada görünmez).
@@ -785,7 +774,6 @@ private fun HermesApp(
             Tab.Chat -> "Sohbet"
             Tab.Work -> "Oturumlar"
             Tab.Panel -> "Pano"
-            Tab.Arena -> "Arena"
             Tab.Settings -> "Ayarlar"
         }
     }
@@ -801,7 +789,7 @@ private fun HermesApp(
     LaunchedEffect(settings.lastSession, state.sessions, live.sessions) {
         if (lastSessionRestored) return@LaunchedEffect
         if (state.sessions.isEmpty() && live.sessions.isEmpty()) return@LaunchedEffect
-        val pid = state.active?.id ?: return@LaunchedEffect
+        val pid = viewModel.state.value.active?.id ?: return@LaunchedEffect
         val saved = settings.lastSession.split("|", limit = 2)
         if (saved.size != 2 || saved[0] != pid || saved[1].isBlank()) return@LaunchedEffect
         val row = lastSessionToRestore(saved[1], drawerRowList, chat.sessionId) ?: return@LaunchedEffect
@@ -927,7 +915,11 @@ private fun HermesApp(
     BackHandler(
         enabled = inChatOverHome && detail == null && !cameraFullScreen &&
             panel.section == null && !voice.driving && !drawerState.isOpen
-    ) { showHome = true }
+    ) { drawerScope.launch { drawerState.open() } }
+
+    BackHandler(enabled = tab != Tab.Chat && detail == null && !serversScreen && !cameraFullScreen && panel.section == null) {
+        tab = Tab.Chat; showHome = false
+    }
 
     if (exitDialog) {
         androidx.compose.material3.AlertDialog(
@@ -961,7 +953,7 @@ private fun HermesApp(
         bottomBar = {
             // Sürüş kipinde sekme çubuğu da gizlenir — ekranda yalnız
             // büyük durum göstergesi kalmalı.
-            if (detail == null && !voice.driving && !cameraFullScreen) {
+            if (tab != Tab.Chat && detail == null && !voice.driving && !cameraFullScreen) {
                 NavigationBar(containerColor = HermesColors.Surface) {
                     // Tur-16: Oturumlar sekmesi listeden düştü — oturum listesi
                     // artık sohbetin soldan açtığı çekmecede (FR-007, tek ekran).
@@ -972,7 +964,7 @@ private fun HermesApp(
                             selected = tab == entry,
                             onClick = {
                                 // Sohbetteyken "Sohbet" sekmesine tekrar dokunmak duvara döndürür.
-                                if (entry == Tab.Chat && tab == Tab.Chat) showHome = true
+                                if (entry == Tab.Chat) showHome = false
                                 tab = entry
                             },
                             icon = { Icon(entry.icon, contentDescription = entry.label()) },
@@ -1037,7 +1029,10 @@ private fun HermesApp(
                     Modifier
                         .fillMaxWidth(0.85f)
                         .fillMaxHeight()
-                        .padding(top = innerPadding.calculateTopPadding()),
+                        .padding(
+                            top = innerPadding.calculateTopPadding(),
+                            bottom = innerPadding.calculateBottomPadding(),
+                        ),
                 ) {
                     SessionDrawerContent(
                         rows = drawerRowList,
@@ -1054,9 +1049,12 @@ private fun HermesApp(
                         activeProfileName = activeHermesProfile,
                         onNewChat = {
                             drawerScope.launch { drawerState.close() }
+                            tab = Tab.Chat; showHome = false
                             chatViewModel.newSession()
                         },
                         onPick = { row ->
+                            tab = Tab.Chat; showHome = false
+                            drawerScope.launch { drawerState.close() }
                             // Seçim = YERİNDE oturum değişimi (rota yok).
                             chatViewModel.continueSession(
                                 liveId = row.liveId.ifBlank { row.dbId },
@@ -1321,33 +1319,10 @@ private fun HermesApp(
                             viewModel.settingsStore.update { it.copy(assistantAutoRead = v) }
                         },
                         onExitAssistantMode = chatViewModel::exitAssistantMode,
-                        // Tur-16: ☰ — oturum çekmecesini açar (FR-001).
-                        // V3: ☰ — ana duvar akışına döner (oturum çekmecesi
-                        // soldan kaydırarak hâlâ açılır).
-                        onOpenDrawer = { showHome = true },
+                        // ☰ mevcut sohbetin üzerinde oturum çekmecesini açar.
+                        onOpenDrawer = { drawerScope.launch { drawerState.open() } },
                         // Tur-19 FR-003: eşzamanlılık istatistik şeridi (composer üstü).
-                        statusStrip = {
-                            // V3 czip: açık oturum uzunsa (≥200 ileti) otomatik öneri.
-                            val currentRow = drawerRowList.firstOrNull { it.current }
-                            val currentId = currentRow?.let { it.dbId.ifBlank { it.liveId } }
-                            val count = currentRow?.let {
-                                (restById[it.dbId] ?: restById[it.liveId])?.messageCount
-                            } ?: 0
-                            if (currentRow != null && currentId != null &&
-                                com.hermes.mobile.ui.isLongSession(count) && currentId !in czipDismissed
-                            ) {
-                                com.hermes.mobile.ui.CzipBanner(
-                                    messageCount = count,
-                                    onCzip = { chatViewModel.czipContinue(currentId, currentRow.title) },
-                                    onDismiss = { czipDismissed = czipDismissed + currentId },
-                                )
-                            }
-                            SessionStatsStrip(
-                                rows = drawerRowList,
-                                speed = chatViewModel.speed,
-                                decimalSeparator = if (com.hermes.mobile.ui.S.lang == com.hermes.mobile.ui.Lang.TR) ',' else '.',
-                            )
-                        },
+                        statusStrip = null,
                         )
                     }
                     // Tur-16: Work/Oturumlar sekmesi sekme çubuğunda çizilmez
@@ -1386,25 +1361,6 @@ private fun HermesApp(
                             )
                         },
                     )
-                    Tab.Arena -> {
-                        // UI-5: gateway StateFlow'u .value ile okunursa Arena
-                        // değişimde taze kopya almaz; akış olarak gözlemlensin.
-                        val arenaGateway by chatViewModel.gateway.collectAsStateWithLifecycle()
-                        ArenaScreen(
-                        arenaViewModel = arenaViewModel,
-                        gateway = arenaGateway,
-                        // Tur-9: Arena boştayken sahne sunucunun çalışan oturumlarını
-                        // gösterir (LiveSessions kaynağı, salt okuma).
-                        liveSessions = live.sessions,
-                        // Tur-15: sahne kipi kalıcı (AppSettings) + Outrun WebView sekme
-                        // değişiminden sağ çıksın diye HermesApp kapsamında tutulur.
-                        sceneMode = settings.arenaSceneMode,
-                        onSceneModeChange = { m ->
-                            viewModel.settingsStore.update { it.copy(arenaSceneMode = m) }
-                        },
-                        outrunHolder = outrunHolder,
-                    )
-                    }
                     Tab.Settings -> SettingsScreen(
                         shizukuState = shizukuState,
                         onRequestShizuku = chatViewModel.shizuku::requestPermission,

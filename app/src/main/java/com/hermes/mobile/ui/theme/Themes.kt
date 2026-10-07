@@ -139,6 +139,9 @@ fun String.toColorOrNull(): Color? {
  * mobilde okunaklı olacak biçimde türetildi.
  */
 val BUILTIN_THEMES: List<HermesPalette> = listOf(
+    HermesPalette(id="chat", label="Hermes Sohbet", background="#161616", surface="#252525", surfaceDim="#1C1C1C",
+        border="#343434", borderStrong="#484848", accent="#7AD4B8", textPrimary="#F1F1F1", textSecondary="#C7C7C7",
+        textMuted="#A2A2A2", textFaint="#828282", isLight=false),
     // Tur-17 B2: "Hermes Teal 2.0" — TASARIM-RAPORU.md §3.1 birebir.
     // Aksan artik metinden ayrik (eski #FFE6CB = textPrimary idi → B2 ihlali).
     HermesPalette(

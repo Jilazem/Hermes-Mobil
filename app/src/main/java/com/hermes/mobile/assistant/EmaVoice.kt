@@ -4,7 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import com.hermes.mobile.data.EmaTtsClient
+import com.hermes.mobile.data.EmaSpeech
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -14,8 +14,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /** EMA sentence queue with immediate PCM playback and cancellation. */
-class EmaVoice(context: Context, private val client: EmaTtsClient) : FileQueueVoice(context) {
+class EmaVoice(context: Context, private val client: EmaSpeech) : FileQueueVoice(context) {
     override val allowAndroidFallback = false
+    override fun speechError() = if (client is com.hermes.mobile.data.EmaOfflineSpeech)
+        "EMA sesi üretilemedi. Ses ayarlarından modeli denetle veya yeniden indir." else super.speechError()
     @Volatile private var track: AudioTrack? = null
     private val outputLock = Any()
 

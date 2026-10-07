@@ -1,5 +1,7 @@
 package com.hermes.mobile.assistant
 
+import com.hermes.mobile.data.emaEnabled
+
 import android.content.Context
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.DiagLog
@@ -66,7 +68,7 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         var sid = sessionId
         var fresh = false
         val settings = SettingsStore(context)
-        val unified = settings.settings.value.emaUrl.isNotBlank()
+        val unified = settings.settings.value.emaEnabled
         if (unified) {
             val saved = settings.settings.value.lastSession.takeIf { it.startsWith(profile.id + "|") }
                 ?.substringAfter('|')?.takeIf { it.isNotBlank() }
@@ -91,6 +93,15 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         if (sid == null) {
             sid = client.createSession(null)
             fresh = true
+        }
+        if (fresh) {
+            val s = settings.settings.value
+            val pref = s.modelsByServer[profile.id] ?: s.lastModel.takeIf { s.modelsByServer.isEmpty() }.orEmpty()
+            val parts = pref.split("|", limit = 2)
+            if (parts.size == 2) {
+                val result = client.slashExec(sid, "/model ${parts[1]} --provider ${parts[0]}")
+                check(com.hermes.mobile.data.modelSwitchAccepted(result)) { "Kayıtlı model seçilemedi" }
+            }
         }
         sessionId = sid
         if (unified) settings.update { it.copy(lastSession = "${profile.id}|${client.storedSessionId(sid)}") }
@@ -167,7 +178,7 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         sessionId = null
         localHistory.clear()
         val settings = SettingsStore(context)
-        if (settings.settings.value.emaUrl.isNotBlank()) settings.update { it.copy(lastSession = "") }
+        if (settings.settings.value.emaEnabled) settings.update { it.copy(lastSession = "") }
         prefs.edit().remove(KEY_SID).remove(KEY_AT).remove(KEY_PROFILE).apply()
     }
 

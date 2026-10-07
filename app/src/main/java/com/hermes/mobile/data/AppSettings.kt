@@ -79,9 +79,9 @@ val LIVE_VOICES = listOf("Puck", "Charon", "Kore", "Fenrir", "Aoede", "Leda", "O
 @Serializable
 data class AppSettings(
     // ── Görünüm ──────────────────────────────────────────────────────
-    val themeId: String = "hermes",
+    val themeId: String = "chat",
     /** Sunucu skin değişince tema da değişsin mi (`skin.changed`). */
-    val followServerSkin: Boolean = true,
+    val followServerSkin: Boolean = false,
     val fontScale: Float = 1.0f,
     val compact: Boolean = false,
 
@@ -216,6 +216,7 @@ data class AppSettings(
     val voiceUrl: String = "",
 
     /** Local EMA service; an explicit address activates the unified voice. */
+    val emaMode: String = "server",
     val emaUrl: String = "",
     val emaToken: String = "",
 
@@ -369,6 +370,8 @@ data class AppSettings(
      * görünüyordu. Burada saklanıp her yeni oturumda geri uygulanıyor.
      */
     val lastModel: String = "",
+    val modelsByServer: Map<String, String> = emptyMap(),
+    val chatExperienceVersion: Int = 0,
 
     val brokenModels: Set<String> = emptySet(),
     val showBrokenModels: Boolean = false,
@@ -421,6 +424,7 @@ data class VoicePrefs(
     val url: String = "",
     /** Son çalışan adres — ilk aday olur. */
     val lastOk: String = "",
+    val emaMode: String = "server",
     val emaUrl: String = "",
     val emaToken: String = "",
     /**
@@ -436,6 +440,7 @@ fun AppSettings.toVoicePrefs(): VoicePrefs = VoicePrefs(
     engine = VoiceSpeakLogic.Engine.fromId(voiceEngine),
     url = voiceUrl,
     lastOk = voiceLastOk,
+    emaMode = emaMode,
     emaUrl = emaUrl,
     emaToken = emaToken,
     assistantAutoRead = assistantAutoRead,
@@ -475,7 +480,13 @@ class SettingsStore(context: Context) {
 
     private fun load(): AppSettings {
         val raw = prefs.getString(KEY_SETTINGS, null) ?: return AppSettings()
-        return runCatching { json.decodeFromString<AppSettings>(raw) }.getOrDefault(AppSettings())
+        val loaded = runCatching { json.decodeFromString<AppSettings>(raw) }.getOrDefault(AppSettings())
+        if (loaded.chatExperienceVersion >= 1) return loaded
+        val migrated = loaded.copy(chatExperienceVersion = 1,
+            themeId = if (loaded.themeId == "hermes") "chat" else loaded.themeId,
+            followServerSkin = false)
+        prefs.edit().putString(KEY_SETTINGS, json.encodeToString(migrated)).apply()
+        return migrated
     }
 
     private fun loadThemes(): List<HermesPalette> {
@@ -524,3 +535,6 @@ class SettingsStore(context: Context) {
 fun AppSettings.withFullControl(on: Boolean): AppSettings =
     if (on) copy(fullControl = true, agentMayUsePhone = true, agentReadOnly = false)
     else copy(fullControl = false)
+
+val VoicePrefs.emaEnabled: Boolean get() = emaMode == "offline" || emaUrl.isNotBlank() || emaToken.isNotBlank()
+val AppSettings.emaEnabled: Boolean get() = emaMode == "offline" || emaUrl.isNotBlank() || emaToken.isNotBlank()

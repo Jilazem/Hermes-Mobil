@@ -1,5 +1,7 @@
 package com.hermes.mobile.ui
 
+import androidx.compose.material3.OutlinedButton
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -440,15 +442,6 @@ fun ChatScreen(
         // seçimi oturum BAŞINDA yapılan bir karar; yazarken mesaj alanına
         // ~36dp kazandırmak daha değerli (kullanıcı şikâyeti: klavye açıkken
         // içerik sıkışıyor). Klavye kapanınca satır aynı yerine döner.
-        if (!imeVisible) {
-            ProfileChipsRow(
-                profiles = profiles,
-                selectedProfile = selectedProfile,
-                currentProfile = currentProfile,
-                onChipClick = onProfileChipClick,
-            )
-        }
-
         // Yazma hızı: tek satır + akan shimmer. message.complete'te değerler
         // donar; satır 600 ms sönüşle kalkar. Akış AYNI sayfada toplanıyor ama
         // collect SpeedRow içinde: her pencere yalnız bu satırı yeniden derler.
@@ -618,7 +611,7 @@ private fun ChatHeader(
     // durumda sessiz — Telegram da "bağlıyım" demez.
     val problem = when (val c = state.connection) {
         is ConnectionState.Open -> null
-        is ConnectionState.Error -> c.reason
+        is ConnectionState.Error -> S.t2("Bağlantı yok", "Offline")
         is ConnectionState.Connecting -> null
         is ConnectionState.Closed -> S.t2("bağlantı yok", "no connection")
         ConnectionState.Idle -> S.t2("bağlantı yok", "no connection")
@@ -646,25 +639,24 @@ private fun ChatHeader(
                 tint = HermesColors.TextMuted,
             )
         }
-        StatusDot(if (problem == null) HermesColors.Online else HermesColors.Danger)
-        Spacer(Modifier.width(8.dp))
         Column(
             Modifier
                 .weight(1f)
                 .heightIn(min = 44.dp)
                 .clip(MaterialTheme.shapes.medium)
-                .clickable(onClick = onOpenProfiles)
+                .clickable(onClick = onOpenModelPicker)
         ) {
             // Tek satır KONU (P3 #8): chrome ince, model orada durmaz.
             Text(
-                state.topic.takeIf { it.isNotBlank() } ?: S.chatTitle,
+                "Hermes",
                 color = HermesColors.TextPrimary,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // İkinci satır yalnız gerçekten bir şey söylüyorsa.
+            Text(state.currentModel?.takeIf { it.isNotBlank() } ?: S.t2("Model seç ▾", "Choose model ▾"),
+                color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             problem?.let {
                 Text(it, color = HermesColors.Danger, style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
@@ -819,140 +811,21 @@ private fun EmptyChatHint(
     onOpenPrompts: () -> Unit,
     onOpenServers: () -> Unit = {},
 ) {
-    Column(
-        modifier.padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(S.emptyTitle, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(6.dp))
+    Column(modifier.padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(S.t2("Ne yapalım?", "How can I help?"), color = HermesColors.TextPrimary,
+            style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
         if (connection !is ConnectionState.Open) {
-            // Tur22 madde-4 (4. sahne): bağlantı yok — tek cümle + ikon + CTA.
-            EmptyState(
-                icon = EmptyStateIcons.NoConnection,
-                message = emptyStateNoConnection(),
-                actionLabel = S.t2("Sunucu ekle", "Add server"),
-                onAction = onOpenServers,
-            )
-            // D-04 kuralı: hata kodu yutulmaz — neden varsa altta tek satır.
-            (connection as? ConnectionState.Error)?.reason?.let { why ->
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    why,
-                    color = HermesColors.Danger,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
+            Text(S.t2("Sohbet için Hermes sunucuna bağlan.", "Connect to your Hermes server to chat."),
+                color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = onOpenServers) { Text(S.t2("Bağlantıyı ayarla", "Set up connection")) }
         } else {
-            Text(
-                S.emptyHint,
-                color = HermesColors.TextMuted,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        if (connection is ConnectionState.Open) {
-            Spacer(Modifier.height(18.dp))
-            // Öneri çipleri: dokunma taslağı doldurur, mesaj göndermez (draft
-            // doluysa üstüne yazmaz, sonuna ekler — sharedText kuralıyla aynı).
-            // Kayıtlı promptlar varsa onlar gösterilir; liste boşsa sabit
-            // öneriler kalır. Sondaki "+", prompt sheet'ini açar.
-            val chips: List<Pair<String, String>> =
-                if (savedPrompts.isNotEmpty()) savedPrompts.map { it.label to it.text }
-                else suggestions().map { it to it }
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                chips.forEach { (label, body) ->
-                    AssistChip(
-                        onClick = { onUsePrompt(body) },
-                        label = {
-                            Text(
-                                label,
-                                color = HermesColors.TextSecondary,
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Bolt,
-                                null,
-                                tint = HermesColors.Midground,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        },
-                    )
-                }
-                AssistChip(
-                    onClick = onOpenPrompts,
-                    label = {
-                        Text(
-                            S.t2("Promptlar", "Prompts"),
-                            color = HermesColors.Midground,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Add,
-                            null,
-                            tint = HermesColors.Midground,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    },
-                )
-            }
-
-            // Telefon eylemleri cihazda çalışıyor, sunucuya hiç gitmiyor —
-            // kullanıcının bunu bilmesi gerek, yoksa hiç denemiyor.
-            Spacer(Modifier.height(18.dp))
-            Text(
-                S.phoneSectionTitle,
-                color = HermesColors.TextMuted,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-            )
-            Spacer(Modifier.height(7.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                phoneExamples().take(2).forEach { example ->
-                    Text(
-                        example,
-                        color = HermesColors.Midground,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
-                            .clickable { onSuggestion(example) }
-                            .padding(horizontal = 10.dp, vertical = 9.dp),
-                    )
-                }
-            }
-            Spacer(Modifier.height(6.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                phoneExamples().drop(2).forEach { example ->
-                    Text(
-                        example,
-                        color = HermesColors.Midground,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
-                            .clickable { onSuggestion(example) }
-                            .padding(horizontal = 10.dp, vertical = 9.dp),
-                    )
-                }
+            val prompts = if (savedPrompts.isNotEmpty()) savedPrompts.take(3).map { it.label to it.text }
+                else listOf(S.t2("Günümü planla", "Plan my day") to S.t2("Bugünkü işlerimi birlikte planlayalım.", "Help me plan today's tasks."),
+                    S.t2("Bir fikri geliştirelim", "Explore an idea") to S.t2("Bir fikrimi seninle geliştirmek istiyorum.", "I want to develop an idea with you."),
+                    S.t2("Bir şey sor", "Ask a question") to S.t2("Bir konuda yardımına ihtiyacım var.", "I need your help with something."))
+            prompts.forEach { (label,body) ->
+                OutlinedButton(onClick = { onUsePrompt(body) }, modifier = Modifier.fillMaxWidth()) { Text(label) }
             }
         }
     }

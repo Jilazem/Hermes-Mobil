@@ -248,6 +248,7 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
     /** Metni [target] dosyasına seslendirir (IO iş parçacığında çağrılır). */
     protected abstract suspend fun synth(text: String, target: File): File
     protected open val allowAndroidFallback: Boolean = true
+    protected open fun speechError(): String = "EMA sesi kullanılamıyor — servis bağlantısını kontrol et"
     protected open fun stopOutput() = Unit
     protected open suspend fun speakSentence(text: String, target: File) {
         val file = synth(text, target)
@@ -285,7 +286,7 @@ abstract class FileQueueVoice(context: Context) : JarvisVoice {
                     currentCoroutineContext().ensureActive()
                     if (!allowAndroidFallback) {
                         failed = true
-                        if (queue === q) onError?.invoke("EMA sesi kullanılamıyor — servis bağlantısını kontrol et")
+                        if (queue === q) onError?.invoke(speechError())
                         q.cancel()
                         break
                     }

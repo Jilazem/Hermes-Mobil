@@ -14,8 +14,8 @@ android {
         applicationId = "com.hermes.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.1"
         vectorDrawables { useSupportLibrary = true }
 
         // ABI seçimi aşağıdaki `splits.abi` bloğunda (arm64 telefon, x86_64 emülatör);
@@ -116,6 +116,8 @@ dependencies {
     // MavenCentral'da POM'u olmadığı için resmî GitHub sürüm AAR'ı depoya
     // alındı (app/libs, sha256 633c24321e06b1fe... — RAPOR'da tam değer).
     implementation(files("libs/sherpa-onnx-1.13.8.aar"))
+    // Java JNI bridge uses the existing ORT API 28 runtime; no duplicate native library.
+    implementation(files("libs/onnxruntime-java-bridge-1.28.0.aar"))
 
     testImplementation("junit:junit:4.13.2")
 

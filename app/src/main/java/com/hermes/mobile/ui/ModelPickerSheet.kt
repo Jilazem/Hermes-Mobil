@@ -107,7 +107,7 @@ fun ModelPickerSheet(
     val allRows = remember(providers, brokenModels, hiddenModels, modelUsage) {
         val recByKey = RECOMMENDED_MODELS.associateBy { "${it.provider}/${it.model}" }
         providers.flatMap { p ->
-            p.models.map { m ->
+            p.models.filterNot { m -> listOf("embedding", "reranker", "-asr-", "-ocr").any { m.contains(it, ignoreCase = true) } }.map { m ->
                 val key = "${p.slug}/$m"
                 val rec = recByKey[key]
                 ModelRow(
@@ -127,7 +127,7 @@ fun ModelPickerSheet(
     }
 
     fun matches(r: ModelRow) =
-        q.isEmpty() || r.model.lowercase().contains(q) || r.label.lowercase().contains(q)
+        q.isEmpty() || r.model.lowercase().contains(q) || r.label.lowercase().contains(q) || r.provider.lowercase().contains(q)
 
     val pinned = pinnedModels.mapNotNull { key -> allRows.firstOrNull { it.key == key } }
         .filter(::matches)
@@ -196,13 +196,13 @@ fun ModelPickerSheet(
                 Spacer(Modifier.width(4.dp))
                 Column {
                     Text(
-                        S.t2("Varsayılan model yap", "Make it the default"),
+                        S.t2("Sunucunun da varsayılanı yap", "Also set server default"),
                         color = HermesColors.TextSecondary,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        if (persist) S.t2("Tüm yeni oturumlarda kullanılır", "Used for every new session")
-                        else S.t2("Yalnız bu sohbette geçerli", "Applies to this chat only"),
+                        if (persist) S.t2("Hermes’in diğer istemcilerini de etkiler", "Also affects other Hermes clients")
+                        else S.t2("Telefondaki seçimin otomatik kaydedilir", "Your phone remembers this choice"),
                         color = HermesColors.TextFaint,
                         style = MaterialTheme.typography.labelSmall,
                     )
