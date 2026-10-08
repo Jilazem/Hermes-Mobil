@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class LiveState(
+    val profileId: String? = null,
     val sessions: List<LiveSession> = emptyList(),
     val loading: Boolean = false,
     val error: String? = null,
@@ -62,10 +63,11 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
     private var client: GatewayWsClient? = null
     private var pollJob: Job? = null
 
-    fun bind(gw: GatewayWsClient?) {
+    fun bind(gw: GatewayWsClient?, profileId: String? = null) {
         if (gw === client) return
         client = gw
         pollJob?.cancel()
+        _state.value = LiveState(profileId = profileId)
         if (gw == null) {
             _state.value = LiveState()
             return
@@ -86,6 +88,7 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
             if (!quiet) _state.update { it.copy(loading = true, error = null) }
             runCatching { gw.activeSessions() }
                 .onSuccess { list ->
+                    if (gw !== client) return@onSuccess
                     // Tur-2 K3(b): yeniden bağlanmada gateway aynı oturumu iki
                     // süreç içi kayıtla bırakabiliyor — LazyColumn key={id}
                     // çakışması FATAL. liveFeed() dbId'de ayıklıyor; bu ekran
@@ -99,6 +102,7 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 .onFailure { e ->
+                    if (gw !== client) return@onFailure
                     _state.update {
                         it.copy(loading = false, error = e.message ?: "Canlı oturumlar alınamadı")
                     }

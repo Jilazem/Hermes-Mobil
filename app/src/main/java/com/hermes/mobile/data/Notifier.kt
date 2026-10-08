@@ -33,6 +33,7 @@ object Notifier {
      */
     @Volatile
     var appVisible: Boolean = false
+    @Volatile var visibleSession: Pair<String, String?>? = null
 
     private fun channel(context: Context): NotificationManager {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -91,6 +92,8 @@ object Notifier {
      * karşılığı olan bir mesaj yok.
      */
     fun agentMessage(context: Context, title: String, text: String) {
+        val profileId = ServerProfileStore(context).activeId().orEmpty()
+        if (text.isNotBlank()) ActivityInbox.get(context).add(ActivityNotice(profileId = profileId, title = title, text = text.take(4_000), kind = "agent"))
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
         ) return
@@ -98,6 +101,8 @@ object Notifier {
             context,
             0,
             Intent(context, com.hermes.mobile.MainActivity::class.java)
+                .putExtra("hermes_action", "notifications")
+                .setData(android.net.Uri.parse("hermes://notifications/agent"))
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -123,7 +128,13 @@ object Notifier {
         text: String,
         sessionId: String? = null,
         force: Boolean = false,
+        profileId: String? = null,
+        title: String = "Hermes",
     ) {
+        val targetProfile = profileId ?: ServerProfileStore(context).activeId().orEmpty()
+        if (text.isNotBlank()) ActivityInbox.get(context).add(ActivityNotice(profileId = targetProfile,
+            sessionId = sessionId, title = title.ifBlank { "Hermes" }, text = text.take(4_000),
+            read = appVisible && visibleSession == (targetProfile to sessionId)))
         if (appVisible && !force) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
@@ -133,6 +144,10 @@ object Notifier {
             context,
             0,
             Intent(context, com.hermes.mobile.MainActivity::class.java)
+                .putExtra(com.hermes.mobile.MainActivity.EXTRA_OPEN_SESSION, sessionId)
+                .putExtra(com.hermes.mobile.MainActivity.EXTRA_OPEN_PROFILE, targetProfile)
+                .putExtra("hermes_action", "notifications")
+                .setData(android.net.Uri.parse("hermes://reply/${android.net.Uri.encode(targetProfile)}/${android.net.Uri.encode(sessionId.orEmpty())}"))
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -143,6 +158,7 @@ object Notifier {
             .build()
         val replyIntent = Intent(context, ReplyService::class.java)
             .putExtra(ReplyService.EXTRA_SESSION, sessionId)
+            .putExtra(ReplyService.EXTRA_PROFILE, targetProfile)
         val replyPending = PendingIntent.getService(
             context,
             nextId,

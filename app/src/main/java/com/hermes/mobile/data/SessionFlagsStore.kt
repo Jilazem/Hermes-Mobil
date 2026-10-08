@@ -26,6 +26,8 @@ data class SessionFlags(
     val hidden: Set<String> = emptySet(),
     /** id → kullanıcı başlığı; `HermesSession.title`a dokunulmaz. */
     val renames: Map<String, String> = emptyMap(),
+    /** Takip sabitlemeden bağımsızdır; sunucu profiline göre saklanır. */
+    val followed: Set<String> = emptySet(),
 )
 
 class SessionFlagsStore(context: Context) {

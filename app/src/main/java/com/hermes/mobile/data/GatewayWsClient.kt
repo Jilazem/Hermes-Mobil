@@ -253,8 +253,9 @@ class GatewayWsClient(private val profile: ServerProfile) {
                 currentSessionId?.let { put("current_session_id", JsonPrimitive(it)) }
             },
             timeoutMs = 15_000,
-        ) ?: return emptyList()
+        ) ?: error("Canlı oturum listesi alınamadı")
         return runCatching {
+            require(result.jsonObject["sessions"] is kotlinx.serialization.json.JsonArray) { "Canlı oturum listesi geçersiz" }
             Json { ignoreUnknownKeys = true }
                 .decodeFromJsonElement(ActiveSessionsResponse.serializer(), result)
                 .sessions
@@ -262,7 +263,7 @@ class GatewayWsClient(private val profile: ServerProfile) {
             // FR-002: çözüm hatası BOŞ liste diye yutulmasın — iz bırak;
             // aksi halde "canlı oturum yok" ile "bozuk yanıt" ayırt edilemiyor.
             DiagLog.w("ws", "session.active_list cozulemedi: ${it.message}")
-        }.getOrDefault(emptyList())
+        }.getOrThrow()
     }
 
     /**
@@ -485,6 +486,12 @@ data class GatewayEvent(
     /** tool.* olaylarında araç adı. */
     val toolName: String?
         get() = payload?.get("name")?.let { (it as? JsonPrimitive)?.content }
+
+    val toolDetail: String?
+        get() = listOf("text", "arguments", "args", "output", "result", "error")
+            .mapNotNull { key -> payload?.get(key)?.takeUnless { it is kotlinx.serialization.json.JsonNull }
+                ?.let { if (it is JsonPrimitive) it.content else it.toString() } }
+            .filter { it.isNotBlank() }.distinct().joinToString("\n\n").ifBlank { null }
 }
 
 sealed interface ConnectionState {

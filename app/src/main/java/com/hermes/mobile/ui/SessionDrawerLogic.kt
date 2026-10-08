@@ -65,6 +65,7 @@ data class DrawerRow(
      * Renk çözümü [com.hermes.mobile.data.JevBadgeLogic.parse] ile çizim tarafında.
      */
     val jev: String = "",
+    val followed: Boolean = false,
 )
 
 /** Çekmece satırı türleri (LazyColumn key'leri çakışmasın diye ayrı önek). */
@@ -178,7 +179,7 @@ fun drawerRows(
                         sessionActive = s.isActive || l != null,
                         sessionRecord = true,
                     ),
-                    working = l?.isWorking == true || s.isActive,
+                    working = l?.isWorking == true,
                     pinned = s.id in flags.pinned,
                     archived = s.id in flags.archived,
                     current = currentSessionId != null &&
@@ -187,6 +188,7 @@ fun drawerRows(
                     // Tur-21: gateway alanı göndermiyorsa null/boş kalır →
                     // rozet çizilmez (uydurma yok).
                     jev = s.jev.orEmpty(),
+                    followed = s.id in flags.followed || l?.id in flags.followed,
                 ),
             )
         }
@@ -194,6 +196,8 @@ fun drawerRows(
     // REST eşi olmayan canlı kayıtlar (gateway belleğinde, DB'siz oturumlar).
     live.forEach { l ->
         if (l.id in used || l.dbId in used) return@forEach
+        if (l.id in flags.hidden || l.dbId in flags.hidden) return@forEach
+        if (!showArchived && (l.id in flags.archived || l.dbId in flags.archived)) return@forEach
         if (l.id.isNotBlank()) used.add(l.id)
         used.add(l.dbId)
         val title = displayLabel(
@@ -216,10 +220,11 @@ fun drawerRows(
                 ),
                 working = l.isWorking,
                 pinned = l.dbId in flags.pinned,
-                archived = false,
+                archived = l.id in flags.archived || l.dbId in flags.archived,
                 current = currentSessionId != null &&
                     (currentSessionId == l.dbId || currentSessionId == l.id),
                 liveSession = l,
+                followed = l.dbId in flags.followed || l.id in flags.followed,
             ),
         )
     }

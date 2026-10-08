@@ -63,9 +63,10 @@ fun ToolActivityRow(
     modifier: Modifier = Modifier,
     /** Katlanmış ajan günlüğü satırının etiketi (tur-4 H): "Ayrıntı". */
     label: String? = null,
+    expandedByDefault: Boolean = false,
 ) {
     if (entries.isEmpty()) return
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember(expandedByDefault) { mutableStateOf(expandedByDefault) }
 
     val running = entries.filter { it.state == ToolEntryState.Running }
     val failed = entries.count { it.state == ToolEntryState.Failed }
@@ -161,8 +162,12 @@ fun ToolActivityRow(
                 Modifier.padding(top = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                entries.forEachIndexed { index, entry ->
-                    ToolEntryDetail(index + 1, entry)
+                if (entries.size == 1 && expandedByDefault) {
+                    entries.single().detail?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, style = MonoTextStyle, color = HermesColors.TextMuted)
+                    }
+                } else entries.forEachIndexed { index, entry ->
+                    ToolEntryDetail(index + 1, entry, expandedByDefault)
                 }
             }
         }
@@ -170,8 +175,8 @@ fun ToolActivityRow(
 }
 
 @Composable
-private fun ToolEntryDetail(order: Int, entry: ToolEntry) {
-    var open by remember { mutableStateOf(false) }
+private fun ToolEntryDetail(order: Int, entry: ToolEntry, expandedByDefault: Boolean = false) {
+    var open by remember(expandedByDefault) { mutableStateOf(expandedByDefault) }
     val hasDetail = !entry.detail.isNullOrBlank()
 
     Column(
@@ -223,7 +228,7 @@ private fun ToolEntryDetail(order: Int, entry: ToolEntry) {
             Column {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    entry.detail.orEmpty().take(4_000),
+                    entry.detail.orEmpty(),
                     style = MonoTextStyle,
                     color = HermesColors.TextMuted,
                 )

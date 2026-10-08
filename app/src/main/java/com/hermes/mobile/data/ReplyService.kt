@@ -35,6 +35,7 @@ class ReplyService : Service() {
         val text = intent?.let { RemoteInput.getResultsFromIntent(it) }
             ?.getCharSequence(KEY_REPLY)?.toString()?.trim()
         val sessionId = intent?.getStringExtra(EXTRA_SESSION)
+        val targetProfile = intent?.getStringExtra(EXTRA_PROFILE)
 
         if (text.isNullOrBlank()) {
             stopSelf(startId)
@@ -48,15 +49,17 @@ class ReplyService : Service() {
         // Kullanıcının kendi söylediği komut olduğu için ayrı rıza gerekmez.
         PhoneIntent.parse(text)?.takeIf { it.tool == "phone_messages" || it.tool == "phone_reply" }?.let { act ->
             val out = PhoneTools(applicationContext, ShizukuBridge()).execute(act.tool, act.toJson())
-            Notifier.agentReply(applicationContext, out, sessionId, force = true)
+            Notifier.agentReply(applicationContext, out, sessionId, force = true, profileId = targetProfile)
             stopSelf(startId)
             return START_NOT_STICKY
         }
 
         scope.launch {
-            val profile = ServerProfileStore(applicationContext).active()
+            val store = ServerProfileStore(applicationContext)
+            val profile = if (targetProfile.isNullOrBlank()) store.active()
+                else store.list().firstOrNull { it.id == targetProfile }
             if (profile == null || profile.token.isBlank()) {
-                Notifier.agentReply(applicationContext, "Sunucu profili yok — yanıt gönderilemedi")
+                Notifier.agentReply(applicationContext, "Sunucu profili yok — yanıt gönderilemedi", profileId = targetProfile)
                 stopSelf(startId)
                 return@launch
             }
@@ -103,7 +106,7 @@ class ReplyService : Service() {
                 sent -> "Gönderildi — yanıt uygulamada görünecek"
                 else -> "Gönderilemedi: ${outcome.exceptionOrNull()?.message ?: "bilinmeyen hata"}"
             }
-            Notifier.agentReply(applicationContext, message, sessionId = sessionId, force = true)
+            Notifier.agentReply(applicationContext, message, sessionId = sessionId, force = true, profileId = profile.id)
             stopSelf(startId)
         }
 
@@ -131,6 +134,7 @@ class ReplyService : Service() {
     companion object {
         const val KEY_REPLY = "hermes_reply_text"
         const val EXTRA_SESSION = "hermes_session_id"
+        const val EXTRA_PROFILE = "hermes_profile_id"
         private const val CHANNEL = "hermes_sending"
         private const val FG_ID = 4711
     }

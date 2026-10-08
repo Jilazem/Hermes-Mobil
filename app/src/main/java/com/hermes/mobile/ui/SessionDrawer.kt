@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
@@ -147,6 +150,7 @@ fun SessionDrawerContent(
     onDismissDrawer: () -> Unit,
     /** Tur22 madde-3: oturum listesi ilk açılışta/ilk yenilemede iskelet. */
     loading: Boolean = false,
+    onToggleFollow: (DrawerRow) -> Unit = {},
 ) {
     val haptics = LocalHapticFeedback.current
     // Tur-19 FR-001: Tümü sekmesi görünümü — varsayılan akış (kronolojik,
@@ -512,6 +516,7 @@ fun SessionDrawerContent(
                 menuRow = null
                 onTogglePin(row)
             },
+            onToggleFollow = { menuRow = null; onToggleFollow(row) },
             onRename = {
                 menuRow = null
                 renameTarget = row
@@ -991,6 +996,7 @@ private fun DrawerActionSheet(
     onRename: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
+    onToggleFollow: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
@@ -998,9 +1004,9 @@ private fun DrawerActionSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = HermesColors.Background,
-        modifier = Modifier.heightIn(max = 440.dp),
+        modifier = Modifier.heightIn(max = 620.dp),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp)) {
             Text(
                 row.title,
                 color = HermesColors.TextPrimary,
@@ -1041,6 +1047,11 @@ private fun DrawerActionSheet(
                 icon = Icons.Default.PushPin,
                 label = if (row.pinned) S.t2("Sabiti kaldır", "Unpin") else S.t2("Sabitle", "Pin"),
                 onClick = onTogglePin,
+            )
+            DrawerSheetRow(
+                icon = Icons.Default.Star,
+                label = if (row.followed) S.t2("Takibi bırak", "Unfollow") else S.t2("Takip et", "Follow"),
+                onClick = onToggleFollow,
             )
             DrawerSheetRow(
                 icon = Icons.Default.Edit,

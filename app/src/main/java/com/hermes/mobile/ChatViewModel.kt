@@ -62,7 +62,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import com.hermes.mobile.ui.createSessionProfileArg
 import com.hermes.mobile.ui.ROUTER_CHIP
 import com.hermes.mobile.ui.tr
-import com.hermes.mobile.ui.visibleUserMessage
 
 /** Sohbet akışındaki tek bir görsel öğe. */
 sealed interface ChatItem {
@@ -172,7 +171,6 @@ data class TerminalLine(
 private const val QUEUE_NOTICE_KEY = "queue-notice"
 
 /** Devam ettirilen oturumda geri yüklenecek azami mesaj sayısı. */
-private const val HISTORY_LIMIT = 150
 
 /**
  * Yerel modele (node1) giden istekte taşınan azami ÖNCEKİ tur sayısı (tur-27).
@@ -914,7 +912,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                             items = it.items + ChatItem.Assistant(key, answer, streaming = false),
                         )
                     }
-                    Notifier.agentReply(getApplication(), answer, sessionId = _state.value.sessionId)
+                    Notifier.agentReply(getApplication(), answer, sessionId = _state.value.sessionId, profileId = profile?.id, title = _state.value.topic.orEmpty())
                     // Tur-27 (ses hattı): yerel yanıt da SESLENDİRİLİR —
                     // gateway yolundaki message.complete okuma kararının aynısı.
                     // Önceden bu yol hiç okumuyordu: asistan modunda/hands-free'de
@@ -1027,9 +1025,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      * V3 Jarvis "Sohbette aç": bağlantı hazırsa hemen bağlan, değilse (soğuk
      * açılış) bağlantı ilk açıldığında bağlanılsın.
      */
-    fun openSessionWhenReady(sid: String, title: String) {
-        if (profile != null && client != null) continueSession(sid, sid, title)
-        else restoreSessionId = sid
+    private var pendingOpen: Triple<String, String, String?>? = null
+    fun openSessionWhenReady(sid: String, title: String, targetProfileId: String? = null) {
+        if (client != null && _state.value.connection is ConnectionState.Open &&
+            (targetProfileId == null || profile?.id == targetProfileId)) continueSession(sid, sid, title)
+        else pendingOpen = Triple(sid, title, targetProfileId)
     }
 
     fun bind(profile: ServerProfile?) {
@@ -1083,6 +1083,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 // Bağlantı ilk kez açıldığında kayıtlı oturuma dön. Tek deneme:
                 // oturum gateway'de artık yoksa sessizce yeni oturumla devam.
                 if (conn is ConnectionState.Open) {
+                    val open = pendingOpen
+                    if (open != null && (open.third == null || open.third == profile.id)) {
+                        pendingOpen = null
+                        restoreSessionId = null
+                        continueSession(open.first, open.first, open.second)
+                        return@collect
+                    }
                     val restore = restoreSessionId
                     restoreSessionId = null
                     if (restore != null && _state.value.sessionId == null) {
@@ -1093,7 +1100,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
         eventJob = viewModelScope.launch {
             gw.events.collect { event ->
-                handleEvent(event.type, event.text, event.toolName, event.sessionId)
+                handleEvent(event.type, if (event.type.startsWith("tool.")) event.toolDetail else event.text, event.toolName, event.sessionId)
             }
         }
         gw.connect()
@@ -2210,22 +2217,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
 
-            // Uzun oturumlar (361 mesaj görüldü) tek seferde çizilince hem
-            // yavaş hem okunmaz; son kısmı yeterli.
-            val trimmed = if (all.size > HISTORY_LIMIT) all.takeLast(HISTORY_LIMIT) else all
-            val restored = trimmed.mapNotNull { m ->
-                when {
-                    // Kusur I (tur-5): sistem/cron istemi `isUser` olarak dönüyor;
-                    // ham hâliyle balon basılıyordu — sohbet değildir, çizilmez.
-                    m.isUser && !m.content.isNullOrBlank() && visibleUserMessage(m.content) ->
-                        ChatItem.User(nextKey("u"), m.content, m.timestamp)
-                    m.isAssistant && !m.content.isNullOrBlank() ->
-                        ChatItem.Assistant(nextKey("a"), m.content, ts = m.timestamp)
-                    m.isTool ->
-                        ChatItem.Tool(nextKey("t"), m.toolName ?: "araç", ToolState.Done, m.content)
-                    else -> null
-                }
-            }
+            val restored = restoreChatHistory(all, ::nextKey)
             // Filtreden sonra hiç konuşma kalmadıysa ekran bomboş kalmasın:
             // sebebini tek satır söyle (kullanıcı "mesajlarım nerede" demesin).
             val body = if (restored.isEmpty()) {
@@ -2241,15 +2233,6 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 restored
             }
-            val header = if (all.size > trimmed.size) {
-                listOf(
-                    ChatItem.Notice(
-                        nextKey("n"),
-                        "${all.size} mesajlık geçmişin son ${trimmed.size} tanesi gösteriliyor",
-                    )
-                )
-            } else emptyList()
-
             val footer = ChatItem.Notice(
                 nextKey("n"),
                 if (alive) tr("— buradan devam —", "— continue here —")
@@ -2259,7 +2242,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 ),
             )
 
-            _state.update { st -> st.copy(items = header + body + footer, historyLoading = false) }
+            _state.update { st -> st.copy(items = body + footer, historyLoading = false) }
         }
     }
 
@@ -2351,13 +2334,20 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         getApplication(),
                         spoken,
                         sessionId = _state.value.sessionId,
+                        profileId = profile?.id,
+                        title = _state.value.topic.orEmpty(),
                     )
                 }
             }
 
             "thinking.delta", "reasoning.delta" -> appendToThinking(text.orEmpty())
 
-            "status.update" -> _state.update { it.copy(statusLine = text) }
+            "status.update" -> _state.update { st ->
+                val message = text?.takeIf { it.isNotBlank() }
+                val duplicate = (st.items.lastOrNull() as? ChatItem.Notice)?.text == message
+                st.copy(statusLine = text, items = if (message == null || duplicate) st.items
+                    else st.items + ChatItem.Notice(nextKey("status"), message))
+            }
 
             "tool.start" -> _state.update {
                 // Araç çalışmaya başladı: canlı düşünce bloğu kapanır.
@@ -2367,12 +2357,14 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         nextKey("t"),
                         toolName ?: "araç",
                         ToolState.Running,
+                        detail = text,
                     ),
                     agentBusy = true,
                 )
             }
 
-            "tool.complete" -> updateLastTool(toolName, ToolState.Done)
+            "tool.complete" -> updateLastTool(toolName, ToolState.Done, text)
+            "tool.error" -> updateLastTool(toolName, ToolState.Failed, text)
 
             "error" -> {
                 streamingKey = null
@@ -2486,7 +2478,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun updateLastTool(name: String?, newState: ToolState) {
+    private fun updateLastTool(name: String?, newState: ToolState, detail: String? = null) {
         _state.update { st ->
             val idx = st.items.indexOfLast {
                 it is ChatItem.Tool && it.state == ToolState.Running &&
@@ -2494,7 +2486,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (idx < 0) return@update st
             val updated = st.items.toMutableList()
-            updated[idx] = (updated[idx] as ChatItem.Tool).copy(state = newState)
+            val old = updated[idx] as ChatItem.Tool
+            updated[idx] = old.copy(state = newState, detail = listOfNotNull(old.detail, detail).distinct().joinToString("\n\n").ifBlank { null })
             st.copy(items = updated)
         }
     }

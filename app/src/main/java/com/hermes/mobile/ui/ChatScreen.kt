@@ -70,6 +70,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -215,6 +216,8 @@ fun ChatScreen(
     onToggleAssistantAutoRead: (Boolean) -> Unit = {},
     /** Asistan modundan çık — normal sohbet davranışına dön. */
     onExitAssistantMode: () -> Unit = {},
+    fullChatFlow: Boolean = true,
+    onFullChatFlow: (Boolean) -> Unit = {},
 ) {
     // Sheet burada açılıyor: taslak `draft` bu kompozablda, "satıra dokun →
     // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
@@ -223,7 +226,7 @@ fun ChatScreen(
     // KALAN-2: ⋯ → "Müdahale" bu diyaloğu açar (yalnız ajan çalışırken).
     var interventionOpen by remember { mutableStateOf(false) }
 
-    var draft by remember { mutableStateOf("") }
+    var draft by rememberSaveable { mutableStateOf("") }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
 
     LaunchedEffect(sharedText) {
@@ -241,14 +244,14 @@ fun ChatScreen(
         onVoicePrefillConsumed()
     }
     val listState = rememberLazyListState()
-    var followBottom by remember { mutableStateOf(true) }
+    var followBottom by rememberSaveable { mutableStateOf(true) }
 
     // Tur-8 klavye düzeltmesi: klavye açılınca görünür alan kısalıyor;
     // LazyColumn konumu İLK görünür öğeye göre koruduğu için en alttaki
     // satırlar görünmez oluyordu ("metin yutulmuş"). Bu bayrak KULLANICI
     // NİYETİDİR: yalnız kullanıcı kaydırırken güncellenir, yerleşimin
     // kısalması niyeti bozmaz.
-    var userPinnedBottom by remember { mutableStateOf(true) }
+    var userPinnedBottom by rememberSaveable { mutableStateOf(true) }
     // Klavye görünür mü (imePadding ile aynı inset kaynağı).
     val imeVisible = WindowInsets.isImeVisible
 
@@ -257,7 +260,9 @@ fun ChatScreen(
     // hedefi de bundan hesaplanır (tur-2 K1: eski kod ham items.lastIndex'i
     // katlanmış rows'a uyguluyor, taşkın indeks balonu header'ın altına
     // itip İLK SATIRI kırpıyordu).
-    val rows = remember(state.items) { foldToolRuns(state.items) }
+    val rows = remember(state.items, fullChatFlow) {
+        if (fullChatFlow) state.items.map { ChatRow.Single(it) } else foldToolRuns(state.items)
+    }
 
     // Kullanıcı bilinçli olarak yukarı kaydırırsa takip kapanır; alta dönünce
     // kendiliğinden açılır. (Eski kodda bayrağı false'a çeken hiçbir yol
@@ -272,6 +277,7 @@ fun ChatScreen(
             // güncellenir; yerleşim değişimi (klavye) niyeti bozmaz.
             Triple(total, near, listState.isScrollInProgress)
         }.collect { (total, near, scrolling) ->
+            if (total == 0) return@collect
             followBottom = near
             if (total <= 1 || near) userPinnedBottom = true
             else if (scrolling) userPinnedBottom = false
@@ -299,7 +305,7 @@ fun ChatScreen(
     // kaydırma tetiklenmiyordu. Saf imza (test: ChatScrollTest) her
     // büyüme/eklenmede değişir.
     val streamSig = remember(state.items) { streamSignature(state.items) }
-    LaunchedEffect(streamSig) {
+    LaunchedEffect(streamSig, fullChatFlow) {
         if (rows.isEmpty() || !followBottom) return@LaunchedEffect
         // Son BALON satırına yasla (sondaki sabit Spacer'a değil): balon üst
         // kenere oturur, ilk satırı header altında kalmaz; akışta alt satır
@@ -320,6 +326,8 @@ fun ChatScreen(
             onStop = onStop,
             activeProfileName,
             onOpenDrawer = onOpenDrawer,
+            fullChatFlow = fullChatFlow,
+            onFullChatFlow = onFullChatFlow,
         )
 
         Box(Modifier.weight(1f)) {
@@ -392,6 +400,7 @@ fun ChatScreen(
                                     row.item,
                                     onApproval,
                                     onOpenFile,
+                                    fullFlow = fullChatFlow,
                                     onSpeak = onSpeak,
                                     onBubbleAction = onBubbleAction,
                                     speakKey = voice.speak.key,
@@ -427,7 +436,7 @@ fun ChatScreen(
             TypingIndicator(Modifier.padding(horizontal = 18.dp, vertical = 3.dp))
         }
 
-        state.statusLine?.let { line ->
+        state.statusLine?.takeIf { !fullChatFlow }?.let { line ->
             Text(
                 line,
                 style = MonoTextStyle,
@@ -604,6 +613,8 @@ private fun ChatHeader(
     onStop: () -> Unit,
     activeProfileName: String,
     onOpenDrawer: () -> Unit = {},
+    fullChatFlow: Boolean = true,
+    onFullChatFlow: (Boolean) -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     // Tur-4 (P2 #7): model etiketi ve "bağlı" rozeti üst şeritten ÇIKTI.
@@ -648,7 +659,7 @@ private fun ChatHeader(
         ) {
             // Tek satır KONU (P3 #8): chrome ince, model orada durmaz.
             Text(
-                "Hermes",
+                state.topic.takeIf { displayLabel(it) != "?" } ?: "Hermes",
                 color = HermesColors.TextPrimary,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
@@ -683,6 +694,10 @@ private fun ChatHeader(
                 onDismissRequest = { menuOpen = false },
                 containerColor = HermesColors.Surface,
             ) {
+                DropdownMenuItem(
+                    text = { Text(if (fullChatFlow) S.t2("Sade sohbet görünümü", "Compact chat view") else S.t2("Tüm akışı göster", "Show full flow")) },
+                    onClick = { menuOpen = false; onFullChatFlow(!fullChatFlow) },
+                )
                 chatMenuActions(state.agentBusy).forEach { action ->
                     DropdownMenuItem(
                         text = {
@@ -1006,6 +1021,7 @@ private fun ChatItemView(
     speakBusy: Boolean = false,
     /** Uzun basma menüsü → sohbetin ortak slash hattı. */
     onBubbleAction: (BubbleAction, String) -> Unit = { _, _ -> },
+    fullFlow: Boolean = false,
 ) {
     when (item) {
         is ChatItem.User -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -1127,6 +1143,8 @@ private fun ChatItemView(
                 text = item.text,
                 live = item.live,
                 stateKey = item.key,
+                defaultExpanded = fullFlow,
+                showFullLiveText = fullFlow,
             )
         }
 
@@ -1143,7 +1161,8 @@ private fun ChatItemView(
                     },
                     detail = item.detail,
                 )
-            )
+            ),
+            expandedByDefault = fullFlow,
         )
 
         is ChatItem.Notice -> Text(

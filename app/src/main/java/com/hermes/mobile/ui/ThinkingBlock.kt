@@ -46,11 +46,13 @@ fun ThinkingBlock(
     live: Boolean,
     stateKey: Any? = null,
     modifier: Modifier = Modifier,
+    defaultExpanded: Boolean = false,
+    showFullLiveText: Boolean = false,
 ) {
     var expanded by remember(stateKey) {
         // Canlı (hâlâ akan) blok varsayılanı AÇIK: son satırları izlemek için;
         // biten blok kapanır (katlanır davranış).
-        mutableStateOf(live)
+        mutableStateOf(live || defaultExpanded)
     }
     // Canlı kuyruk: metin uzadıkça her yeniden çizimde son dolu satırlar
     // yeniden hesaplanır — LazyColumn kaydırması değil, içerik kendini günceller
@@ -81,10 +83,10 @@ fun ThinkingBlock(
         if (live) {
             // Canlı görünüm: açık blok + son 3-4 dolu satır + sonda imleç.
             // Kullanıcı en alttayken LazyColumn kendiliğinden izler.
-            val shown = liveTail.ifEmpty { "…" }
+            val shown = (if (showFullLiveText) text else liveTail).ifEmpty { "…" }
             Text(
                 buildString {
-                    if (text.length > liveTail.length) {
+                    if (!showFullLiveText && text.length > liveTail.length) {
                         append("…\n")
                     }
                     append(shown)

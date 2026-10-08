@@ -35,6 +35,19 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import com.hermes.mobile.ui.NotificationsScreen
+import com.hermes.mobile.ui.FollowingScreen
+import com.hermes.mobile.data.ActivityInbox
+import com.hermes.mobile.data.ActivityNotice
+import com.hermes.mobile.data.noticesForProfile
+import com.hermes.mobile.data.followedUpdates
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -74,6 +87,8 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.collectAsState
 import com.hermes.mobile.ui.SessionDetailScreen
 import com.hermes.mobile.ui.HomeFeedScreen
 import com.hermes.mobile.ui.SessionDrawerContent
@@ -105,6 +120,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Jarvis panelinden "Sohbette aç": asistan oturumunun kimliği. */
         const val EXTRA_OPEN_SESSION = "hermes_open_session"
+        const val EXTRA_OPEN_PROFILE = "hermes_open_profile"
     }
 
     private val viewModel: AppViewModel by viewModels()
@@ -391,7 +407,12 @@ class MainActivity : ComponentActivity() {
         // V3 Jarvis: panelden "Sohbette aç" — asistan oturumuna bağlan.
         i.getStringExtra(EXTRA_OPEN_SESSION)?.takeIf { it.isNotBlank() }?.let { sid ->
             i.removeExtra(EXTRA_OPEN_SESSION)
-            chatViewModel.openSessionWhenReady(sid, "Jarvis")
+            val pid = i.getStringExtra(EXTRA_OPEN_PROFILE)?.takeIf { it.isNotBlank() }
+            if (pid != null) {
+                if (viewModel.state.value.profiles.none { it.id == pid }) return
+                if (viewModel.state.value.active?.id != pid) viewModel.selectProfile(pid)
+            }
+            chatViewModel.openSessionWhenReady(sid, "Hermes", pid)
             chatViewModel.pendingAction.value = "chat"
             return
         }
@@ -565,7 +586,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(gateway) {
-                    liveViewModel.bind(gateway)
+                    liveViewModel.bind(gateway, state.active?.id)
                     viewModel.bindGateway(gateway)
                     // Bot (profil) ataması: profilleri sohbet açılır açılmaz
                     // çek — yalnız ProfilSheet açıldığında çekilmesin.
@@ -645,7 +666,8 @@ class MainActivity : ComponentActivity() {
  */
 private enum class Tab(val icon: ImageVector) {
     Chat(Icons.AutoMirrored.Filled.Message),
-    Work(Icons.AutoMirrored.Filled.List),
+    Notifications(Icons.Default.NotificationsNone),
+    Following(Icons.Default.StarOutline),
     Panel(Icons.Default.GridView),
     Settings(Icons.Default.Tune),
 }
@@ -654,12 +676,14 @@ private enum class Tab(val icon: ImageVector) {
 @Composable
 private fun Tab.label(): String = when (this) {
     Tab.Chat -> S.tabChat
-    Tab.Work -> S.tabSessions
+    Tab.Notifications -> S.t2("Bildirimler", "Notifications")
+    Tab.Following -> S.t2("Takip", "Following")
     Tab.Panel -> S.tabPanel
     Tab.Settings -> S.tabSettings
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun HermesApp(
     onFinish: () -> Unit,
     state: AppState,
@@ -698,6 +722,7 @@ private fun HermesApp(
     onMakeDefaultAssistant: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Chat) }
+    val chatSavedState = rememberSaveableStateHolder()
     // Sohbet açılış ekranıdır; oturumlar ☰ çekmecesinde yer alır.
     var showHome by rememberSaveable { mutableStateOf(false) }
     // Tur-11: sesli mesaj durumu (kayıt sayacı + seslendirme fazı) ve sesle
@@ -756,6 +781,10 @@ private fun HermesApp(
     val drawerItemList = remember(drawerRowList, drawerQuery) {
         drawerListItems(drawerRowList, query = drawerQuery, liveOnly = false, grouping = true)
     }
+    val followingRowList = remember(state.sessions, live.sessions, state.flags, state.cronNames) {
+        drawerRows(state.sessions, live.sessions, drawerLiveByDbId, state.flags, state.cronNames,
+            showArchived = true, currentSessionId = chat.sessionId)
+    }
     val liveTitleOf = remember(state.flags, state.cronNames, restById) {
         { l: LiveSession ->
             liveSessionTitle(
@@ -772,7 +801,8 @@ private fun HermesApp(
         detail != null -> "Oturum detayı"
         else -> when (tab) {
             Tab.Chat -> "Sohbet"
-            Tab.Work -> "Oturumlar"
+            Tab.Notifications -> "Bildirimler"
+            Tab.Following -> "Takip"
             Tab.Panel -> "Pano"
             Tab.Settings -> "Ayarlar"
         }
@@ -842,6 +872,23 @@ private fun HermesApp(
     // Uygulamadaki ses düğmeleri artık Gemini Live'a (Google) değil buraya gelir.
     var jarvisOpen by remember { mutableStateOf(false) }
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val inbox = remember(appContext) { ActivityInbox.get(appContext) }
+    val allNotices by inbox.items.collectAsStateWithLifecycle()
+    val notices = remember(allNotices, state.active?.id) { noticesForProfile(allNotices, state.active?.id) }
+    val unreadCount = notices.count { !it.read }
+    var previousLive by remember(state.active?.id) { mutableStateOf<List<LiveSession>?>(null) }
+    LaunchedEffect(live.sessions, live.fetched, live.error, state.active?.id, state.flags.followed) {
+        val pid = state.active?.id ?: return@LaunchedEffect
+        if (!live.fetched || live.error != null || live.profileId != pid) return@LaunchedEffect
+        followedUpdates(previousLive, live.sessions, state.flags).forEach { update ->
+            val row = followingRowList.firstOrNull { it.dbId == update.sessionId || it.liveId == update.sessionId }
+            val old = previousLive?.firstOrNull { it.dbId == update.sessionId || it.id == update.sessionId }
+            inbox.add(ActivityNotice(profileId = pid, sessionId = update.sessionId,
+                title = row?.title ?: old?.let(liveTitleOf) ?: com.hermes.mobile.ui.tr("Takip edilen oturum", "Followed session"),
+                text = update.text, kind = "follow"))
+        }
+        previousLive = live.sessions
+    }
     val jarvis = remember { com.hermes.mobile.assistant.JarvisEngine(appContext) { jarvisOpen = false } }
     androidx.compose.runtime.DisposableEffect(jarvis) { onDispose { jarvis.release() } }
     LaunchedEffect(jarvisOpen) { if (jarvisOpen) jarvis.start() else jarvis.stop() }
@@ -869,6 +916,7 @@ private fun HermesApp(
             }
             "new" -> { tab = Tab.Chat; showHome = false; chatViewModel.newSession() }
             "chat" -> { tab = Tab.Chat; showHome = false }
+            "notifications" -> { tab = Tab.Notifications; showHome = false }
             // "Hey Jarvis" bildirimi (Hermes varsayılan asistan değilken).
             "jarvis" -> { if (onNeedMic()) jarvisOpen = true }
             "camera" -> { tab = Tab.Chat; if (onNeedCamera()) cameraFullScreen = true }
@@ -878,6 +926,23 @@ private fun HermesApp(
     var profileSheet by remember { mutableStateOf(false) }
     /** Ayarlar→Sunucular / boş-sohbet CTA: ConnectScreen tam ekranı. */
     var serversScreen by rememberSaveable { mutableStateOf(false) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val chatVisible = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) &&
+        tab == Tab.Chat && !showHome && !serversScreen && detail == null &&
+        !drawerState.isOpen && !jarvisOpen && !cameraFullScreen && !shareTargetVisible
+    androidx.compose.runtime.SideEffect {
+        com.hermes.mobile.data.Notifier.visibleSession = if (chatVisible)
+            state.active?.id?.let { it to chat.sessionId } else null
+    }
+    LaunchedEffect(chatVisible, state.active?.id, chat.sessionId, chat.storedSessionId, notices) {
+        val pid = state.active?.id
+        val sid = chat.sessionId
+        if (chatVisible && pid != null && !sid.isNullOrBlank()) {
+            inbox.markSessionRead(pid, sid)
+            chat.storedSessionId?.takeIf { it.isNotBlank() && it != sid }?.let { inbox.markSessionRead(pid, it) }
+        }
+    }
     val hermesProfiles by viewModel.profiles.collectAsStateWithLifecycle()
     val activeHermesProfile by viewModel.activeProfile.collectAsStateWithLifecycle()
     val profilesLoading by viewModel.profilesLoading.collectAsStateWithLifecycle()
@@ -887,7 +952,6 @@ private fun HermesApp(
     val sessionProfile by chatViewModel.sessionProfile.collectAsStateWithLifecycle()
     val voice by voiceViewModel.state.collectAsStateWithLifecycle()
     val camera by voiceViewModel.cameraState.collectAsStateWithLifecycle()
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val providers by chatViewModel.modelProviders.collectAsStateWithLifecycle()
     val modelsLoading by chatViewModel.modelsLoading.collectAsStateWithLifecycle()
     val savedPrompts by viewModel.savedPrompts.collectAsStateWithLifecycle()
@@ -953,13 +1017,10 @@ private fun HermesApp(
         bottomBar = {
             // Sürüş kipinde sekme çubuğu da gizlenir — ekranda yalnız
             // büyük durum göstergesi kalmalı.
-            if (tab != Tab.Chat && detail == null && !voice.driving && !cameraFullScreen) {
+            if (detail == null && !voice.driving && !cameraFullScreen && !serversScreen && !shareTargetVisible && !WindowInsets.isImeVisible) {
                 NavigationBar(containerColor = HermesColors.Surface) {
-                    // Tur-16: Oturumlar sekmesi listeden düştü — oturum listesi
-                    // artık sohbetin soldan açtığı çekmecede (FR-007, tek ekran).
-                    // `Tab.Work` enum girişi bilinçli duruyor (ekran etiketi ve
-                    // geri-uyumluluk); çubukta çizilmez.
-                    Tab.entries.filter { it != Tab.Work }.forEach { entry ->
+                    // Ana gezinme: sohbet akışı, bildirim kutusu ve takip edilen oturumlar.
+                    listOf(Tab.Chat, Tab.Notifications, Tab.Following).forEach { entry ->
                         NavigationBarItem(
                             selected = tab == entry,
                             onClick = {
@@ -967,7 +1028,11 @@ private fun HermesApp(
                                 if (entry == Tab.Chat) showHome = false
                                 tab = entry
                             },
-                            icon = { Icon(entry.icon, contentDescription = entry.label()) },
+                            icon = {
+                                BadgedBox(badge = {
+                                    if (entry == Tab.Notifications && unreadCount > 0) Badge { Text(if (unreadCount > 99) "99+" else unreadCount.toString()) }
+                                }) { Icon(entry.icon, contentDescription = entry.label()) }
+                            },
                             label = {
                                 Text(entry.label(), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false)
                             },
@@ -1063,6 +1128,7 @@ private fun HermesApp(
                             )
                         },
                         onTogglePin = { row -> viewModel.togglePin(row.dbId.ifBlank { row.liveId }) },
+                        onToggleFollow = { row -> viewModel.toggleFollow(row.dbId.ifBlank { row.liveId }) },
                         onRename = { row, text -> viewModel.renameSession(row.dbId.ifBlank { row.liveId }, text) },
                         onSetArchived = { row, archived ->
                             viewModel.setArchived(row.dbId.ifBlank { row.liveId }, archived)
@@ -1224,10 +1290,13 @@ private fun HermesApp(
                     } else {
                         // Tur-16: sol ray KALDIRILDI — oturum değişimi soldan
                         // açılan çekmeceden (ModalNavigationDrawer, FR-007).
+                        chatSavedState.SaveableStateProvider("${state.active?.id}:${chat.sessionId ?: "draft"}") {
                         ChatScreen(
                         sharedText = sharedText,
                         onSharedTextConsumed = chatViewModel::consumeSharedText,
                         state = chat,
+                        fullChatFlow = settings.fullChatFlow,
+                        onFullChatFlow = { enabled -> viewModel.settingsStore.update { it.copy(fullChatFlow = enabled) } },
                         speed = chatViewModel.speed,
                         onSend = chatViewModel::send,
                         onNewSession = chatViewModel::newSession,
@@ -1324,11 +1393,34 @@ private fun HermesApp(
                         // Tur-19 FR-003: eşzamanlılık istatistik şeridi (composer üstü).
                         statusStrip = null,
                         )
+                        }
                     }
-                    // Tur-16: Work/Oturumlar sekmesi sekme çubuğunda çizilmez
-                    // (giriş, enum exhaustiveness için duruyor) — oturum listesi
-                    // artık sohbetin çekmecesinde (FR-007, tek ekran).
-                    Tab.Work -> Unit
+                    Tab.Notifications -> NotificationsScreen(
+                        notices = notices,
+                        onRead = inbox::markRead,
+                        onReadAll = { state.active?.id?.let(inbox::markProfileRead) },
+                        onSettings = { tab = Tab.Settings },
+                        onOpen = { notice ->
+                            notice.sessionId?.let { sid ->
+                                val title = followingRowList.firstOrNull { it.dbId == sid || it.liveId == sid }?.title ?: notice.title
+                                chatViewModel.openSessionWhenReady(sid, title, notice.profileId)
+                            }
+                            tab = Tab.Chat; showHome = false
+                        },
+                    )
+                    Tab.Following -> FollowingScreen(
+                        rows = followingRowList,
+                        loading = state.loading && state.sessions.isEmpty(),
+                        error = state.error ?: live.error,
+                        onOpen = { row ->
+                            chatViewModel.continueSession(row.liveId.ifBlank { row.dbId }, row.dbId.ifBlank { row.liveId }, row.title)
+                            tab = Tab.Chat; showHome = false
+                        },
+                        onUnfollow = { row -> viewModel.toggleFollow(row.dbId.ifBlank { row.liveId }) },
+                        onBrowse = { tab = Tab.Chat; showHome = false; drawerScope.launch { drawerState.open() } },
+                        onRefresh = { viewModel.refreshAll(); liveViewModel.refresh() },
+                        onSettings = { tab = Tab.Settings },
+                    )
                     Tab.Panel -> PanelScreen(
                         state = panel,
                         onOpen = panelViewModel::open,
@@ -1362,6 +1454,7 @@ private fun HermesApp(
                         },
                     )
                     Tab.Settings -> SettingsScreen(
+                        onOpenPanel = { tab = Tab.Panel },
                         shizukuState = shizukuState,
                         onRequestShizuku = chatViewModel.shizuku::requestPermission,
                         settings = settings,

@@ -125,6 +125,7 @@ data class AppSettings(
      * katlanır hâle gelir (mevcut davranış).
      */
     val showLiveThinking: Boolean = true,
+    val fullChatFlow: Boolean = true,
     val expandTools: Boolean = false,
     val renderMarkdown: Boolean = true,
     val historyLimit: Int = 150,

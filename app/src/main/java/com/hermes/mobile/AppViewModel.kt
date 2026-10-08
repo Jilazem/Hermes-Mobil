@@ -287,6 +287,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         f.copy(pinned = if (id in f.pinned) f.pinned - id else f.pinned + id)
     }
 
+    fun toggleFollow(id: String) {
+        if (id.isBlank()) return
+        mutateFlags { f -> f.copy(followed = if (id in f.followed) f.followed - id else f.followed + id) }
+    }
+
     fun setArchived(id: String, archived: Boolean) = mutateFlags { f ->
         f.copy(archived = if (archived) f.archived + id else f.archived - id)
     }
@@ -299,7 +304,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Silme = yerel gizleme (sunucu DELETE ucu yok); bkz. SessionFlagsStore. */
     fun deleteSession(id: String) = mutateFlags { f ->
-        f.copy(hidden = f.hidden + id, pinned = f.pinned - id, archived = f.archived - id)
+        f.copy(hidden = f.hidden + id, pinned = f.pinned - id, archived = f.archived - id, followed = f.followed - id)
     }
 
 

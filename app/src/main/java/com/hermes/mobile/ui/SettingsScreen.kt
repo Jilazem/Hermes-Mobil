@@ -111,6 +111,7 @@ fun SettingsScreen(
     activeProfile: com.hermes.mobile.data.ServerProfile? = null,
     /** Ayarlar→Sunucular: kayıtlı sunucu/token ekranını tam ekran açar. */
     onOpenServers: () -> Unit = {},
+    onOpenPanel: () -> Unit = {},
     /**
      * Ayarlar→Profiller (KALAN-4): Hermes ajan profili seçimi.
      *
@@ -206,6 +207,14 @@ fun SettingsScreen(
         }
 
         if (open == null) {
+            item(key = "server-panel") {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text(S.t2("Sunucu yönetimi", "Server management")) },
+                    supportingContent = { Text(S.t2("Pano, görevler ve terminal", "Dashboard, tasks and terminal")) },
+                    modifier = Modifier.clickable(onClick = onOpenPanel),
+                    colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = HermesColors.SurfaceDim),
+                )
+            }
             // KALAN-4: "Profiller" — profil seçimi Ayarlar'dan da erişilebilir.
             // Satırın kendisi bir kategori DEĞİL: sohbetin ⋯ menüsüyle aynı
             // ProfileSheet'i açar (tek seçim yolu, iki giriş).
