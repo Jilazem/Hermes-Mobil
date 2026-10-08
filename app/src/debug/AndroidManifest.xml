@@ -6,6 +6,8 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name=".ui.VoiceReadinessActivity" android:exported="true" android:label="Ses Bağlantısı Kontrolü" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.CarFocusProofActivity" android:exported="true" android:label="Araç Ses Odağı Kontrolü" android:theme="@style/Theme.HermesMobile" />
         <activity android:name=".ui.EmaOfflineSelfTestActivity" android:exported="true" android:label="EMA Çevrimdışı Öz-Testi" android:theme="@style/Theme.HermesMobile" />
         <activity android:name=".ui.EmaSelfTestActivity" android:exported="true"
             android:label="EMA Öz-Testi" android:theme="@style/Theme.HermesMobile" />

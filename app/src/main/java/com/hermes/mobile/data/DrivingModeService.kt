@@ -11,6 +11,13 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.Handler
+import android.os.Looper
+import android.os.ResultReceiver
+import androidx.core.content.IntentCompat
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import androidx.core.app.NotificationCompat
 import com.hermes.mobile.MainActivity
 import com.hermes.mobile.R
@@ -45,10 +52,19 @@ class DrivingModeService : Service() {
         }
 
         driving = intent?.getBooleanExtra(EXTRA_DRIVING, false) ?: false
-        startForegroundCompat()
+        val ready = intent?.let { IntentCompat.getParcelableExtra(it, EXTRA_READY, ResultReceiver::class.java) }
+        try {
+            startForegroundCompat()
+        } catch (e: Exception) {
+            if (ready == null) throw e
+            ready.send(0, null)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         // Wake lock yalnız sürüş kipinde: normal dinlemede ekran kapanınca
         // işlemciyi zorla ayakta tutmak pili boşuna yiyor.
         if (driving) acquireWakeLock()
+        ready?.send(1, null)
         // Sistem öldürürse yeniden başlatma: kullanıcı sürüş kipini açıkça
         // kapatmadıkça ses oturumu sürmeli.
         return START_STICKY
@@ -150,6 +166,27 @@ class DrivingModeService : Service() {
         const val ACTION_STOP = "com.hermes.mobile.DRIVING_STOP"
 
         const val EXTRA_DRIVING = "driving"
+        private const val EXTRA_READY = "foreground_ready"
+
+        /** Android 15+ requires a running foreground service before car audio focus. */
+        suspend fun startAndAwait(context: Context, driving: Boolean = false) = suspendCancellableCoroutine<Unit> { continuation ->
+            val ready = object : ResultReceiver(Handler(Looper.getMainLooper())) {
+                override fun onReceiveResult(resultCode: Int, resultData: android.os.Bundle?) {
+                    if (!continuation.isActive) return
+                    if (resultCode == 1) continuation.resume(Unit)
+                    else continuation.resumeWithException(IllegalStateException("Sesli oturum başlatılamadı; mikrofon iznini denetle"))
+                }
+            }
+            continuation.invokeOnCancellation { stop(context) }
+            val intent = Intent(context, DrivingModeService::class.java)
+                .putExtra(EXTRA_DRIVING, driving).putExtra(EXTRA_READY, ready)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+                else context.startService(intent)
+            } catch (e: Exception) {
+                if (continuation.isActive) continuation.resumeWithException(e)
+            }
+        }
 
         fun start(context: Context, driving: Boolean = false) {
             val intent = Intent(context, DrivingModeService::class.java)

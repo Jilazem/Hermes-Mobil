@@ -52,22 +52,24 @@ class CarVoiceSession(private val context: CarContext, private val changed: (Str
         if (profile == null || profile.token.isBlank()) { changed("Hermes sunucu profili ve anahtarı gerekli", false); return }
         cancel()
         val token = generation
-        val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
-        val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
-            .setAudioAttributes(attrs).setOnAudioFocusChangeListener { state ->
-                if (generation == token && (state == AudioManager.AUDIOFOCUS_LOSS || state == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)) cancel()
-            }.build()
-        if (audio?.requestAudioFocus(req) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            changed("Araç ses odağı alınamadı", false); return
-        }
-        focus = req
         busy = true
-        PhoneBridgeService.start(context)
-        DrivingModeService.start(context, driving = true)
-        changed("Dinliyorum — tekrar dokunarak iptal et", true)
+        changed("Sesli oturum hazırlanıyor…", true)
         turn = scope.launch {
             try {
+                withTimeoutOrNull(5_000) { DrivingModeService.startAndAwait(context, driving = true); true }
+                    ?: throw IllegalStateException("Sesli oturum hazırlanamadı — yeniden Konuş'a dokun")
+                val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
+                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                    .setAudioAttributes(attrs).setOnAudioFocusChangeListener { state ->
+                        if (generation == token && (state == AudioManager.AUDIOFOCUS_LOSS || state == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)) cancel()
+                    }.build()
+                if (audio?.requestAudioFocus(req) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                    throw IllegalStateException("Araç ses odağı alınamadı")
+                }
+                focus = req
+                PhoneBridgeService.start(context)
+                changed("Dinliyorum — tekrar dokunarak iptal et", true)
                 val carRecord = CarAudioRecord.create(context)
                 record = carRecord
                 carRecord.startRecording()
