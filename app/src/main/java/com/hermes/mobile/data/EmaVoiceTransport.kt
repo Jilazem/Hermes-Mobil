@@ -5,11 +5,11 @@ import android.content.Context
 data class EmaConfig(val url: String, val token: String, val bases: List<String> = listOf(url), val offlineContext: Context? = null) {
     fun client(): EmaSpeech = offlineContext?.let { EmaOfflineSpeech(it) } ?: EmaTtsClient(bases, token)
     companion object {
-        fun from(context: Context): EmaConfig? {
+        fun from(context: Context, profile: ServerProfile? = ServerProfileStore(context).active()): EmaConfig? {
             val s = SettingsStore(context).settings.value
             if (s.emaMode == "offline") return EmaConfig("offline-ema", "", offlineContext = context.applicationContext)
             if (s.emaUrl.isBlank() && s.emaToken.isBlank()) return null
-            val p = ServerProfileStore(context).active()
+            val p = profile
             val bases = if (s.emaUrl.isNotBlank()) {
                 val custom = s.emaUrl.trim()
                 val private = runCatching { java.net.URI(custom).host?.let(::isPrivateHost) == true }.getOrDefault(false)

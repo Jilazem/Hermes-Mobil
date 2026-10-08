@@ -3,139 +3,172 @@ package com.hermes.mobile.data
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/**
- * Bildirimden gelen yanıtı Hermes'e iletir — Telegram'daki "bildirimden cevapla".
- *
- * Neden servis, neden `BroadcastReceiver` değil: alıcının `goAsync()` penceresi
- * ~10 saniye, ajan yanıtı ise çoğu zaman daha uzun sürüyor. Kısa ömürlü bir ön
- * plan servisi hem soketi açık tutuyor hem de sistemin süreci öldürmesini
- * geciktiriyor. Yanıt gelince (ya da 2 dakika dolunca) kendini durduruyor.
- */
+/** Android Auto and phone inline replies stay in the originating conversation. */
 class ReplyService : Service() {
-
-    // Tur-2 K3(a): yakalanmayan coroutine hatasi izsiz dusmesin.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
+    private val queue = Mutex()
+    private var pendingRequests = 0 // Main thread only.
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            scope.coroutineContext[Job]?.cancelChildren()
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val text = intent?.let { RemoteInput.getResultsFromIntent(it) }
             ?.getCharSequence(KEY_REPLY)?.toString()?.trim()
-        val sessionId = intent?.getStringExtra(EXTRA_SESSION)
-        val targetProfile = intent?.getStringExtra(EXTRA_PROFILE)
-
         if (text.isNullOrBlank()) {
+            if (pendingRequests == 0) stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        val session = intent.getStringExtra(EXTRA_SESSION)
+        val profileId = intent.getStringExtra(EXTRA_PROFILE)
+        val carVoice = intent.getBooleanExtra(EXTRA_CAR_VOICE, false)
+        try { if (pendingRequests == 0) foreground(speaking = false) } catch (e: Exception) {
+            DiagLog.w("reply", "Ön plan yanıt servisi başlatılamadı")
+            Notifier.agentReply(this, "Yanıt gönderilemedi — sohbet ekranından yeniden dene",
+                session, force = true, profileId = profileId, carVoice = carVoice)
             stopSelf(startId)
             return START_NOT_STICKY
         }
-
-        startForeground(FG_ID, progressNotification())
-
-        // V3: mesaj okuma/yanıt komutu (araçta sesle ya da bildirimden yazılmış)
-        // telefonda çözülür — sunucuya gitmez, bağlantı olmasa da çalışır.
-        // Kullanıcının kendi söylediği komut olduğu için ayrı rıza gerekmez.
-        PhoneIntent.parse(text)?.takeIf { it.tool == "phone_messages" || it.tool == "phone_reply" }?.let { act ->
-            val out = PhoneTools(applicationContext, ShizukuBridge()).execute(act.tool, act.toJson())
-            Notifier.agentReply(applicationContext, out, sessionId, force = true, profileId = targetProfile)
-            stopSelf(startId)
-            return START_NOT_STICKY
+        pendingRequests++
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try { queue.withLock { withContext(Dispatchers.IO) { reply(text, session, profileId, carVoice) } } }
+            finally {
+                withContext(NonCancellable + Dispatchers.Main.immediate) {
+                    pendingRequests--
+                    if (pendingRequests == 0) stopSelf()
+                }
+            }
         }
-
-        scope.launch {
-            val store = ServerProfileStore(applicationContext)
-            val profile = if (targetProfile.isNullOrBlank()) store.active()
-                else store.list().firstOrNull { it.id == targetProfile }
-            if (profile == null || profile.token.isBlank()) {
-                Notifier.agentReply(applicationContext, "Sunucu profili yok — yanıt gönderilemedi", profileId = targetProfile)
-                stopSelf(startId)
-                return@launch
-            }
-
-            val gw = GatewayWsClient(profile)
-            var reply: String? = null
-            var sent = false
-
-            val outcome = runCatching {
-                gw.connect()
-                // `first { }` bağlantı açılınca kendiliğinden çıkar — daha önce
-                // `collect` içinden istisna fırlatarak çıkıyorduk ve akış
-                // sessizce yarıda kalıyordu.
-                val opened = withTimeoutOrNull(20_000) {
-                    gw.connection.first { it is ConnectionState.Open }
-                }
-                checkNotNull(opened) { "Bağlantı açılmadı" }
-                val target = sessionId?.takeIf { it.isNotBlank() }
-                val sid = if (target != null) gw.attachSession(target) else gw.createSession(null)
-
-                val collector = scope.launch {
-                    gw.events.collect { e ->
-                        if (e.sessionId != sid) return@collect
-                        if (e.type == "message.complete" || e.type == "message.delta") {
-                            e.text?.takeIf { it.isNotBlank() }?.let { reply = it }
-                        }
-                    }
-                }
-                gw.submitPrompt(sid, text)
-                sent = true
-                // Bildirimden başlatılan ön plan servisine sistem ~30 sn izin
-                // veriyor; daha uzun beklemek servisi öldürtüyordu. Yakalarsak
-                // yanıtı gösteririz, yakalayamazsak uygulama açılınca zaten
-                // `syncPending()` tamamlıyor.
-                withTimeoutOrNull(25_000) {
-                    while (reply == null) kotlinx.coroutines.delay(250)
-                }
-                collector.cancel()
-            }
-
-            gw.close()
-            val message = when {
-                reply != null -> reply!!
-                sent -> "Gönderildi — yanıt uygulamada görünecek"
-                else -> "Gönderilemedi: ${outcome.exceptionOrNull()?.message ?: "bilinmeyen hata"}"
-            }
-            Notifier.agentReply(applicationContext, message, sessionId = sessionId, force = true, profileId = profile.id)
-            stopSelf(startId)
-        }
-
         return START_NOT_STICKY
     }
 
-    override fun onDestroy() {
-        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
-        super.onDestroy()
+    private suspend fun reply(text: String, session: String?, profileId: String?, carVoice: Boolean) {
+        val store = ServerProfileStore(this)
+        val profile = if (profileId.isNullOrBlank()) store.active()
+            else store.list().firstOrNull { it.id == profileId }
+        var targetSession = session
+        var sent = false
+        var answer: String? = null
+        var gateway: GatewayWsClient? = null
+        try {
+            check(profile != null && profile.token.isNotBlank()) { "Sunucu profili yok" }
+            // Local phone commands are handled on IO, never on the service's UI thread.
+            val phone = PhoneIntent.parse(text)?.takeIf { it.tool == "phone_messages" || it.tool == "phone_reply" }
+            if (phone != null) {
+                answer = PhoneTools(applicationContext, ShizukuBridge()).execute(phone.tool, phone.toJson())
+            } else {
+                val gw = GatewayWsClient(profile).also { gateway = it }
+                gw.connect()
+                withTimeout(20_000) { gw.connection.first { it is ConnectionState.Open } }
+                val sid = if (!session.isNullOrBlank()) gw.attachSession(session) else gw.createSession(null)
+                targetSession = session?.takeIf { it.isNotBlank() } ?: gw.storedSessionId(sid)
+                if (session.isNullOrBlank()) {
+                    val settings = SettingsStore(this).settings.value
+                    val model = settings.modelsByServer[profile.id]
+                        ?: settings.lastModel.takeIf { settings.modelsByServer.isEmpty() }.orEmpty()
+                    val parts = model.split("|", limit = 2)
+                    if (parts.size == 2) check(modelSwitchAccepted(
+                        gw.slashExec(sid, "/model ${parts[1]} --provider ${parts[0]}"))) { "Kayıtlı model seçilemedi" }
+                }
+                val eventCounts = mutableMapOf<String, Int>()
+                val response = NotificationReply(sid)
+                val done = CompletableDeferred<String>()
+                coroutineScope {
+                    // SharedFlow has no replay; subscribe before submitting the prompt.
+                    val collector = launch(start = CoroutineStart.UNDISPATCHED) {
+                        gw.events.collect { event ->
+                            if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                                val key = event.type + ":" + when(event.sessionId) { null -> "unscoped"; sid -> "matching"; else -> "other" }
+                                eventCounts[key] = (eventCounts[key] ?: 0) + 1
+                            }
+                            if (response.accept(event)) done.complete(response.result!!)
+                        }
+                    }
+                    try {
+                        val question = if (carVoice) "[Sesli araç sohbeti: Yanıtını kısa, doğal Türkçe konuşma diliyle ver; liste veya kod gerekiyorsa ayrıntıyı sohbet ekranına bırak.]\n\n$text" else text
+                        gw.submitPrompt(sid, question)
+                        sent = true
+                        answer = withTimeoutOrNull(120_000) { done.await() }
+                    } finally {
+                        collector.cancelAndJoin()
+                        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) java.io.File(filesDir, "reply-event-proof.txt")
+                            .writeText(eventCounts.entries.joinToString("\n") { "${it.key}=${it.value}" })
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            answer = if (sent) null else "Gönderilemedi — bağlantıyı sohbet ekranından denetle"
+        }
+        catch (e: Exception) {
+            // Credentials and server URLs never appear in notification errors.
+            answer = if (sent) null else "Gönderilemedi — bağlantıyı sohbet ekranından denetle"
+        } finally { gateway?.close() }
+        var message = answer ?: "Gönderildi — yanıt henüz tamamlanmadı; sohbet ekranından takip edebilirsin"
+        if (carVoice && answer != null) {
+            try {
+                val config = checkNotNull(EmaConfig.from(this, profile)) { "Ses ayarlarından EMA’yı hazırla" }
+                foreground(speaking = true)
+                NotificationEmaSpeech(this, config.client()).speak(message)
+            } catch (e: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                message += "\nEMA okuması zaman aşımına uğradı. Yanıt metni kaybolmadı."
+            }
+            catch (e: Exception) { message += "\nEMA okuyamadı — ses ayarlarını denetle. Yanıt metni kaybolmadı." }
+            finally { if (currentCoroutineContext().isActive) runCatching { foreground(speaking = false) } }
+        }
+        Notifier.agentReply(this, message, targetSession, force = true,
+            profileId = profile?.id ?: profileId, carVoice = carVoice)
     }
 
-    private fun progressNotification(): Notification {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Yanıt gönderiliyor", NotificationManager.IMPORTANCE_LOW)
-        )
-        return NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("Hermes")
-            .setContentText("Yanıtın gönderiliyor…")
-            .setOngoing(true)
-            .build()
+    private fun foreground(speaking: Boolean) {
+        val notification = progressNotification(speaking)
+        if (Build.VERSION.SDK_INT >= 29) startForeground(FG_ID, notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
+                if (speaking) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0)
+        else startForeground(FG_ID, notification)
     }
+
+    private fun progressNotification(speaking: Boolean): Notification {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Hermes yanıtı", NotificationManager.IMPORTANCE_LOW))
+        val stop = PendingIntent.getService(this, 0, Intent(this, ReplyService::class.java).setAction(ACTION_STOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return NotificationCompat.Builder(this, CHANNEL)
+            .setSmallIcon(com.hermes.mobile.R.drawable.ic_stat_hermes)
+            .setContentTitle(if (speaking) "Hermes konuşuyor" else "Hermes yanıtlıyor")
+            .setContentText(if (speaking) "EMA ile okunuyor" else "Yanıt tamamlandığında haber verilecek")
+            .addAction(android.R.drawable.ic_media_pause, "Durdur", stop)
+            .setOngoing(true).build()
+    }
+
+    override fun onDestroy() { scope.cancel(); super.onDestroy() }
 
     companion object {
         const val KEY_REPLY = "hermes_reply_text"
         const val EXTRA_SESSION = "hermes_session_id"
         const val EXTRA_PROFILE = "hermes_profile_id"
+        const val EXTRA_CAR_VOICE = "hermes_car_voice"
+        const val ACTION_REPLY = "com.hermes.mobile.REPLY"
+        const val ACTION_STOP = "com.hermes.mobile.STOP_REPLY"
         private const val CHANNEL = "hermes_sending"
-        private const val FG_ID = 4711
+        private const val FG_ID = 4713
     }
 }

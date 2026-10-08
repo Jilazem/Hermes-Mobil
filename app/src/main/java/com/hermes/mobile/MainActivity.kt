@@ -1301,6 +1301,26 @@ private fun HermesApp(
                         onSend = chatViewModel::send,
                         onNewSession = chatViewModel::newSession,
                         onStop = chatViewModel::stopGeneration,
+                        onContinueInCar = {
+                            val sid = chat.storedSessionId ?: chat.sessionId
+                            val profile = state.active
+                            if (sid != null && profile != null &&
+                                !androidx.core.app.NotificationManagerCompat.from(appContext).areNotificationsEnabled()) {
+                                android.widget.Toast.makeText(appContext, "Araç sohbeti için Hermes bildirimlerine izin ver",
+                                    android.widget.Toast.LENGTH_LONG).show()
+                                appContext.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, appContext.packageName)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                            } else if (sid != null && profile != null) {
+                                com.hermes.mobile.data.Notifier.agentReply(appContext,
+                                    "Araç sohbeti hazır. Android Auto’daki Hermes mesajına sesle yanıt ver; aynı sohbetten devam edeceğim ve cevabımı EMA ile okuyacağım. EMA’yı durdurmak için Hermes konuşuyor bildirimini kullanabilirsin.",
+                                    sessionId = sid, profileId = profile.id, force = true,
+                                    carVoice = true)
+                                android.widget.Toast.makeText(appContext,
+                                    "Android Auto bağlıyken Hermes mesajına yanıt ver",
+                                    android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        },
                         onDictate = { if (onNeedMic()) chatViewModel.startDictation() },
                         onToggleHandsFree = {
                             // V3: kulaklık düğmesi Jarvis'i açar (Hermes beyni).

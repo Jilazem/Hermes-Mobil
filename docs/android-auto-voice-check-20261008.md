@@ -20,3 +20,19 @@ The generic assistant still uses the existing navigation-category car declaratio
 Call recording is a separate app and permission path. Its Shizuku service availability and both-party audio require separate validation; this APK change does not establish reliable Bluetooth call recording.
 
 References: [audio focus](https://developer.android.com/media/optimize/audio-focus), [car microphone](https://developer.android.com/training/cars/apps/library/car-microphone), [trusted vehicle testing](https://developer.android.com/training/cars/testing), [DHU](https://developer.android.com/training/cars/testing/dhu).
+
+
+## Notification messaging in 1.4
+
+The user has no Play Console developer account. VersionCode 6 adds the supported notification-based messaging capability alongside the existing template declaration. Chat → menu → Continue in Android Auto posts a conversation notification with an explicit EMA reply mode. This requires an Android Auto connection; it does not establish wireless head-unit compatibility.
+
+Inline replies preserve the originating profile and durable conversation identifier. Delta events accumulate until completion; an approval request returns the user to the phone. New conversations apply the saved model preference. A foreground reply service owns EMA playback and its stop action, with a distinct notification identifier, ordered requests and cancellation cleanup. Ordinary inline replies remain silent. Notification permission denial sends the user to the app's notification settings.
+
+930 JVM tests passed with zero failures/errors. On the physical Android 16 phone, the actual MessagingStyle reply PendingIntent submitted a synthetic greeting, the configured model selection was accepted, both answer sentences completed, and foreground EMA playback finished. Matching gateway events included two message deltas and one message completion. The earlier diagnostic question triggered reasoning and a tool call without finishing inside the two-minute response window; it was not counted as a successful turn.
+
+The new notification UI and dictation have not been verified on DHU or the real vehicle: the phone remained locked during the follow-up and later disconnected from USB. Wireless vehicle pairing and both-party Bluetooth call recording remain unverified. The prior DHU dashboard check used USB/ADB, not wireless pairing.
+
+[Notification messaging requirements](https://developer.android.com/training/cars/communication/notification-messaging). The proposed separate [voice specialist](voice-assistant-profile/README.md) is staged only; no live expert profile was created or switched.
+
+
+VersionCode 7 (1.4.1) uses ChatState's durable conversation identifier when starting the car notification. Version 1.4 completed the physical phone reply/playback check; the final 1.4.1 APK could not be installed after the USB device disconnected. The one-line conversation-target change and version update are covered by a fresh build and the existing test suite, with a physical install/recheck pending.

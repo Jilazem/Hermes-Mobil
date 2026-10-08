@@ -113,6 +113,7 @@ fun ChatScreen(
     onSend: (String) -> Unit,
     onNewSession: () -> Unit,
     onStop: () -> Unit = {},
+    onContinueInCar: () -> Unit = {},
     onDictate: () -> Unit = {},
     onToggleHandsFree: () -> Unit = {},
     onPickImage: () -> Unit = {},
@@ -328,6 +329,7 @@ fun ChatScreen(
             onOpenDrawer = onOpenDrawer,
             fullChatFlow = fullChatFlow,
             onFullChatFlow = onFullChatFlow,
+            onContinueInCar = onContinueInCar,
         )
 
         Box(Modifier.weight(1f)) {
@@ -615,6 +617,7 @@ private fun ChatHeader(
     onOpenDrawer: () -> Unit = {},
     fullChatFlow: Boolean = true,
     onFullChatFlow: (Boolean) -> Unit = {},
+    onContinueInCar: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     // Tur-4 (P2 #7): model etiketi ve "bağlı" rozeti üst şeritten ÇIKTI.
@@ -697,6 +700,11 @@ private fun ChatHeader(
                 DropdownMenuItem(
                     text = { Text(if (fullChatFlow) S.t2("Sade sohbet görünümü", "Compact chat view") else S.t2("Tüm akışı göster", "Show full flow")) },
                     onClick = { menuOpen = false; onFullChatFlow(!fullChatFlow) },
+                )
+                DropdownMenuItem(
+                    text = { Text(S.t2("Android Auto’da devam et", "Continue in Android Auto")) },
+                    enabled = !state.sessionId.isNullOrBlank() && !state.agentBusy,
+                    onClick = { menuOpen = false; onContinueInCar() },
                 )
                 chatMenuActions(state.agentBusy).forEach { action ->
                     DropdownMenuItem(

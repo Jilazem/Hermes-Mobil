@@ -25,7 +25,7 @@ object Notifier {
     private const val AGENT_MSG_ID = 4814
 
     private const val CHANNEL_REPLIES = "hermes_replies"
-    private var nextId = 1000
+    private val nextId = java.util.concurrent.atomic.AtomicInteger(1000)
 
     /**
      * Uygulama görünür mü? `MainActivity.onStart/onStop` günceller.
@@ -130,6 +130,7 @@ object Notifier {
         force: Boolean = false,
         profileId: String? = null,
         title: String = "Hermes",
+        carVoice: Boolean = false,
     ) {
         val targetProfile = profileId ?: ServerProfileStore(context).activeId().orEmpty()
         if (text.isNotBlank()) ActivityInbox.get(context).add(ActivityNotice(profileId = targetProfile,
@@ -156,12 +157,16 @@ object Notifier {
         val remoteInput = androidx.core.app.RemoteInput.Builder(ReplyService.KEY_REPLY)
             .setLabel("Yanıtla…")
             .build()
+        val conversation = "${android.net.Uri.encode(targetProfile)}/${android.net.Uri.encode(sessionId.orEmpty())}"
         val replyIntent = Intent(context, ReplyService::class.java)
+            .setAction(ReplyService.ACTION_REPLY)
+            .setData(android.net.Uri.parse("hermes://notification-reply/$conversation/${if (carVoice) "ema" else "quiet"}"))
+            .putExtra(ReplyService.EXTRA_CAR_VOICE, carVoice)
             .putExtra(ReplyService.EXTRA_SESSION, sessionId)
             .putExtra(ReplyService.EXTRA_PROFILE, targetProfile)
         val replyPending = PendingIntent.getService(
             context,
-            nextId,
+            0,
             replyIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
@@ -178,12 +183,16 @@ object Notifier {
             .setShowsUserInterface(false)
             .build()
 
-        val id = nextId++
+        val tag = if (carVoice) "car:$conversation" else null
+        val id = if (carVoice) 4870 else nextId.incrementAndGet()
         val markRead = NotificationCompat.Action.Builder(
             android.R.drawable.ic_menu_view, "Okundu",
             PendingIntent.getBroadcast(
                 context, id,
-                Intent(context, MarkReadReceiver::class.java).putExtra(MarkReadReceiver.EXTRA_ID, id),
+                Intent(context, MarkReadReceiver::class.java)
+                    .setData(android.net.Uri.parse("hermes://notification-read/$conversation/$id"))
+                    .putExtra(MarkReadReceiver.EXTRA_ID, id)
+                    .putExtra(MarkReadReceiver.EXTRA_TAG, tag),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             ),
         )
@@ -191,7 +200,7 @@ object Notifier {
             .setShowsUserInterface(false)
             .build()
 
-        val short = text.trim().take(600)
+        val short = text.trim().take(4_000)
         val me = androidx.core.app.Person.Builder().setName("Sen").setKey("me").build()
         val hermes = androidx.core.app.Person.Builder().setName("Hermes").setKey("hermes").setBot(true).build()
         val style = NotificationCompat.MessagingStyle(me)
@@ -208,7 +217,7 @@ object Notifier {
             .setAutoCancel(true)
             .build()
 
-        channel(context).notify(id, n)
+        channel(context).notify(tag, id, n)
     }
 }
 
@@ -218,11 +227,12 @@ class MarkReadReceiver : android.content.BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getIntExtra(EXTRA_ID, -1)
         if (id >= 0) {
-            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(id)
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(intent.getStringExtra(EXTRA_TAG), id)
         }
     }
 
     companion object {
         const val EXTRA_ID = "hermes_notification_id"
+        const val EXTRA_TAG = "hermes_notification_tag"
     }
 }
