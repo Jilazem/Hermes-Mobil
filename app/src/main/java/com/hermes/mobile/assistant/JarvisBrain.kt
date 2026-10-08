@@ -23,7 +23,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * Hermes: tek bir "Jarvis" oturumu [JarvisLogic.SESSION_TTL_MS] boyunca
  * yeniden kullanılır — "peki yarın?" gibi devam soruları bağlamı bilir.
- * EMA yapılandırıldığında uygulama sohbetinin kayıtlı oturumu kullanılır.
+ * Sunucuda Sesli Asistan varsa ayrı uzman oturumu ve sınırlı kaynak bağlamı kullanılır.
+ * Eski sunucularda EMA uygulamanın kayıtlı sohbetini sürdürür.
  */
 class JarvisBrain(private val context: Context, private val scope: CoroutineScope) {
 
@@ -43,13 +44,24 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
     private var localKey: String? = null
 
     /** Son kullanılan asistan oturumu — "sohbette aç" için. */
-    val lastSessionId: String? get() = sessionId ?: prefs.getString(KEY_SID, null)
+    val lastSessionId: String? get() = sessionId?.let { gw?.storedSessionId(it) } ?: prefs.getString(KEY_SID, null)
 
     /**
      * Soruyu sorar, yanıt tamamlanınca TAM metni döner. Parçalar [sink]'e akar.
      * Hata: açıklayıcı mesajlı istisna (çağıran sesle söyler).
      */
     suspend fun ask(question: String, sink: Sink, forceHermes: Boolean = false): String {
+        // CarVoiceSession also calls this brain directly. Known phone commands must run
+        // on the device, even with forceHermes or an unavailable server.
+        com.hermes.mobile.data.PhoneIntent.parse(question)?.let { intent ->
+            sink.onTool(intent.tool)
+            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.hermes.mobile.data.PhoneTools(context, com.hermes.mobile.data.ShizukuBridge())
+                    .execute(intent.tool, intent.toJson())
+            }
+            sink.onDelta(result)
+            return result
+        }
         val s = SettingsStore(context).settings.value
         return if (!forceHermes && s.assistantBrain == "yerel") askLocal(question, s.localLlmUrl, s.localLlmModel, s.assistantAddress, sink)
         else askHermes(question, s.assistantAddress, sink)
@@ -69,7 +81,14 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         var fresh = false
         val settings = SettingsStore(context)
         val unified = settings.settings.value.emaEnabled
-        if (unified) {
+        val source = settings.settings.value.lastSession.takeIf { it.startsWith(profile.id + "|") }
+            ?.substringAfter('|')?.takeIf { it.isNotBlank() }
+            ?: prefs.getString(KEY_SID, null)?.takeIf { prefs.getString(KEY_PROFILE, null) == profile.id }
+        val specialistStore = com.hermes.mobile.data.VoiceSpecialistSessions(context)
+        val specialist = specialistStore.select(client, profile, source)
+        if (specialist != null) {
+            sid = specialist.runtime
+        } else if (unified) {
             val saved = settings.settings.value.lastSession.takeIf { it.startsWith(profile.id + "|") }
                 ?.substringAfter('|')?.takeIf { it.isNotBlank() }
             sid = if (saved != null) com.hermes.mobile.data.restoreConversation(
@@ -114,7 +133,7 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         // geçmişi tutmaz; ilk parçalar kaçmasın).
         val collector = scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
             client.events.collect { e ->
-                if (e.sessionId != null && e.sessionId != sid) return@collect
+                if (e.sessionId != sid) return@collect
                 when (e.type) {
                     "message.delta" -> e.text?.let { full.append(it); sink.onDelta(it) }
                     "message.complete" -> {
@@ -131,8 +150,10 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
             }
         }
         try {
-            val text = if (fresh) JarvisLogic.voicePrefix(address) + question else question
+            val text = specialist?.let { it.context + question }
+                ?: if (fresh) JarvisLogic.voicePrefix(address) + question else question
             client.submitPrompt(sid, text)
+            if (specialist != null) specialistStore.submitted(profile.id, specialist.stored)
             // Araç kullanan uzun işler olabilir: 3 dk tavan, sonra kibarca kes.
             return withTimeoutOrNull(180_000) { done.await() }
                 ?: run {
@@ -175,6 +196,11 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
 
     /** Yeni konu: bir sonraki soru yeni oturumda. */
     fun forgetSession() {
+        val previous = lastSessionId
+        val previousServer = prefs.getString(KEY_PROFILE, null)
+        if (previousServer != null) scope.launch {
+            com.hermes.mobile.data.VoiceSpecialistSessions(context).forget(previousServer, previous)
+        }
         sessionId = null
         localHistory.clear()
         val settings = SettingsStore(context)

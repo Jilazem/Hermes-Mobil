@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Android Auto and phone inline replies stay in the originating conversation. */
+/** Car voice uses the dedicated voice profile; ordinary inline replies retain their conversation. */
 class ReplyService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
     private val queue = Mutex()
@@ -70,16 +70,20 @@ class ReplyService : Service() {
         try {
             check(profile != null && profile.token.isNotBlank()) { "Sunucu profili yok" }
             // Local phone commands are handled on IO, never on the service's UI thread.
-            val phone = PhoneIntent.parse(text)?.takeIf { it.tool == "phone_messages" || it.tool == "phone_reply" }
+            val phone = PhoneIntent.parse(text)?.takeIf { carVoice || it.tool == "phone_messages" || it.tool == "phone_reply" }
             if (phone != null) {
                 answer = PhoneTools(applicationContext, ShizukuBridge()).execute(phone.tool, phone.toJson())
             } else {
                 val gw = GatewayWsClient(profile).also { gateway = it }
                 gw.connect()
                 withTimeout(20_000) { gw.connection.first { it is ConnectionState.Open } }
-                val sid = if (!session.isNullOrBlank()) gw.attachSession(session) else gw.createSession(null)
-                targetSession = session?.takeIf { it.isNotBlank() } ?: gw.storedSessionId(sid)
-                if (session.isNullOrBlank()) {
+                val specialistStore = VoiceSpecialistSessions(this)
+                val specialist = if (carVoice) specialistStore.select(gw, profile, session) else null
+                val sid = specialist?.runtime ?: if (!session.isNullOrBlank()) {
+                    gw.attachSession(session, agentProfile = specialistStore.profileFor(profile.id, session))
+                } else gw.createSession(null)
+                targetSession = gw.storedSessionId(sid)
+                if (specialist == null && session.isNullOrBlank()) {
                     val settings = SettingsStore(this).settings.value
                     val model = settings.modelsByServer[profile.id]
                         ?: settings.lastModel.takeIf { settings.modelsByServer.isEmpty() }.orEmpty()
@@ -102,9 +106,10 @@ class ReplyService : Service() {
                         }
                     }
                     try {
-                        val question = if (carVoice) "[Sesli araç sohbeti: Yanıtını kısa, doğal Türkçe konuşma diliyle ver; liste veya kod gerekiyorsa ayrıntıyı sohbet ekranına bırak.]\n\n$text" else text
+                        val question = if (specialist != null) specialist.context + text else if (carVoice) "[Sesli araç sohbeti: Yanıtını kısa, doğal Türkçe konuşma diliyle ver; liste veya kod gerekiyorsa ayrıntıyı sohbet ekranına bırak.]\n\n$text" else text
                         gw.submitPrompt(sid, question)
                         sent = true
+                        if (specialist != null) specialistStore.submitted(profile.id, specialist.stored)
                         answer = withTimeoutOrNull(120_000) { done.await() }
                     } finally {
                         collector.cancelAndJoin()
@@ -133,6 +138,9 @@ class ReplyService : Service() {
             }
             catch (e: Exception) { message += "\nEMA okuyamadı — ses ayarlarını denetle. Yanıt metni kaybolmadı." }
             finally { if (currentCoroutineContext().isActive) runCatching { foreground(speaking = false) } }
+        }
+        if (carVoice && profile != null && session != null && targetSession != null && targetSession != session) {
+            Notifier.dismissCarConversation(this, profile.id, session)
         }
         Notifier.agentReply(this, message, targetSession, force = true,
             profileId = profile?.id ?: profileId, carVoice = carVoice)

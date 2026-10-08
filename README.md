@@ -32,6 +32,13 @@ its memory, and its schedule.
   reconnect, the session list stays readable from a local cache, and a
   dropped socket re-attaches to the same agent session.
 
+The Hermes EMA 1.5 preview can route voice conversations through a dedicated
+`sesli-asistan` profile while preserving written model preferences. It carries
+limited source-chat context, keeps follow-ups in the same voice session, and
+reads replies with the downloaded EMA voice model. See the
+[profile setup](docs/voice-assistant-profile/README.md) and
+[validation results and remaining limits](docs/voice-assistant-profile/VALIDATION.md).
+
 ---
 
 ## Screenshots

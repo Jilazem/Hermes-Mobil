@@ -72,7 +72,9 @@ class WorkspaceLogicTest {
     }
     @Test fun `inbox read status survives restart format`() {
         val item = ActivityNotice(id = "n", profileId = "p", title = "Notice", text = "body", read = true)
-        assertEquals(item, Json.decodeFromString<ActivityNotice>(Json.encodeToString(item)))
+        val saved = Json.encodeToString(item)
+        assertTrue(saved.contains("\"time\":"))
+        assertEquals(item, Json.decodeFromString<ActivityNotice>(saved))
     }
     @Test fun `tool arguments and result objects are preserved`() {
         val started = GatewayEvent("tool.start", payload = buildJsonObject { put("arguments", buildJsonObject { put("path", "test.txt") }) })

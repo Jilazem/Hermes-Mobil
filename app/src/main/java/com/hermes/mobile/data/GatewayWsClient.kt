@@ -64,8 +64,14 @@ class GatewayWsClient(private val profile: ServerProfile) {
         return binding.runtimeId
     }
 
-    suspend fun attachSession(runtimeId: String, storedId: String = storedSessionId(runtimeId)): String =
-        restoreConversation(runtimeId, storedId, ::activateSession, ::resumeSession)
+    suspend fun attachSession(runtimeId: String, storedId: String = storedSessionId(runtimeId), agentProfile: String? = null): String {
+        return restoreConversation(runtimeId, storedId, ::activateSession) { durable ->
+            // A new WebSocket has no runtime binding. Locate the existing live conversation across
+            // profiles before asking the default profile's database to restore a durable key.
+            val live = activeSessions().firstOrNull { it.dbId == durable || it.id == durable }
+            if (live != null) activateSession(live.id) else resumeSession(durable, agentProfile)
+        }
+    }
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(SocketTuning.GATEWAY_CONNECT_SECONDS, TimeUnit.SECONDS)
@@ -228,11 +234,14 @@ class GatewayWsClient(private val profile: ServerProfile) {
     }
 
     /** Geçmiş bir oturuma bağlanıp kaldığı yerden devam eder. */
-    suspend fun resumeSession(sessionId: String): String {
+    suspend fun resumeSession(sessionId: String): String = resumeSession(sessionId, null)
+
+    suspend fun resumeSession(sessionId: String, agentProfile: String?): String {
         val result = request(
             "session.resume",
             buildJsonObject {
                 put("session_id", JsonPrimitive(sessionId))
+                agentProfile?.takeIf { it.isNotBlank() }?.let { put("profile", JsonPrimitive(it)) }
                 put("omit_messages", JsonPrimitive(true))
             },
             timeoutMs = 60_000,

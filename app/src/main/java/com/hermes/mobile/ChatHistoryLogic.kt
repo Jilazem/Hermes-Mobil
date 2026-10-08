@@ -9,7 +9,7 @@ internal fun restoreChatHistory(messages: List<SessionMessage>, nextKey: (String
         buildList {
             when {
                 m.isUser && !m.content.isNullOrBlank() && visibleUserMessage(m.content) ->
-                    add(ChatItem.User(nextKey("u"), m.content, m.timestamp))
+                    add(ChatItem.User(nextKey("u"), com.hermes.mobile.data.VoiceSpecialistLogic.displayPrompt(m.content), m.timestamp))
                 m.isAssistant -> {
                     m.reasoning?.takeIf { it.isNotBlank() }?.let { add(ChatItem.Thinking(nextKey("r"), it)) }
                     m.content?.takeIf { it.isNotBlank() }?.let { add(ChatItem.Assistant(nextKey("a"), it, ts = m.timestamp)) }

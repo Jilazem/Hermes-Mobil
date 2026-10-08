@@ -16,6 +16,8 @@ data class ActivityNotice(
     val sessionId: String? = null,
     val title: String,
     val text: String,
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault
     val time: Long = System.currentTimeMillis(),
     val read: Boolean = false,
     val kind: String = "reply",

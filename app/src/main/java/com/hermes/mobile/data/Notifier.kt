@@ -119,6 +119,12 @@ object Notifier {
         )
     }
 
+    /** Remove the source's car notification when its voice reply moves into the specialist chat. */
+    fun dismissCarConversation(context: Context, profileId: String, sessionId: String) {
+        val conversation = "${android.net.Uri.encode(profileId)}/${android.net.Uri.encode(sessionId)}"
+        channel(context).cancel("car:$conversation", 4870)
+    }
+
     /**
      * @param sessionId yanıtın gideceği oturum; null ise yeni oturum açılır
      * @param force uygulama görünürken bile göster (bildirimden yanıtın sonucu)

@@ -627,6 +627,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Tam mod + döngü birlikte kapanır (geri hareketi, Durdur düğmesi). */
     fun closeJarvisMode() {
+        voiceRouteJob?.cancel()
         jarvisLoop.stop("kullanici")
         _jarvisMode.value = false
         Notifier.jarvisListening(getApplication(), false)
@@ -661,7 +662,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             // Tur-13: asistan akışında metin doğrudan gönderilir (bas-konuş'un
             // amacı soruyu sormak). Normal sohbette karar kullanıcı ayarında.
             if (AssistantModeLogic.autoSendTranscript(_state.value.assistantMode, voiceMsg.autoSend)) {
-                send(text)
+                sendVoice(text)
             } else {
                 _voicePrefill.value = text
             }
@@ -676,7 +677,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         voiceMsg.onWorkingBase = { base -> onVoiceBase(base) }
 
         // ── JARVIS-2 (tur24): döngü callback'leri ─────────────────────
-        jarvisLoop.onSend = { text -> send(text) }
+        jarvisLoop.onSend = { text -> sendVoice(text) }
         jarvisLoop.onNotice = { msg ->
             _state.update {
                 it.copy(items = it.items + ChatItem.Notice(nextKey("jl"), msg, isError = true))
@@ -1107,6 +1108,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun teardown() {
+        voiceRouteJob?.cancel()
         sessionLoadJob?.cancel()
         eventJob?.cancel()
         stateJob?.cancel()
@@ -1146,9 +1148,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val current = _state.value
         val existing = current.sessionId
         val sid = if (existing != null) {
-            gw.attachSession(existing, current.storedSessionId ?: gw.storedSessionId(existing))
+            gw.attachSession(existing, current.storedSessionId ?: gw.storedSessionId(existing), profile?.let { specialistStore.profileFor(it.id, current.storedSessionId ?: gw.storedSessionId(existing)) })
         } else if (current.storedSessionId != null) {
-            gw.resumeSession(current.storedSessionId)
+            gw.resumeSession(current.storedSessionId, profile?.let { specialistStore.profileFor(it.id, current.storedSessionId) })
         } else {
             createSessionWithProfile(gw).also { applyPreferredModel(gw, it) }
         }
@@ -1159,6 +1161,63 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(sessionId = sid, storedSessionId = gw.storedSessionId(sid)) }
         onSessionChanged?.invoke(gw.storedSessionId(sid))
         return sid
+    }
+
+    private val specialistStore by lazy { com.hermes.mobile.data.VoiceSpecialistSessions(getApplication()) }
+    private var voiceRouteJob: Job? = null
+
+    /** Continuous microphone replies use a real isolated Hermes profile, with the current chat as context. */
+    fun sendVoice(text: String) {
+        if (liveProvider == LiveModelLogic.Provider.YEREL &&
+            _state.value.sessionId == null && _state.value.storedSessionId == null) { send(text); return }
+        if (PhoneIntent.parse(text) != null) { send(text); return }
+        if (voiceRouteJob?.isActive == true) return
+        val server = profile
+        val gw = client
+        if (server == null || gw == null || _state.value.connection !is ConnectionState.Open) {
+            val error = tr("Sesli asistan için sunucu bağlantısı gerekli", "Connect to the server for the voice assistant")
+            _state.update { it.copy(notice = error) }
+            jarvisLoop.onAgentReply(error)
+            return
+        }
+        val original = _state.value
+        if (original.agentBusy || original.historyLoading) {
+            jarvisLoop.onAgentReply(tr("Açık sohbetin yanıtını bekleyelim", "Wait for the current conversation to finish"))
+            return
+        }
+        voiceRouteJob = viewModelScope.launch {
+            try {
+                val source = original.storedSessionId ?: original.sessionId?.let(gw::storedSessionId)
+                val selected = specialistStore.select(gw, server, source)
+                check(client === gw && profile?.id == server.id &&
+                    _state.value.sessionId == original.sessionId && _state.value.storedSessionId == original.storedSessionId) {
+                    "Konuşma değişti; sorunu seçtiğin sohbette tekrar söyle"
+                }
+                if (selected != null) {
+                    if (_state.value.storedSessionId != selected.stored) {
+                        continueSession(selected.runtime, selected.stored, "Sesli Asistan")
+                        sessionLoadJob?.join()
+                    }
+                    check(client === gw && _state.value.storedSessionId == selected.stored) { "Sesli konuşma değişti" }
+                    _sessionProfile.value = com.hermes.mobile.data.VoiceSpecialistLogic.PROFILE
+                    _state.update { it.copy(currentModel = selected.model ?: it.currentModel) }
+                }
+                send(text)
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                val error = tr("Sesli asistana bağlanılamadı; sohbetten tekrar dene", "Voice assistant unavailable; try from chat")
+                _state.update { it.copy(notice = error) }
+                jarvisLoop.onAgentReply(error)
+            }
+        }
+    }
+
+    private suspend fun submitConversationPrompt(gw: GatewayWsClient, sid: String, prompt: String) {
+        val server = profile ?: error("Sunucu profili yok")
+        val stored = gw.storedSessionId(sid)
+        val seed = specialistStore.pendingContext(server.id, stored)
+        gw.submitPrompt(sid, seed + prompt)
+        if (seed.isNotBlank()) specialistStore.submitted(server.id, stored)
     }
 
     fun send(text: String) {
@@ -1255,8 +1314,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     .filter { it.kind == AttachmentKind.File }
                     .joinToString("\n") { "Ek dosya: ${it.remotePath}" }
                 val prompt = listOf(fileNote, body).filter { it.isNotBlank() }.joinToString("\n\n")
-                if (prompt.isNotBlank()) gw.submitPrompt(sid, prompt)
+                if (prompt.isNotBlank()) submitConversationPrompt(gw, sid, prompt)
             }.onFailure { e ->
+                if (jarvisLoop.state.value.phase == JarvisLoopLogic.Phase.WaitReply) {
+                    jarvisLoop.onAgentReply(tr("Mesaj gönderilemedi; bağlantıyı denetle", "Message failed; check the connection"))
+                }
                 _state.update {
                     it.copy(
                         items = it.items + ChatItem.Notice(
@@ -1913,7 +1975,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         for (body in queued) {
             runCatching {
                 val sid = ensureConversation(gw)
-                gw.submitPrompt(sid, body)
+                submitConversationPrompt(gw, sid, body)
             }.onFailure { e ->
                 // Gönderemediysek geri koy; bir dahaki bağlanmada denenir.
                 DiagLog.w("chat", "queued message failed to send, re-queued: ${e.message}")
@@ -2159,7 +2221,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         // bilinmiyor (canlı oturumlarda profili öğrenmek yok), bu yüzden
         // null ("—"). Oturum düşerse sessizce yeni oturum açılır ve profil
         // seçimi yeniden serbestleşir.
-        _sessionProfile.value = null
+        _sessionProfile.value = specialistStore.profileFor(p.id, dbId.ifBlank { liveId })
         _state.update {
             ChatState(
                 connection = it.connection,
@@ -2182,7 +2244,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             // süreklilik (aynı bağlam); durmuyorsa geçmişi yine gösteririz ama
             // sonraki mesaj yeni oturum açmalı — ölü kimliğe prompt göndermek
             // sessizce başarısız olurdu.
-            val attached = runCatching { gw.attachSession(liveId, dbId.ifBlank { gw.storedSessionId(liveId) }) }
+            val attached = runCatching { gw.attachSession(liveId, dbId.ifBlank { gw.storedSessionId(liveId) }, specialistStore.profileFor(p.id, dbId.ifBlank { gw.storedSessionId(liveId) })) }
             if (attached.exceptionOrNull() is kotlinx.coroutines.CancellationException) throw attached.exceptionOrNull()!!
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             val runtimeId = attached.getOrNull()

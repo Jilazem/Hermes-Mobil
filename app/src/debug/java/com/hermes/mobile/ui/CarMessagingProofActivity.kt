@@ -78,7 +78,9 @@ class CarMessagingProofActivity : ComponentActivity() {
                     withTimeout(200_000) {
                         while (true) {
                             delay(500)
-                            val updated = nm.activeNotifications.firstOrNull { it.tag == notice.tag }
+                            val updated = nm.activeNotifications.firstOrNull { it.tag?.startsWith("car:${profile.id}/") == true &&
+                                it.notification.`when` >= notice.notification.`when` && it.tag != notice.tag }
+                                ?: nm.activeNotifications.firstOrNull { it.tag == notice.tag }
                             val messages = updated?.notification?.let(NotificationCompat.MessagingStyle::extractMessagingStyleFromNotification)?.messages
                             val answer = messages?.lastOrNull()?.text?.toString().orEmpty()
                             if (answer != "Hermes araç mesajlaşma denemesi hazır." && answer.isNotBlank()) {

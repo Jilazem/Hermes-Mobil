@@ -1,0 +1,39 @@
+# Apply only inside the new sesli-asistan profile. Keep Evren's real endpoint from existing config.
+model:
+  provider: evren
+  default: gemma-4-31b
+providers:
+  evren:
+    name: evren
+    base_url: REPLACE_WITH_EXISTING_EVREN_BASE_URL
+    key_env: EVREN_API_KEY
+    api_mode: chat_completions
+    discover_models: true
+agent:
+  reasoning_effort: null
+  max_turns: 12
+  environment_probe: false
+  task_completion_guidance: false
+  parallel_tool_call_guidance: false
+# This Evren route rejects reasoning_effort. Prevent the automatic custom-provider default.
+model_overrides:
+  custom:
+    gemma-4-31b: {supports_reasoning: false, supports_tools: true}
+  evren:
+    gemma-4-31b: {supports_reasoning: false, supports_tools: true}
+  custom:evren:
+    gemma-4-31b: {supports_reasoning: false, supports_tools: true}
+platform_toolsets:
+  cli: [clarify, web, delegation, session_search, terminal, file]
+  desktop: [clarify, web, delegation, session_search, terminal, file]
+  telegram: [clarify, web, delegation, session_search, terminal, file]
+delegation:
+  model: gemma-4-31b
+  provider: evren
+  reasoning_effort: null
+  max_concurrent_children: 2
+  max_spawn_depth: 1
+plugins:
+  enabled: []
+memory:
+  provider: builtin
