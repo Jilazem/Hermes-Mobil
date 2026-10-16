@@ -1,0 +1,61 @@
+{
+  "verdict": "pass",
+  "gorev": "k1-k2-phoneharness-merge (t_44854af4: d8c0470 K1 + 3dd7a9e K2 denetimi ve K1 merge)",
+  "tarih": "2026-10-17T01:15:00+03:00",
+  "test_sonucu": "Kendi koşumum (env -u HERMES_SINGLE_QUERY_SESSION -u HERMES_KANBAN_TASK -u HERMES_SESSION_SOURCE, --rerun-tasks, FROM-CACHE yok, taze XML): K1 (d8c0470, izole worktree) 88 XML / 952 test / 0 fail / 0 err / 0 skip — iddia birebir. K2 (3dd7a9e, ana ağaç) 88 XML / 979 test / 0 fail / 0 err / 0 skip — iddia birebir. BİRLEŞİK hal (merge 50bdedf) 93 XML / 994 test / 0 fail / 0 err / 0 skip = 937 taban + 15 K1 + 42 K2. Yeni test sınıflarının 10'u tek tek yeşil doğrulandı (TapLabels 3, PhoneHandoff 3, ScreenBoundsSpec 1, DiagUserStep 3, SessionRestoreFallback 5, DoctorLogic 12, ScreenWait 9, ScrollStep 9, LiveInventory 7, ArtemisTaskTracker 5).",
+  "merge": {
+    "commit": "50bdedf80b49de569e5dfc6300b8dc975fae98ae",
+    "dal": "feat/ema-unified-20261007",
+    "satir": "50bdedf merge: K1 phone-harness benimseme (d8c0470) — bağımsız denetim GEÇTİ",
+    "cakisma": "Yalnız CREDITS.md (add/add — iki paket dosyayı ayrı ayrı oluşturdu): iki paketin ShawnPana/phone-harness (MIT) girdileri tek belgede birleştirildi (K1 kalıp listesi + K2 desen listesi + ortak Uygulayan satırı). FullControl.kt, FullControlTools.kt, HermesAccessibilityService.kt otomatik birleşti; semantik doğrulandı: READ_TOOLS=(DUMP,SCREENSHOT,APPS,WAIT), WRITE_TOOLS+=(SCROLL_STEP), HANDOFF_TOOLS ayrı, ALL_TOOLS=READ+WRITE+HANDOFF, guardReason tek-sebep sırası değişmeden (FullControl.kt:123-133); dispatch'te HANDOFF (L32) + WAIT/SCROLL_STEP (L48-49), serviste tapNotFound/visibleSuffix + screen_bounds (K1) ile screenWait/scrollStep (K2) yan yana.",
+    "temizlik": "K1 denetim worktree'si (scratch/denetim-t44854/k1-wt) kaldırıldı; ana ağaç temiz."
+  },
+  "findings": [
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "Test sayımı tutarsız: denetim/k2/RAPOR.md 'taban 926 + 53 yeni' diyor; oysa 55f362b tabanı 937 (K1 RAPOR-K1.md 'mevcut 937' ile birebir) ve K2 diff'i 42 yeni test metodu ekliyor (12+9+9+7+5). Toplam 979 doğru ve benim koşumumla doğrulandı; yalnız ara sayım hatalı (926+53=979 tesadüfen tutuyor)."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "Preflight receipt YOK: üretici kartların (t_35ec8257, t_384678f7) gövdesinde preflight.py receipt bloğu yok, olaylar.jsonl'da kayıt yok — KURALLAR.md preflight kapısı ('kanıtsız BUILD yasak') biçimsel olarak karşılanmamış. Bu denetim kartı da receipt içermiyor. Uygulanan yorum (proje geleneğiyle tutarlı): denetim görevi build hakkı gerektiren kod üretimi değil, doğrulama build'idir; verdict-tur-v3-p02/p03 (07.10) ve verdict-hermes-agent-k1-k6-k13c-k14 (16.10) 'YOK' kaydıyla GEÇTİ. CEO bu yorumu ezerse hüküm KALDI'ya döner."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "İki paket aynı CREDITS.md'yi ayrı ayrı oluşturdu (add/add çakışması — beklenen hotspot'un yan etkisi). Birleştirme commit'inde elle birleştirildi; içerik kaybı yok, iki paketin desen listeleri de korundu."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "B4 uygulanışı doğrulandı ama X (süresi dolan oturum) bilerek 'Önceki oturum' olarak yazılıyor (D-05 ham id yasağı) — kaybolan oturumun başlığı listede olmadığı için bildirim başlığı gerçek başlığı gösteremiyor. Kart kararına uygun, bilinçli kısıt; geri alınabilir tek commit."
+    }
+  ],
+  "dogrulama_notlari": {
+    "kural_ihlali": "AGPL/GPL kod kopyası YOK (diff taraması temiz; tek lisans izi CREDITS.md'deki MIT phone-harness kaydı — fikir kaynağı, kod kopyalanmadı). Gizli veri/token/sertifika YOK. Uydurma kanıt YOK: denetim/k2/ altındaki ekran görüntüleri + diaglog-doctor.txt gerçek (6 alan satırı birebir raporla uyumlu); DOĞRULANAMADI kalemleri (AA geliştirici modu, upstream doctor listesi, Artemis canlı bildirim) raporda bilinçli işaretli.",
+    "b4_karari": "DOĞRU uygulanmış: MainActivity restoreFallback yolunda sessiz fallback yok, tek satır banner ('«X» süresi doldu, son oturum açıldı'); ChatViewModel bannerItems geçmiş yüklenirken korunuyor; SessionRestoreFallbackTest 5/0. Sessiz fallback'e dönüş yolu kodda yok.",
+    "guardReason": "KORUNMUŞ: tek-sebep sıralı desen değişmedi (agent-off → full-control-off → read-only yalnız WRITE_TOOLS); phone_handoff WRITE_TOOLS'ta değil (salt-okunur kipte kısıtlayıcı olarak çalışır), PhoneHandoffTest 3/0 ile kilitli; screen.wait READ_TOOLS, screen.scroll_step WRITE_TOOLS — ScreenWaitTest 'araclar dogru kumele ayrilir' ile kilitli."
+  },
+  "conditions": [
+    "İkinci göz (DeepSeek Harness, kod-ikinci-goz) GECTI-KOSULLU: FullControl.matchLabel/matchId/editableTarget yalnız bounds>0 ile filtreliyor, visible kontrolü yok → ekran dışı düğüme yanlış dokunuş riski. Kök inceleme: bu desen 55f362b baseline'ında birebir mevcut (git show 55f362b ... matchLabel L194-211) — K1/K2 kaynaklı DEĞİL, birleştirme bu riski artırmadı. Takip kartı önerildi (visible filtresi + 'offscreen satır eşleşmez' birim testi).",
+    "İkinci göz 2. madde: parseTap'ta yarım koordinat (yalnız x ya da yalnız y parse edilirse) sessizce id/metin aramasına düşüyor; TapTarget.Invalid dönmesi gerekiyor (mevcut 'reddet, tahmin etme' ilkesiyle tutarlı). Ayrıca baseline kaynaklı — takip kartında birlikte düzeltilebilir."
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/FullControl.kt": "25a08bf5d1f3eec7f254dc02bf5cb485d5abdae84bb6c9264320de618c0ae062",
+    "app/src/main/java/com/hermes/mobile/data/FullControlTools.kt": "8f5b9ae673d828782f1ec4a6aa625317a44922cdea94f65e7da35ebb3a1cece2",
+    "app/src/main/java/com/hermes/mobile/data/HermesAccessibilityService.kt": "3847d429423fe45a58143eba34d9440d9cca63a39166502d07b561b43d8527db",
+    "app/src/main/java/com/hermes/mobile/data/PhoneBridgeService.kt": "36fd59eee92c33a58d7d8e79658f28b4916fdbe127ad4cf4864702d42508e22b",
+    "app/src/main/java/com/hermes/mobile/data/DoctorLogic.kt": "337106cb81dd91bf56cd6a0a8f93751b1642efa3cb1c5a9ace8aa91143af3924",
+    "app/src/main/java/com/hermes/mobile/data/DiagUserStep.kt": "8b8b270f926a870f32dae364b0bb453653254291362c88902ff42de7cc958cab",
+    "app/src/main/java/com/hermes/mobile/data/ArtemisTaskTracker.kt": "7c9eeb9cae9299ad505914ba0a81173f912cbae06ec6cccc92b9cf4697a308fd",
+    "app/src/main/java/com/hermes/mobile/ui/SessionDrawerLogic.kt": "3513e37b053abf51a062030f3b8760c27721c05a5deabc4c307b0117fda1ed52",
+    "CREDITS.md": "8117095c2d18d7dcfa1f947ce5274efb5e24158b53567c749a6fcef6e1c93819"
+  },
+  "lesson": "Paralel işçiler aynı dosyaya değil aynı SATIRA dokunmadığı sürece (farklı bölgeler) otomatik birleşme güvenli; add/add çakışmalarında (iki paket aynı yeni dosyayı ayrı yazarsa) içerikler tek belgede elle birleştirilip iki paketin listesi de korunmalı — tek taraflı seçim bilgi kaybıdır.",
+  "preflight": "YOK (bu kart ve üretici kartlar t_35ec8257/t_384678f7 preflight.py receipt'i içermiyor; denetim görevi build hakkı gerektiren kod üretimi değil, doğrulama build'idir — bkz. findings MEDIUM, CEO yorumuna açık)",
+  "uzman": "cd-android (K1 t_35ec8257 + K2 t_384678f7); denetim + merge: cd-denetmen",
+  "deneme_no": "0",
+  "devir": false,
+  "ikinci_goz": "GECTI-KOSULLU (conditions alanında; ikinci göz erişildi, KALDI yok; görülen 2 madde de baseline kaynaklı)"
+}
