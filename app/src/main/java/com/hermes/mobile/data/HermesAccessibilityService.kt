@@ -219,11 +219,14 @@ class HermesAccessibilityService : AccessibilityService() {
             is FullControl.TapTarget.ViewId -> FullControl.matchId(snap, target.id)
             else -> null
         } ?: return FullControl.fail(
-            "Ekranda bulunamadı: " + when (target) {
-                is FullControl.TapTarget.Label -> "\"${target.query}\" metin/açıklaması"
-                is FullControl.TapTarget.ViewId -> "id=${target.id}"
-                else -> "?"
-            } + ". Önce screen.dump ile ekranı oku.",
+            FullControl.tapNotFound(
+                searched = when (target) {
+                    is FullControl.TapTarget.Label -> "\"${target.query}\" metin/açıklaması"
+                    is FullControl.TapTarget.ViewId -> "id=${target.id}"
+                    else -> "?"
+                },
+                labels = topLabels(snap),
+            ),
         )
 
         val label = node.label.ifBlank { node.id }
@@ -234,7 +237,10 @@ class HermesAccessibilityService : AccessibilityService() {
             return FullControl.done("\"$label\" öğesine basıldı (düğüm eylemi) · ${brief()}")
         }
         if (!press(node.bounds.centerX, node.bounds.centerY, duration)) {
-            return FullControl.fail("\"$label\" öğesine dokunulamadı (jest reddedildi).")
+            return FullControl.fail(
+                "\"$label\" öğesine dokunulamadı (jest reddedildi)." +
+                    FullControl.visibleSuffix(topLabels(snap)),
+            )
         }
         Thread.sleep(250)
         return FullControl.done(
@@ -730,6 +736,16 @@ class HermesAccessibilityService : AccessibilityService() {
                 put("width", JsonPrimitive(w))
                 put("height", JsonPrimitive(h))
                 put("scale", JsonPrimitive(usedScale.toDouble()))
+                // screen_bounds: TAM ekran, ekran noktası cinsinden (tap x/y ile
+                // aynı uzay). Görüntü küçültülmüşse width/height bundan küçük —
+                // PNG pikseli→ekran noktası dönüşümü buradan yapılır (kural
+                // araç tanımında: screen = px * screen_bounds.w / width).
+                put(
+                    "screen_bounds",
+                    kotlinx.serialization.json.JsonArray(
+                        listOf(0, 0, shot.width, shot.height).map { JsonPrimitive(it) },
+                    ),
+                )
                 put(
                     "image_base64",
                     JsonPrimitive(Base64.encodeToString(bytes, Base64.NO_WRAP)),

@@ -52,6 +52,18 @@ Sunucudaki phone MCP bu alanı okumuyorsa, Hermes'e aşağıdaki talimatı
 
 Şemaların kendisi: `app/src/main/java/com/hermes/mobile/data/PhoneToolSpecs.kt`.
 
+### Kontrol devri ve ekran görüntüüsü koordinatları
+
+- **`phone_handoff`**: ajan 2FA/şifre gibi bir adımda takılırsa bu aracı
+  çağırır — telefona "ekranda sen yap" bildirimi gider ve **salt-okunur kip**
+  açılır (ajan dokunmayı bırakır). Kontrolü geri vermek için Ayarlar →
+  Telefon denetimi'nden «Yalnız okunur»u kapat.
+- **`screenshot`** sonucunda `screen_bounds: [l, t, r, b]` alanı vardır —
+  tam ekran, **ekran noktası** cinsinden (`tap` x/y ile aynı uzay). Görüntü
+  küçültülmüşse `width/height` bundan küçüktür; PNG pikseli → ekran noktası:
+  `x = px * (r - l) / width`, `y = py * (b - t) / height` (eşdeğeri
+  `px / scale`).
+
 ## Android Auto
 
 1. Telefonda Android Auto → **Ayarlar** → en alttaki *Sürüm*'e 10 kez dokun

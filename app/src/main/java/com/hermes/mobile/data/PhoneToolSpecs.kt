@@ -62,5 +62,16 @@ object PhoneToolSpecs {
                 "profile" to "Optional: flash (fast) | pro (plans and verifies).",
             ),
         ),
+        "screenshot" to spec(
+            "Capture the phone screen as JPEG. Result fields: image_base64 with size width×height " +
+                "(may be scaled down from the real screen; scale = image/real), and screen_bounds = " +
+                "[left, top, right, bottom] of the FULL screen in screen points — the same coordinate " +
+                "system that tap/long_press x,y use. To tap an image pixel (px, py): " +
+                "x = px * (screen_bounds[2] - screen_bounds[0]) / width, " +
+                "y = py * (screen_bounds[3] - screen_bounds[1]) / height (equivalently px/scale, " +
+                "py/scale when scale > 0).",
+            emptyList(),
+            emptyMap(),
+        ),
     )
 }

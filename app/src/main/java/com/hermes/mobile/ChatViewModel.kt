@@ -2205,7 +2205,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      * Telegram'dan, cron'dan ya da CLI'dan başlamış bir konuşma böylece
      * telefondan sürdürülebilir.
      */
-    fun continueSession(liveId: String, dbId: String, title: String) {
+    fun continueSession(liveId: String, dbId: String, title: String, banner: String? = null) {
         val p = profile ?: return
         val gw = client ?: return
         sessionLoadJob?.cancel()
@@ -2217,6 +2217,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         thinkingKey = null
         streamMeter.reset()
         _speed.value = null
+        // B4: tek satır görünür bildirim (ör. "«X» süresi doldu, son oturum
+        // açıldı") — geçmiş yüklenirken de sonrasında da görünür kalır;
+        // sessiz fallback yok. Banner, tarihsel döküm listeyi yeniden
+        // kurduğunda da korunur (aşağıdaki body+footer bileşimi).
+        val bannerItems = if (banner.isNullOrBlank()) {
+            emptyList()
+        } else {
+            listOf(ChatItem.Notice(nextKey("n"), banner))
+        }
         // Mevcut oturuma bağlanıldı → çipler kilitlenir; profil sunucudan
         // bilinmiyor (canlı oturumlarda profili öğrenmek yok), bu yüzden
         // null ("—"). Oturum düşerse sessizce yeni oturum açılır ve profil
@@ -2235,7 +2244,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 historyLoading = true,
                 items = listOf(
                     ChatItem.Notice(nextKey("n"), "\"$title\" konuşmasına bağlanıldı")
-                ),
+                ) + bannerItems,
             )
         }
 
@@ -2304,7 +2313,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 ),
             )
 
-            _state.update { st -> st.copy(items = body + footer, historyLoading = false) }
+            // B4: banner (tek satır bildirim) tarihsel dökümle birlikte korunur.
+            _state.update { st -> st.copy(items = bannerItems + body + footer, historyLoading = false) }
         }
     }
 

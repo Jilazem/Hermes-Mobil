@@ -1,5 +1,6 @@
 package com.hermes.mobile.data
 
+import com.hermes.mobile.ui.tr
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -41,6 +42,16 @@ object FullControl {
     const val SCROLL_STEP = "screen.scroll_step"
 
     /**
+     * `phone_handoff` — 2FA/şifre gibi adımlarda kontrolü kullanıcıya devreder.
+     *
+     * phone-harness `cloud open` deseninin karşılığı: ajan "ekranda sen yap"
+     * bildirimini gösterir ve salt-okunur kipe döner. Salt-okunur kipte de
+     * çalışır (yalnızca kısıtlayıcıdır) — [guardReason] deseni değişmeden
+     * korunur.
+     */
+    const val HANDOFF = "phone_handoff"
+
+    /**
      * Yalnız **okuyan** araçlar.
      *
      * Salt-okunur kipte bunlar çalışmaya devam eder: ajan telefonu görebilsin
@@ -63,7 +74,14 @@ object FullControl {
         TAP, LONG_PRESS, SWIPE, TYPE, KEY, GLOBAL, APP_START, APP_STOP, SCROLL_STEP,
     )
 
-    val ALL_TOOLS: Set<String> = READ_TOOLS + WRITE_TOOLS
+    /**
+     * Kontrol devri — kısıtlayıcı araç: yalnız bildirim gösterir ve salt-okunur
+     * kipi AÇAR. [WRITE_TOOLS]'ta değil; salt-okunur kipte reddedilmez ve
+     * [guardReason] deseni aynen korunur.
+     */
+    val HANDOFF_TOOLS = setOf(HANDOFF)
+
+    val ALL_TOOLS: Set<String> = READ_TOOLS + WRITE_TOOLS + HANDOFF_TOOLS
 
     fun isFullControlTool(name: String) = name in ALL_TOOLS
 
@@ -112,6 +130,38 @@ object FullControl {
         !fullControl -> WHY_FULL_CONTROL_OFF
         tool in WRITE_TOOLS && readOnly -> WHY_READ_ONLY
         else -> null
+    }
+
+    // ── Araç mesajları ───────────────────────────────────────────────
+
+    /**
+     * Başarısız `tap` mesajına ek: ekranda GÖRÜNEN etiketler.
+     *
+     * phone-harness deseni ("raises with what IS visible"): hedef yoksa ajan
+     * bir tur daha harcamadan ekranda hangi etiketlerin olduğunu görsün.
+     */
+    fun visibleSuffix(labels: List<String>): String {
+        val visible = labels.take(6).joinToString(" | ").take(240)
+        return if (visible.isEmpty()) "" else " Ekranda görünenler: $visible."
+    }
+
+    /** `tap` hedef bulunamadı mesajı — görünen etiketlerle birlikte. */
+    fun tapNotFound(searched: String, labels: List<String>): String =
+        "Ekranda bulunamadı: $searched.${visibleSuffix(labels)} Önce screen.dump ile ekranı oku."
+
+    /**
+     * `phone_handoff` bildirimi — "ekranda sen yap" çağrısı ve kip
+     * değişiminin açık yazımı (B5; sessiz devir yok).
+     */
+    fun handoffNotice(reason: String): String {
+        val why = reason.trim().takeIf { it.isNotEmpty() }?.let { "$it — " }.orEmpty()
+        return tr(
+            "${why}2FA/şifre gibi adımı ekranda sen yap. Salt-okunur kip açıldı: ajan dokunmayacak. " +
+                "Kontrolü geri vermek için Ayarlar → Telefon denetimi'nden «Yalnız okunur»u kapat.",
+            "${why}please complete this step (2FA/password) on the screen yourself. Read-only mode " +
+                "is on: the agent will not touch the phone. Give control back in Settings → Phone " +
+                "control by turning «Read-only» off.",
+        )
     }
 
     // ── Dokunma hedefi ───────────────────────────────────────────────
