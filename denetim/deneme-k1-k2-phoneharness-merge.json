@@ -1,0 +1,14 @@
+{
+  "fail_sayisi": 0,
+  "devir": false,
+  "turlar": [
+    {
+      "tarih": "2026-10-17T01:17:02",
+      "yapan": "cd-android",
+      "sonuc": "pass"
+    }
+  ],
+  "uzman": "cd-android",
+  "slug": "k1-k2-phoneharness-merge",
+  "kapandi": true
+}
