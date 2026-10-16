@@ -28,6 +28,8 @@ class FullControlTools(private val context: Context) {
             FullControl.APPS -> return listApps()
             FullControl.APP_START -> return startApp(args.str("app") ?: args.str("package").orEmpty())
             FullControl.APP_STOP -> return stopApp(args.str("app") ?: args.str("package").orEmpty())
+            // Kontrol devri erişilebilirlik gerektirmez: bildirim + ayar.
+            FullControl.HANDOFF -> return handOff(args.str("reason").orEmpty())
         }
 
         val svc = HermesAccessibilityService.instanceOrNull()
@@ -53,6 +55,33 @@ class FullControlTools(private val context: Context) {
             DiagLog.e("a11y", "$name başarısız", e)
             FullControl.fail("$name başarısız: ${e.message}")
         }
+    }
+
+    /**
+     * `phone_handoff` — 2FA/şifre gibi adımlarda kullanıcıyı devreye alır.
+     *
+     * İki iş: (1) "ekranda sen yap" bildirimi, (2) salt-okunur kipe dönüş —
+     * ajan kullanıcı adımını beklerken dokunmaya devam edemesin. Kontrolün
+     * geri verilmesi kullanıcıda (Ayarlar → Telefon denetimi). `guardReason`
+     * deseni değişmedi: bu araç salt-okunur kipte reddedilmez (yalnızca
+     * kısıtlayıcıdır).
+     */
+    private fun handOff(reason: String): FullControl.Outcome {
+        val settings = SettingsStore(context)
+        val wasReadOnly = settings.settings.value.agentReadOnly
+        settings.update { it.copy(agentReadOnly = true) }
+        val notice = FullControl.handoffNotice(reason)
+        Notifier.agentMessage(
+            context,
+            com.hermes.mobile.ui.tr("Kontrol sende", "Your turn — on screen"),
+            notice,
+        )
+        DiagLog.i(
+            "a11y",
+            "phone_handoff: kontrol kullanıcıya devredildi" +
+                if (wasReadOnly) " (salt-okunur zaten açıktı)" else "",
+        )
+        return FullControl.done(notice)
     }
 
     // ── Uygulama yönetimi ────────────────────────────────────────────

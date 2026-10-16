@@ -822,12 +822,28 @@ private fun HermesApp(
         val pid = viewModel.state.value.active?.id ?: return@LaunchedEffect
         val saved = settings.lastSession.split("|", limit = 2)
         if (saved.size != 2 || saved[0] != pid || saved[1].isBlank()) return@LaunchedEffect
-        val row = lastSessionToRestore(saved[1], drawerRowList, chat.sessionId) ?: return@LaunchedEffect
+        val row = lastSessionToRestore(saved[1], drawerRowList, chat.sessionId)
+        if (row != null) {
+            lastSessionRestored = true
+            chatViewModel.continueSession(
+                liveId = row.liveId.ifBlank { row.dbId },
+                dbId = row.dbId.ifBlank { row.liveId },
+                title = row.title,
+            )
+            return@LaunchedEffect
+        }
+        // B4 (CEO kararı): kayıtlı oturum geri yüklenemiyorsa sessiz kalmak
+        // YOK — en güncel oturum TEK SATIR bildirimle açılır ("«X» süresi
+        // doldu, son oturum açıldı").
+        val fallback = com.hermes.mobile.ui.restoreFallback(
+            saved[1], drawerRowList, chat.sessionId,
+        ) ?: return@LaunchedEffect
         lastSessionRestored = true
         chatViewModel.continueSession(
-            liveId = row.liveId.ifBlank { row.dbId },
-            dbId = row.dbId.ifBlank { row.liveId },
-            title = row.title,
+            liveId = fallback.row.liveId.ifBlank { fallback.row.dbId },
+            dbId = fallback.row.dbId.ifBlank { fallback.row.liveId },
+            title = fallback.row.title,
+            banner = fallback.notice,
         )
     }
     val shizukuState by chatViewModel.shizuku.state.collectAsStateWithLifecycle()

@@ -155,6 +155,16 @@ fun DiagView() {
                             fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.labelSmall,
                         )
+                        // ERROR/CRASH'e eşleşen kullanıcı adımı — "şimdi ne
+                        // yapayım" cevabı teknik satırın hemen altında.
+                        entry.userStep?.let { step ->
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                S.t2("Yapılacak: ", "Next step: ") + step,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }

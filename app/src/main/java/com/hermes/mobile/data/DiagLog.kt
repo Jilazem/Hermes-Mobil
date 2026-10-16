@@ -47,6 +47,16 @@ object DiagLog {
         val clock: String get() = TIME.format(Date(at))
         /** Panoya/paylaşıma giden tek satırlık biçim. */
         fun line(): String = "${STAMP.format(Date(at))} ${level.name.take(1)} [$tag] $message"
+
+        /**
+         * ERROR/CRASH için eşleşen **kullanıcı adımı** — "şimdi ne yapayım".
+         *
+         * [DiagUserStep] desenleri saf koddur; eşleşmeyen hata da genel adımla
+         * (tanı kaydını paylaş) cevapsız kalmaz. Alt seviye kayıtlarda null:
+         * normal akış kaydı aksiyon üretmez.
+         */
+        val userStep: String?
+            get() = if (level >= Level.ERROR) DiagUserStep.step(tag, message) else null
     }
 
     private const val MAX_MEMORY = 400

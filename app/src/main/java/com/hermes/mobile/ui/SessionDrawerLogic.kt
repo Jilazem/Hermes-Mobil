@@ -305,3 +305,40 @@ fun lastSessionToRestore(
     if (currentSessionId != null && row.current) return null
     return row
 }
+
+/**
+ * B4 — süre dolan/kaybolan oturumda sessiz fallback YOK (CEO kararı,
+ * 16.10.2026): en güncel oturuma geçilir ve bu TEK SATIR bildirimle
+ * duyurulur. phone-harness kuralıyla ("does not hand you another phone
+ * silently") aynı doğrultuda; kullanıcı hangi oturuma düştüğünü görür.
+ */
+data class RestoreFallback(val row: DrawerRow, val notice: String)
+
+/**
+ * Kayıtlı son oturum geri yüklenemiyorsa (sunucu süresini doldurmuş ya da
+ * silmiş) fallback kararı. `null` = fallback yok.
+ *
+ * Kurallar:
+ *  - kayıtlı kimlik listede VARSA normal geri yükleme yolu ilgilenir;
+ *  - sohbette bir oturum AÇIKSA asla devralınmaz;
+ *  - hedef: zamanı en yeni satır — hangi oturuma düşüldüğü bildirimden ve
+ *    üst şeritteki başlıktan görülür (ham kimlik gösterilmez).
+ */
+fun restoreFallback(
+    savedId: String,
+    rows: List<DrawerRow>,
+    currentSessionId: String?,
+): RestoreFallback? {
+    if (savedId.isBlank() || currentSessionId != null) return null
+    val listed = rows.any { it.dbId == savedId || it.liveId == savedId || it.key == savedId }
+    if (listed) return null
+    val target = rows.filter { !it.archived }.maxByOrNull { it.epochSeconds } ?: return null
+    return RestoreFallback(target, sessionExpiredNotice(tr("Önceki oturum", "Previous session")))
+}
+
+/** B4 bildirimi — "«X» süresi doldu, son oturum açıldı" (CEO şablonu). */
+fun sessionExpiredNotice(expiredTitle: String): String =
+    tr(
+        "«$expiredTitle» süresi doldu, son oturum açıldı",
+        "«$expiredTitle» expired — opened the last session",
+    )
