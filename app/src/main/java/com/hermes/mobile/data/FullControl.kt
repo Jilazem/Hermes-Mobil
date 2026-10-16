@@ -34,24 +34,33 @@ object FullControl {
     const val APP_START = "app.start"
     const val APP_STOP = "app.stop"
 
+    /** K2 — bekle-doğrula: koşul sağlanana kadar süre sınırlı yoklama. */
+    const val WAIT = "screen.wait"
+
+    /** K2 — momentum'suz içerik kaydırma + bitiş algılama (≠ swipe). */
+    const val SCROLL_STEP = "screen.scroll_step"
+
     /**
      * Yalnız **okuyan** araçlar.
      *
      * Salt-okunur kipte bunlar çalışmaya devam eder: ajan telefonu görebilsin
      * ama değiştirmesin demek, görmeyi de yasaklamak değil. Ekran görüntüsü ve
-     * pencere ağacı bu kapsamda.
+     * pencere ağacı bu kapsamda. `screen.wait` de yalnız okur: ekranda bir şey
+     * beklemez, bir şeyi değiştirmez.
      */
-    val READ_TOOLS = setOf(DUMP, SCREENSHOT, APPS)
+    val READ_TOOLS = setOf(DUMP, SCREENSHOT, APPS, WAIT)
 
     /**
      * Cihazı **değiştiren** araçlar — salt-okunur kipte reddedilir.
      *
      * Geri alınamaz eylemler (SMS gönderme, arama başlatma, uygulama kaldırma,
      * fabrika ayarları, kilitli ekranda PIN girme) bilerek YOK; son dokunuş
-     * her zaman kullanıcıda kalıyor.
+     * her zaman kullanıcıda kalıyor. `screen.scroll_step` da burada: içerik
+     * kaydırma bir JESTTİR ve kenar etkileri (yenileme tetikleme, kenar
+     * paneli) olabilir — salt-okunur kip "jest yok" demektir.
      */
     val WRITE_TOOLS = setOf(
-        TAP, LONG_PRESS, SWIPE, TYPE, KEY, GLOBAL, APP_START, APP_STOP,
+        TAP, LONG_PRESS, SWIPE, TYPE, KEY, GLOBAL, APP_START, APP_STOP, SCROLL_STEP,
     )
 
     val ALL_TOOLS: Set<String> = READ_TOOLS + WRITE_TOOLS
@@ -274,6 +283,132 @@ object FullControl {
         val g = directionGesture(direction.orEmpty(), width, height) ?: return null
         return if (dur != null) g.copy(durationMs = dur.toLong()) else g
     }
+
+    // ── Bekleme (screen.wait) ────────────────────────────────────────
+
+    /** Yoklama aralığı ve tavan — bloke değil: her koşulun bir deadline'ı var. */
+    const val WAIT_POLL_MS = 250L
+    const val WAIT_DEFAULT_SECONDS = 10
+    const val WAIT_MAX_SECONDS = 30
+
+    /** "Sabit" sayılması için gereken ardışık değişmeyen yoklama sayısı. */
+    const val WAIT_STABLE_POLLS = 3
+
+    /**
+     * `screen.wait` koşulu — en az bir alan dolu olmalı.
+     *
+     * `text` görünen etiketlerde geçiyor (contains, harf duyarsız); `app`
+     * öndeki paket/aktivite adında geçiyor; `stable` içerik ardışık
+     * [WAIT_STABLE_POLLS] yoklamada değişmiyorsa sağlanmış sayılıyor.
+     * Birden çok koşul verilirse **hepsi** gerekir.
+     */
+    data class WaitSpec(
+        val text: String? = null,
+        val app: String? = null,
+        val stable: Boolean = false,
+        val timeoutMs: Long,
+    )
+
+    /** Tek yoklamanın durumu — saf karar girdisi. */
+    data class WaitState(
+        val labels: List<String>,
+        val foreground: String,
+        /** İçeriğin ardışık kaç yoklamadır değişmediği. */
+        val stablePolls: Int,
+    )
+
+    /**
+     * `screen.wait` argümanlarını çözer.
+     *
+     * `timeout` **saniye** cinsinden (varsayılan [WAIT_DEFAULT_SECONDS],
+     * tavan [WAIT_MAX_SECONDS]) — saniye altındaki değerler bile tavana
+     * yuvarlanmaz, en az 1 sn. Koşul yoksa `null`: "bekle" tek başına anlamsız.
+     */
+    fun parseWait(
+        text: String?,
+        app: String?,
+        stable: String?,
+        timeout: String?,
+    ): WaitSpec? {
+        val t = text?.trim()?.takeIf { it.isNotEmpty() }
+        val a = app?.trim()?.takeIf { it.isNotEmpty() }
+        val st = stable?.trim()?.let {
+            it.equals("true", true) || it.equals("evet", true) ||
+                it.equals("yes", true) || it == "1"
+        } == true
+        if (t == null && a == null && !st) return null
+        val seconds = timeout?.trim()?.filter { it.isDigit() }?.toIntOrNull()
+            ?.coerceIn(1, WAIT_MAX_SECONDS)
+            ?: WAIT_DEFAULT_SECONDS
+        return WaitSpec(t, a, st, seconds * 1000L)
+    }
+
+    /**
+     * Bu yoklama koşulu karşılıyor mu?
+     *
+     * `stable` hariç koşullar ilk yoklamada bile sağlanabilir — "act, verify"
+     * akışında ekstra gecikme eklemek istenmiyor. `stable` ise kasıtlı olarak
+     * [WAIT_STABLE_POLLS] yoklama ister: tek okuma "duruldu" demek değildir.
+     */
+    fun waitSatisfied(spec: WaitSpec, state: WaitState): Boolean {
+        if (spec.text != null && state.labels.none { it.contains(spec.text, true) }) return false
+        if (spec.app != null && !state.foreground.contains(spec.app, true)) return false
+        if (spec.stable && state.stablePolls < WAIT_STABLE_POLLS) return false
+        return true
+    }
+
+    // ── İçerik kaydırma (screen.scroll_step) ─────────────────────────
+
+    /**
+     * İçerik yönü — `swipe`'ın parmak yönüyle **karıştırılmamalı**.
+     *
+     * `scroll_step` "neyi GÖRMEK istiyorum"u söyler: `down` = içerikte
+     * aşağısı (parmak yukarı kayar). phone-harness SKILL.md'deki
+     * "`scroll` says what you want to SEE" semantiği bu.
+     */
+    val CONTENT_DOWN = setOf("down", "asagi", "aşağı", "asagiya", "aşağıya", "alt")
+    val CONTENT_UP = setOf("up", "yukari", "yukarı", "yukariya", "yukarıya", "ust", "üst")
+
+    /** Varsayılan adım: ekran yüksekliğinin oranı (0.1..0.9). */
+    const val SCROLL_STEP_DEFAULT = 0.6f
+
+    /**
+     * Sabit adım jesti — **momentum yok**: kısa mesafe + yavaş (450 ms)
+     * çizim; fling/tarayıcı ataleti kasıtlı olarak tetiklenmez.
+     */
+    const val SCROLL_STEP_DURATION_MS = 450L
+
+    /**
+     * `screen.scroll_step` jesti. Yatay kaydırma bilerek desteklenmiyor:
+     * liste yürüme deseni dikeydir; yatay için `swipe` var.
+     */
+    fun parseScrollStep(
+        direction: String,
+        step: String?,
+        width: Int,
+        height: Int,
+    ): Gesture? {
+        if (width <= 0 || height <= 0) return null
+        val d = foldTr(direction.trim())
+        val frac = step?.trim()?.replace(',', '.')?.toFloatOrNull()
+            ?.coerceIn(0.1f, 0.9f) ?: SCROLL_STEP_DEFAULT
+        val dist = (height * frac).toInt().coerceAtLeast(1)
+        val cx = width / 2
+        val cy = height / 2
+        val near = cy - dist / 2
+        val far = cy + dist / 2
+        return when (d) {
+            in CONTENT_DOWN -> Gesture(cx, far, cx, near, SCROLL_STEP_DURATION_MS)
+            in CONTENT_UP -> Gesture(cx, near, cx, far, SCROLL_STEP_DURATION_MS)
+            else -> null
+        }
+    }
+
+    /**
+     * Bitiş algılama: iki dökümde görünen etiketler aynıysa içerik
+     * kıpırdamadı → liste sonu (ya da kaydırılabilir alan yok).
+     */
+    fun scrollMoved(before: List<String>, after: List<String>): Boolean = before != after
 
     // ── Tuşlar ───────────────────────────────────────────────────────
 

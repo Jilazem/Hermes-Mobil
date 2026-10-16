@@ -21,6 +21,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.app.NotificationCompat
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CountDownLatch
@@ -346,6 +347,138 @@ class HermesAccessibilityService : AccessibilityService() {
 
     private fun trim(labels: List<String>): String =
         labels.take(6).joinToString(" | ").take(240)
+
+    /**
+     * `screen.wait` — koşul sağlanana kadar **süre sınırlı** yoklama.
+     *
+     * phone-harness `wait_for_text`/`wait_for_app`/`wait_stable` deseninin
+     * karşılığı: tap sonrası sabit `Thread.sleep(250)` + ekstra döküm turu
+     * yerine tek çağrıda "doğrula". Bloke değil: her çağrının bir deadline'ı
+     * var ([FullControl.WAIT_MAX_SECONDS] tavan) ve süre dolunca o ana kadarki
+     * son durumla (görünen etiketler, öndeki paket) `ok=false` döner.
+     */
+    fun screenWait(args: JsonObject): FullControl.Outcome {
+        val spec = FullControl.parseWait(
+            text = args.str("text"),
+            app = args.str("app"),
+            stable = args.str("stable"),
+            timeout = args.str("timeout"),
+        ) ?: return FullControl.fail(
+            "screen.wait için en az bir koşul gerekli: text (görünen metin), " +
+                "app (öndeki paket) ya da stable (içerik dursun). " +
+                "timeout saniye (varsayılan ${FullControl.WAIT_DEFAULT_SECONDS}, " +
+                "en fazla ${FullControl.WAIT_MAX_SECONDS}).",
+        )
+        val start = System.currentTimeMillis()
+        val deadline = start + spec.timeoutMs
+        var prev: List<String>? = null
+        var stablePolls = 0
+        var polls = 0
+        while (true) {
+            val snap = snapshot()
+            val labels = topLabels(snap)
+            if (prev != null && prev == labels) stablePolls++ else stablePolls = 0
+            prev = labels
+            polls++
+            val state = FullControl.WaitState(labels, foregroundPackage(), stablePolls)
+            if (FullControl.waitSatisfied(spec, state)) {
+                val waited = System.currentTimeMillis() - start
+                DiagLog.i("a11y", "screen.wait sağlandı ($waited ms, $polls yoklama)")
+                return FullControl.done(
+                    buildJsonObject {
+                        put("ok", JsonPrimitive(true))
+                        put("waited_ms", JsonPrimitive(waited))
+                        put("polls", JsonPrimitive(polls))
+                        put("package", JsonPrimitive(state.foreground))
+                        put("labels", buildJsonArray {
+                            labels.take(8).forEach { add(JsonPrimitive(it)) }
+                        })
+                    }.toString(),
+                )
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                val waited = System.currentTimeMillis() - start
+                DiagLog.w("a11y", "screen.wait zaman aşımı ($waited ms, $polls yoklama)")
+                return FullControl.fail(
+                    buildJsonObject {
+                        put("ok", JsonPrimitive(false))
+                        put("reason", JsonPrimitive("timeout"))
+                        put("waited_ms", JsonPrimitive(waited))
+                        put("polls", JsonPrimitive(polls))
+                        put("package", JsonPrimitive(state.foreground))
+                        put("labels", buildJsonArray {
+                            labels.take(8).forEach { add(JsonPrimitive(it)) }
+                        })
+                        put(
+                            "note",
+                            JsonPrimitive(
+                                "koşul sağlanmadı (text=${spec.text ?: "-"}, " +
+                                    "app=${spec.app ?: "-"}, stable=${spec.stable})",
+                            ),
+                        )
+                    }.toString(),
+                )
+            }
+            Thread.sleep(FullControl.WAIT_POLL_MS)
+        }
+    }
+
+    /**
+     * `screen.scroll_step` — momentum'suz içerik kaydırma + bitiş algılama.
+     *
+     * `swipe` parmak yönü ve jest niyeti (flick) taşır; bu araç "içerikte neyi
+     * GÖRMEK istiyorum"u taşır (`down` = aşağısı, parmak yukarı kayar). Sabit
+     * adım ([FullControl.SCROLL_STEP_DEFAULT]) + yavaş çizim: fling yok, kayıt
+     * kaçırma yok. Bitiş, iki dökümün görünen etiketleri aynıysa bildirilir.
+     */
+    fun scrollStep(args: JsonObject): FullControl.Outcome {
+        val snap = snapshot() ?: return FullControl.fail("Ekran okunamadı, kaydırma yapılamadı.")
+        val size = FullControl.screenSize(snap)
+        val w = size.substringBefore('x').toIntOrNull() ?: 0
+        val h = size.substringAfter('x').toIntOrNull() ?: 0
+        if (w <= 0 || h <= 0) {
+            return FullControl.fail("Ekran ölçüsü okunamadı, kaydırma yapılamadı.")
+        }
+        val g = FullControl.parseScrollStep(
+            direction = args.str("direction").orEmpty(),
+            step = args.str("step"),
+            width = w,
+            height = h,
+        ) ?: return FullControl.fail(
+            "Yön anlaşılmadı: direction=down|içerikte aşağı (parmak yukarı) ya da " +
+                "up|içerikte yukarı. scroll_step İÇERİK yönü söyler (neyi görmek " +
+                "istiyorsun); parmak yönü için swipe kullan.",
+        )
+        val scrollable = FullControl.walk(snap).any { it.scrollable }
+        val before = topLabels(snap)
+        if (!drag(g)) return FullControl.fail("Kaydırma jesti reddedildi.")
+        // Jest bitimi + içerik yerleşimi için kısa bekleme — ekstra döküm turu yok.
+        Thread.sleep(400)
+        val after = topLabels(snapshot())
+        val moved = FullControl.scrollMoved(before, after)
+        DiagLog.i("a11y", "screen.scroll_step moved=$moved scrollable=$scrollable")
+        return FullControl.done(
+            buildJsonObject {
+                put("ok", JsonPrimitive(true))
+                put("direction", JsonPrimitive(args.str("direction").orEmpty()))
+                put("moved", JsonPrimitive(moved))
+                put("at_end", JsonPrimitive(!moved))
+                put("scrollable", JsonPrimitive(scrollable))
+                put("labels", buildJsonArray {
+                    after.take(8).forEach { add(JsonPrimitive(it)) }
+                })
+                if (!moved) {
+                    put(
+                        "note",
+                        JsonPrimitive(
+                            "içerik kıpırdamadı — liste sonu olabilir" +
+                                (if (!scrollable) " (kaydırılabilir alan da görünmüyor)" else ""),
+                        ),
+                    )
+                }
+            }.toString(),
+        )
+    }
 
     /** `type` — odaklı/düzenlenebilir alana metin. */
     fun typeText(args: JsonObject): FullControl.Outcome {

@@ -1,0 +1,7 @@
+10-16 23:53:29.489 I [doctor] Doctor: 0/6 tamam · 5 eksik · 1 bilinmiyor
+10-16 23:53:29.489 W [doctor] eksik a11y: tam kontrol izni yok — ekran okuma/dokunma çalışmaz
+10-16 23:53:29.489 W [doctor] eksik notification: bildirim erişimi yok — mesaj okuma/yanıt ve takip çalışmaz
+10-16 23:53:29.490 W [doctor] eksik shizuku: Shizuku kurulu değil ya da servis kapalı (yalnız derin kontrolü etkiler)
+10-16 23:53:29.491 W [doctor] eksik bridge: köprü kapalı — "Ajan telefonu kullanabilsin" kapalı ya da sunucu profili yok
+10-16 23:53:29.491 W [doctor] eksik server: Token reddedildi (401)
+10-16 23:53:29.491 W [doctor] bilinmiyor android_auto: Android Auto kurulu; geliştirici modu uygulamanın kendi tercihinde tutulur ve üçüncü taraf uygulamadan okunamaz (DOĞRULANAMADI)

@@ -824,6 +824,15 @@ fun SettingsScreen(
             }
 
             item { Spacer(Modifier.height(10.dp)) }
+            item {
+                // K2 — birleşik telefon sağlığı taraması (phone-harness doctor deseni).
+                DoctorCard(
+                    shizukuState = shizukuState,
+                    onRequestShizuku = onRequestShizuku,
+                    onOpenServers = onOpenServers,
+                )
+            }
+            item { Spacer(Modifier.height(10.dp)) }
             item { ReadAccessRows() }
             item { Spacer(Modifier.height(10.dp)) }
 

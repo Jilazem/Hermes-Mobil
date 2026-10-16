@@ -487,15 +487,66 @@ class PhoneBridgeService : Service() {
             val devices = runCatching { client.devices() }.getOrDefault(emptyList())
             val serial = ArtemisLogic.pickDevice(devices, s.artemisDevice, null)
             val id = client.submit(goal, profile, serial)
+            // K2 — görev defteri: Canlı envanter buradan okur.
+            ArtemisTaskTracker.submitted(id, goal, System.currentTimeMillis())
             val deadline = System.currentTimeMillis() + 240_000L
             var task = client.task(id)
             while (!task.done && System.currentTimeMillis() < deadline) {
                 kotlinx.coroutines.delay(2_000)
                 task = client.task(id)
+                ArtemisTaskTracker.progressed(id, task.status)
             }
-            if (!task.done) true to "Artemis task $id still running (status ${task.status}); ask again later."
-            else task.succeeded to ArtemisLogic.resultText(task, en = false)
+            if (!task.done) {
+                // K2 — "still running" artık sessizce unutulmuyor: arka planda
+                // izlemeye devam, bitince phone_notify bildirimi.
+                watchArtemisTask(client, id, goal)
+                true to "Artemis task $id still running (status ${task.status}); ask again later."
+            } else {
+                ArtemisTaskTracker.finished(id, task.status, System.currentTimeMillis())
+                task.succeeded to ArtemisLogic.resultText(task, en = false)
+            }
         }.getOrElse { false to "Artemis unreachable (${s.artemisUrl}): ${it.message}" }
+    }
+
+    /**
+     * K2 — "still running" dönen Artemis görevini arka planda izler.
+     *
+     * Bitince kullanıcıya bildirim gider: `phone_notify` aracının da kullandığı
+     * tek hat ([Notifier.agentMessage]) — ajan çağırmadan görev sonucu
+     * görünür olur. Tavan [ARTEMIS_WATCH_MAX_MS] (30 dk): sonsuz yoklama yok;
+     * tavan dolarsa yalnız log + defter notu (uydurma "bitti" bildirimi yok).
+     * Ağ hatasında son bilinen durum korunur, izleme tavana kadar sürer.
+     */
+    private fun watchArtemisTask(client: ArtemisClient, id: String, goal: String) {
+        jobScope.launch {
+            val deadline = System.currentTimeMillis() + ARTEMIS_WATCH_MAX_MS
+            var last = runCatching { client.task(id) }.getOrNull()
+            while (last != null && !last.done && System.currentTimeMillis() < deadline) {
+                kotlinx.coroutines.delay(ARTEMIS_WATCH_POLL_MS)
+                // Ağ hatasında son bilinen durum korunur.
+                val next = runCatching { client.task(id) }.getOrNull()
+                if (next != null) {
+                    last = next
+                    ArtemisTaskTracker.progressed(id, next.status)
+                }
+            }
+            val done = last?.takeIf { it.done }
+            if (done != null) {
+                ArtemisTaskTracker.finished(id, done.status, System.currentTimeMillis())
+                val result = ArtemisLogic.resultText(done, en = false)
+                DiagLog.i("artemis", "gorev $id bitti (${done.status}) - bildirim gonderildi")
+                Notifier.agentMessage(
+                    this@PhoneBridgeService,
+                    com.hermes.mobile.ui.tr("Artemis görevi bitti", "Artemis task finished"),
+                    (if (goal.isNotBlank()) "$goal — " else "") + result.take(500),
+                )
+            } else {
+                DiagLog.w(
+                    "artemis",
+                    "gorev $id izleme tavaninda bitemedi (durum ${last?.status ?: "-"}) - bildirim yok",
+                )
+            }
+        }
     }
 
     private fun reply(ws: WebSocket, id: String, ok: Boolean, payload: String) {
@@ -554,6 +605,10 @@ class PhoneBridgeService : Service() {
     companion object {
         private const val NOTIF_ID = 4813
         private const val BRIDGE_CHANNEL = "hermes-bridge"
+
+        /** K2 — Artemis arka plan izlemesi: 30 dk tavan, 2 sn yoklama. */
+        private const val ARTEMIS_WATCH_MAX_MS = 30L * 60L * 1000L
+        private const val ARTEMIS_WATCH_POLL_MS = 2_000L
         const val ACTION_STOP = "com.hermes.mobile.BRIDGE_STOP"
         const val ACTION_RECONNECT = "com.hermes.mobile.BRIDGE_RECONNECT"
 

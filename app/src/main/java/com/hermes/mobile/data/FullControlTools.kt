@@ -43,6 +43,8 @@ class FullControlTools(private val context: Context) {
                 FullControl.TAP -> svc.tap(args, long = false)
                 FullControl.LONG_PRESS -> svc.tap(args, long = true)
                 FullControl.SWIPE -> svc.swipe(args)
+                FullControl.WAIT -> svc.screenWait(args)
+                FullControl.SCROLL_STEP -> svc.scrollStep(args)
                 FullControl.TYPE -> svc.typeText(args)
                 FullControl.KEY -> svc.key(args)
                 FullControl.GLOBAL -> svc.globalNamed(args.str("action") ?: args.str("name").orEmpty())

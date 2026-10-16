@@ -420,6 +420,15 @@ fun SessionDrawerContent(
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
+                // K2 — tek "ne çalışıyor" envanteri: sohbet oturumları + köprü
+                // WS + Artemis görevleri (drawerStatusDot renk semantiği).
+                item(key = "live-inventory") {
+                    LiveInventoryCard(
+                        liveSessions = liveSessions,
+                        liveTitleOf = liveTitleOf,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
+                }
                 lazyItems(liveSessions, key = { "lv-${it.id}" }) { session ->
                     DrawerLiveRow(
                         session = session,

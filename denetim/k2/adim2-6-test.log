@@ -1,0 +1,59 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+
+> Task :app:compileDebugKotlin
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:266:40 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:814:53 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/CrashGuardTest.kt:39:52 Division by zero.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/ProfileChipLogicTest.kt:87:9 'static fun assertEquals(p0: (Array<Any!>..Array<out Any!>?), p1: (Array<Any!>..Array<out Any!>?)): Unit' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/SessionFlowTur19Test.kt:141:46 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/SessionFlowTur19Test.kt:143:21 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+LiveInventoryTest > calisan oturum yesil, bekleyen sari FAILED
+    org.junit.ComparisonFailure at LiveInventoryTest.kt:67
+
+979 tests completed, 1 failed
+
+> Task :app:testDebugUnitTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUİLD FAILED in 25s
+22 actionable tasks: 7 executed, 15 up-to-date
+EXIT=1
