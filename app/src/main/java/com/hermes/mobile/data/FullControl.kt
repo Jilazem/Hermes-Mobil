@@ -184,12 +184,16 @@ object FullControl {
      * `tap` argümanlarını hedefe çevirir.
      *
      * Öncelik koordinat → id → metin. Koordinat verilmişse arama yapılmaz:
-     * kullanıcı/ajan zaten nereye basacağını söylemiş.
+     * kullanıcı/ajan zaten nereye basacağını söylemiş. Koordinat **yarım**
+     * verildiyse (x/y'den yalnız biri parse edilebildi ya da bozuk geldi)
+     * hedef geçersizdir — kalan yarısı tahmin edilip başka bir etikete
+     * dokunulmasın diye aramaya düşülmez.
      */
     fun parseTap(x: String?, y: String?, text: String?, id: String?): TapTarget {
         val xi = x?.trim()?.toIntOrNull()
         val yi = y?.trim()?.toIntOrNull()
         if (xi != null && yi != null) return TapTarget.Point(xi, yi)
+        if (!x.isNullOrBlank() || !y.isNullOrBlank()) return TapTarget.Invalid
         if (!id.isNullOrBlank()) return TapTarget.ViewId(id.trim())
         if (!text.isNullOrBlank()) return TapTarget.Label(text.trim())
         return TapTarget.Invalid
@@ -254,7 +258,7 @@ object FullControl {
         val q = query.trim()
         if (q.isEmpty()) return null
         val candidates = walk(root)
-            .filter { it.bounds.width > 0 && it.bounds.height > 0 }
+            .filter { it.visible && it.bounds.width > 0 && it.bounds.height > 0 }
             .filter { it.text.contains(q, true) || it.desc.contains(q, true) }
             .toList()
         if (candidates.isEmpty()) return null
@@ -273,7 +277,7 @@ object FullControl {
     fun matchId(root: UiNode, id: String): UiNode? {
         val q = id.trim()
         if (q.isEmpty()) return null
-        val all = walk(root).filter { it.bounds.width > 0 && it.bounds.height > 0 }.toList()
+        val all = walk(root).filter { it.visible && it.bounds.width > 0 && it.bounds.height > 0 }.toList()
         return all.firstOrNull { it.id.equals(q, true) }
             ?: all.firstOrNull { it.id.endsWith(":id/$q") || it.id.endsWith("/$q") }
     }
@@ -281,7 +285,7 @@ object FullControl {
     /** Yazının gideceği alan: odaklı düzenlenebilir → ilk düzenlenebilir. */
     fun editableTarget(root: UiNode): UiNode? {
         val editables = walk(root)
-            .filter { it.editable && it.bounds.width > 0 && it.bounds.height > 0 }
+            .filter { it.editable && it.visible && it.bounds.width > 0 && it.bounds.height > 0 }
             .toList()
         return editables.firstOrNull { it.focused } ?: editables.firstOrNull()
     }

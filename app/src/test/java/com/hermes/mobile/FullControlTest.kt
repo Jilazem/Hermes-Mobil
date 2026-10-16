@@ -120,6 +120,20 @@ class FullControlTest {
         assertEquals(FullControl.TapTarget.Invalid, FullControl.parseTap("100", null, null, null))
     }
 
+    @Test
+    fun `yarim koordinat aramaya dusmez - gecersiz hedef`() {
+        // x/y'den yalnız biri parse edilebildiğinde etikete/id'ye tahmin
+        // edilmez: "Sil" diye aratıp ekranın başka yerine basmak, reddetmek
+        //ten kötüdür.
+        assertEquals(FullControl.TapTarget.Invalid, FullControl.parseTap("100", null, "Sil", null))
+        assertEquals(FullControl.TapTarget.Invalid, FullControl.parseTap(null, "200", null, "com.x:id/y"))
+        // Bozuk değer gelmiş ama yine koordinat denemesi: aynı ret.
+        assertEquals(FullControl.TapTarget.Invalid, FullControl.parseTap("abc", null, "Sil", null))
+        assertEquals(FullControl.TapTarget.Invalid, FullControl.parseTap("100", "abc", "Sil", null))
+        // Tam koordinat çifti ise geçerli — yarım ret, tam çifti bozmaz.
+        assertEquals(FullControl.TapTarget.Point(100, 200), FullControl.parseTap("100", "200", "Sil", null))
+    }
+
     // ── Düğüm eşleştirme ────────────────────────────────────────────
 
     private fun node(
@@ -205,6 +219,56 @@ class FullControlTest {
             clickable = true,
         )
         assertNull(FullControl.matchLabel(flat, "Görünmez"))
+    }
+
+    @Test
+    fun `ekran disi satir eslesmez`() {
+        // Kaydırılabilir liste ekran dışı satırları ağaçta tutuyor; "Sil"
+        // görünürdeki değil EKRAN DIŞI kopyaysa tap oraya gitmemeli.
+        val listed = node(
+            text = "Liste",
+            bounds = FullControl.Bounds(0, 0, 1080, 2000),
+            scrollable = true,
+            children = listOf(
+                node(
+                    text = "Görünen Sil",
+                    id = "com.x:id/one",
+                    editable = true,
+                    bounds = FullControl.Bounds(0, 0, 1080, 100),
+                ),
+                node(
+                    text = "Sil",
+                    id = "com.x:id/two",
+                    editable = true,
+                    bounds = FullControl.Bounds(0, 3000, 1080, 3100),
+                    visible = false,
+                ),
+            ),
+        )
+        // Yalnızca ekran dışı kopya eşleşse bile sonuç: null — tahmin yok.
+        val hidden = node(
+            bounds = FullControl.Bounds(0, 0, 1080, 2000),
+            children = listOf(
+                node(
+                    text = "Sil",
+                    bounds = FullControl.Bounds(0, 3000, 1080, 3100),
+                    visible = false,
+                ),
+            ),
+        )
+        assertNull(FullControl.matchLabel(hidden, "Sil"))
+        assertNull(FullControl.matchId(hidden, "com.x:id/two"))
+        assertNull(FullControl.editableTarget(hidden))
+
+        // Hem görünür hem ekran dışı varsa: yalnız görünür olan kazanır.
+        val m = FullControl.matchLabel(listed, "Sil")
+        assertNotNull(m)
+        assertEquals("Görünen Sil", m!!.text)
+        val i = FullControl.matchId(listed, "com.x:id/two")
+        assertNull(i)
+        val e = FullControl.editableTarget(listed)
+        assertNotNull(e)
+        assertEquals("com.x:id/one", e!!.id)
     }
 
     @Test
