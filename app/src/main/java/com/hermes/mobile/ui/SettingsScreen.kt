@@ -112,6 +112,14 @@ fun SettingsScreen(
     onApprovalAnswer: (sessionId: String?, key: String, approve: Boolean, reason: String) -> Unit =
         { _, _, _, _ -> },
     /**
+     * K18B-G1: kalıcı bot kimlikleri — roster'ın profil/model adayları ve
+     * "bu botla devam et" geri çağrısı (MainActivity → ChatViewModel).
+     */
+    botRosterProfiles: List<com.hermes.mobile.data.HermesProfile> = emptyList(),
+    botRosterProviders: List<com.hermes.mobile.data.ModelProvider> = emptyList(),
+    onBotContinue: (com.hermes.mobile.data.BotCard) -> Unit = {},
+    onBotModelsLoad: () -> Unit = {},
+    /**
      * Bakım ekranı için: aktif sunucu profili. Bakım kartı bu profil üzerinden
      * `hermes doctor` / `hermes update` çalıştırır; profil yoksa kart gizli kalır.
      */
@@ -953,6 +961,20 @@ fun SettingsScreen(
             }
         }
 
+        // ── K18B-G1: KALICI BOT KİMLİKLERİ — roster kartları (pin/duplicate,
+        // "bu botla devam et" aynı profil+modeli geri seçer).
+        if (open == SettingsCategory.Botlarim) {
+            item {
+                BotRosterScreen(
+                    profiles = botRosterProfiles,
+                    providers = botRosterProviders,
+                    onContinue = onBotContinue,
+                    onLoadModels = onBotModelsLoad,
+                    scrollable = false,
+                )
+            }
+        }
+
         if (open == SettingsCategory.Developer) {
     item { Header(S.t2("Geliştirici", "Developer")) }
             item {
@@ -1535,7 +1557,7 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
 
 
 /** Ayar kategorileri — panonun bölüm listesiyle aynı desen. */
-enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, OnayMerkezi, Developer }
+enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, OnayMerkezi, Botlarim, Developer }
 
 @Composable
 private fun catLabel(c: SettingsCategory): String = when (c) {
@@ -1549,6 +1571,8 @@ private fun catLabel(c: SettingsCategory): String = when (c) {
     SettingsCategory.Privacy -> S.t2("Gizlilik ve bildirim", "Privacy & notifications")
     // K18B-G3: merkezi onay kutusu — riskli ajan eylemleri tek listede.
     SettingsCategory.OnayMerkezi -> S.t2("Onay merkezi", "Approval center")
+    // K18B-G1: kalıcı bot kimlikleri — roster kartları.
+    SettingsCategory.Botlarim -> S.t2("Botlarım", "My bots")
     SettingsCategory.Developer -> S.t2(S.t2("Geliştirici", "Developer"), "Developer")
 }
 
@@ -1563,6 +1587,7 @@ private fun catHint(c: SettingsCategory): String = when (c) {
     SettingsCategory.Server -> S.t2("Ev ve dış erişim, kayıtlı sunucular", "Home and remote access, saved servers")
     SettingsCategory.Privacy -> S.t2("Kilit, token, bildirimler", "Lock, token, notifications")
     SettingsCategory.OnayMerkezi -> S.t2("Senin onayın bekleniyor", "Waiting on your yes")
+    SettingsCategory.Botlarim -> S.t2("Kalıcı bot kartları: ad, kişilik, model", "Persistent bot cards: name, personality, model")
     SettingsCategory.Developer -> S.t2("Ham olaylar", "Raw events")
 }
 
