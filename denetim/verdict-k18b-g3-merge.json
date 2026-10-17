@@ -1,0 +1,78 @@
+{
+  "verdict": "pass",
+  "gorev": "k18b-g3-merge (t_0f6814f1: f835e8b K18B-G3 merkezi onay kutusu + sesli onay — bağımsız denetim + ana hatta birleştirme)",
+  "tarih": "2026-10-17T07:45:00+03:00",
+  "test_sonucu": "Kendi koşumum (env -u HERMES_SINGLE_QUERY_SESSION, --no-build-cache, taze XML; her iki koşumda da Gradle build-cache BYPASS edildi, 'FROM-CACHE' yok): (a) f835e8b nötr klonda (scratch/g3-denetim/hm-f835e8b, temiz derleme) 97 suite / 1002 test / 0 fail / 0 err / 0 skip — iddia 1002/0 BİREBİR; ApprovalCenterTest 19/0. (b) BİRLEŞİK ana hat (merge commit 94662da, çalışan ağaç) 94 suite / 1015 test / 0 fail / 0 err / 0 skip = 996 taban + 19 G3; ApprovalCenterTest 19/0. Birleşik koşum, commit'lenen ağacın birebir üzerinde yapıldı (test sonrası ağaç = 94662da ağacı).",
+  "merge": {
+    "strateji": "cherry-pick -x (yalnız f835e8b) — dalın tamamı merge EDİLMEDİ; çünkü feat/k18b-g3-onay-kutusu dalı K19 (fa0aa42, 'K19: sohbet model listesi') tabanlı ve K19 kapsam dışı (kapsam genişletme yasağı). Gerçek ortak taban 5bd04e9'dur (merge-base 63c72e6..f835e8b); f835e8b tarafında ana hatta olmayan 51 commit (K10-K19 V3 hattı), ana hat tarafında 14 commit (EMA/Android Auto hattı + K1/K2) vardır.",
+    "commit": "94662da71cf69c307cbfea8d1fdd9065fdee64df",
+    "dal": "feat/ema-unified-20261007",
+    "kaynak": "f835e8b6f90ce135abd9d80596623e3ca72f3df6 (Jilazem, 17.10.2026 07:20)",
+    "cakisma_cozumleri": [
+      "CREDITS.md (add/add): iki belge birleştirildi — HEAD'in K1/K2 phone-harness (MIT) girdileri korundu, G3'ün MausBot (Apache-2.0) + Kelivo (AGPL-3.0) girdileri eklendi; hepsi YALNIZ FİKİR.",
+      "PanelGroups.kt (modify/delete): ana hatta (EMA hattı) K8 birleşik Pano mimarisi (MergedEntry/MergedGroup) YOK — dosya bilerek geri getirilmedi (git rm); G3'ün 'Onay merkezi' girişi SettingsCategory listesine eklenen kategoriyle aynı işlevi görüyor (kategoriler ana hat ayar listesinde otomatik görünür).",
+      "PanelScreen.kt: V3'e özgü settingsIcon(SettingsCategory) eşlemesi yok sayıldı (HEAD'de bu fonksiyon ve SettingsCategory bağlantılı ikon haritası yok; kopyalamak derlemeyi bozar).",
+      "SettingsScreen.kt: HEAD yapısı korundu, YALNIZ G3 deltası eklendi — onApprovalAnswer parametresi, SettingsCategory.OnayMerkezi enum girişi, catLabel/catHint satırları, ApprovalsScreen bloğu. Çakışma bölgesine giren K13a İzınMerkezi/permissionRecords bağlamı bilerek ALINMADI (ana hatta yok, kapsam dışı).",
+      "MainActivity.kt: V3'ün PanelScreen(settingsContent=...) bloğu yok sayıldı; G3'ün onApprovalAnswer Callback'i HEAD'in Tab.Settings → SettingsScreen çağrı yerine bağlandı (chatViewModel.answerApproval(key, approve, reason, sessionId)).",
+      "ChatViewModel.kt (otomatik birleşti ama SEMANTİK uyuşmazlık çıktı): ana hattın handleEvent imzasında payload parametresi yoktu; GatewayEvent.payload imzaya köprülenerek G3'ün alan çıkışı (description/command/prompt_id) çalışır hale getirildi. Bu, derleme hatasıyla (Unresolved reference 'payload' x2) yakalandı ve imza + çağrı yerinde en küçük uyarlamayla çözüldü."
+    ]
+  },
+  "findings": [
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "Yeniden teslimde sohbet kartı ÇÖKME riski (ikinci göz + denetmen doğrulaması): ApprovalCenter.submit dedup yapar ve aynı promptId için MEVCUT kaydın id'sini döner (ApprovalCenter.kt:100), ChatViewModel.handleEvent ise kartı koşulsuz ekler (ChatViewModel.kt:2493); ChatScreen sohbet listesi keyed'dir (ChatScreen.kt:383 itemsIndexed(key = r.key)) — aynı 'ap-N' key'i ikinci kez girerse IllegalArgumentException ile sert çökme. Merkez 'yeniden bağlanma/tekrar teslim' senaryosu için tekilleştirilmiş, sohbet tarafı unutulmuş. Tetikleyici (gateway'in Pending kaydı yeniden yayınlaması) canlıda doğrulanamadı; kod yolu kesin. Tek satırlık koşul: kart eklemeden önce items.any { it.key == entry.id } kontrolü. SÜRÜM ÖNCESİ DÜZELTİLMELİ (bkz. conditions)."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "answerApproval (ChatViewModel.kt:1476-1505) kararı GÖNDERİMDEN ÖNCE kapatıyor: ApprovalCenter.decide sonrası gw.slashExec ağ hatasıyla başarısız olursa kayıt Approved/Denied olarak kilitli kalır, ikinci dokunuş decide->false ile sessizce yutulur; gateway'de prompt bekler, ajan bloke kalır, retry yolu yok. İkinci gözün 'iyileştirme' maddesi; koşul değil, güçlü öneri (karar başarısızlıkta Pending'e döndürülebilmeli)."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "Preflight receipt YOK: ne üretici kartta (t_0f6f8132 izleri) ne bu denetim kartında preflight.py receipt bloğu var. K1+K2 denetimindeki (verdict-k1-k2-phoneharness-merge) yorum sürdürüldü: denetim görevi build hakkı gerektiren kod üretimi değil, doğrulama build'idir; 'YOK' kaydıyla geçildi. CEO bu yorumu ezerse hüküm KALDI'ya döner."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "Hat diverjansı (bilgi amaçlı): ana hat feat/ema-unified-20261007, V3 hattının K6/K10a/K10b/K10c/K12b/K13a/K13b/K13c/K13d/K14/K16/K19 özelliklerini İÇERMİYOR (f835e8b tarafında ana hatta olmayan 51 commit). G3'ün PanelGroups 'Pano kartı' girişi bu yüzden ikame edildi. K19 (fa0aa42) kapsam dışı olduğu için merge edilmedi; K19 işi ayrıca denetlenip birleştirilmelidir."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "Çift cevap engeli kayıt varken tam: decide() kayıt yoksa true döner (eski kart yedeği), yani kayıpsız oturum geçmişi/yeniden başlatma sonrası eski kartta çift dokunuş ikinci komutu gönderebilir; ikincil koruma kartın 'answered' işaretlemesi. Çift kanal/dokunuş senaryosu (kayıt Pending) testlerle kilitli (cift-cevap-engeli testi)."
+    }
+  ],
+  "dogrulama_notlari": {
+    "protokol_degismez": "DOĞRULANDI: cevap yolu tek kaynak ApprovalCenter.slashCommand -> '/approve' | '/deny [sebep]', gateway slash.exec aynı kaldı (ChatViewModel.answerApproval -> slashExec). Yeni olan yalnız toplama/görüntüleme katmanı. Test: 'onayla-karar-onaylanir', 'reddet-sebep-kayda-gecer' (ApprovalCenterTest 2/2).",
+    "cift_cevap_engeli": "DOĞRULANDI: decide() ikinci kararda false döner, komut gitmez (test 'cift-cevap-engeli-ikinci-karar-komut-gondermez'); approval.settled kaydı SettledElsewhere ile kapatır ve sonraki dokunuşu reddeder (test 'approval-settled-baskali-kanali-kapatir').",
+    "fail_closed_sesli_onay": "DOĞRULANDI: ApprovalVoice.parse anlamsız/çelişkili/taşan girdide null döner (onayla+reddet birlikte, hedef dışı sıra, 'onayla 0', boş) — 6 ses testi; normalize TR büyük harf/aksan katlaması testli. Girdi asla tahminle uygulanmaz (ApprovalsScreen null'da yalnız geri bildirim yazar).",
+    "guardReason": "KORUNMUŞ: ApprovalGuard.stopReason FullControl.guardReason ile AYNI sıralı tek-sebep dilinde (salt-okunur -> null; sudo -> WHY_SUDO; WRITE_TOOLS -> WHY_CHANGES; bilinmeyen -> WHY_UNKNOWN, fail-closed). Ana hatta FullControl.READ_TOOLS/WRITE_TOOLS/SCREENSHOT mevcut (63c72e6 FullControl.kt:33-84) — bağımlılık doğrulandı. Test: salt-okunur/cihazı-değiştiren/bilinmeyen 3 test.",
+    "d_05_ham_oturum_id": "GERÇEKTEN YAPILMIŞ: kart başlığı/etiket olarak ham süreç içi id KULLANILMIYOR. ChatViewModel oturum etiketi = _state.value.topic.ifBlank { 'Sohbet' } (ChatViewModel.kt, approval.request dalı); submitFromEvent ikinci savunma: sessionTitle.ifBlank { 'Sohbet' } (ApprovalCenter.kt:171); JarvisBrain sabit 'K.I.T.T. (sesli asistan)' etiketi kullanır; ApprovalsScreen yalnız entry.sessionTitle'ı çizer, sessionId'yi ASLA göstermez. Test: 'payload-alani-yoksa-alan-uydurulmaz' assertEquals('Sohbet', e.sessionTitle).",
+    "agpl_kod_kopyasi": "YOK: diff taramasında Kelivo/OpenMausBot izleri yalnız CREDITS.md ve yorum satırlarında (fikir atfı). ApprovalCenter.kt/ApprovalsScreen.kt tamamen özgün saf Kotlin; Kelivo AGPL-3.0'dan kod kopyalanmamış, türev kod AGPL yükümlülüğü doğurmaz (CREDITS.md açık yazıyor). Gizli veri/token/sertifika YOK (regex tarama temiz; 'secret.request' yalnız protokol olay adı).",
+    "kanit_konumu": "Kart ekleri boş gelmişti; kanıt DEPO İÇİNDE tam: denetim/k18b-g3/ (7 PNG: 01-sohbet-onay-kartlari, 02-onay-merkezi-bekleyenler, 03-onayla-eylem-devam, 03b-sohbet-onay-sonuc, 04-reddet-iptal, 05-onay-merkezi-gecmis, 06-sohbet-tam-akis + mock-gateway-kanit.log 189 satır RPC/olay JSON + RAPOR.md) ve tools/k18b-g3/mock_gateway.py — hepsi f835e8b ile geldi ve 94662da'da ana hatta taşındı. Mock log 'slash.exec /approve', 'slash.exec /deny', 'approval.request' (p-1..p-3), 'approval.settled' satırlarını içeriyor; çift dokunuş kanıtı mock sayaç (3->4, tek slash.exec) RAPOR.md'de.",
+    "ikinci_goz": "dsh kod-ikinci-goz: GECTI-KOSULLU. 1) en ciddi risk = yeniden teslimde duplicate-key çökmesi (denetmen tarafından kodda doğrulandı -> conditions 1) 2) iyileştirme = slashExec başarısızlığında karar geri alma (findings MEDIUM) 3) karar GECTI-KOSULLU."
+  },
+  "conditions": [
+    "SÜRÜM ÖNCESİ (zorunlu): ChatViewModel.handleEvent'te 'approval.request/sudo.request' kartı eklenmeden önce mevcut key kontrolü (items.any { it.key == entry.id } -> ekleme); aksi halde gateway yeniden teslinde LazyColumn duplicate-key çökmesi. Yeni birim testi: aynı promptId iki kez olay gelince tek kart kalmalı (şu anki testler bunu kapsamıyor).",
+    "GÜÇLÜ ÖNERİ: answerApproval'da slashExec başarısızlığında ApprovalCenter kaydını Pending'e geri aç (reopen) + kartın answered işaretini kaldır; geçici ağ kopmasında onay tekrarlanabilir olsun."
+  ],
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/ApprovalCenter.kt": "16ce1054db5674eede79af7e3beb99178e75c383e3b03fcb452c38f04df5c2ac",
+    "app/src/main/java/com/hermes/mobile/ui/ApprovalsScreen.kt": "5ba78a0ea62b0f69e7e27fa866aa2dcdbdb8f75eabcc0147f3301c2badd37bdb",
+    "app/src/main/java/com/hermes/mobile/ChatViewModel.kt": "564c29af8ccf4f54637e771be56a3e1628f932118b60cb65c8dec2350d1f31de",
+    "app/src/main/java/com/hermes/mobile/assistant/JarvisBrain.kt": "c5ea8fc74b0d8ee386a252a2e734cca38089adce68ba6a3f0a6e094b6545ae7c",
+    "app/src/main/java/com/hermes/mobile/ui/SettingsScreen.kt": "727b738ab9c6cdbe70754ca03208a9f2614233fd21985a7e61176d73e34ad287",
+    "app/src/main/java/com/hermes/mobile/MainActivity.kt": "cdf7cb5d0e07548306ccfa1e6d1dfe8e63fe1f7be8351df8c7530797f17f008c",
+    "app/src/test/java/com/hermes/mobile/ApprovalCenterTest.kt": "4ac5d318e3dc607727fe0752399e0b59a350173e5827fc520e93123d8d0e2a9b",
+    "CREDITS.md": "4be901543b703759dd1323be02f6347feca3cfc6652ce2097cdd9d7370df8d2f",
+    "denetim/k18b-g3/mock-gateway-kanit.log": "63f30244b7e42557ff4ef91eb07694822433c62fb02d002aa92dad9d2ea5ac6d"
+  },
+  "credits_kontrol": "MausBot (milind-soni/OpenMausBot, Apache-2.0) + Kelivo (Chevey339/kelivo, AGPL-3.0) YALNIZ FİKİR GİRİŞİ — CREDITS.md'de repo/lisans/uygulama/not dörtlüsü tam; kod kopyası yok. K1/K2 phone-harness (MIT) girdileri birleştirmede korundu.",
+  "lesson": "Cherry-pick'te 'auto-merged' görünen dosya semantik olarak uyuşmayabilir (handleEvent'in payload imzası ana hatta yoktu) — derlemeden sonra otomatik birleşen her dosyanın imza/çağrı uyumunu ayrıca doğrula; ayrıca merge-base'i daima iki ref'in BİRLİKTE bulunduğu depoda hesapla (farklı klonlarda yanlış taban çıkar).",
+  "preflight": "YOK",
+  "uzman": "cd-android",
+  "deneme_no": "0",
+  "devir": false
+}
