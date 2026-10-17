@@ -78,6 +78,7 @@ import androidx.compose.foundation.layout.sizeIn
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
@@ -96,6 +97,7 @@ import com.hermes.mobile.StreamMeter
 import com.hermes.mobile.ToolState
 import com.hermes.mobile.liveThinkingTail
 import com.hermes.mobile.data.ConnectionState
+import com.hermes.mobile.data.BotRosterStore
 import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.data.PhoneIntent
 import com.hermes.mobile.data.SavedPrompt
@@ -265,6 +267,24 @@ fun ChatScreen(
         if (fullChatFlow) state.items.map { ChatRow.Single(it) } else foldToolRuns(state.items)
     }
 
+    // K18B-B: bot kimliği rozeti — her bot grubunun başında "ad+emoji+model"
+    // afişi. Kimlik G1 roster kartından ([BotRosterStore] cihaz JSON'u),
+    // model afişi oturumun AKTİF modelinden: model değişince afiş yenilenir.
+    // Kullanıcı mesajlarında rozet YOK ([botBadgeRowKeys] yalnız bot
+    // gruplarının ilk satırını döndürür — BotBadgeLogicTest).
+    val appContext = LocalContext.current.applicationContext
+    val rosterCards = remember { BotRosterStore(appContext).yukle() }
+    val botBadge = remember(currentProfile, selectedProfile, state.currentModel) {
+        resolveBotBadge(
+            cards = rosterCards,
+            profile = currentProfile ?: createSessionProfileArg(selectedProfile),
+            model = state.currentModel,
+        )
+    }
+    val botBadgeKeys = remember(rows, botBadge) {
+        if (botBadge == null) emptySet() else botBadgeRowKeys(rows)
+    }
+
     // Kullanıcı bilinçli olarak yukarı kaydırırsa takip kapanır; alta dönünce
     // kendiliğinden açılır. (Eski kodda bayrağı false'a çeken hiçbir yol
     // yoktu — tek emniyet 'en altta değilse kaydırma' dalıydı.)
@@ -396,6 +416,11 @@ fun ChatScreen(
                             }
                             if (needsDaySeparator(prevTs, ts)) {
                                 DaySeparatorRow(daySeparatorLabel(ts))
+                            }
+                            // K18B-B: bot grubu başında kimlik rozeti (gün
+                            // ayırıcının altında, mesajın üstünde).
+                            if (row.key in botBadgeKeys) {
+                                botBadge?.let { BotBadgeRow(it) }
                             }
                             when (row) {
                                 is ChatRow.Single -> ChatItemView(
@@ -855,7 +880,7 @@ private fun EmptyChatHint(
 }
 
 /** Görüntüleme satırı — ya tek öğe ya da katlanmış araç dizisi. */
-private sealed interface ChatRow {
+internal sealed interface ChatRow {
     val key: String
 
     data class Single(val item: ChatItem) : ChatRow {

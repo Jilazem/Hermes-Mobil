@@ -72,20 +72,23 @@ kopyalanmamıştır; her yeniden uygulama bu deponun kendi mimarisine (saf çeki
 - **Not:** AGPL-3.0 nedeniyle bu depodan kod KOPYALANMAMIŞTIR; yalnız tasarım
   fikri alınmıştır. Türev kod AGPL yükümlülüğü doğurmaz.
 
-### milind-soni/OpenMausBot "MausBot" (Apache-2.0) — roster deseni (K18B-G1)
+### milind-soni/OpenMausBot "MausBot" (Apache-2.0) — roster deseni (K18B-G1/B)
 
 - **Repo:** https://github.com/milind-soni/OpenMausBot
 - **Site:** https://mausbot.com
 - **Yazar:** milind-soni (ve katkıda bulunanlar)
 - **Lisans:** Apache License 2.0
   (https://github.com/milind-soni/OpenMausBot/blob/main/LICENSE)
-- **Esinlenilen desenler (fikir) — K18B-G1:**
+- **Esinlenilen desenler (fikir) — K18B-G1/B:**
   - **Roster:** kalıcı bot kartı — ad, kişilik, model; her bot bir kimlik,
     geçici seçim değil,
   - **pin / duplicate:** kart sabitleme ve çoğaltma ("(kopya)" adlandırma),
-  - "ajanslar kişiler gibi" — bot listesi insan listesi UX'iyle yönetilir.
+  - "ajanslar kişiler gibi" — bot listesi insan listesi UX'iyle yönetilir,
+  - **"Pick a brain per bot" (K18B-B):** sohbette hangi bot/profil+model'in
+    konuştuğu her mesaj grubunda ad+emoji+model afişi olarak görünür.
 - **Uygulama:** K18B-G1 (kart t_b5ebf51f) — `data/BotRoster.kt`
-  (BotCard/BotRosterLogic), `data/BotRosterStore.kt`, `ui/BotRosterScreen.kt`.
+  (BotCard/BotRosterLogic), `data/BotRosterStore.kt`, `ui/BotRosterScreen.kt`;
+  K18B-B (kart t_8de5cfe3) — `ui/BotBadge.kt` (sohbet rozeti).
 - **Not:** kod kopyalanmadı; Apache-2.0 fikir düzeyinde serbesttir. Pin/duplicate
   kuralları kendi saf mantığımız (`BotRosterLogic`) olarak yazıldı ve birim
   testleriyle kilitlendi.

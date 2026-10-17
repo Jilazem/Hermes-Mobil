@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/tools/k18b-g1/mock_gateway.py", line 279, in <module>
+    main()
+    ~~~~^^
+  File "/Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/tools/k18b-g1/mock_gateway.py", line 270, in main
+    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/socketserver.py", line 454, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/http/server.py", line 122, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/socketserver.py", line 475, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 48] Address already in use
