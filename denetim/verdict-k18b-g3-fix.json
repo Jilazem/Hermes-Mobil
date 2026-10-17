@@ -1,0 +1,58 @@
+{
+  "verdict": "pass",
+  "gorev": "k18b-g3-fix (t_6e223ae4 DAL 1: 209669f — K18B-G3 koşul fix, duplicate-key çökmesi + karar geri alma)",
+  "tarih": "2026-10-17T09:45:00+03:00",
+  "test_sonucu": "Kendi koşumum (env -u HERMES_SINGLE_QUERY_SESSION, --no-build-cache -Dorg.gradle.caching=false, cleanTestDebugUnitTest sonrası taze XML; XML zaman damgaları marker ile doğrulandı): (a) DAL 1 tek başına (worktree t_c807e52b/g3-fix @ 209669f) 95 suite / 1027 test / 0 fail / 0 err — iddia 1027/0 BİREBİR. (b) BİRLEŞİK ana hat (merge 5e3941a + 29396dd) 97 suite / 1046 test / 0 fail / 0 err = 1015 taban + 12 fix + 19 G1; ApprovalRedeliveryTest 12/0, ApprovalCenterTest 19/0.",
+  "kapsam": "94662da..209669f (3 dosya, +277/−6): ChatViewModel.kt (mergeApprovalCard + answerApproval onFailure reopen), data/ApprovalCenter.kt (reopen), test/ApprovalRedeliveryTest.kt (12 yeni test).",
+  "denetim_kontrolleri": {
+    "duplicate_key_senaryosu": "DOĞRULANDI — test 'ayni promptId ikinci teslimde tek kart kalir - cokme yok' gerçek senaryoyu kapsıyor: aynı promptId ile submitFromEvent İKİ kez (ApprovalCenter aynı kaydı/ aynı id'yi döndürür — ApprovalCenter.kt:100-104), sonra mergeApprovalCard iki kez uygulanıyor; 1 kart kalır, key=first.id, promptId korunur, pending().size==1. Ayrıca 'yeniden teslim mevcut karti dokunmaz - answered korunur' ve 'farkli promptId yeni kart' varyantları var. mergeApprovalCard keyed-liste (ChatScreen itemsIndexed key=r.key) duplicate-key çökmesini kaynağında engeller; ChatViewModel'de koşulsuz 'items + ChatItem.Approval(' kalmadı (grep 0 eşleşme).",
+    "reopen_sozlesmesi": "DOĞRULANDI — Approved/Denied→Pending; Pending açık kalır; SettledElsewhere GERİ AÇILMAZ (null); bilinmeyen id false. 6 test + retry decide testi (reopen sonrası ikinci karar komutu gider).",
+    "wiring": "DOĞRULANDI (kaynaktan) — answerApproval onFailure içinde ApprovalCenter.reopen(key) + item.copy(answered = null) + hata Notice'ı; GatewayWsClient.request hatada exception fırlatıyor (bağlantı yok/gönderim/timeout: GatewayWsClient.kt:157-183) ve JSON-RPC error çerçevesi completeExceptionally — runCatching onFailure yolu CANLI, ölü kod değil.",
+    "guardReason_d_05": "KORUNMUŞ — diff FullControl.kt/guardReason dosyalarına dokunmuyor; D-05 (ham id etiket olmaz) yorumları/akışları aynen duruyor; reopen() yeni kod D-05'e aykırı hiçbir alan taşımıyor.",
+    "agpl_gizli_veri": "YOK — diff tamamen özgün Kotlin; AGPL kaynak atfı yok (bu diff CREDITS'e bile dokunmuyor); token/anahtar/sertifika izi yok (regex tarama temiz)."
+  },
+  "findings": [
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "İkinci göz + denetmen doğrulaması — answerApproval onFailure'ta kart sıfırlaması KOŞULSUZ, reopen KOŞULLU (ChatViewModel.kt:1515-1536): decide→slashExec arasında 60 sn'ye varan pencerede başka kanal 'approval.settled' ile yanıtlarsa kayıt SettledElsewhere olur; slashExec'in başarısızlığı halinde reopen(key) doğru şekilde false döner ama hemen ardından gelen _state.update kartın 'Başka kanaldan yanıtlandı' işaretini koşulsuz siler; kart cevaplanabilir görünür, decide->false ile ikinci dokunuş sessizce yutulur (fix'in kaldırmayı hedeflediği arıza dar bir yolda geri gelir). İki satırlık düzeltme: answered=null sıfırlamasını if (ApprovalCenter.reopen(key)) içine al. bkz. conditions."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "ChatViewModel.kt:1509 'Onaylandı'/'Reddedildi' sabit Türkçe — dosyadaki tr() disiplinine aykırı (aynı fonksiyondaki 'Başka kanaldan yanıtlandı' tr()'li); İngilizce arayüzde dil sızıntısı. İyileştirme, koşul değil."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "Wiring testi hedefsiz: 'wiring - slashExec hatasinda reopen...' testi substringAfter(\".onFailure { e ->\") ile dosyadaki İLK onFailure'tan sonuna bakıyor (ChatViewModel.kt'de 16 onFailure var); contains(…) kontrolleri yanlış bloktan da geçebilir. assertFalse kontrolü ise doğru hedefli (approval dalı aralığı). Test hassasiyeti notu; davranış doğruluğunu etkilemez."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "Preflight receipt YOK — denetim kartı gövdesinde preflight.py receipt bloğu yok. K1+K2 ve K18B-G3 denetimlerindeki (verdict-k1-k2-phoneharness-merge, verdict-k18b-g3-merge) sürdürülen yorum: denetim görevi build hakkı gerektiren kod üretimi değil, doğrulama build'idir; 'YOK' kaydıyla geçildi. CEO bu yorumu ezerse hüküm KALDI'ya döner."
+    }
+  ],
+  "conditions": [
+    "SÜRÜM ÖNCESİ (ikinci göz koşulu): answerApproval onFailure'ta answered=null sıfırlaması 'if (ApprovalCenter.reopen(key))' koşuluna bağlanmalı; koşul sağlanmazsa (SettledElsewhere yarışı) kart 'Başka kanaldan yanıtlandı' işaretini korumalı, hata Notice'ı her iki dalda eklenmeli.",
+    "TAVSİYE: 'Onaylandı'/'Reddedildi' tr() ile iki dillendirilmeli (dil sızıntısı)."
+  ],
+  "merge": {
+    "strateji": "git merge --no-ff (SIRALI; 1/2). Dal 209669f'ün gerçek tabanı 94662da'dır (verdict commit 871e534'ü İÇERMEZ); ana hat 871e534'te olduğundan gerçek merge commit oluştu.",
+    "commit": "5e3941a",
+    "dal": "feat/ema-unified-20261007",
+    "kaynak": "209669f (cd-android/k18b-g3-fix-t_c807e52b, taban 94662da)",
+    "cakisma_cozumleri": ["YOK — ort 'ort' stratejisiyle otomatik birleşti; 3 dosya (+277/−6), çakışan hunk yok."]
+  },
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/ChatViewModel.kt": "4721d9d68b9f9522e9a0036ccf7f4444b9aa2e3e1cc53681c8991ba68a0b8a5a",
+    "app/src/main/java/com/hermes/mobile/data/ApprovalCenter.kt": "b878af4b8a5e9ce0a25165a6085329ed484c52daf877fc53a53ae4dc36201554",
+    "app/src/test/java/com/hermes/mobile/ApprovalRedeliveryTest.kt": "4e58c64ef783dcd50612e418560926f0041048425a09ba84088f21e9194314ff"
+  },
+  "ikinci_goz": "dsh kod-ikinci-goz (mutlak yolla): GEÇTİ-KOŞULLU. 1) en ciddi risk = onFailure'ta koşulsuz kart sıfırlaması/SettledElsewhere yarışı (findings MEDIUM, conditions 1) 2) iyileştirme = tr() dil sızıntısı (LOW) 3) karar GEÇTİ-KOŞULLU. Not: slashExec'in hata sinyali olarak exception fırlattığı ikinci göz tarafından da doğrulandı (GatewayWsClient.kt:366-368, 179-183).",
+  "lesson": "Bir hata yolunda 'geri alma' eklerken geri almanın GEREKLİ OLDUĞU koşulu (reopen dönüşü) ile durum sıfırlamasını AYNI koşula bağla; aksi halde yarışta kendi kaldırdığın arıza daha dar bir yoldan geri gelir.",
+  "preflight": "YOK",
+  "uzman": "cd-android",
+  "deneme_no": "0",
+  "devir": false
+}

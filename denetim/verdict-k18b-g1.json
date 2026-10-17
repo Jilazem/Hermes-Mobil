@@ -1,0 +1,67 @@
+{
+  "verdict": "pass",
+  "gorev": "k18b-g1 (t_6e223ae4 DAL 2: 92188bc — K18B-G1 kalıcı bot kimlikleri roster)",
+  "tarih": "2026-10-17T09:45:00+03:00",
+  "test_sonucu": "Kendi koşumum (env -u HERMES_SINGLE_QUERY_SESSION, --no-build-cache -Dorg.gradle.caching=false, cleanTestDebugUnitTest sonrası taze XML, marker ile doğrulandı): (a) DAL 2 tek başına (worktree wt-k18b-g1 @ 92188bc; ANDROID_HOME ile — worktree'de local.properties yok) 96 suite / 1034 test / 0 fail / 0 err — iddia 1034/0 BİREBİR; BotRosterLogicTest 10/0, BotRosterStoreTest 9/0. (b) BİRLEŞİK ana hat (merge 5e3941a + 29396dd) 97 suite / 1046 test / 0 fail / 0 err.",
+  "kapsam": "871e534..92188bc (11 dosya, +1749/−1): BotRoster.kt, BotRosterStore.kt, BotRosterScreen.kt, MainActivity.kt (+16), SettingsScreen.kt (+27), 2 test dosyası (19 test), tools/k18b-g1/{mock_gateway.py,roster_flow.py}, CREDITS.md, PLAN.md.",
+  "denetim_kontrolleri": {
+    "chatviewmodel_hotspot": "DOĞRULANDI — G1 diff'i ChatViewModel.kt'e DOKUNMUYOR (11 dosyalık listede yok; diff --name-only ile doğrulandı). MainActivity yalnız mevcut ViewModel API'sini çağırıyor (newSession, selectedProfileValue, selectModel, loadModels) — hotspot çakışması yok, fix merge'üyle kesişmiyor.",
+    "json_semasi_gizli_alan": "DOĞRULANDI — BotCard serileştirmesi TAM ve SINIRLI: {id,name,emoji,personality,profile,provider,model,pinned,createdAt,updatedAt}. BotRosterStoreTest 'kart serilestirmesinde gizli alan yok' testi anahtar kümesini birebir assert ediyor + metinde 'token'/'ApiKey'/'gemini' geçmediğini kilitleyen üç assertFalse var. Token/anahtar ServerProfile/EncryptedSharedPreferences'te; bu dosyaya girmez (kod yorumları + şema birbiriyle tutarlı).",
+    "guardReason_d_05": "KORUNMUŞ — diff guardReason içeren dosyalara (FullControl.kt, AppSettings.kt, ApprovalsScreen.kt, PhoneBridgeService.kt, HermesAccessibilityService.kt, ApprovalCenter.kt) dokunmuyor (isim listesiyle diff kesişimi boş). D-05: kart afişi ham id göstermez (BotRosterLogic.cardTitle + test 'kart afisi ham id icermez'); profil satırı visibleProfileChips/display_name ile çizilir, iç ad sızıntısı yok (isInternalProfileName filtresi, ChatScreen kilidi ile aynı kural); test + ekran kanıtı (em-04..em-12).",
+    "agpl_kod_kopyasi": "YOK — CREDITS.md'de üç yeni girdi: MausBot (Apache-2.0, roster/pin/duplicate fikri), Holt (AGPL-3.0, KARAKTER-BAZLI YAPI — yalnız fikir, kod KOPYALANMADI açık notu), ai-buddy (MIT, persona fikri). BotRoster/BotRosterStore/BotRosterScreen tamamen özgün saf Kotlin/Compose; AGPL kaynaktan kod izi taramada bulunamadı. tools/k18b-g1/*.py kendi K18B-G3 mock_gateway.py temelinden (kendi işleri), gerçek gateway protokol taklidi; gizli veri yok (yalnız 10.0.2.2 emülatör adresi).",
+    "roster_akisi": "DOĞRULANDI (kanıt) — wt-k18b-g1/denetim/k18b-g1/: RAPOR.md + 12+ PNG (em-00..em-12: açılış, editör, model seçici, kart listesi, çoğaltma, pin, 'devam et' → sohbet, kalıcı liste) + mock-gateway-kanit.log + roster_flow.log + ui dump'ları. 'Bu botla devam et' → BotRosterLogic.resumeTarget → newSession + selectedProfileValue + selectModel (boş model seçimine dokunmaz) zinciri kodda doğrulandı."
+  },
+  "findings": [
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "İkinci göz + denetmen doğrulaması — BotRosterStore'da sessiz toplu veri kaybı zinciri (BotRosterStore.kt:47-54, 96-105): (1) write() runCatching ile hatayı yutar ve kaydet() gerçek yazma sonucunu DÖNDÜRMEZ (kullanıcı kaydedildi sanır), (2) file.writeText atomik değil — kesintide truncated dosya, (3) read() bozuk/eksik dosyada boş liste döner, (4) sonraki HERHANGİ bir yazma (setPinned/sil/kaydet) bu boş listeyi diske işler → tüm roster kalıcı silinir, hiçbir yerde hata görünmez. Tek bir kesintiden tam kayıp çıkar. bkz. conditions."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "BotRosterStore.kaydet (satır 50-51) mevcut kartı silip sona ekler ('read().filterNot{it.id==card.id} + card') — kartı düzenlemek listede yerini değiştirir; görüntü sözleşmesi (BotRoster.kt:68-69) pinned olmayanlar için 'ekleme sırası' diyor. Tek satırlık düzeltme: id eşleşeni map ile yerinde değiştir, yoksa append."
+    },
+    {
+      "sev": "LOW",
+      "id": "genel",
+      "bulgu": "PLAN.md Riskler R1 açık karar noktası: kart tasarım notu 'Room+SQLCipher kullan (depoda var)' diyor; ölçüm bunu doğrulamadı (0 eşleşme) ve depo JSON dosya deposu desenini (SavedPromptsStore) kullanıyor. Karar dokümanlı + geri dönüşlü (BotRosterStore arayüzü soyut); 'SQLCipher zorunlu' diyen patron kararı çıkarsa arka uç değiştirilir. Bilgi; kapatılmış sayılmaz, patron kararına bağlı."
+    },
+    {
+      "sev": "MEDIUM",
+      "id": "genel",
+      "bulgu": "Preflight receipt YOK — denetim kartı gövdesinde preflight.py receipt bloğu yok. K1+K2 ve K18B-G3 denetimlerindeki sürdürülen yorum: denetim görevi build hakkı gerektiren kod üretimi değil, doğrulama build'idir; 'YOK' kaydıyla geçildi. CEO bu yorumu ezerse hüküm KALDI'ya döner."
+    }
+  ],
+  "conditions": [
+    "SÜRÜM ÖNCESİ (ikinci göz koşulu): BotRosterStore yazım zinciri kapatılmalı — atomik yazım (temp + renameTo), decode hatasında mevcut dosyayı .bak'a taşı (sonraki yazma ezmesin), kaydet() gerçek yazma sonucunu dönsün ve UI false'ta kartı kapatmasın. Aksi halde 'kalıcı bot kimliği' vaadi diskte durmaz.",
+    "HIZLI TAKİP: kaydet() yerinde güncelleme (map) ile ekleme sırası sözleşmesine uysun (madde 2).",
+    "PATRON KARARI AÇIK: R1 (Room+SQLCipher vs JSON) — mevcut karar JSON'dan yana, geri dönüşlü."
+  ],
+  "merge": {
+    "strateji": "git merge --no-ff (SIRALI; 2/2). G1 tabanı 871e534 (ana hat HEAD'i); fix merge'ünü (5e3941a) İÇERMEZ, ortak ata 871e534 olduğundan çakışma beklentisi yoktu ve olmadı.",
+    "commit": "29396dd",
+    "dal": "feat/ema-unified-20261007",
+    "kaynak": "92188bc (feat/k18b-g1-bot-kimlikleri, taban 871e534)",
+    "cakisma_cozumleri": ["YOK — 11 dosya otomatik birleşti; fix'in dokunduğu ChatViewModel/ApprovalCenter ile kesişen dosya yok (hotspot kontrolü)."]
+  },
+  "artifacts": {
+    "app/src/main/java/com/hermes/mobile/data/BotRoster.kt": "caf3e84299d438fd0db610a4e350c35f8c51ca60eeea9f26f8fdf7f050c2101d",
+    "app/src/main/java/com/hermes/mobile/data/BotRosterStore.kt": "b7849d48f72952409cbaf37da6637311e39373724fc854f72a9ae7eb182c2381",
+    "app/src/main/java/com/hermes/mobile/ui/BotRosterScreen.kt": "97a5797bf93be0cfbedbd5e08bc1fb653a11650ace076bafc20ce140f268700a",
+    "app/src/main/java/com/hermes/mobile/MainActivity.kt": "5f1cdfcd80653d5db832d02fe842f3889c1428e2fd48f150997714d761acbd2c",
+    "app/src/main/java/com/hermes/mobile/ui/SettingsScreen.kt": "7c43f7de8694712273996c99f09c834b5c3adefb47f1ed73bc29093256e6eaf6",
+    "app/src/test/java/com/hermes/mobile/BotRosterLogicTest.kt": "f98c7e70f37866189b9fae02a4d8fc893ce677f071dc7908ccd3b8e0c12f2ed5",
+    "app/src/test/java/com/hermes/mobile/BotRosterStoreTest.kt": "fc643cfb75b49bc147a27f7b3ab3a15c575bb61fbe018a716278a78032c33168",
+    "CREDITS.md": "79fd993410bdeb9dc0213c9d25af7d8f670d38292a7e44f3b91700cdc21e027a",
+    "PLAN.md": "ffb41dad8de7c073bdfa35db5e994d9c72858db396c30b6f968026c86226d841",
+    "tools/k18b-g1/mock_gateway.py": "9c49caaf1a8ca066cac6a5bf85d12a2b201861f1c7476027ba09d54aa3a4fa1f",
+    "tools/k18b-g1/roster_flow.py": "b249ca8ffdcfe486dc9c673569695c522bba551e925e2597e8ddda9738faf46f"
+  },
+  "ikinci_goz": "dsh kod-ikinci-goz (mutlak yolla): GEÇTİ-KOŞULLU. 1) en ciddi risk = BotRosterStore sessiz toplu veri kaybı zinciri (findings MEDIUM, conditions 1) 2) iyileştirme = düzenlemede sıra kayması (LOW, conditions 2) 3) karar GEÇTİ-KOSULLU. Sağlam taraflar ikinci gözce de teyitli: gizli alan yok, fail-closed doğrulama, silmede çift dokunuş onayı, D-05, saf/test edilebilir mantık, ModelPickerSheet imza uyumu.",
+  "lesson": "Kalıcılık vaat eden depoda 'en iyi çaba' (bozuk dosyada boş liste) + atomik olmayan yazım + yutulan hata birleşince tek kesinti toplu veri kaybına dönüşür — dayanıklılık iddiası varsa yazımı atomik (temp+rename) yap, bozuk dosyayı ezmeden koru ve yazma sonucunu dürüst döndür.",
+  "preflight": "YOK",
+  "uzman": "cd-android",
+  "deneme_no": "0",
+  "devir": false
+}
