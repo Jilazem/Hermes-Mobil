@@ -1497,6 +1497,22 @@ private fun HermesApp(
                             // K18B-G3: merkezi onay kutusu → aynı /approve, /deny yolu.
                             chatViewModel.answerApproval(key, approve, reason, sessionId)
                         },
+                        // K18B-G1: kalıcı bot kimlikleri — "bu botla devam et"
+                        // aynı profil + modeli geri seçer ve yeni sohbet açar.
+                        botRosterProfiles = hermesProfiles,
+                        botRosterProviders = providers,
+                        onBotContinue = { bot ->
+                            val target =
+                                com.hermes.mobile.data.BotRosterLogic.resumeTarget(bot)
+                            chatViewModel.newSession()
+                            chatViewModel.selectedProfileValue = target.profile
+                            if (target.provider.isNotBlank() && target.model.isNotBlank()) {
+                                chatViewModel.selectModel(target.provider, target.model)
+                            }
+                            tab = Tab.Chat
+                            showHome = false
+                        },
+                        onBotModelsLoad = chatViewModel::loadModels,
                         settings = settings,
                         customThemes = customThemes,
                         // Tur-13: asistan rolü satırı — ölü değil, onResume'da

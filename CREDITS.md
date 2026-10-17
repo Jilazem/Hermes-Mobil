@@ -71,3 +71,48 @@ kopyalanmamıştır; her yeniden uygulama bu deponun kendi mimarisine (saf çeki
 - **Uygulama:** K18B-G3 (kart t_0f6f8132) — onay kartı alanları.
 - **Not:** AGPL-3.0 nedeniyle bu depodan kod KOPYALANMAMIŞTIR; yalnız tasarım
   fikri alınmıştır. Türev kod AGPL yükümlülüğü doğurmaz.
+
+### milind-soni/OpenMausBot "MausBot" (Apache-2.0) — roster deseni (K18B-G1)
+
+- **Repo:** https://github.com/milind-soni/OpenMausBot
+- **Site:** https://mausbot.com
+- **Yazar:** milind-soni (ve katkıda bulunanlar)
+- **Lisans:** Apache License 2.0
+  (https://github.com/milind-soni/OpenMausBot/blob/main/LICENSE)
+- **Esinlenilen desenler (fikir) — K18B-G1:**
+  - **Roster:** kalıcı bot kartı — ad, kişilik, model; her bot bir kimlik,
+    geçici seçim değil,
+  - **pin / duplicate:** kart sabitleme ve çoğaltma ("(kopya)" adlandırma),
+  - "ajanslar kişiler gibi" — bot listesi insan listesi UX'iyle yönetilir.
+- **Uygulama:** K18B-G1 (kart t_b5ebf51f) — `data/BotRoster.kt`
+  (BotCard/BotRosterLogic), `data/BotRosterStore.kt`, `ui/BotRosterScreen.kt`.
+- **Not:** kod kopyalanmadı; Apache-2.0 fikir düzeyinde serbesttir. Pin/duplicate
+  kuralları kendi saf mantığımız (`BotRosterLogic`) olarak yazıldı ve birim
+  testleriyle kilitlendi.
+
+### cedar-panda/Holt "Holt" (AGPL-3.0) — karakter-bazlı yapı (K18B-G1)
+
+- **Repo:** https://github.com/cedar-panda/Holt
+- **Yazar:** cedar-panda
+- **Lisans:** GNU AGPL-3.0 (repo lisans alanı; K18B raporu §1 satır 7 doğruladı)
+- **Esinlenilen desenler (YALNIZ FİKİR):** karakter-bazlı bot imalatı — her
+  karakterin kendi sohbet/hafıza/özet ayarı; kartta "kişilik" alanının
+  kullanıcının girdisi olarak saklanması bu fikrin karşılığıdır.
+- **Uygulama:** K18B-G1 (kart t_b5ebf51f) — `BotCard.personality` alanı +
+  `ui/BotRosterScreen.kt` editör formu.
+- **Not:** AGPL-3.0 nedeniyle bu depodan kod KOPYALANMAMIŞTIR; yalnız tasarım
+  fikri alınmıştır. Türev kod AGPL yükümlülüğü doğurmaz.
+
+### Weltenwanderer1/ai-buddy "AI-Buddy" (MIT) — evrilen persona (K18B-G1)
+
+- **Repo:** https://github.com/Weltenwanderer1/ai-buddy
+- **Yazar:** Weltenwanderer1
+- **Lisans:** MIT License (K18B raporu §1 satır 3: lisans MIT doğrulandı)
+- **Esinlenilen desenler (YALNIZ FİKİR):** persona + öz-alan ("self-image")
+  yapılandırılabilirliği — persona'nın kullanıcı girdisi olduğu ve cihazda
+  kaldığı ilkesi (bot kişiliği ayrı bir alan olarak saklanır, varsayılan
+  değildir).
+- **Uygulama:** K18B-G1 (kart t_b5ebf51f) — `BotCard.personality` (kullanıcı
+  girdisi, `bot-roster.json` içinde cihazda kalır; sunucuya ayrı alan olarak
+  gönderilmez).
+- **Not:** kod kopyalanmadı; MIT fikir düzeyinde serbesttir.
