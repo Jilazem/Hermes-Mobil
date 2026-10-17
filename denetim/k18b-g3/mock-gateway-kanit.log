@@ -1,0 +1,189 @@
+{"t": 1792209738.254696, "kind": "start", "port": 9199}
+{"t": 1792209747.83776, "kind": "ws_open"}
+{"t": 1792209747.837997, "kind": "rpc", "method": "session.create", "params": {}}
+{"t": 1792209747.83818, "kind": "rpc", "method": "prompt.submit", "params": {"session_id": "mock-s1", "text": "test"}}
+{"t": 1792209748.160599, "kind": "event", "type": "approval.request", "session_id": "mock-s1", "payload": {"prompt_id": "p-1", "execution_generation": 1, "description": "Mock: /tmp/ornek klasörünü silmek istiyor", "command": "rm -rf /tmp/ornek", "allow_permanent": false}}
+{"t": 1792209748.161022, "kind": "rpc", "method": "slash.exec", "params": {"session_id": "mock-s1", "command": "/approve"}}
+{"t": 1792209748.448818, "kind": "event", "type": "message.delta", "session_id": "mock-s1", "payload": {"text": "✓ Onaylandı — eylem devam ediyor."}}
+{"t": 1792209748.449, "kind": "event", "type": "message.complete", "session_id": "mock-s1", "payload": {"text": "✓ Onaylandı — eylem devam ediyor."}}
+{"t": 1792209748.449057, "kind": "event", "type": "approval.settled", "session_id": "mock-s1", "payload": {"prompt_id": "p-1", "execution_generation": 2}}
+{"t": 1792209748.4491441, "kind": "ws_close"}
+{"t": 1792209944.7686028, "kind": "ws_open"}
+{"t": 1792209944.79349, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209950.3111382, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209956.376414, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209962.473663, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209968.5445418, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209974.583144, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209980.58944, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209986.6144671, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209992.6356878, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792209998.6761699, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210004.700759, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210006.842222, "kind": "rpc", "method": "session.create", "params": {}}
+{"t": 1792210006.919551, "kind": "rpc", "method": "prompt.submit", "params": {"session_id": "mock-s2", "text": "iki onay testi"}}
+{"t": 1792210007.3621912, "kind": "event", "type": "approval.request", "session_id": "mock-s2", "payload": {"prompt_id": "p-2", "execution_generation": 2, "description": "Mock: /tmp/ornek klasörünü silmek istiyor", "command": "rm -rf /tmp/ornek", "allow_permanent": false}}
+{"t": 1792210007.362554, "kind": "event", "type": "approval.request", "session_id": "mock-s2", "payload": {"prompt_id": "p-3", "execution_generation": 3, "description": "Mock: paketi yeniden imzalamak istiyor", "command": "apksigner sign app.apk", "allow_permanent": false}}
+{"t": 1792210010.797774, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210016.820087, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210022.9285812, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210028.941108, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210034.9458911, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210040.9461918, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210046.94986, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210053.0459409, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210059.050555, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210065.1107242, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210071.16389, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210077.178572, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210083.186914, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210089.1961741, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210095.216318, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210101.223819, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210107.271492, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210113.290254, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210119.304938, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210125.336915, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210131.353655, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210137.371116, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210143.378216, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210149.4038231, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210155.4227781, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210161.4362051, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210161.925132, "kind": "ws_close"}
+{"t": 1792210165.332172, "kind": "ws_open"}
+{"t": 1792210165.84237, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210165.8864799, "kind": "rpc", "method": "session.activate", "params": {"session_id": "mock-k2", "omit_messages": true}}
+{"t": 1792210165.9179652, "kind": "rpc", "method": "session.resume", "params": {"session_id": "mock-k2", "omit_messages": true}}
+{"t": 1792210171.4356108, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210177.46334, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210183.486895, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210189.49893, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210194.235019, "kind": "rpc", "method": "session.create", "params": {}}
+{"t": 1792210194.35322, "kind": "rpc", "method": "prompt.submit", "params": {"session_id": "mock-s3", "text": "iki onay testi"}}
+{"t": 1792210194.803325, "kind": "event", "type": "approval.request", "session_id": "mock-s3", "payload": {"prompt_id": "p-4", "execution_generation": 4, "description": "Mock: /tmp/ornek klasörünü silmek istiyor", "command": "rm -rf /tmp/ornek", "allow_permanent": false}}
+{"t": 1792210194.80353, "kind": "event", "type": "approval.request", "session_id": "mock-s3", "payload": {"prompt_id": "p-5", "execution_generation": 5, "description": "Mock: paketi yeniden imzalamak istiyor", "command": "apksigner sign app.apk", "allow_permanent": false}}
+{"t": 1792210195.534367, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210201.54157, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210207.543316, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210213.572618, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210219.648056, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210225.654452, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210231.69773, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210237.732073, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210243.7505448, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210249.795115, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210255.807721, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210261.844886, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210267.857397, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210273.9220831, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210279.9240801, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210285.9468548, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210291.9608161, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210297.978224, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210304.0292659, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210310.179617, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210316.2612522, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210322.309151, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210328.3174772, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210332.271374, "kind": "rpc", "method": "slash.exec", "params": {"session_id": "mock-s3", "command": "/approve"}}
+{"t": 1792210332.50485, "kind": "event", "type": "message.delta", "session_id": "mock-s3", "payload": {"text": "✓ Onaylandı — eylem devam ediyor."}}
+{"t": 1792210332.5050938, "kind": "event", "type": "message.complete", "session_id": "mock-s3", "payload": {"text": "✓ Onaylandı — eylem devam ediyor."}}
+{"t": 1792210332.505169, "kind": "event", "type": "approval.settled", "session_id": "mock-s3", "payload": {"prompt_id": "p-5", "execution_generation": 6}}
+{"t": 1792210334.3262, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210340.336941, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210346.3918028, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210352.4203131, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210358.449195, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210364.4515321, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210370.455369, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210376.4794052, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210382.506641, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210388.520283, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210394.544856, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210400.546773, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210406.5603719, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210410.46085, "kind": "rpc", "method": "session.activate", "params": {"session_id": "mock-s3", "omit_messages": true}}
+{"t": 1792210410.4953668, "kind": "rpc", "method": "session.resume", "params": {"session_id": "mock-k3", "omit_messages": true}}
+{"t": 1792210412.5644128, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210418.594933, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210424.606693, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210430.6105568, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210436.63412, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210442.645359, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210448.693129, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210454.69553, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210460.759901, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210466.784599, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210470.165028, "kind": "start", "port": 9199}
+{"t": 1792210472.091691, "kind": "ws_open"}
+{"t": 1792210472.594639, "kind": "rpc", "method": "session.activate", "params": {"session_id": "mock-s3", "omit_messages": true}}
+{"t": 1792210472.596045, "kind": "rpc", "method": "session.resume", "params": {"session_id": "mock-k3", "omit_messages": true}}
+{"t": 1792210472.794851, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210478.812319, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210484.905456, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210490.9075751, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210496.9193962, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210501.507632, "kind": "rpc", "method": "session.activate", "params": {"session_id": "mock-s3", "omit_messages": true}}
+{"t": 1792210501.5367548, "kind": "rpc", "method": "session.resume", "params": {"session_id": "mock-k3", "omit_messages": true}}
+{"t": 1792210502.933274, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210508.954367, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210515.0081768, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210521.021773, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210527.046956, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210533.0597591, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210539.333142, "kind": "start", "port": 9199}
+{"t": 1792210540.9022, "kind": "ws_open"}
+{"t": 1792210541.403643, "kind": "rpc", "method": "session.activate", "params": {"session_id": "mock-s3", "omit_messages": true}}
+{"t": 1792210545.085748, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210551.1158452, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210557.1414762, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210561.810768, "kind": "rpc", "method": "session.activate", "params": {"session_id": "mock-s3", "omit_messages": true}}
+{"t": 1792210561.8407419, "kind": "rpc", "method": "prompt.submit", "params": {"session_id": "mock-s3", "text": "ret testi"}}
+{"t": 1792210562.267216, "kind": "event", "type": "approval.request", "session_id": "mock-s3", "payload": {"prompt_id": "p-1", "execution_generation": 1, "description": "Mock: /tmp/ornek klasörünü silmek istiyor", "command": "rm -rf /tmp/ornek", "allow_permanent": false}}
+{"t": 1792210563.143199, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210569.167367, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210575.1692128, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210581.1847339, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210587.190336, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210593.215585, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210599.2161012, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210605.25163, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210611.266297, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210617.2710989, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210623.2872782, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210629.3006048, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210635.337298, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210641.351552, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210647.3826618, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210652.844936, "kind": "rpc", "method": "slash.exec", "params": {"session_id": "mock-s3", "command": "/deny"}}
+{"t": 1792210653.137179, "kind": "event", "type": "message.delta", "session_id": "mock-s3", "payload": {"text": "✗ Reddedildi — eylem iptal edildi."}}
+{"t": 1792210653.138199, "kind": "event", "type": "message.complete", "session_id": "mock-s3", "payload": {"text": "✗ Reddedildi — eylem iptal edildi."}}
+{"t": 1792210653.138388, "kind": "event", "type": "approval.settled", "session_id": "mock-s3", "payload": {"prompt_id": "p-1", "execution_generation": 2}}
+{"t": 1792210653.4131851, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210659.4179919, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210665.4569988, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210671.511429, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210677.580878, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210683.59859, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210689.6082199, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210695.685188, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210701.716249, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210707.775716, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210713.791156, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210719.795588, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210725.796005, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210731.807072, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210737.838494, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210742.235924, "kind": "rpc", "method": "session.activate", "params": {"session_id": "mock-s3", "omit_messages": true}}
+{"t": 1792210742.281373, "kind": "rpc", "method": "prompt.submit", "params": {"session_id": "mock-s3", "text": "cift test"}}
+{"t": 1792210742.72702, "kind": "event", "type": "approval.request", "session_id": "mock-s3", "payload": {"prompt_id": "p-2", "execution_generation": 2, "description": "Mock: /tmp/ornek klasörünü silmek istiyor", "command": "rm -rf /tmp/ornek", "allow_permanent": false}}
+{"t": 1792210743.85618, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210749.858263, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210755.367712, "kind": "rpc", "method": "slash.exec", "params": {"session_id": "mock-s3", "command": "/approve"}}
+{"t": 1792210755.5745149, "kind": "event", "type": "message.delta", "session_id": "mock-s3", "payload": {"text": "✓ Onaylandı — eylem devam ediyor."}}
+{"t": 1792210755.574844, "kind": "event", "type": "message.complete", "session_id": "mock-s3", "payload": {"text": "✓ Onaylandı — eylem devam ediyor."}}
+{"t": 1792210755.575053, "kind": "event", "type": "approval.settled", "session_id": "mock-s3", "payload": {"prompt_id": "p-2", "execution_generation": 3}}
+{"t": 1792210755.904156, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210761.950355, "kind": "rpc", "method": "session.active_list", "params": {}}
+{"t": 1792210767.9710011, "kind": "rpc", "method": "session.active_list", "params": {}}

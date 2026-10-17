@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.AwaitReplyService
 import com.hermes.mobile.data.AssistantModeLogic
+import com.hermes.mobile.data.ApprovalCenter
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
 import com.hermes.mobile.data.JarvisIdentity
@@ -102,6 +103,8 @@ sealed interface ChatItem {
         val text: String,
         val isSudo: Boolean = false,
         val answered: String? = null,
+        /** Gateway `prompt_id` — `approval.settled` gelince kart da kapanır. */
+        val promptId: String? = null,
     ) : ChatItem
 }
 
@@ -1101,7 +1104,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
         eventJob = viewModelScope.launch {
             gw.events.collect { event ->
-                handleEvent(event.type, if (event.type.startsWith("tool.")) event.toolDetail else event.text, event.toolName, event.sessionId)
+                handleEvent(event.type, if (event.type.startsWith("tool.")) event.toolDetail else event.text, event.toolName, event.sessionId, event.payload)
             }
         }
         gw.connect()
@@ -1463,12 +1466,18 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Bekleyen onayı yanıtlar — Telegram'daki inline düğmelerin karşılığı. */
-    fun answerApproval(key: String, approve: Boolean, reason: String = "") {
+    /**
+     * Bekleyen onayı yanıtlar — Telegram'daki inline düğmelerin karşılığı.
+     *
+     * K18B-G3: sohbet kartı ve MERKEZİ onay kutusu aynı yolu kullanır.
+     * `sessionId` verilirse (kutudan) O oturuma yanıt gider; verilmezse açık
+     * oturum. Kayıt zaten kapandıysa ikinci komut GİTMEZ (çift dokunuş/çift kanal).
+     */
+    fun answerApproval(key: String, approve: Boolean, reason: String = "", sessionId: String? = null) {
         val gw = client ?: return
-        val sid = _state.value.sessionId ?: return
-        val command = if (approve) "/approve" else
-            if (reason.isBlank()) "/deny" else "/deny ${reason.trim()}"
+        val sid = sessionId ?: _state.value.sessionId ?: return
+        if (!ApprovalCenter.decide(key, approve, reason)) return
+        val command = ApprovalCenter.slashCommand(approve, reason)
 
         _state.update { st ->
             st.copy(
@@ -2332,7 +2341,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private fun isFromInvisibleSession(sessionId: String?): Boolean =
         sessionId != null && sessionId in invisibleSessions
 
-    private fun handleEvent(type: String, text: String?, toolName: String?, sessionId: String? = null) {
+    private fun handleEvent(
+        type: String,
+        text: String?,
+        toolName: String?,
+        sessionId: String? = null,
+        // K18B-G3: approval.request/sudo.request payload alanları (description,
+        // command, prompt_id) — GatewayEvent.payload köprülenir.
+        payload: kotlinx.serialization.json.JsonObject? = null,
+    ) {
         if (isFromInvisibleSession(sessionId)) return
         when (type) {
             "message.start" -> {
@@ -2458,15 +2475,50 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
             // Telegram'da bunlar inline düğmeyle yanıtlanıyor; burada da
             // onayla/reddet düğmeleri gösterilir (`/approve`, `/deny`).
-            "approval.request", "sudo.request" -> _state.update {
-                it.copy(
-                    items = it.items + ChatItem.Approval(
-                        nextKey("ap"),
-                        text ?: "Ajan tehlikeli bir komut için onay istiyor",
-                        isSudo = type == "sudo.request",
-                    ),
-                    agentBusy = false,
+            // K18B-G3: aynı istek MERKEZİ onay kutusuna da düşer — kart ile
+            // kutu aynı kaydı paylaşır (id ortak), çift cevap engellenir.
+            "approval.request", "sudo.request" -> {
+                val entry = ApprovalCenter.submitFromEvent(
+                    type = type,
+                    sessionId = sessionId,
+                    // D-05: ham süreç içi id etiket OLMAZ — konu yoksa "Sohbet".
+                    sessionTitle = _state.value.topic.ifBlank { tr("Sohbet", "Chat") },
+                    text = text,
+                    toolName = toolName,
+                    payload = payload,
+                    createdAt = System.currentTimeMillis(),
                 )
+                _state.update {
+                    it.copy(
+                        items = it.items + ChatItem.Approval(
+                            entry.id,
+                            entry.request,
+                            isSudo = type == "sudo.request",
+                            promptId = entry.promptId,
+                        ),
+                        agentBusy = false,
+                    )
+                }
+            }
+
+            // K18B-G3: başka kanaldan (Telegram/TUI) yanıtlandı — merkezi
+            // kutudaki kayıt ve sohbet kartı birlikte kapanır.
+            "approval.settled" -> {
+                val promptId = (payload?.get("prompt_id") as? kotlinx.serialization.json.JsonPrimitive)
+                    ?.content?.takeIf { it.isNotBlank() }
+                if (promptId != null && ApprovalCenter.settleByPrompt(promptId)) {
+                    _state.update {
+                        it.copy(
+                            items = it.items.map { item ->
+                                if (item is ChatItem.Approval &&
+                                    item.promptId == promptId && item.answered == null
+                                ) {
+                                    item.copy(answered = tr("Başka kanaldan yanıtlandı", "Answered elsewhere"))
+                                } else item
+                            }
+                        )
+                    }
+                }
             }
 
             "clarify.request", "secret.request" -> _state.update {

@@ -37,3 +37,37 @@ kopyalanmamıştır; her yeniden uygulama bu deponun kendi mimarisine (saf çeki
   `cd-android/k1-phoneharness-t35ec8257`, commit d8c0470) ve K2 kartı
   t_384678f7 (dal `feat/ema-unified-20261007`, commit 3dd7a9e), 16-17.10.2026.
   Kod kopyalanmadan, fikir olarak uygulanmıştır; kopyalanan bir blok yoktur.
+
+## K18B-G3 — Merkezi onay kutusu + sesli onay
+
+### milind-soni/OpenMausBot (Apache-2.0) — "MausBot"
+
+- **Repo:** https://github.com/milind-soni/OpenMausBot
+- **Site:** https://mausbot.com
+- **Yazar:** milind-soni (ve katkıda bulunanlar)
+- **Lisans:** Apache License 2.0
+  (https://github.com/milind-soni/OpenMausBot/blob/main/LICENSE)
+- **Esinlenilen desenler (fikir):**
+  - "Waiting on your yes" — merkezi ONAY KUTUSU: riskli eylemler tek listede
+    bekler, kullanıcı onayla/reddet ile geçirir,
+  - sesli onay girişi ("approve / deny" konuşmayla),
+  - "approval coverage garanti değildir" uyarısı: hangi eylem sınıflarının
+    onaysız devam ettiği AÇIKÇA yazılır (bizdeki karşılığı: "Bazı eylemler
+    durmaz" kartı — salt-okunur araçlar onaysız devam eder).
+- **Uygulama:** K18B-G3 (kart t_0f6f8132) — `data/ApprovalCenter.kt`
+  (ApprovalCenter/ApprovalGuard/ApprovalVoice), `ui/ApprovalsScreen.kt`.
+- **Not:** kod kopyalanmadı; Apache-2.0 fikir düzeyinde serbesttir. Karar
+  mekanizması bizim `/approve` / `/deny` (gateway `slash.exec`) hattımızdır.
+
+### Chevey339/kelivo (AGPL-3.0) — "Kelivo"
+
+- **Repo:** https://github.com/Chevey339/kelivo
+- **Yazar:** Chevey339
+- **Lisans:** GNU AGPL-3.0
+  (https://github.com/Chevey339/kelivo/blob/master/LICENSE)
+- **Esinlenilen desenler (YALNIZ FİKİR):** MCP **araç-bazlı onay**
+  (per-tool approval) — onayın araç/argüman düzeyinde gösterilmesi fikri;
+  kartta "Araç:" ve "Argümanlar:" satırları bu fikrin karşılığıdır.
+- **Uygulama:** K18B-G3 (kart t_0f6f8132) — onay kartı alanları.
+- **Not:** AGPL-3.0 nedeniyle bu depodan kod KOPYALANMAMIŞTIR; yalnız tasarım
+  fikri alınmıştır. Türev kod AGPL yükümlülüğü doğurmaz.

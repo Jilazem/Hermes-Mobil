@@ -3,6 +3,7 @@ package com.hermes.mobile.assistant
 import com.hermes.mobile.data.emaEnabled
 
 import android.content.Context
+import com.hermes.mobile.data.ApprovalCenter
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
@@ -11,6 +12,7 @@ import com.hermes.mobile.data.LocalModelLogic
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.ServerProfileStore
 import com.hermes.mobile.data.SettingsStore
+import com.hermes.mobile.ui.tr
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
@@ -142,6 +144,20 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
                     }
                     "tool.start" -> e.toolName?.let { sink.onTool(it) }
                     "approval.request", "sudo.request", "clarify.request", "secret.request" -> {
+                        // K18B-G3: sesli asistanın onay istekleri de MERKEZİ onay
+                        // kutusuna düşer; cevap aynı `/approve` / `/deny` yoluyla
+                        // O oturuma gider (clarify/secret sorudur, kayda girmez).
+                        if (e.type == "approval.request" || e.type == "sudo.request") {
+                            ApprovalCenter.submitFromEvent(
+                                type = e.type,
+                                sessionId = sid,
+                                sessionTitle = tr("K.I.T.T. (sesli asistan)", "K.I.T.T. (voice assistant)"),
+                                text = e.text,
+                                toolName = e.toolName,
+                                payload = e.payload,
+                                createdAt = System.currentTimeMillis(),
+                            )
+                        }
                         sink.onNeedsApproval(e.text.orEmpty())
                         done.complete(full.toString())
                     }

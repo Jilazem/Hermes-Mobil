@@ -105,6 +105,13 @@ fun SettingsScreen(
     shizukuState: ShizukuBridge.State = ShizukuBridge.State.Unavailable,
     onRequestShizuku: () -> Unit = {},
     /**
+     * K18B-G3: merkezi onay kutusu — Onayla/Reddet geri çağrısı. Yanıt
+     * `ChatViewModel.answerApproval` ile `/approve` / `/deny [sebep]` olarak
+     * ilgili oturuma gider (karar merkezi: ApprovalCenter).
+     */
+    onApprovalAnswer: (sessionId: String?, key: String, approve: Boolean, reason: String) -> Unit =
+        { _, _, _, _ -> },
+    /**
      * Bakım ekranı için: aktif sunucu profili. Bakım kartı bu profil üzerinden
      * `hermes doctor` / `hermes update` çalıştırır; profil yoksa kart gizli kalır.
      */
@@ -936,6 +943,16 @@ fun SettingsScreen(
             // ── Geliştirici ──────────────────────────────────────────────
         }
 
+        // ── K18B-G3: MERKEZİ ONAY KUTUSU — "Senin onayın bekleniyor" listesi.
+        if (open == SettingsCategory.OnayMerkezi) {
+            item {
+                ApprovalsScreen(
+                    onAnswer = onApprovalAnswer,
+                    scrollable = false,
+                )
+            }
+        }
+
         if (open == SettingsCategory.Developer) {
     item { Header(S.t2("Geliştirici", "Developer")) }
             item {
@@ -1518,7 +1535,7 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
 
 
 /** Ayar kategorileri — panonun bölüm listesiyle aynı desen. */
-enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, Developer }
+enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, OnayMerkezi, Developer }
 
 @Composable
 private fun catLabel(c: SettingsCategory): String = when (c) {
@@ -1530,6 +1547,8 @@ private fun catLabel(c: SettingsCategory): String = when (c) {
     SettingsCategory.Assistant -> S.t2("Varsayılan asistan", "Default assistant")
     SettingsCategory.Server -> S.t2("Bağlantı", "Connection")
     SettingsCategory.Privacy -> S.t2("Gizlilik ve bildirim", "Privacy & notifications")
+    // K18B-G3: merkezi onay kutusu — riskli ajan eylemleri tek listede.
+    SettingsCategory.OnayMerkezi -> S.t2("Onay merkezi", "Approval center")
     SettingsCategory.Developer -> S.t2(S.t2("Geliştirici", "Developer"), "Developer")
 }
 
@@ -1543,6 +1562,7 @@ private fun catHint(c: SettingsCategory): String = when (c) {
     SettingsCategory.Assistant -> S.t2("Google yerine Hermes, ses stüdyosu, Hey Jarvis", "Hermes instead of Google, voice studio, Hey Jarvis")
     SettingsCategory.Server -> S.t2("Ev ve dış erişim, kayıtlı sunucular", "Home and remote access, saved servers")
     SettingsCategory.Privacy -> S.t2("Kilit, token, bildirimler", "Lock, token, notifications")
+    SettingsCategory.OnayMerkezi -> S.t2("Senin onayın bekleniyor", "Waiting on your yes")
     SettingsCategory.Developer -> S.t2("Ham olaylar", "Raw events")
 }
 

@@ -1493,6 +1493,10 @@ private fun HermesApp(
                         onOpenPanel = { tab = Tab.Panel },
                         shizukuState = shizukuState,
                         onRequestShizuku = chatViewModel.shizuku::requestPermission,
+                        onApprovalAnswer = { sessionId, key, approve, reason ->
+                            // K18B-G3: merkezi onay kutusu → aynı /approve, /deny yolu.
+                            chatViewModel.answerApproval(key, approve, reason, sessionId)
+                        },
                         settings = settings,
                         customThemes = customThemes,
                         // Tur-13: asistan rolü satırı — ölü değil, onResume'da
