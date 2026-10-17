@@ -10,6 +10,7 @@ import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.AwaitReplyService
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.ApprovalCenter
+import com.hermes.mobile.data.ApprovalEntry
 import com.hermes.mobile.data.DiagLog
 import com.hermes.mobile.data.GatewayWsClient
 import com.hermes.mobile.data.JarvisIdentity
@@ -112,6 +113,28 @@ enum class ToolState { Running, Done, Failed }
 
 /** Düşünce bloğu canlı görünümünde gösterilecek son dolu satır sayısı. */
 const val LIVE_THINKING_TAIL_LINES = 4
+
+/**
+ * K18B-G3 denetim koşulu — onay kartını listeye TEK SEFERDE ekler.
+ *
+ * `ApprovalCenter.submitFromEvent` aynı `promptId` BEKLEMEDEyken MEVCUT kaydı
+ * (aynı id) döndürür; kart koşulsuz eklenirse ChatScreen'in keyed listesi
+ * (`itemsIndexed key = key`) duplicate key ile SERT çöker. Aynı anahtarlı
+ * kart zaten varsa liste dokunulmadan döner — kartın mevcut answered/text
+ * hâli korunur, yeni teslim kartı şişirmez.
+ */
+internal fun mergeApprovalCard(
+    items: List<ChatItem>,
+    entry: ApprovalEntry,
+    isSudo: Boolean,
+): List<ChatItem> =
+    if (items.any { it.key == entry.id }) items
+    else items + ChatItem.Approval(
+        key = entry.id,
+        text = entry.request,
+        isSudo = isSudo,
+        promptId = entry.promptId,
+    )
 
 /** Canlı görünümde uzun satırlar sondan en fazla bu kadar karakterle kırpılır. */
 const val LIVE_THINKING_LINE_CLIP = 200
@@ -1491,13 +1514,23 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             runCatching { gw.slashExec(sid, command) }.onFailure { e ->
+                // K18B-G3 (güçlü öneri): gönderim BAŞARISIZ — kararı geri al,
+                // kartı yeniden cevaplanabilir yap. Aksi hâlde kayıt kilitli
+                // kalır, ikinci dokunuş sessizce yutulur ve karar ASLA
+                // iletilmez. (Kayıt Pending'e döner → `decide` tekrar kabul
+                // eder, kart answered'sız kalır.)
+                ApprovalCenter.reopen(key)
                 _state.update {
                     it.copy(
-                        items = it.items + ChatItem.Notice(
+                        items = it.items.map { item ->
+                            if (item is ChatItem.Approval && item.key == key)
+                                item.copy(answered = null)
+                            else item
+                        } + ChatItem.Notice(
                             nextKey("n"),
                             e.message ?: "Yanıt iletilemedi",
                             isError = true,
-                        )
+                        ),
                     )
                 }
             }
@@ -2490,11 +2523,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 _state.update {
                     it.copy(
-                        items = it.items + ChatItem.Approval(
-                            entry.id,
-                            entry.request,
+                        // Yeniden teslim: ApprovalCenter aynı promptId için MEVCUT
+                        // entry'yi (aynı id) döndürür — kartı koşulsuz eklemek keyed
+                        // listede duplicate-key çökmesidir (K18B-G3 denetim koşulu).
+                        items = mergeApprovalCard(
+                            it.items,
+                            entry,
                             isSudo = type == "sudo.request",
-                            promptId = entry.promptId,
                         ),
                         agentBusy = false,
                     )

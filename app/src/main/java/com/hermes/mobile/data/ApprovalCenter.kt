@@ -157,6 +157,30 @@ object ApprovalCenter {
         return !alreadyDecided
     }
 
+    /**
+     * Karar GÖNDERİLEMEDİ (gateway ağ hatası) — kaydı BEKLEMEDE'ye geri açar.
+     *
+     * Yalnız KENDİ kararımızın (Approved/Denied) geri alınır; `SettledElsewhere`
+     * başka kanalın nihai kararıdır ve geri AÇILMAZ. Kayıt yoksa `false`.
+     * Dönüş: `true` = kayıt artık BEKLEMEDE (kullanıcı yeniden cevaplayabilir,
+     * `decide` tekrar `true` döner); `false` = kayıt yok ya da başka kanal
+     * tarafından kapatıldı (yeniden açma yolu yok).
+     */
+    fun reopen(id: String): Boolean {
+        var open = false
+        update(id) { entry ->
+            when (entry.decision) {
+                is ApprovalDecision.Approved, is ApprovalDecision.Denied ->
+                    entry.copy(decision = ApprovalDecision.Pending).also { open = true }
+                // Zaten bekliyor — kayıt bozulmaz ama "açık" sayılır.
+                is ApprovalDecision.Pending -> entry.also { open = true }
+                // Başka kanalın nihai kararı — geri AÇILMAZ.
+                ApprovalDecision.SettledElsewhere -> null
+            }
+        }
+        return open
+    }
+
     /** `approval.settled` — başka kanal yanıtladı; bekleyen kayıt kapanır. */
     fun settleByPrompt(promptId: String): Boolean =
         updateMatching({ it.promptId == promptId && it.decision == ApprovalDecision.Pending }) {
