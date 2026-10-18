@@ -71,6 +71,7 @@ class HermesClient(private val profile: ServerProfile) {
 
     private suspend fun getRaw(path: String): String = withContext(Dispatchers.IO) {
         var lastError: Exception? = null
+        var busyError: HermesApiException? = null
         for (base in urlOrder()) {
             try {
                 http.newCall(request(base, path).get().build()).execute().use { res ->
@@ -86,7 +87,12 @@ class HermesClient(private val profile: ServerProfile) {
                     return@withContext body
                 }
             } catch (e: HermesApiException) {
-                throw e
+                // K16: doygunluk (429/502/503) adresin ölü olduğu anlamına gelmez —
+                // patron beklemesin: sıradaki (uzak) adrese düş, AddressHealth'i
+                // zehirleme. Diğer kodlar (401/404/500) eskisi gibi anında fırlar.
+                if (!e.isBusy) throw e
+                DiagLog.w("http", "GET $path · $base YOGUN (${e.code}) — siradaki adres deneniyor")
+                busyError = e
             } catch (e: IOException) {
                 // Hangi adresin denendiğini bilmek şart: LAN mı uzak mı
                 // düştüğünü ayırt etmenin başka yolu yok.
@@ -94,15 +100,21 @@ class HermesClient(private val profile: ServerProfile) {
                 lastError = e
             }
         }
+        // Tüm adresler YOĞUN döndüyse sunucu ulaşılabilir demektir — profil
+        // adresini unutma, "yoğunluk" hatasını olduğu gibi yukarı taşı.
+        busyError?.let {
+            DiagLog.e("http", "GET $path - tüm adresler yogun (${it.code})")
+            throw it
+        }
         ServerProfile.forget(profile.id)
         DiagLog.e("http", "GET $path - no address reachable")
         throw lastError ?: IOException("Ulaşılabilir adres yok")
     }
 
-    /** PUT — postRaw ile aynı adres sırası ve hata işleyişi. */
     private suspend fun putRaw(path: String, jsonBody: String): String =
         withContext(Dispatchers.IO) {
             var lastError: Exception? = null
+            var busyError: HermesApiException? = null
             for (base in urlOrder()) {
                 try {
                     val req = request(base, path)
@@ -115,10 +127,20 @@ class HermesClient(private val profile: ServerProfile) {
                         if (!res.isSuccessful) throw HermesApiException(res.code, path, body.take(300))
                         return@withContext body
                     }
+                } catch (e: HermesApiException) {
+                    // K16: yoğunluk (429/502/503) → sıradaki (uzak) adres;
+                    // AddressHealth zehirlenmez, diğer kodlar anında fırlar.
+                    if (!e.isBusy) throw e
+                    DiagLog.w("http", "PUT $path · $base YOGUN (${e.code}) — siradaki adres deneniyor")
+                    busyError = e
                 } catch (e: IOException) {
                     lastError = e
                     AddressHealth.noteFailure(profile.id, base, e.message)
                 }
+            }
+            busyError?.let {
+                DiagLog.e("http", "PUT $path - tüm adresler yogun (${it.code})")
+                throw it
             }
             throw lastError ?: IOException("sunucuya ulaşılamadı")
         }
@@ -126,6 +148,7 @@ class HermesClient(private val profile: ServerProfile) {
     private suspend fun postRaw(path: String, jsonBody: String = "{}"): String =
         withContext(Dispatchers.IO) {
             var lastError: Exception? = null
+            var busyError: HermesApiException? = null
             for (base in urlOrder()) {
                 try {
                     val body = jsonBody.toRequestBody(JSON_MEDIA)
@@ -139,11 +162,51 @@ class HermesClient(private val profile: ServerProfile) {
                         return@withContext text
                     }
                 } catch (e: HermesApiException) {
-                    throw e
+                    // K16: yoğunluk (429/502/503) → sıradaki (uzak) adres;
+                    // AddressHealth zehirlenmez, diğer kodlar anında fırlar.
+                    if (!e.isBusy) throw e
+                    DiagLog.w("http", "POST $path · $base YOGUN (${e.code}) — siradaki adres deneniyor")
+                    busyError = e
                 } catch (e: IOException) {
                     lastError = e
                     AddressHealth.noteFailure(profile.id, base, e.message)
                 }
+            }
+            busyError?.let {
+                DiagLog.e("http", "POST $path - tüm adresler yogun (${it.code})")
+                throw it
+            }
+            ServerProfile.forget(profile.id)
+            throw lastError ?: IOException("Ulaşılabilir adres yok")
+        }
+
+    /** DELETE — postRaw ile aynı adres sırası ve hata işleyişi (K10c). */
+    private suspend fun deleteRaw(path: String): String =
+        withContext(Dispatchers.IO) {
+            var lastError: Exception? = null
+            var busyError: HermesApiException? = null
+            for (base in urlOrder()) {
+                try {
+                    http.newCall(request(base, path).delete().build()).execute().use { res ->
+                        val text = res.body?.string().orEmpty()
+                        if (res.isSuccessful) AddressHealth.noteSuccess(profile.id, base)
+                        ServerProfile.remember(profile.id, base)
+                        if (!res.isSuccessful) throw HermesApiException(res.code, path, text.take(300))
+                        return@withContext text
+                    }
+                } catch (e: HermesApiException) {
+                    // K16: yoğunluk (429/502/503) → sıradaki (uzak) adres.
+                    if (!e.isBusy) throw e
+                    DiagLog.w("http", "DELETE $path · $base YOGUN (${e.code}) — siradaki adres deneniyor")
+                    busyError = e
+                } catch (e: IOException) {
+                    lastError = e
+                    AddressHealth.noteFailure(profile.id, base, e.message)
+                }
+            }
+            busyError?.let {
+                DiagLog.e("http", "DELETE $path - tüm adresler yogun (${it.code})")
+                throw it
             }
             ServerProfile.forget(profile.id)
             throw lastError ?: IOException("Ulaşılabilir adres yok")
@@ -157,6 +220,32 @@ class HermesClient(private val profile: ServerProfile) {
         json.decodeFromString<SessionsResponse>(getRaw("/api/sessions")).sessions
 
     suspend fun sessionStats(): SessionStats = json.decodeFromString(getRaw("/api/sessions/stats"))
+
+    /**
+     * K10c: sunucudaki oturum kaydını siler (DELETE /api/sessions/{id},
+     * token başlığıyla — desktop sözleşmesi). 404 = kayıt zaten yok:
+     * gateway'in idempotent sözleşmesi uyarınca başarı sayılır (canlı-yalnız
+     * satırlar DB'de olmayabilir — silinecek sunucu kaydı yoktur).
+     */
+    suspend fun deleteSession(id: String) {
+        val encoded = java.net.URLEncoder.encode(id, "UTF-8")
+        try {
+            deleteRaw("/api/sessions/$encoded")
+        } catch (e: HermesApiException) {
+            if (e.code != 404) throw e
+        }
+    }
+
+    /**
+     * K13c: iki+ oturumu sunucuda TEK yeni oturumda birleştirir
+     * (POST /api/czip/merge). Birleştirme sunucu tarafında; yanıt yalnız üst
+     * veridir — birleşik İÇERİK telefona inmez (gateway sözleşmesi).
+     * Kaynak oturumlar sunucuda dokunulmadan kalır.
+     */
+    suspend fun mergeSessions(ids: List<String>, title: String?): MergeSonuc {
+        val text = postRaw("/api/czip/merge", mergeGovdesi(ids, title))
+        return parseMergeSonuc(text) ?: throw IOException("Birleştirme yanıtı çözülemedi")
+    }
 
     /** Bir oturumun mesaj dökümü. Uzun oturumlarda ağır olabilir. */
     suspend fun sessionMessages(id: String): List<SessionMessage> {
@@ -444,8 +533,18 @@ class HermesClient(private val profile: ServerProfile) {
     }
 }
 
+/**
+ * HTTP "yoğun" kodları — adresin ÖLÜ olduğu anlamına GELMEZ (K16).
+ * 429 (rate limit) / 502 / 503 (doygun) → adres çalışıyordur, sıradaki adrese
+ * düşülür (uzak uç), AddressHealth zehirlenmez.
+ */
+fun isBusyCode(code: Int): Boolean = code == 429 || code == 502 || code == 503
+
 class HermesApiException(val code: Int, val path: String, val bodySnippet: String) :
-    IOException("HTTP $code · $path")
+    IOException("HTTP $code · $path") {
+    /** K16: doygunluk kodu — istemci sıradaki (uzak) adrese düşebilir. */
+    val isBusy: Boolean get() = isBusyCode(code)
+}
 
 sealed interface ProbeResult {
     data class Ok(val status: HermesStatus, val latencyMs: Long) : ProbeResult
