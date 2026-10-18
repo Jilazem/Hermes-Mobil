@@ -1202,6 +1202,9 @@ private fun HermesApp(
                             viewModel.mergeSessions(ids, baslik)
                         },
                         onMergeNotifyConsumed = viewModel::mergeBildiriminiTuket,
+                        onMoveToNew = { row ->
+                            viewModel.moveSessionToNew(row.dbId.ifBlank { row.liveId })
+                        },
                     )
                 }
             },

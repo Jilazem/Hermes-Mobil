@@ -247,6 +247,16 @@ class HermesClient(private val profile: ServerProfile) {
         return parseMergeSonuc(text) ?: throw IOException("Birleştirme yanıtı çözülemedi")
     }
 
+    /**
+     * K6/K29: son czip paketleri + kayıtlı görevler — YALNIZ üst veri
+     * (GET /api/czip/packages). Paket İÇERİĞİ telefona gelmez; birleştirme
+     * ÖNERİSİ bu üst veriyle kurulur (CzipLogic.parseCzipCatalog).
+     */
+    suspend fun czipCatalog(): CzipCatalog {
+        val text = getRaw("/api/czip/packages")
+        return parseCzipCatalog(text)
+    }
+
     /** Bir oturumun mesaj dökümü. Uzun oturumlarda ağır olabilir. */
     suspend fun sessionMessages(id: String): List<SessionMessage> {
         val encoded = java.net.URLEncoder.encode(id, "UTF-8")

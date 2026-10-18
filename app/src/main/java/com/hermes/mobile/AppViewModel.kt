@@ -384,6 +384,43 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _mergeDurum.value = SessionMergeState()
     }
 
+    /**
+     * K29-b: oturumu YENİYE taşı — tek-kaynak birleştirme
+     * (`POST /api/czip/merge`, sources=[id]) yeni oturumu kurar; kaynak
+     * oturum sunucuda DOKUNULMADIĞI için cihazda ARŞİV bayrağıyla pasife
+     * alınır (yerel karar, sunucu sözleşmesi korunur). Durum çekmecede
+     * birleştirme satırıyla gösterilir.
+     */
+    fun moveSessionToNew(id: String) {
+        if (id.isBlank()) return
+        val profile = _state.value.active
+        if (profile == null || profile.token.isBlank()) {
+            _mergeDurum.value = SessionMergeState(
+                hata = com.hermes.mobile.ui.tr(
+                    "Sunucu bağlı değil — taşıma yapılamadı",
+                    "Not connected — move failed",
+                ),
+            )
+            return
+        }
+        _mergeDurum.value = SessionMergeState(calisiyor = true)
+        viewModelScope.launch {
+            runCatching { HermesClient(profile).mergeSessions(listOf(id), null) }
+                .onSuccess { sonuc ->
+                    _mergeDurum.value = SessionMergeState(sonuc = sonuc)
+                    mutateFlags { it.copy(archived = it.archived + id, pinned = it.pinned - id) }
+                    loadActiveDetails()
+                }
+                .onFailure { e ->
+                    _mergeDurum.value = SessionMergeState(
+                        hata = com.hermes.mobile.ui.tr(
+                            "Taşınamadı: ", "Move failed: ",
+                        ) + (e.message ?: "").take(140),
+                    )
+                }
+        }
+    }
+
     fun selectProfile(id: String) {
         store.setActiveId(id)
         reloadProfiles()

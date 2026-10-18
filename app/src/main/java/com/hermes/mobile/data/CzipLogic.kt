@@ -143,3 +143,44 @@ fun czipReadOzet(reply: String, max: Int = 400): String {
         else -> duz.take(max - 1).trimEnd() + "…"
     }
 }
+
+/**
+ * K29-a: mesaj önizlemesindeki czip referansı — paket (`/czip_ex <ref>`)
+ * ya da kayıtlı görev (`czip promt oku <kid>`). Yoksa null.
+ */
+private val CZIP_REF_REGEX = Regex(
+    """/czip_ex\s+(\S+)|czip\s+promt\s+oku\s+(\S+)""",
+)
+
+fun czipRefIn(text: String): String? =
+    CZIP_REF_REGEX.find(text)?.let { it.groupValues[1].ifBlank { it.groupValues[2] } }
+
+/**
+ * K29-a: birleştirme ÖNERİSİ — AYNI czip paketini/görevini kullanan ≥2
+ * farklı oturum (dbId) varsa "birleştirelim mi?" önerisi üretilir.
+ * Saf kural: satırlar (dbId, önizleme) taranır, referansına göre gruplanır;
+ * referansı OLMAYAN oturumlar öneriye girmez. Aynı pakete birden çok kez
+ * değinen oturum tek sayılır; en kalabalık grup önerilir.
+ */
+data class CzipMergeOnerisi(
+    val ref: String,
+    /** Paket/kaynak başlığı — kartta gösterilir (katalog başlığı üstün). */
+    val baslik: String,
+    val dbIds: List<String>,
+)
+
+fun czipMergeOnerisi(rows: List<Pair<String, String>>): CzipMergeOnerisi? {
+    // dbId → ilk bulunan referans (bir oturum tek gruba girer).
+    val grup = LinkedHashMap<String, MutableSet<String>>()
+    val basliklar = HashMap<String, String>()
+    for ((dbId, onizleme) in rows) {
+        if (dbId.isBlank()) continue
+        val ref = czipRefIn(onizleme) ?: continue
+        grup.getOrPut(ref) { mutableSetOf() }.add(dbId)
+        basliklar.putIfAbsent(ref, onizleme.trim().take(80))
+    }
+    return grup.entries
+        .filter { it.value.size >= 2 }
+        .maxByOrNull { it.value.size }
+        ?.let { (ref, ids) -> CzipMergeOnerisi(ref, basliklar[ref].orEmpty(), ids.toList()) }
+}

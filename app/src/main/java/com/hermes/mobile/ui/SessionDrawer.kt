@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import com.hermes.mobile.InterventionKind
 import com.hermes.mobile.data.LiveSession
 import com.hermes.mobile.data.SessionMergeState
+import com.hermes.mobile.data.czipMergeOnerisi
 import com.hermes.mobile.data.kaynakOzeti
 import com.hermes.mobile.data.mergeSecilebilirMi
 import com.hermes.mobile.ui.theme.HermesColors
@@ -159,6 +160,8 @@ fun SessionDrawerContent(
     merge: SessionMergeState = SessionMergeState(),
     onMergeConfirm: (List<String>, String?) -> Unit = { _, _ -> },
     onMergeNotifyConsumed: () -> Unit = {},
+    /** K29-b: oturumu yeniye taşı (tek-kaynak birleştirme + kaynak arşiv). */
+    onMoveToNew: (DrawerRow) -> Unit = {},
     onToggleFollow: (DrawerRow) -> Unit = {},
 ) {
     val haptics = LocalHapticFeedback.current
@@ -193,6 +196,9 @@ fun SessionDrawerContent(
             secili = if (row.dbId in secili) secili - row.dbId else secili + row.dbId
         }
     }
+
+    // K29-a: birleştirme ÖNERİSİ — aynı czip paketini kullanan ≥2 oturum.
+    val mergeOnerisi = czipMergeOnerisi(rows.map { it.dbId to it.preview })
 
     Column(
         Modifier
@@ -348,6 +354,47 @@ fun SessionDrawerContent(
                 }
             }
             merge.hata != null -> MergeDurumSatiri(merge.hata) { onMergeNotifyConsumed() }
+        }
+
+        // K29-a: birleştirme ÖNERİSİ kartı — aynı czip paketini kullanan
+        // oturumlar için "birleştirelim mi?"; tek dokunuş seçim moduna alır.
+        // Seçim modunda/katalog verisi olmadan GÖSTERİLMEZ (karışıklık olmasın).
+        if (!secimModu && mergeOnerisi != null) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        S.t2(
+                            "Bu paketi " + mergeOnerisi.dbIds.size + " oturumda kullandınız — birleştirelim mi?",
+                            "You used this package in " + mergeOnerisi.dbIds.size + " sessions — merge them?",
+                        ),
+                        color = HermesColors.TextSecondary,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        mergeOnerisi.ref,
+                        color = HermesColors.TextFaint,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TextButton(
+                    onClick = {
+                        secimModu = true
+                        secili = mergeOnerisi.dbIds.toSet()
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                ) {
+                    Text(S.t2("Seç", "Select"), color = HermesColors.Midground, style = MaterialTheme.typography.labelMedium)
+                }
+            }
         }
 
         // tab 0 = Tümü, tab 2 = arşiv (aynı liste, farklı showArchived —
@@ -635,6 +682,14 @@ fun SessionDrawerContent(
                     menuRow = null
                     secimModu = true
                     secili = setOf(row.dbId)
+                }
+            } else {
+                null
+            },
+            onMoveToNew = if (tab != 1 && row.dbId.isNotBlank()) {
+                {
+                    menuRow = null
+                    onMoveToNew(row)
                 }
             } else {
                 null
@@ -1211,6 +1266,8 @@ private fun DrawerActionSheet(
     onDelete: () -> Unit,
     /** K13c: null değilse "Birleştir" satırı — seçim moduna geçirir. */
     onMerge: (() -> Unit)? = null,
+    /** K29-b: null değilse "Yeniye taşı" satırı — tek-kaynak birleştirme. */
+    onMoveToNew: ((DrawerRow) -> Unit)? = null,
     onToggleFollow: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1283,6 +1340,13 @@ private fun DrawerActionSheet(
                     icon = Icons.AutoMirrored.Filled.CallMerge,
                     label = S.t2("Birleştir…", "Merge…"),
                     onClick = onMerge,
+                )
+            }
+            if (onMoveToNew != null) {
+                DrawerSheetRow(
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    label = S.t2("Yeniye taşı…", "Move to new…"),
+                    onClick = { onMoveToNew(row) },
                 )
             }
             DrawerSheetRow(
