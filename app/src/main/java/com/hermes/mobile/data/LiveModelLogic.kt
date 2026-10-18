@@ -6,7 +6,7 @@ package com.hermes.mobile.data
  * İki sağlayıcı:
  *  - GEMINI: mevcut canlı ses hattı (relay üzerinden; bozulmaz, dokunulmadı).
  *  - YEREL (node1): LAN'daki OpenAI-uyumlu uç (`/v1/chat/completions`,
- *    `GET /v1/models`). Model registry: Qwen/Qwen3.8-Flash-Next
+ *    `GET /v1/models`). Model registry: GLM-5.3-Flash-EXL3 (K19, canlı doğrulama)
  *    (node1 192.168.1.99:8888 — 20.09.2026 canlı ölçümü ile doğrulandı).
  *
  * Model kilidi kuralı (kullanıcı onaylı, kalıcı): kullanıcı YEREL'i seçtiyse

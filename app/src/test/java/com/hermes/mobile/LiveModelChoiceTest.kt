@@ -90,10 +90,35 @@ class LiveModelChoiceTest {
 
     @Test
     fun `registry sozlesmesi — beklenen model esleşirse secilir`() {
-        val json = """{"object":"list","data":[{"id":"Qwen/Qwen3.8-Flash-Next","object":"model"}]}"""
+        // K19: null istek DEFAULT_MODEL'e düşer — düğümün gerçekten
+        // servis ettiği id ile birebir olmalı (18.10.2026 /v1/models kanıtı:
+        // 127.0.0.1:8888 ve 192.168.1.99:8888 → GLM-5.3-Flash-EXL3).
+        val json = """{"object":"list","data":[{"id":"GLM-5.3-Flash-EXL3","object":"model"}]}"""
         val served = LocalModelLogic.parseServedId(json)
-        assertEquals("Qwen/Qwen3.8-Flash-Next", served)
+        assertEquals("GLM-5.3-Flash-EXL3", served)
         assertEquals(served, LocalModelLogic.pickModel(null, served))
+        assertEquals(LocalModelLogic.DEFAULT_MODEL, served)
+    }
+
+    // ── K19: boş gövde / yapılandırılmamış uç — sessiz boş liste YOK ─────
+
+    @Test
+    fun `default model dugumun gercekten servis ettigi id'dir (K19 kaniti)`() {
+        assertEquals("GLM-5.3-Flash-EXL3", LocalModelLogic.DEFAULT_MODEL)
+        assertEquals(LocalModelLogic.DEFAULT_MODEL, LocalModelLogic.pickModel(null, "GLM-5.3-Flash-EXL3"))
+    }
+
+    @Test
+    fun `bos model listesi mesaji denenen adresi icerir`() {
+        val msg = LocalModelLogic.emptyModelListMessage("http://192.168.1.99:8888/v1/models") { tr, _ -> tr }
+        assertTrue(msg.contains("http://192.168.1.99:8888/v1/models"))
+        assertTrue(msg.contains("boş"))
+    }
+
+    @Test
+    fun `yapilandirilmamis adres mesaji yonlendirme icerir`() {
+        val msg = LocalModelLogic.unconfiguredMessage { tr, _ -> tr }
+        assertTrue(msg.contains("Ayarlar"))
     }
 
     @Test

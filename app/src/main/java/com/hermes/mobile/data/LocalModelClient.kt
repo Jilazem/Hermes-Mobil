@@ -13,8 +13,9 @@ import java.util.concurrent.TimeUnit
 /**
  * Yerel LLM karar katmanı — **saf** (Android yok, JVM testi koşar).
  *
- * Sözleşme (node1 :8888, caddy ardındaki vLLM — 20.09.2026 canlı ölçümü):
- *  - `GET /v1/models` → `{"data":[{"id":"Qwen/Qwen3.8-Flash-Next",...}]}`
+ * Sözleşme (node1 :8888, caddy ardındaki sunucu — K19 kanıtı 16.10.2026,
+ * 18.10.2026 canlı /v1/models ile yeniden doğrulandı):
+ *  - `GET /v1/models` → `{"data":[{"id":"GLM-5.3-Flash-EXL3",...}]}`
  *  - `POST /v1/chat/completions` → OpenAI standardı (`choices[0].message.content`).
  *
  * Model kilidi kuralı (tur-21): beklenen model servis edilmiyorsa **null**
@@ -22,8 +23,13 @@ import java.util.concurrent.TimeUnit
  */
 object LocalModelLogic {
 
-    /** Yerli varsayılan model kimliği (node1 registry — 20.09.2026 doğrulandı). */
-    const val DEFAULT_MODEL = "Qwen/Qwen3.8-Flash-Next"
+    /**
+     * Yerli varsayılan model kimliği — düğümün /v1/models listesinden
+     * (K19; 18.10.2026 canlı doğrulama: 127.0.0.1:8888 ve 192.168.1.99:8888
+     * yalnız GLM-5.3-Flash-EXL3 servis ediyor; eski "Qwen/Qwen3.8-Flash-Next"
+     * kilidi sohbet isteğini 404'e düşürüyordu).
+     */
+    const val DEFAULT_MODEL = "GLM-5.3-Flash-EXL3"
 
     /** Yerel asistan isteği sistem yönergesi — kısa ve doğal cevap ister. */
     const val SYSTEM_PROMPT =
@@ -47,6 +53,24 @@ object LocalModelLogic {
     /** /v1/models çıktısından ilk model id'sini çıkarır (saf regex — JVM testli). */
     fun parseServedId(json: String): String? =
         Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(json)?.groupValues?.get(1)
+
+    /**
+     * K19: /v1/models 200 dönüp gövdesi BOŞ geldiyse (Caddy boş 200
+     * davranışı: yarım-kapatmalı istekte Content-Length: 0) SESSİZ boş
+     * liste yerine anlaşılır hata — seçici uydurma çip göstermez.
+     */
+    fun emptyModelListMessage(url: String, t: (String, String) -> String): String =
+        t(
+            "Model listesi boş döndü ($url) — düğüm ayakta ama liste vermedi; biraz sonra yeniden dene.",
+            "Model list came back empty ($url) — the node is up but returned no list; retry shortly.",
+        )
+
+    /** Adres boşken seçicide gösterilen satır — sessiz sahte çip YOK (K19). */
+    fun unconfiguredMessage(t: (String, String) -> String): String =
+        t(
+            "Yerel LLM adresi ayarlanmadı — Ayarlar'dan düğüm adresini gir.",
+            "Local LLM address is not set — enter the node address in Settings.",
+        )
 
     /**
      * Model adı eşleşmediğinde kullanıcıya gösterilen satır. Kilidi kırma:

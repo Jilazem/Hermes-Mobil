@@ -98,7 +98,7 @@ data class AppSettings(
      */
     val localLlmUrl: String = "http://192.168.1.99:8888",
     /** Yerel model adı (registry boşlukları için elle düzeltme kapısı). */
-    val localLlmModel: String = "Qwen/Qwen3.8-Flash-Next",
+    val localLlmModel: String = "",
     /**
      * Canlı ses modeli.
      *
