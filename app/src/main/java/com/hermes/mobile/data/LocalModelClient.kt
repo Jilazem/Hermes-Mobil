@@ -75,14 +75,29 @@ object LocalModelLogic {
         val base = when {
             code == 401 || code == 403 ->
                 t("Yerel model isteği reddetti ($code)", "Local model rejected the request ($code)")
-            code == 502 || code == 503 ->
-                t("Yerel model hazır değil / meşgul ($code)", "Local model not ready or busy ($code)")
+            isBusyCode(code) ->
+                t("Yerel model yoğun ($code)", "Local model busy ($code)")
             code >= 500 -> t("Yerel model hatası ($code)", "Local model error ($code)")
             else -> t("Yerel istek başarısız ($code)", "Local request failed ($code)")
         }
         val snip = bodySnippet?.trim()?.take(160)
         return if (snip.isNullOrBlank()) base else "$base · $snip"
     }
+
+    /**
+     * K16 — patron önceliği: YEREL uç DOYGUN (429/502/503) olabilir; bu
+     * "adres ölü" değil, sıra dolu demektir. Doygunlukta patron beklemesin:
+     * çağıran turu uzak uçtan (gateway) sürdürür ve kullanıcıya SEBEBİYLE
+     * bildirir — sessiz geçiş değil (D-04 bozulmaz, bildirim zaten var).
+     */
+    fun isBusyCode(code: Int): Boolean = code == 429 || code == 502 || code == 503
+
+    /** Yoğunluk düşüşünde kullanıcıya gösterilen sebep bildirimi. */
+    fun busyFallbackNotice(code: Int, t: (String, String) -> String): String =
+        t(
+            "Yerel model yoğun (HTTP $code) — bu tur uzak uçla devam ediyor.",
+            "Local model busy (HTTP $code) — continuing this turn on the remote endpoint.",
+        )
 
     /**
      * Ağ hatası kullanıcı satırı — denenen adres + ne yapılacağı (tur-10
@@ -231,6 +246,7 @@ class LocalModelClient(
                             LocalModelLogic.bodySnippet(body),
                             ::tr,
                         ),
+                        busyCode = res.code.takeIf { LocalModelLogic.isBusyCode(it) },
                     )
                 }
                 body ?: throw localized("boş yanıt $path")
@@ -276,6 +292,7 @@ class LocalModelClient(
                             LocalModelLogic.bodySnippet(raw),
                             ::tr,
                         ),
+                        busyCode = res.code.takeIf { LocalModelLogic.isBusyCode(it) },
                     )
                 }
                 raw ?: throw localized("boş chat yanıtı")
@@ -297,8 +314,8 @@ class LocalModelClient(
     private fun url(path: String): String =
         baseUrl.trim().trimEnd('/') + path
 
-    private fun localized(message: String, cause: Throwable? = null): LocalModelException =
-        LocalModelException(message, cause)
+    private fun localized(message: String, cause: Throwable? = null, busyCode: Int? = null): LocalModelException =
+        LocalModelException(message, cause, busyCode)
 
     private companion object {
         val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
@@ -309,8 +326,13 @@ class LocalModelClient(
     }
 }
 
-/** Kullanıcıya gösterilebilir yerel model hatası — mesajı olduğu gibi yazılır. */
+/**
+ * Kullanıcıya gösterilebilir yerel model hatası — mesajı olduğu gibi yazılır.
+ * [busyCode]: HTTP doygunluk kodu (429/502/503) — K16 patron önceliği düşüşü
+ * yalnız bu kodda tetiklenir (ağ hatası/ölü uçta YEREL'de kalınır).
+ */
 class LocalModelException(
     message: String,
     cause: Throwable? = null,
+    val busyCode: Int? = null,
 ) : IOException(message, cause)

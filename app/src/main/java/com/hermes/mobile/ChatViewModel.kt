@@ -20,6 +20,7 @@ import com.hermes.mobile.data.JarvisLoopController
 import com.hermes.mobile.data.JarvisLoopLogic
 import com.hermes.mobile.data.LiveModelLogic
 import com.hermes.mobile.data.LocalModelClient
+import com.hermes.mobile.data.LocalModelException
 import com.hermes.mobile.data.LocalModelLogic
 import com.hermes.mobile.data.LocalTtsDownloader
 import com.hermes.mobile.data.LocalTtsEngine
@@ -964,6 +965,34 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure { e ->
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     DiagLog.e("localllm", "tur basarisiz: ${e.message}")
+                    // K16 — patron önceliği: YEREL uç YOĞUNSA (429/502/503) patron
+                    // beklemesin — tur uzak uçtan (gateway) sürdürülür ve kullanıcıya
+                    // SEBEBİYLE bildirilir. Ölü uç/ağ hatasında YEREL'de kalınır
+                    // (tur-21 kilidi yalnız erişilemezlik için korunur).
+                    val busyCode = (e as? LocalModelException)?.busyCode
+                    if (busyCode != null) {
+                        val noticeText = LocalModelLogic.busyFallbackNotice(busyCode, ::tr)
+                        // Bildirim ikiye karşı bir: hemen akışa yazilir VE kuyruga
+                        // konur — yeni oturum acilinca gecmis yuklemesi items'i
+                        // sıfırladığından bildirim silinir; kuyruktaki kopya
+                        // gecmis yuklemesi bitince tekrar eklenir (K16).
+                        pendingLocalBusyNotice = noticeText
+                        _state.update {
+                            val items = it.items.toMutableList()
+                            // sendLocalAssistant'ın eklediği kullanıcı balonunu geri al;
+                            // send() kendi balonunu ekler (çift balon olmasın).
+                            val lastUser = items.indexOfLast { x -> x is ChatItem.User }
+                            if (lastUser >= 0) items.removeAt(lastUser)
+                            it.copy(
+                                sending = false,
+                                agentBusy = false,
+                                items = items + ChatItem.Notice(nextKey("n"), noticeText),
+                            )
+                        }
+                        _liveLocalHealth.value = LiveModelLogic.Health.Down
+                        send(label, fromLocalBusy = true)
+                        return@onFailure
+                    }
                     _state.update {
                         it.copy(
                             sending = false,
@@ -995,6 +1024,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Oturum değişince çağrılır — MainActivity kalıcı kayda yazar. */
     var onSessionChanged: ((String) -> Unit)? = null
+
+    /**
+     * K16: yerel asistan turu yoğunluktan uzak uca düşerken kullanıcıya
+     * gösterilecek sebep bildirimi. Yeni oturumun geçmiş yüklemesi items'i
+     * sıfırladığından bildirim burada kuyruklanır ve geçmiş yükleme bitince
+     * akışa eklenir (kullanıcı "neden uzak uçta?" sorusunun cevabı kaybolmaz).
+     */
+    @Volatile
+    private var pendingLocalBusyNotice: String? = null
 
     /**
      * Shizuku köprüsü tek örnek: hem yazarak verilen komutlar hem canlı ses
@@ -1249,6 +1287,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun send(text: String) {
+        send(text, fromLocalBusy = false)
+    }
+
+    /**
+     * @param fromLocalBusy K16: yerel asistan turu YOĞUNLUK (429/502/503)
+     *   yüzünden uzak uca düşerken true — bu çağrı tekrar yerel asistana
+     *   yönlendirilmesin (sonsuz döngü), doğrudan gateway'e gitsin.
+     */
+    private fun send(text: String, fromLocalBusy: Boolean) {
         if (_state.value.historyLoading) {
             _state.update { it.copy(notice = tr("Oturum yükleniyor; birkaç saniye bekleyin", "Session is loading; please wait")) }
             return
@@ -1300,7 +1347,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         // uçtan geçer. Hata olursa AÇIK gösterilir ve YEREL'de kalınır —
         // sessiz Gemini'ye geçiş YOK (kullanıcı onaylı geçiş, D-04/d-06
         // disiplini: hata yutulmaz, kullanıcı formatlı mesaj üretilir).
-        if (liveProvider == LiveModelLogic.Provider.YEREL &&
+        if (!fromLocalBusy &&
+            liveProvider == LiveModelLogic.Provider.YEREL &&
             _state.value.sessionId == null && _state.value.storedSessionId == null) {
             sendLocalAssistant(label)
             return
@@ -2453,7 +2501,21 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             )
 
             // B4: banner (tek satır bildirim) tarihsel dökümle birlikte korunur.
-            _state.update { st -> st.copy(items = bannerItems + body + footer, historyLoading = false) }
+            _state.update { st ->
+                // K16: yoğunluk düşüş bildirimi kuyruktaysa geçmiş yüklendikten
+                // sonra akışa ekle — oturum açılışı items'i sıfırladığı için
+                // düşüş anında yazılan kopya silinmişti.
+                val queuedNotice = pendingLocalBusyNotice
+                if (queuedNotice != null) pendingLocalBusyNotice = null
+                val base = bannerItems + body + footer
+                st.copy(
+                    items = if (queuedNotice == null) base else base + ChatItem.Notice(
+                        nextKey("n"),
+                        queuedNotice,
+                    ),
+                    historyLoading = false,
+                )
+            }
         }
     }
 
