@@ -25,7 +25,7 @@ object LocalModelLogic {
 
     /**
      * Yerli varsayılan model kimliği — düğümün /v1/models listesinden
-     * (K19; 18.10.2026 canlı doğrulama: 127.0.0.1:8888 ve 192.0.2.11:8888
+     * (K19; 18.10.2026 canlı doğrulama: 127.0.0.1:8888 ve 192.168.140.20:8888
      * yalnız GLM-5.3-Flash-EXL3 servis ediyor; eski "Qwen/Qwen3.8-Flash-Next"
      * kilidi sohbet isteğini 404'e düşürüyordu).
      */

@@ -154,7 +154,7 @@ class VoiceStatusLogicTest {
     @Test
     fun `probe saglik bilgisini tasir`() {
         val h = health(engines = mapOf("kadin" to "acik"))
-        val p = VoiceStatusLogic.Probe(health = h, base = "http://192.0.2.10:8174", atMs = 42L)
+        val p = VoiceStatusLogic.Probe(health = h, base = "http://192.168.140.20:8174", atMs = 42L)
         assertTrue(p.ok)
         assertTrue(p.usable)
         assertEquals("acik", p.engines["kadin"])

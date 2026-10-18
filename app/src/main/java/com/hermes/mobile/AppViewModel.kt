@@ -270,7 +270,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // ulaşılamayınca otomatik olarak dış adrese düşülür (candidates).
         val server = ServerProfile(
             name = "Hermes (örnek)",
-            baseUrl = "http://192.0.2.10:9150",
+            baseUrl = "http://192.168.140.20:9150",
             remoteUrl = "https://hermes.example.com",
             token = "",
             note = "Örnek profil — kendi sunucu adresinizi Ayarlar → Bağlantı'dan girin.",

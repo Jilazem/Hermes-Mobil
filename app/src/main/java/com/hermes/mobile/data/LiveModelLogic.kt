@@ -7,7 +7,7 @@ package com.hermes.mobile.data
  *  - GEMINI: mevcut canlı ses hattı (relay üzerinden; bozulmaz, dokunulmadı).
  *  - YEREL (yerel düğüm): LAN'daki OpenAI-uyumlu uç (`/v1/chat/completions`,
  *    `GET /v1/models`). Model registry: GLM-5.3-Flash-EXL3 (K19, canlı doğrulama)
- *    (yerel düğüm 192.0.2.11:8888 — canlı ölçümle doğrulandı).
+ *    (yerel düğüm 192.168.140.20:8888 — canlı ölçümle doğrulandı).
  *
  * Model kilidi kuralı (kullanıcı onaylı, kalıcı): kullanıcı YEREL'i seçtiyse
  * bağlantı kopması / model adı farkı halinde HATA gösterilir ve YEREL'de

@@ -32,12 +32,12 @@ class VoicePrefsTest {
             voiceAutoSend = true,
             voiceEngine = "kadin",
             voiceUrl = "http://10.0.2.2:8174",
-            voiceLastOk = "http://192.0.2.10:8174",
+            voiceLastOk = "http://192.168.140.20:8174",
         ).toVoicePrefs()
         assertTrue(p.autoSend)
         assertEquals(VoiceSpeakLogic.Engine.KADIN, p.engine)
         assertEquals("http://10.0.2.2:8174", p.url)
-        assertEquals("http://192.0.2.10:8174", p.lastOk)
+        assertEquals("http://192.168.140.20:8174", p.lastOk)
     }
 
     @Test

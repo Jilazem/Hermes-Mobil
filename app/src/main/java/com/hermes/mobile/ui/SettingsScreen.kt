@@ -448,8 +448,8 @@ fun SettingsScreen(
                     TextRow(
                         S.t2("Yerel LLM adresi", "Local LLM address"),
                         S.t2(
-                            "Yerel düğüm örneği: http://192.0.2.11:8888",
-                            "Local node example: http://192.0.2.11:8888",
+                            "Yerel düğüm örneği: http://192.168.140.20:8888",
+                            "Local node example: http://192.168.140.20:8888",
                         ),
                         settings.localLlmUrl,
                     ) { v ->
@@ -2195,7 +2195,7 @@ private fun ArtemisCard(
         Spacer(Modifier.height(6.dp))
         TextRow(
             S.t2("Artemis adresi", "Artemis address"),
-            S.t2("Sunucu: http://192.0.2.10:8000 (yalnız ev ağı)", "Server: http://192.0.2.10:8000 (home network only)"),
+            S.t2("Sunucu: http://192.168.140.20:8000 (yalnız ev ağı)", "Server: http://192.168.140.20:8000 (home network only)"),
             settings.artemisUrl,
         ) { v -> onUpdate { it.copy(artemisUrl = v.trim()) } }
         TextRow(

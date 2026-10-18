@@ -38,7 +38,7 @@ class HermesClient(private val profile: ServerProfile) {
      * sağlık süzgecinden geçerek**.
      *
      * Tur-10 (F3): eskiden her istek tüm adayları deniyordu; ölü LAN adresi
-     * (`192.0.2.10`, `192.0.2.10`) yüzünden saha logunda 140 kez
+     * (`192.168.140.20`, `192.168.140.20`) yüzünden saha logunda 140 kez
      * "unreachable" + her seferinde 8 sn bekleme vardı. Artık art arda
      * başarısız olan adres [AddressHealth] tarafından kısa süre devre dışı
      * bırakılıyor ve deneme **tek sağlıklı adres** üzerinden yapılıyor.

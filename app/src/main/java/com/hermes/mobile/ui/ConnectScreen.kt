@@ -256,7 +256,7 @@ fun ProfileEditorDialog(
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(S.t2("Adres", "Address")) },
-                    placeholder = { Text("http://192.0.2.10:9150") },
+                    placeholder = { Text("http://192.168.140.20:9150") },
                     singleLine = true,
                 )
                 OutlinedTextField(

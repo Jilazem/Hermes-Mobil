@@ -16,17 +16,17 @@ class ServerUrlCleanTest {
 
     @Test
     fun `dis adresteki profile sorgusu atilir`() {
-        val p = profil("http://192.0.2.10:9150", "https://hermes.example.com/?profile=default")
+        val p = profil("http://192.168.140.20:9150", "https://hermes.example.com/?profile=default")
         assertEquals("https://hermes.example.com", p.normalizedRemote)
         assertEquals(
-            listOf("http://192.0.2.10:9150", "https://hermes.example.com"),
+            listOf("http://192.168.140.20:9150", "https://hermes.example.com"),
             p.candidates,
         )
     }
 
     @Test
     fun `taban adreste sorgu ve parca atilir`() {
-        assertEquals("http://192.0.2.10:9150", profil("http://192.0.2.10:9150/?profile=default").normalizedUrl)
+        assertEquals("http://192.168.140.20:9150", profil("http://192.168.140.20:9150/?profile=default").normalizedUrl)
         assertEquals("https://h.tld", profil("https://h.tld/#/chat").normalizedUrl)
         assertEquals("https://h.tld/hermes", profil("https://h.tld/hermes/?x=1").normalizedUrl)
     }

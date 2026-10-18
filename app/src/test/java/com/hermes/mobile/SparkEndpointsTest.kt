@@ -26,8 +26,8 @@ class SparkEndpointsTest {
 
     @Test
     fun `ev agi adresi dogrudan 5555 portuna gider`() {
-        val p = profile("http://192.0.2.10:9150")
-        assertEquals(listOf("http://192.0.2.10:5555"), SparkEndpoints.candidates(p))
+        val p = profile("http://192.168.140.20:9150")
+        assertEquals(listOf("http://192.168.140.20:5555"), SparkEndpoints.candidates(p))
     }
 
     @Test
@@ -38,25 +38,25 @@ class SparkEndpointsTest {
 
     @Test
     fun `LAN sonra uzak - sira korunur`() {
-        val p = profile("http://192.0.2.10:9150", remote = "https://hermes.example.pro")
+        val p = profile("http://192.168.140.20:9150", remote = "https://hermes.example.pro")
         assertEquals(
-            listOf("http://192.0.2.10:5555", "https://hermes.example.pro/spark-api"),
+            listOf("http://192.168.140.20:5555", "https://hermes.example.pro/spark-api"),
             SparkEndpoints.candidates(p),
         )
     }
 
     @Test
     fun `calisan adres one alinir`() {
-        val p = profile("http://192.0.2.10:9150", remote = "https://hermes.example.pro")
+        val p = profile("http://192.168.140.20:9150", remote = "https://hermes.example.pro")
         assertEquals(
-            listOf("https://hermes.example.pro/spark-api", "http://192.0.2.10:5555"),
+            listOf("https://hermes.example.pro/spark-api", "http://192.168.140.20:5555"),
             SparkEndpoints.candidates(p, preferred = "https://hermes.example.pro/spark-api"),
         )
     }
 
     @Test
     fun `ayardaki acik adres tek basina kazanir`() {
-        val p = profile("http://192.0.2.10:9150", remote = "https://hermes.example.pro")
+        val p = profile("http://192.168.140.20:9150", remote = "https://hermes.example.pro")
         assertEquals(
             listOf("http://10.0.0.9:5555"),
             SparkEndpoints.candidates(p, explicit = "http://10.0.0.9:5555/"),
@@ -65,18 +65,18 @@ class SparkEndpointsTest {
 
     @Test
     fun `turetilmis bicimde verilen son calisan adres de one alinir`() {
-        val p = profile("http://192.0.2.10:9150", remote = "https://hermes.example.pro")
+        val p = profile("http://192.168.140.20:9150", remote = "https://hermes.example.pro")
         // LAN biçimi
         assertEquals(
-            listOf("http://192.0.2.10:5555", "https://hermes.example.pro/spark-api"),
-            SparkEndpoints.candidates(p, preferred = "http://192.0.2.10:5555"),
+            listOf("http://192.168.140.20:5555", "https://hermes.example.pro/spark-api"),
+            SparkEndpoints.candidates(p, preferred = "http://192.168.140.20:5555"),
         )
     }
 
     @Test
     fun `ayni host iki kez uretilmez`() {
-        val p = profile("http://192.0.2.10:9150", remote = "http://192.0.2.10:9150")
-        assertEquals(listOf("http://192.0.2.10:5555"), SparkEndpoints.candidates(p))
+        val p = profile("http://192.168.140.20:9150", remote = "http://192.168.140.20:9150")
+        assertEquals(listOf("http://192.168.140.20:5555"), SparkEndpoints.candidates(p))
     }
 
     @Test
@@ -93,7 +93,7 @@ class SparkEndpointsTest {
     @Test
     fun `404 sparkDash ucu yok der`() {
         val msg = SparkEndpoints.describe(
-            listOf(SparkEndpoints.Attempt("http://192.0.2.10:5555", 404, "{}")),
+            listOf(SparkEndpoints.Attempt("http://192.168.140.20:5555", 404, "{}")),
             t,
         )
         assertTrue("404 için uç yok denmeli: $msg", msg.contains("sparkDash"))
@@ -104,7 +104,7 @@ class SparkEndpointsTest {
     fun `hicbiri ulasilamazsa adres ipucu verir`() {
         val msg = SparkEndpoints.describe(
             listOf(
-                SparkEndpoints.Attempt("http://192.0.2.10:5555", -1, "timeout"),
+                SparkEndpoints.Attempt("http://192.168.140.20:5555", -1, "timeout"),
                 SparkEndpoints.Attempt("https://hermes.example.pro/spark-api", -1, "no route"),
             ),
             t,
@@ -124,7 +124,7 @@ class SparkEndpointsTest {
     fun `karisik hata durumunda kapı hatasi oncelikli`() {
         val msg = SparkEndpoints.describe(
             listOf(
-                SparkEndpoints.Attempt("http://192.0.2.10:5555", -1, "timeout"),
+                SparkEndpoints.Attempt("http://192.168.140.20:5555", -1, "timeout"),
                 SparkEndpoints.Attempt("https://hermes.example.pro/spark-api", 403, "forbidden"),
             ),
             t,

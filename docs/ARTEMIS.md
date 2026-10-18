@@ -4,7 +4,7 @@
 kullanan bir yapay zekâ ajanıdır: ekranı görür, dokunur, yazar, uygulamalar
 arasında geçiş yapar (AndroidWorld testinde %99+ başarı).
 
-**Önemli:** Artemis telefonda değil, **sunucuda** (ör. `192.0.2.10`)
+**Önemli:** Artemis telefonda değil, **sunucuda** (ör. `192.168.140.20`)
 çalışır ve telefona **ADB** (kablosuz hata ayıklama) ile bağlanır.
 Hermes Mobil V3 ona `/telefon <görev>` komutuyla görev gönderir.
 
@@ -14,7 +14,7 @@ Telefon (Hermes V3)  ──/telefon görev──►  Artemis (sunucu :8000)
        └──────── ADB (kablosuz hata ayıklama) ──┘
 ```
 
-## 1. Sunucuya kurulum (192.0.2.10)
+## 1. Sunucuya kurulum (192.168.140.20)
 
 ```bash
 git clone https://github.com/google/artemis.git && cd artemis
@@ -41,8 +41,8 @@ ARTEMIS_HELPER_AUTO_INSTALL=true  # küçük erişilebilirlik yardımcısını k
 3. Sunucuda, ekrandaki IP:port ve kodla:
 
 ```bash
-adb pair 192.0.2.50:37xxx     # eşleme portu + 6 haneli kod
-adb connect 192.0.2.50:4xxxx  # "IP adresi ve bağlantı noktası" satırındaki port
+adb pair 192.168.140.50:37xxx     # eşleme portu + 6 haneli kod
+adb connect 192.168.140.50:4xxxx  # "IP adresi ve bağlantı noktası" satırındaki port
 adb devices                      # telefon "device" olarak görünmeli
 ```
 
@@ -60,8 +60,8 @@ Artemis'in kendi parola koruması **yok**. Bu yüzden 8000 portunu modemden
 
 ## 4. Uygulamada
 
-- Ayarlar → **Artemis** kartı → adres `http://192.0.2.10:8000` →
-  **"Bağlantıyı dene"**. Telefonun seri numarasını (`192.0.2.50:4xxxx`)
+- Ayarlar → **Artemis** kartı → adres `http://192.168.140.20:8000` →
+  **"Bağlantıyı dene"**. Telefonun seri numarasını (`192.168.140.50:4xxxx`)
   görmelisin.
 - Sohbette:
   - `/telefon Ayarlar'ı aç, pil yüzdesini söyle`

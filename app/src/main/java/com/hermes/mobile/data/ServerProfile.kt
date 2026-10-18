@@ -21,7 +21,7 @@ private fun String.toWs(): String = this
 data class ServerProfile(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
-    /** Örn. "http://192.0.2.10:9150" — sondaki eğik çizgi olmadan. */
+    /** Örn. "http://192.168.140.20:9150" — sondaki eğik çizgi olmadan. */
     val baseUrl: String,
     /** HERMES_DASHBOARD_SESSION_TOKEN (token modu). */
     val token: String,

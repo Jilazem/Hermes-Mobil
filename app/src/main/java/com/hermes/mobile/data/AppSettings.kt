@@ -96,7 +96,7 @@ data class AppSettings(
      * Yerel LLM adresi (tur-21) — yerel düğüm varsayılanı; ağ değişirse buradan
      * düzeltilir. Boşsa yerel seçenek "adres girilmedi" hatası verir.
      */
-    val localLlmUrl: String = "http://192.0.2.11:8888",
+    val localLlmUrl: String = "http://192.168.140.20:8888",
     /** Yerel model adı (registry boşlukları için elle düzeltme kapısı). */
     val localLlmModel: String = "",
     /**
@@ -311,7 +311,7 @@ data class AppSettings(
      * "/telefon <görev>" bu adrese gider; Artemis telefonu kablosuz ADB ile
      * kullanır. Boşsa özellik kapalı.
      */
-    val artemisUrl: String = "http://192.0.2.10:8000",
+    val artemisUrl: String = "http://192.168.140.20:8000",
     /**
      * Ajan (Telegram/cron/sohbet/Android Auto yanıtı) senin adına sohbetlere
      * yanıt gönderebilsin mi (`phone_reply`). Geri alınamaz bir eylem olduğu

@@ -15,7 +15,7 @@ import org.junit.Test
  */
 class AddressHealthTest {
 
-    private val lan = "http://192.0.2.10:9150"
+    private val lan = "http://192.168.140.20:9150"
     private val remote = "https://hermes.example.pro"
 
     @After

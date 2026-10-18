@@ -96,12 +96,12 @@ class ShareUploadPlanTest {
     fun `normalizedUrl truth table`() {
         // Denetmen3 m2: sema-eksik çökme düzeltmesinin masası (4 satır).
         val bare = ServerProfile(name = "x", token = "t", baseUrl = "10.0.2.2:9199")
-        val http = ServerProfile(name = "x", token = "t", baseUrl = "http://192.0.2.10:9150")
+        val http = ServerProfile(name = "x", token = "t", baseUrl = "http://192.168.140.20:9150")
         val https = ServerProfile(name = "x", token = "t", baseUrl = "https://tunnel.example")
         val upper = ServerProfile(name = "x", token = "t", baseUrl = "HTTPS://Tunnel.Example")
         val empty = ServerProfile(name = "x", token = "t", baseUrl = "   ")
         assertEquals("semasiz -> http on-eki", "http://10.0.2.2:9199", bare.normalizedUrl)
-        assertEquals("http dokunulmaz", "http://192.0.2.10:9150", http.normalizedUrl)
+        assertEquals("http dokunulmaz", "http://192.168.140.20:9150", http.normalizedUrl)
         assertEquals("https korunur (downgrade YOK)", "https://tunnel.example", https.normalizedUrl)
         assertEquals("buyuk harf https de korunur", "HTTPS://Tunnel.Example", upper.normalizedUrl)
         assertEquals("bos -> bos", "", empty.normalizedUrl)
