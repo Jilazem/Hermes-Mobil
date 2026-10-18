@@ -143,7 +143,7 @@ fun topicFromPreview(raw: String?, maxLen: Int = 40): String =
     meaningfulPreview(raw, maxLen)
 
 /**
- * Kişi/kanal/kaynak adı — KONU değildir (boss: "Gökhan Uzman" başlık olmasın).
+ * Kişi/kanal/kaynak adı — KONU değildir (bir kişi adı başlık olarak kalmamalı).
  * Telegram `display_name` alanı buraya düşer; kart konu bulamazsa bir sonraki
  * kurala (ilk anlamlı kullanıcı cümlesi → zaman damgası) geçer.
  */
@@ -163,7 +163,7 @@ fun isGenericIdentityTitle(title: String?): Boolean {
 }
 
 private val GENERIC_IDENTITIES = setOf(
-    "gökhan uzman", "gokhan uzman", "gökhan", "gokhan",
+    "örnek kullanıcı", "ornek kullanici", "örnek kişi",
     "user", "kullanıcı", "kullanici", "me", "ben",
     "hermes", "hermes agent", "hermes mobil", "hermes mobile",
     "unknown", "bilinmiyor", "null", "none", "default", "varsayılan",

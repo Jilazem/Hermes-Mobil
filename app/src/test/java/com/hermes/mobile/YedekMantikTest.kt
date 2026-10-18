@@ -30,10 +30,10 @@ class YedekMantikTest {
     private fun profil(id: String = "p1") = ServerProfile(
         id = id,
         name = "Hermes (ev)",
-        baseUrl = "http://192.168.1.101:9150",
+        baseUrl = "http://192.0.2.10:9150",
         token = sifir,
         note = "ev sunucusu",
-        remoteUrl = "https://hermes.example.keenetic.pro",
+        remoteUrl = "https://hermes.example.com",
         geminiApiKey = "GIZLI-GEMINI-456",
     )
 

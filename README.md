@@ -194,7 +194,7 @@ written to plain files and nothing is committed to this repo.
 
 ### On your home network
 
-Enter the server's LAN address, for example `http://192.168.1.10:9150`, plus
+Enter the server's LAN address, for example `http://192.0.2.10:9150`, plus
 its session token. Plain HTTP is allowed for private addresses and rejected
 for public hosts.
 

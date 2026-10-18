@@ -71,7 +71,7 @@ class CarMessagingProofActivity : ComponentActivity() {
                 if (testReply) {
                     val fill = Intent()
                     val remote = Bundle().apply { putCharSequence(ReplyService.KEY_REPLY,
-                        "Bu sadece selamlaşma; hiçbir araç kullanma, komut çalıştırma veya inceleme yapma. Yalnızca şu iki kısa cümleyi söyle: Merhaba Gökhan. Seni duyuyorum.") }
+                        "Bu sadece selamlaşma; hiçbir araç kullanma, komut çalıştırma veya inceleme yapma. Yalnızca şu iki kısa cümleyi söyle: Merhaba dünya. Seni duyuyorum.") }
                     RemoteInput.addResultsToIntent(checkNotNull(action.remoteInputs), fill, remote)
                     checkNotNull(action.actionIntent).send(this@CarMessagingProofActivity, 0, fill)
                     step("PASS actual reply PendingIntent sent; waiting for complete answer and EMA")
@@ -84,7 +84,7 @@ class CarMessagingProofActivity : ComponentActivity() {
                             val messages = updated?.notification?.let(NotificationCompat.MessagingStyle::extractMessagingStyleFromNotification)?.messages
                             val answer = messages?.lastOrNull()?.text?.toString().orEmpty()
                             if (answer != "Hermes araç mesajlaşma denemesi hazır." && answer.isNotBlank()) {
-                                check(answer.contains("Merhaba Gökhan") && answer.contains("Seni duyuyorum", ignoreCase = true))
+                                check(answer.contains("Merhaba dünya") && answer.contains("Seni duyuyorum", ignoreCase = true))
                                 check(!answer.contains("EMA okuyamadı"))
                                 step("PASS full two-sentence gateway response and foreground EMA playback completed")
                                 break

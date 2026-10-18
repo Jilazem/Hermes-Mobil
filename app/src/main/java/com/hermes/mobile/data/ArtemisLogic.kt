@@ -12,7 +12,7 @@ import kotlinx.serialization.json.intOrNull
 /**
  * Google Artemis (github.com/google/artemis) istemcisinin SAF çekirdeği.
  *
- * Artemis telefonda değil sunucuda (ör. 192.168.1.101) koşar ve telefonu
+ * Artemis telefonda değil sunucuda (ör. 192.0.2.10) koşar ve telefonu
  * ADB ile (USB ya da kablosuz hata ayıklama) bir insan gibi kullanır: ekranı
  * görür, dokunur, yazar, uygulamalar arası iş yapar. Bu dosya yalnız sözleşme
  * kurallarını tutar (resmî `artemis-client` Python paketiyle aynı): hangi

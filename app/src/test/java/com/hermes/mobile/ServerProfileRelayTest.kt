@@ -17,7 +17,7 @@ class ServerProfileRelayTest {
 
     @Test
     fun `ev agindan dogrudan role portuna gider`() {
-        assertEquals("ws://192.168.1.10:9170", profil("http://192.168.1.10:9150").effectiveRelayUrl)
+        assertEquals("ws://192.0.2.10:9170", profil("http://192.0.2.10:9150").effectiveRelayUrl)
         assertEquals("ws://10.0.0.20:9170", profil("http://10.0.0.20:9150").effectiveRelayUrl)
         assertEquals("ws://172.16.0.3:9170", profil("http://172.16.0.3:9150").effectiveRelayUrl)
         assertEquals("ws://localhost:9170", profil("http://localhost:9150").effectiveRelayUrl)
@@ -44,8 +44,8 @@ class ServerProfileRelayTest {
     @Test
     fun `elle girilen adres her seyi ezer`() {
         assertEquals(
-            "ws://192.168.1.50:9999",
-            profil("https://hermes.ornek.tld", relay = "ws://192.168.1.50:9999/").effectiveRelayUrl,
+            "ws://192.0.2.50:9999",
+            profil("https://hermes.ornek.tld", relay = "ws://192.0.2.50:9999/").effectiveRelayUrl,
         )
     }
 

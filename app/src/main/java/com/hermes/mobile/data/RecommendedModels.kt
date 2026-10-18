@@ -40,11 +40,11 @@ val RECOMMENDED_MODELS: List<RecommendedModel> = listOf(
         "cli-bridge", "gemini-flash", "Gemini Flash (Antigravity)", 8.7,
         tr("Uzun bağlam · CLI köprüsü", "Long context · CLI bridge"),
     ),
-    // İkinci the server (node2, node-b) üzerinde vLLM ile koşuyor. İnternete hiç
+    // İkincisi ayrı bir sunucu düğümünde vLLM ile koşuyor. İnternete hiç
     // çıkmıyor, kota ve ücret yok — gizli veriyle çalışırken tercih edilmeli.
     //
     // Aynı model Hermes'te üç yoldan tanımlıydı; ikisi temizlendi:
-    //   · `laguna-node2` — aynı uç noktaya bakıyordu ama 262k bağlam iddia
+    //   · ikincil düğüm — aynı uç noktaya bakıyordu ama 262k bağlam iddia
     //     ediyordu; vLLM gerçekte 131072 sunuyor (`max_model_len`), yani uzun
     //     bağlamda hata verecekti. Sunucu config'inden kaldırıldı.
     //   · `nous/poolside/laguna-s-2.1:free` — Nous Portal üzerinden aynı model,

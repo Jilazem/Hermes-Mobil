@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
  * sparkDash istemcisi — DGX Spark (GB10) makinelerinin canlı ölçümleri.
  *
  * sparkDash (github.com/MiaAI-Lab/sparkDash) sunucuda 5555'te koşuyor ve
- * node1/node2 kayıtlı. Buradan yalnız **okuyoruz**: makine ekleme/silme
+ * Sunucu düğümleri kayıtlı. Buradan yalnız **okuyoruz**: makine ekleme/silme
  * panonun kendi arayüzünde yapılıyor, telefondan yapılandırma değiştirmek
  * yanlışlıkla izlemeyi bozmanın kolay yolu olurdu.
  *
@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
  *    değişken Caddy'nin LaunchAgent ortamında **tanımlı değil** → hiçbir istek
  *    eşleşmiyor)
  *  - `GET /api/sparks` (panoda) → **404** (böyle bir uç yok)
- *  - `GET http://192.168.1.101:5555/api/sparks` (LAN, doğrudan) → **200** ✓
+ *  - `GET http://192.0.2.10:5555/api/sparks` (LAN, doğrudan) → **200** ✓
  *
  * Yani uygulamanın yapabileceği: **adayları sırayla denemek** (tek sağlıklı
  * adres — [SparkEndpoints]), çalışanı hatırlamak ve çalışmayan durumda

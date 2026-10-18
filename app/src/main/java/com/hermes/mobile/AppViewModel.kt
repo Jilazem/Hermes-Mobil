@@ -216,7 +216,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Bir oturumu açar ve mesaj dökümünü yükler. */
     fun openSession(session: HermesSession, liveId: String? = null) {
         // FR-001 + tur-4 (kusur C): detay başlığı `session.title`ı direkt
-        // basıyordu; Telegram oturumlarında bu KİŞİ adı ("Gökhan Uzman") oluyordu.
+        // basıyordu; Telegram oturumlarında bir KİŞİ adı başlıkta kalıyordu.
         // Başlığı açılışta okunabilir zincirden (konu > sunucu başlığı > damga)
         // çöz ve displayName olarak giydir — ekranlar başlığı kendi üretmez.
         val resolved = com.hermes.mobile.ui.readableTitle(
@@ -266,14 +266,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun seedDefaultProfileIfEmpty() {
         if (store.list().isNotEmpty()) return
-        // Ev ağında yerel sunucu (.101), dışarıda keenetic alan adı — LAN'a
+        // Örnek profil: yerel LAN adresi + dışarıda ters vekil alan adı — LAN'a
         // ulaşılamayınca otomatik olarak dış adrese düşülür (candidates).
         val server = ServerProfile(
-            name = "Hermes (ev)",
-            baseUrl = "http://192.168.1.101:9150",
-            remoteUrl = "https://hermes.winterfell07.keenetic.pro",
+            name = "Hermes (örnek)",
+            baseUrl = "http://192.0.2.10:9150",
+            remoteUrl = "https://hermes.example.com",
             token = "",
-            note = "Ev: 192.168.1.101 · Dışarıdan: hermes.winterfell07.keenetic.pro · token ~/.hermes/.env",
+            note = "Örnek profil — kendi sunucu adresinizi Ayarlar → Bağlantı'dan girin.",
         )
         store.upsert(server)
         store.setActiveId(server.id)

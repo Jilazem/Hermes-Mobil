@@ -69,14 +69,14 @@ class SessionReadableTitleTest {
 
     /**
      * Tur-4 (kusur C): Telegram `display_name` KİŞİ adıdır, KONU değildir.
-     * Boss şikâyeti: "oturum adlarından konu anlaşılmıyor, 'Gökhan Uzman' kalıyor".
+     * Şikâyet: "oturum adlarından konu anlaşılmıyor, kişi adı kalıyor".
      */
     @Test
     fun telegramKisiAdiBaslikOlmaz() {
-        val s = sess("20260911_214924_0d9ccce1", source = "telegram", displayName = "Gökhan Uzman")
+        val s = sess("20260911_214924_0d9ccce1", source = "telegram", displayName = "Örnek Kullanıcı")
         val t = readableTitle(s, SessionFlags(), cronNames)
         assertEquals("Sohbet · 11.09 21:49", t)
-        assertFalse("kişi adı başlık olamaz", t.contains("Gökhan Uzman"))
+        assertFalse("kişi adı başlık olamaz", t.contains("Örnek Kullanıcı"))
     }
 
     /** Sunucu başlığı ANLAMLI ise konu odur (kişi adından önce gelir). */
@@ -85,7 +85,7 @@ class SessionReadableTitleTest {
         val s = HermesSession(
             id = "20260911_214924_0d9ccce1",
             source = "telegram",
-            displayName = "Gökhan Uzman",
+            displayName = "Örnek Kullanıcı",
             serverTitle = "Korkuteli 112 ada 7 parsel değer",
         )
         assertEquals("Korkuteli 112 ada 7 parsel değer", readableTitle(s, SessionFlags(), cronNames))
@@ -163,16 +163,16 @@ class SessionReadableTitleTest {
     }
 
     /**
-     * Tur-4 (kusur C): gateway canlı başlığı KİŞİ adıysa ("Gökhan Uzman") konu
+     * Tur-4 (kusur C): gateway canlı başlığı KİŞİ adıysa ("Örnek Kullanıcı") konu
      * sayılmaz — damga tabanına düşer.
      */
     @Test
     fun canliKisiAdiBaslikOlmaz() {
-        val l = live("538fa088", title = "Gökhan Uzman", key = "20260913_184051_52f76a")
+        val l = live("538fa088", title = "Örnek Kullanıcı", key = "20260913_184051_52f76a")
         val rest = sess("20260913_184051_52f76a", source = "telegram")
         val t = liveSessionTitle(l, rest, SessionFlags(), cronNames)
         assertEquals("Sohbet · 13.09 18:40", t)
-        assertFalse(t.contains("Gökhan Uzman"))
+        assertFalse(t.contains("Örnek Kullanıcı"))
     }
 
     /** Canlı oturumun REST karşılığı hiç yoksa bile ham süreç içi id düşmez. */

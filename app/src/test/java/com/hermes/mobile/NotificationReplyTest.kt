@@ -17,7 +17,7 @@ class NotificationReplyTest {
         assertFalse(reply.accept(event("message.delta", "Gökhan.")))
         assertNull(reply.result)
         assertTrue(reply.accept(event("message.complete")))
-        assertEquals("Merhaba Gökhan.", reply.result)
+        assertEquals("Merhaba dünya.", reply.result)
     }
     @Test fun `completion text works without deltas and is not duplicated`() {
         val reply = NotificationReply("chat")

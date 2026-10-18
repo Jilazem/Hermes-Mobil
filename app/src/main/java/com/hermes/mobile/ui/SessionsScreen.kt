@@ -155,7 +155,7 @@ data class SessionTopic(val text: String, val kind: TopicKind)
  * 6. "Sohbet · gg.AA ss:dd" (damga çözülebiliyorsa),
  * 7. "Sohbet".
  *
- * Kişi/kanal adı ("Gökhan Uzman"), kaynak adı ("Telegram", "Masaüstü") ve ham
+ * Kişi/kanal adı ("Örnek Kullanıcı"), kaynak adı ("Telegram", "Masaüstü") ve ham
  * makine çıktısı (JSON/tool/cron sistem metni) KONU SAYILMAZ; ham session id'si
  * bu fonksiyondan birincil başlık olarak ASLA çıkamaz.
  * Saf fonksiyon — Compose'suz test edilebilir.

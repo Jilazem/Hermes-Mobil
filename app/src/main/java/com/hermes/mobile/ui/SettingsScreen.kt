@@ -370,7 +370,7 @@ fun SettingsScreen(
             }
 
             // ── Sesli asistan beyni (tur-21 model seçici) ─────────────────
-            // Segment: [Yerel (node1)] [Gemini]. Seçim kalıcı (AppSettings).
+            // Segment: [Yerel düğüm] [Gemini]. Seçim kalıcı (AppSettings).
             // Yerel seçiliyken durum noktası GERÇEK health-check ile dolar;
             // koparsa hata tooltip'i net — sessiz Gemini geçişi YOK (kilit).
             item {
@@ -387,9 +387,9 @@ fun SettingsScreen(
                     )
                     Text(
                         S.t2(
-                            "Yerel seçimde sohbet node1'den geçer; bağlantı koparsa " +
+                            "Yerel seçimde sohbet yerel düğümden geçer; bağlantı koparsa " +
                                 "hata gösterilir, sessiz Gemini'ye DÖNÜLMEZ.",
-                            "When local is selected chat goes through node1; on disconnect an " +
+                            "When local is selected chat goes through the local node; on disconnect an " +
                                 "error is shown — there is NO silent switch to Gemini.",
                         ),
                         color = HermesColors.TextMuted,
@@ -448,8 +448,8 @@ fun SettingsScreen(
                     TextRow(
                         S.t2("Yerel LLM adresi", "Local LLM address"),
                         S.t2(
-                            "node1 örneği: http://192.168.1.99:8888",
-                            "node1 example: http://192.168.1.99:8888",
+                            "Yerel düğüm örneği: http://192.0.2.11:8888",
+                            "Local node example: http://192.0.2.11:8888",
                         ),
                         settings.localLlmUrl,
                     ) { v ->
@@ -729,7 +729,7 @@ fun SettingsScreen(
             item {
                 SwitchRow(
                     S.t2("DGX Spark panelini göster", "Show the DGX Spark panel"),
-                    "node1 ve node2'nin GPU/CPU/bellek durumu Pano'da görünür",
+                    "Sunucu düğümlerinin GPU/CPU/bellek durumu Pano'da görünür",
                     settings.sparkEnabled,
                 ) { v -> onUpdate { it.copy(sparkEnabled = v) } }
             }
@@ -2195,7 +2195,7 @@ private fun ArtemisCard(
         Spacer(Modifier.height(6.dp))
         TextRow(
             S.t2("Artemis adresi", "Artemis address"),
-            S.t2("Sunucu: http://192.168.1.101:8000 (yalnız ev ağı)", "Server: http://192.168.1.101:8000 (home network only)"),
+            S.t2("Sunucu: http://192.0.2.10:8000 (yalnız ev ağı)", "Server: http://192.0.2.10:8000 (home network only)"),
             settings.artemisUrl,
         ) { v -> onUpdate { it.copy(artemisUrl = v.trim()) } }
         TextRow(
@@ -2424,10 +2424,10 @@ private fun JarvisBehaviorCard(
         Text(S.t2("Asistanın beyni", "Assistant brain"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
         Text(
             S.t2(
-                "Hermes ajanı: araçlar, hafıza, telefon kontrolü (önerilen). Yerel model: node1'deki " +
+                "Hermes ajanı: araçlar, hafıza, telefon kontrolü (önerilen). Yerel model: yerel düğümdeki " +
                     "modele doğrudan, daha hızlı ama araçsız. Telefon komutları (\"feneri aç\", " +
                     "\"Ali'ye geliyorum yaz\") her iki durumda da anında telefonda yapılır.",
-                "Hermes agent: tools, memory, phone control (recommended). Local model: straight to node1, " +
+                "Hermes agent: tools, memory, phone control (recommended). Local model: straight to the local node, " +
                     "faster but without tools. Phone commands run instantly on the phone either way.",
             ),
             color = HermesColors.TextMuted,
@@ -2443,7 +2443,7 @@ private fun JarvisBehaviorCard(
     Spacer(Modifier.height(8.dp))
     TextRow(
         S.t2("Hitap", "Form of address"),
-        S.t2("Jarvis sana böyle seslenir (ör. efendim, Gökhan Bey). Boş = hitapsız.", "How Jarvis addresses you. Empty = none."),
+        S.t2("Jarvis sana böyle seslenir (ör. efendim). Boş = hitapsız.", "How Jarvis addresses you. Empty = none."),
         settings.assistantAddress,
     ) { v -> onUpdate { it.copy(assistantAddress = v) } }
     SwitchRow(

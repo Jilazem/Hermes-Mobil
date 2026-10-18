@@ -36,7 +36,7 @@ class EmaSelfTestActivity : ComponentActivity() {
                 if (!failureOnly) {
                     check(client.health())
                     step("PASS EMA health")
-                    val wav = client.speak("Merhaba Gökhan. Hermes EMA ses denemesi.")
+                    val wav = client.speak("Merhaba dünya. Hermes EMA ses denemesi.")
                     File(filesDir, "ema-probe.wav").writeBytes(wav)
                     step("PASS WAV bytes=${wav.size}")
                     SettingsStore(this@EmaSelfTestActivity).update { it.copy(emaUrl = base, emaToken = token) }
@@ -56,7 +56,7 @@ class EmaSelfTestActivity : ComponentActivity() {
                     check(completions.get() == 0)
                     step("PASS failure reported; no completion or alternative voice")
                 } else {
-                    voice.say("Merhaba Gökhan. Yeni sesim EMA.")
+                    voice.say("Merhaba dünya. Yeni sesim EMA.")
                     voice.say("Sesli ve yazılı sohbet aynı ekranda.")
                     voice.finish(); voice.finish()
                     withTimeout(90_000) { done.await() }

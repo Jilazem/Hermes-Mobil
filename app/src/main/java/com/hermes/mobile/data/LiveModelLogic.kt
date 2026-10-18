@@ -5,9 +5,9 @@ package com.hermes.mobile.data
  *
  * İki sağlayıcı:
  *  - GEMINI: mevcut canlı ses hattı (relay üzerinden; bozulmaz, dokunulmadı).
- *  - YEREL (node1): LAN'daki OpenAI-uyumlu uç (`/v1/chat/completions`,
+ *  - YEREL (yerel düğüm): LAN'daki OpenAI-uyumlu uç (`/v1/chat/completions`,
  *    `GET /v1/models`). Model registry: GLM-5.3-Flash-EXL3 (K19, canlı doğrulama)
- *    (node1 192.168.1.99:8888 — 20.09.2026 canlı ölçümü ile doğrulandı).
+ *    (yerel düğüm 192.0.2.11:8888 — canlı ölçümle doğrulandı).
  *
  * Model kilidi kuralı (kullanıcı onaylı, kalıcı): kullanıcı YEREL'i seçtiyse
  * bağlantı kopması / model adı farkı halinde HATA gösterilir ve YEREL'de
@@ -33,7 +33,7 @@ object LiveModelLogic {
 
     /** Sağlayıcı seçenekleri (segment satırı). */
     fun options(t: (String, String) -> String): List<Pair<String, String>> = listOf(
-        Provider.YEREL.id to t("Yerel (node1)", "Local (node1)"),
+        Provider.YEREL.id to t("Yerel düğüm", "Local node"),
         Provider.GEMINI.id to "Gemini",
     )
 

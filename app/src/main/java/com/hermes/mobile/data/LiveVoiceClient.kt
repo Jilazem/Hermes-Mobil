@@ -39,7 +39,7 @@ import kotlin.math.abs
  *
  * Telefon doğrudan Google'a değil, **sunucudaki röleye** bağlanır. İki yol var
  * ve ikisi de `ServerProfile.effectiveRelayUrl` tarafından türetiliyor:
- * ev ağında `ws://192.168.1.10:9170/live?token=…` (doğrudan), dışarıdan
+ * ev ağında `ws://192.0.2.10:9170/live?token=…` (doğrudan), dışarıdan
  * `wss://<alan-adi>/live-relay/live?token=…` (Hermes'in ters vekilinde bir
  * yol; ayrı port yönlendirmesi gerekmiyor). Google API anahtarı
  * sunucuda kalır; telefonda yalnızca zaten kayıtlı olan Hermes tokeni bulunur.

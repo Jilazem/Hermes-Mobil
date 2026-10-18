@@ -80,7 +80,7 @@ object VoiceApiEndpoints {
     /**
      * Hatırlanan adresi profil biçimine döndürür.
      *
-     * `192.168.1.101:8174` → `http://192.168.1.101:9150` gibi bir profil
+     * `192.0.2.10:8174` → `http://192.0.2.10:9150` gibi bir profil
      * adresine birebir çevrilemeyeceği için yalnız **şema ve port** kırpılır;
      * kalan host [candidates] içinde profil adaylarıyla eşleşmese de ilk sırada
      * denenir (kullanıcı o adresi elle vermiş olabilir).

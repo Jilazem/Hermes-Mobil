@@ -57,7 +57,7 @@ fun EmaSettingsCard(settings:AppSettings,onUpdate:((AppSettings)->AppSettings)->
                         voice=EmaVoice(context,EmaOfflineSpeech(context)).also { v ->
                             v.onDone={ message="Çevrimdışı ses denemesi tamamlandı." }
                             v.onError={ message=it }
-                            v.say("Merhaba Gökhan. Ben Hermes. Bu sesi telefonunda, internet olmadan üretiyorum."); v.finish()
+                            v.say("Merhaba dünya. Ben Hermes. Bu sesi telefonunda, internet olmadan üretiyorum."); v.finish()
                         }
                     }) { Text("Sesi dene") }
                     OutlinedButton(onClick={ voice?.release(); voice=null }) { Text("Durdur") }

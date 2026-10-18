@@ -102,8 +102,8 @@ private fun hintFor(section: PanelSection): String = when (section) {
         "Slash command, or a task for the agent",
     )
     PanelSection.Spark -> S.t2(
-        "node1 · node2 — GPU, CPU, bellek, sıcaklık",
-        "node1 · node2 — GPU, CPU, memory, temps",
+        "Sunucu düğümleri — GPU, CPU, bellek, sıcaklık",
+        "Server nodes — GPU, CPU, memory, temps",
     )
     PanelSection.Files -> S.t2(
         "Yönetilen kökteki dosyalar — dokun, aç",
@@ -261,7 +261,7 @@ private fun SectionMenu(onOpen: (PanelSection) -> Unit, sparkEnabled: Boolean) {
 }
 
 /**
- * DGX Spark kartları — node1 / node2.
+ * DGX Spark kartları — sunucu düğümleri.
  *
  * Ölçümler sparkDash'ten geliyor; burada yalnız okunuyor. Sıcaklık ve kullanım
  * renkleri eşiklere göre: GB10'da 80°C üstü dikkat gerektiriyor.

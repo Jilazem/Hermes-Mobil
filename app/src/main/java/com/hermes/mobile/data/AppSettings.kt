@@ -88,15 +88,15 @@ data class AppSettings(
     // ── Canlı ses ────────────────────────────────────────────────────
     /**
      * Sesli asistan beyni (tur-21 model seçici): `gemini` (varsayılan, mevcut
-     * canlı ses hattı) ya da `yerel` (node1 OpenAI-uyumlu uç — LAN).
+     * canlı ses hattı) ya da `yerel` (LAN'daki OpenAI-uyumlu uç).
      * Çözümleyici: [com.hermes.mobile.data.LiveModelLogic.Provider.fromId].
      */
     val liveProvider: String = "gemini",
     /**
-     * Yerel LLM adresi (tur-21) — node1 varsayılanı; ağ değişirse buradan
+     * Yerel LLM adresi (tur-21) — yerel düğüm varsayılanı; ağ değişirse buradan
      * düzeltilir. Boşsa yerel seçenek "adres girilmedi" hatası verir.
      */
-    val localLlmUrl: String = "http://192.168.1.99:8888",
+    val localLlmUrl: String = "http://192.0.2.11:8888",
     /** Yerel model adı (registry boşlukları için elle düzeltme kapısı). */
     val localLlmModel: String = "",
     /**
@@ -311,7 +311,7 @@ data class AppSettings(
      * "/telefon <görev>" bu adrese gider; Artemis telefonu kablosuz ADB ile
      * kullanır. Boşsa özellik kapalı.
      */
-    val artemisUrl: String = "http://192.168.1.101:8000",
+    val artemisUrl: String = "http://192.0.2.10:8000",
     /**
      * Ajan (Telegram/cron/sohbet/Android Auto yanıtı) senin adına sohbetlere
      * yanıt gönderebilsin mi (`phone_reply`). Geri alınamaz bir eylem olduğu
@@ -323,7 +323,7 @@ data class AppSettings(
     val mirrorPauseWhileDriving: Boolean = true,
 
     // ── Jarvis sesli asistan (V3) ──────────────────────────────────────
-    /** Beyin: "hermes" (ajan — araçlar, hafıza) ya da "yerel" (node1 LLM, hızlı). */
+    /** Beyin: "hermes" (ajan — araçlar, hafıza) ya da "yerel" (LAN LLM, hızlı). */
     val assistantBrain: String = "hermes",
     /** Asistan sesi motoru: "android" (telefon TTS, anında) | "yerel" | "kahya" | "kadin" | "chatterbox". */
     val assistantVoiceEngine: String = "android",
@@ -335,7 +335,7 @@ data class AppSettings(
     val assistantPitch: Float = 1.0f,
     /** Yanıttan sonra kendiliğinden yeniden dinle (sürekli sohbet). */
     val assistantContinuous: Boolean = true,
-    /** Hitap ("efendim", "Gökhan Bey"…). Boşsa hitap yok. */
+    /** Hitap ("efendim" gibi). Boşsa hitap yok. */
     val assistantAddress: String = "efendim",
     /** "Ekranda ne var / bunu özetle" sorularında ekran metnini ajana ekle. */
     val assistantScreenContext: Boolean = true,

@@ -18,8 +18,8 @@ class DirtySchemeTest {
     @Test
     fun `kirli httphttp temizlenir`() {
         assertEquals(
-            "http://192.168.1.101:9150",
-            norm("httphttp://192.168.1.101:9150"),
+            "http://192.0.2.10:9150",
+            norm("httphttp://192.0.2.10:9150"),
         )
     }
 
@@ -34,8 +34,8 @@ class DirtySchemeTest {
     @Test
     fun `sonundaki kirli sema kalintisi ve kirmalar temizlenir`() {
         assertEquals(
-            "http://192.168.1.101:9150",
-            norm("httphttp://192.168.1.101:9150://"),
+            "http://192.0.2.10:9150",
+            norm("httphttp://192.0.2.10:9150://"),
         )
     }
 

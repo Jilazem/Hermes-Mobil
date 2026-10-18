@@ -92,7 +92,7 @@ class LiveModelChoiceTest {
     fun `registry sozlesmesi — beklenen model esleşirse secilir`() {
         // K19: null istek DEFAULT_MODEL'e düşer — düğümün gerçekten
         // servis ettiği id ile birebir olmalı (18.10.2026 /v1/models kanıtı:
-        // 127.0.0.1:8888 ve 192.168.1.99:8888 → GLM-5.3-Flash-EXL3).
+        // 127.0.0.1:8888 ve 192.0.2.11:8888 → GLM-5.3-Flash-EXL3).
         val json = """{"object":"list","data":[{"id":"GLM-5.3-Flash-EXL3","object":"model"}]}"""
         val served = LocalModelLogic.parseServedId(json)
         assertEquals("GLM-5.3-Flash-EXL3", served)
@@ -110,8 +110,8 @@ class LiveModelChoiceTest {
 
     @Test
     fun `bos model listesi mesaji denenen adresi icerir`() {
-        val msg = LocalModelLogic.emptyModelListMessage("http://192.168.1.99:8888/v1/models") { tr, _ -> tr }
-        assertTrue(msg.contains("http://192.168.1.99:8888/v1/models"))
+        val msg = LocalModelLogic.emptyModelListMessage("http://192.0.2.11:8888/v1/models") { tr, _ -> tr }
+        assertTrue(msg.contains("http://192.0.2.11:8888/v1/models"))
         assertTrue(msg.contains("boş"))
     }
 
@@ -146,8 +146,8 @@ class LiveModelChoiceTest {
 
     @Test
     fun `ulasilamama satiri adresi ve aksiyonu soyler`() {
-        val m = LocalModelLogic.unreachableMessage("http://192.168.1.99:8888/v1/models", "connect refused", t)
-        assertTrue(m.contains("192.168.1.99"))
+        val m = LocalModelLogic.unreachableMessage("http://192.0.2.11:8888/v1/models", "connect refused", t)
+        assertTrue(m.contains("192.0.2.11"))
         assertTrue(m.contains("aynı ağda"))
     }
 

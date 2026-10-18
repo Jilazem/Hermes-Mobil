@@ -26,8 +26,8 @@ class ArtemisLogicTest {
 
     @Test
     fun `cihaz listesi iki bicim`() {
-        val a = ArtemisLogic.parseDevices(Json.parseToJsonElement("""[{"serial":"192.168.1.50:37123","state":"device","model":"Pixel"}]"""))
-        assertEquals("192.168.1.50:37123", a.single().serial)
+        val a = ArtemisLogic.parseDevices(Json.parseToJsonElement("""[{"serial":"192.0.2.50:37123","state":"device","model":"Pixel"}]"""))
+        assertEquals("192.0.2.50:37123", a.single().serial)
         val b = ArtemisLogic.parseDevices(Json.parseToJsonElement("""{"devices":[{"device_serial":"emulator-5554","status":"BUSY"},{"state":"device"}]}"""))
         assertEquals(1, b.size)
         assertTrue(b.single().busy)
@@ -36,11 +36,11 @@ class ArtemisLogicTest {
     @Test
     fun `cihaz secimi tahmin yurutmez`() {
         val d = listOf(
-            ArtemisLogic.Device("192.168.1.50:37123", "device", null, false),
+            ArtemisLogic.Device("192.0.2.50:37123", "device", null, false),
             ArtemisLogic.Device("emulator-5554", "device", null, false),
         )
-        assertEquals("elle", ArtemisLogic.pickDevice(d, "elle", "192.168.1.50"))
-        assertEquals("192.168.1.50:37123", ArtemisLogic.pickDevice(d, "", "192.168.1.50"))
+        assertEquals("elle", ArtemisLogic.pickDevice(d, "elle", "192.0.2.50"))
+        assertEquals("192.0.2.50:37123", ArtemisLogic.pickDevice(d, "", "192.0.2.50"))
         assertNull(ArtemisLogic.pickDevice(d, "", "10.0.0.9"))
         assertEquals("emulator-5554", ArtemisLogic.pickDevice(d.drop(1), "", null))
     }

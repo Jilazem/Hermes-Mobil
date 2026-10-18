@@ -80,7 +80,7 @@ class SessionCardTopicTest {
         val s = sess(
             "20260914_202501_abc123",
             source = "telegram",
-            preview = """{"status": "success", "output": "=== ESBLESME: /Users/gokhan/rapor len 11050"}""",
+            preview = """{"status": "success", "output": "=== ESBLESME: /Users/ornek/rapor len 11050"}""",
         )
         val t = readableTitle(s, SessionFlags(), emptyMap())
         assertEquals("Sohbet · 14.09 20:25", t)

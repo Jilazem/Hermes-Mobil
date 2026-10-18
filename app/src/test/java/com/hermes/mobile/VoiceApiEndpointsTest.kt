@@ -28,8 +28,8 @@ class VoiceApiEndpointsTest {
 
     @Test
     fun `ev agi adresi dogrudan 8174 portuna gider`() {
-        val p = profile("http://192.168.1.101:9150")
-        assertEquals(listOf("http://192.168.1.101:8174"), VoiceApiEndpoints.candidates(p))
+        val p = profile("http://192.0.2.10:9150")
+        assertEquals(listOf("http://192.0.2.10:8174"), VoiceApiEndpoints.candidates(p))
     }
 
     @Test
@@ -40,10 +40,10 @@ class VoiceApiEndpointsTest {
 
     @Test
     fun `LAN once uzak sonra - sira korunur`() {
-        val p = profile("http://192.168.1.101:9150", remote = "https://hermes.example.pro")
+        val p = profile("http://192.0.2.10:9150", remote = "https://hermes.example.pro")
         assertEquals(
             listOf(
-                "http://192.168.1.101:8174",
+                "http://192.0.2.10:8174",
                 "https://hermes.example.pro/voice-api",
             ),
             VoiceApiEndpoints.candidates(p),
@@ -52,7 +52,7 @@ class VoiceApiEndpointsTest {
 
     @Test
     fun `elle verilen adres tek basina kazanir`() {
-        val p = profile("http://192.168.1.101:9150")
+        val p = profile("http://192.0.2.10:9150")
         assertEquals(
             listOf("http://10.0.2.2:8174"),
             VoiceApiEndpoints.candidates(p, explicit = "http://10.0.2.2:8174"),
@@ -61,7 +61,7 @@ class VoiceApiEndpointsTest {
 
     @Test
     fun `elle verilen adreste sondaki egik cizgi kirpilir`() {
-        val p = profile("http://192.168.1.101:9150")
+        val p = profile("http://192.0.2.10:9150")
         assertEquals(
             listOf("http://10.0.2.2:8174"),
             VoiceApiEndpoints.candidates(p, explicit = "http://10.0.2.2:8174/"),
@@ -70,9 +70,9 @@ class VoiceApiEndpointsTest {
 
     @Test
     fun `son calisan adres ilk aday olur`() {
-        val p = profile("http://192.168.1.101:9150", remote = "https://hermes.example.pro")
+        val p = profile("http://192.0.2.10:9150", remote = "https://hermes.example.pro")
         assertEquals(
-            listOf("https://hermes.example.pro/voice-api", "http://192.168.1.101:8174"),
+            listOf("https://hermes.example.pro/voice-api", "http://192.0.2.10:8174"),
             VoiceApiEndpoints.candidates(p, preferred = "https://hermes.example.pro/voice-api"),
         )
     }
@@ -89,8 +89,8 @@ class VoiceApiEndpointsTest {
     @Test
     fun `hatirlanan 8174 adresi normalize edilir`() {
         assertEquals(
-            "http://192.168.1.101",
-            VoiceApiEndpoints.normalizePreferred("http://192.168.1.101:8174"),
+            "http://192.0.2.10",
+            VoiceApiEndpoints.normalizePreferred("http://192.0.2.10:8174"),
         )
         assertEquals(
             "https://hermes.example.pro",
@@ -107,7 +107,7 @@ class VoiceApiEndpointsTest {
 
     @Test
     fun `uc url leri dogru kurulur`() {
-        val base = "http://192.168.1.101:8174"
+        val base = "http://192.0.2.10:8174"
         assertEquals("$base/health", VoiceApiEndpoints.health(base))
         assertEquals("$base/transcribe", VoiceApiEndpoints.transcribe(base))
         assertEquals("$base/synthesize", VoiceApiEndpoints.synthesize(base))

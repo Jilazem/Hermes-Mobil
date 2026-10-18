@@ -4,7 +4,7 @@ package com.hermes.mobile.data
  * Adres sağlığı — **ölü adresin bedelini bir kez ödetir**.
  *
  * Sahada ölçülen sorun (2026-09-15 v2 logu, SM-S918B): uygulama her istekte
- * önce LAN adayını (`192.168.101.10:9150`, `192.168.1.10:9150` — ikisi de ölü)
+ * önce LAN adayını (`192.0.2.10:9150`, `192.0.2.10:9150` — ikisi de ölü)
  * deniyor, 8 sn zaman aşımına düşüyor, sonra uzak adrese geçiyordu. Log'da
  * **140 `unreachable`** satırı var; kullanıcı bunu "uygulama yavaş/bağlanmıyor"
  * olarak görüyor.

@@ -74,7 +74,7 @@ class VoiceMessageFlowTest {
             return ByteArray(64) { 7 }
         }
 
-        override val working: String = "http://192.168.1.101:8174"
+        override val working: String = "http://192.0.2.10:8174"
     }
 
     private class FakeRecorder : RecorderPort {
@@ -306,7 +306,7 @@ class VoiceMessageFlowTest {
         clock.addAndGet(2_000)
         c.holdRelease()
         waitUntil { transcripts.isNotEmpty() }
-        assertEquals("http://192.168.1.101:8174", base)
+        assertEquals("http://192.0.2.10:8174", base)
     }
 
     // ── Metin → ses → çalma ───────────────────────────────────────────
@@ -456,7 +456,7 @@ class VoiceMessageFlowTest {
         )
         val p = controller().probe()
         assertTrue(p.ok)
-        assertEquals("http://192.168.1.101:8174", p.base)
+        assertEquals("http://192.0.2.10:8174", p.base)
         assertNull(p.error)
         val tr: (String, String) -> String = { tr, _ -> tr }
         assertEquals(

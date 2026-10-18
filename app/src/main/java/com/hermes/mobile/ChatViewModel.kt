@@ -202,7 +202,7 @@ private const val QUEUE_NOTICE_KEY = "queue-notice"
 /** Devam ettirilen oturumda geri yüklenecek azami mesaj sayısı. */
 
 /**
- * Yerel modele (node1) giden istekte taşınan azami ÖNCEKİ tur sayısı (tur-27).
+ * Yerel modele (yerel düğüm) giden istekte taşınan azami ÖNCEKİ tur sayısı (tur-27).
  * Son N user/assistant balonu sohbet akışından kesilir; bu turun kendisi hariç.
  */
 private const val LOCAL_HISTORY_LIMIT = 20
@@ -780,7 +780,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     /** Tur-12: `Isıt` durumu (bölümden çıkılsa da sürer). */
     val voiceWarmState: StateFlow<VoiceStatusLogic.WarmState> = voiceMsg.warm
 
-    // ── Tur-21: yerel TTS + yerel asistan (node1) ─────────────────────
+    // ── Tur-21: yerel TTS + yerel asistan (yerel düğüm) ─────────────────────
 
     /**
      * Yerel TTS disk durumunu tarar ve indirme durum akışını günceller
@@ -871,7 +871,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Yerel asistan turu (node1) — mesaj göster, yanıtla, seslendir.
+     * Yerel asistan turu (yerel düğüm) — mesaj göster, yanıtla, seslendir.
      *
      * Hata halinde: Notice (kırmızı) + Yerel'de kal; otomatik Gemini geçişi
      * YOK. Başarıda: asistan balonu + (asistan modu + otomatik okuma açıksa)
@@ -1342,8 +1342,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             append(body)
         }.trim()
 
-        // ── Tur-21: yerel asistan (node1) — model kilidi ─────────────────
-        // Kullanıcı Ayarlar'da "Yerel (node1)"i seçtiği sürece her tur yerel
+        // ── Tur-21: yerel asistan (yerel düğüm) — model kilidi ─────────────────
+        // Kullanıcı Ayarlar'da "Yerel düğüm"ü seçtiği sürece her tur yerel
         // uçtan geçer. Hata olursa AÇIK gösterilir ve YEREL'de kalınır —
         // sessiz Gemini'ye geçiş YOK (kullanıcı onaylı geçiş, D-04/d-06
         // disiplini: hata yutulmaz, kullanıcı formatlı mesaj üretilir).

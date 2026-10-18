@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Hermes sunucuları ev ağında / Tailscale üzerinde düz HTTP konuşur
-  (the server: http://192.168.1.10:9150). Kullanıcı istediği host'u profil olarak
+  (the server: http://192.0.2.10:9150). Kullanıcı istediği host'u profil olarak
   ekleyebildiği için host listesi derleme zamanında bilinemez; bu yüzden
   cleartext genel olarak açık. Profil URL'i https ise TLS zaten kullanılır.
 -->

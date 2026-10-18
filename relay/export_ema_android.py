@@ -28,7 +28,7 @@ def main():
     torch.onnx.register_custom_op_symbolic("aten::expm1", lambda g,x: g.op("Sub",g.op("Exp",x),g.op("Constant",value_t=torch.tensor(1.0))),18)
     w=pathlib.Path(a.weights); out=pathlib.Path(a.output); out.mkdir(parents=True,exist_ok=True)
     model=load_acoustic(w/'ema.pt','cpu'); decoder=load_decoder(w/'decoder.pt','cpu'); engine=Engine(model,decoder,'cpu'); frontend=Frontend(model.vocab)
-    piece=engine.piece(frontend('Merhaba Gökhan, bugün hava çok güzel.'),0,42); engine.plan([piece],1); engine.think([piece])
+    piece=engine.piece(frontend('Merhaba dünya, bugün hava çok güzel.'),0,42); engine.plan([piece],1); engine.think([piece])
     L,T=piece.letters,piece.frames
     text_args=(piece.ids[None],torch.ones(1,L,dtype=torch.bool))
     sound_args=(piece.h[None],piece.dur[None],text_args[1],piece.cw[None],piece.wstart[None],piece.fw[None],piece.fp[None],torch.ones(1,T,dtype=torch.bool),engine.noise(piece)[None])
@@ -42,7 +42,7 @@ def main():
             onnx.checker.check_model(str(out/(name+'.onnx')))
     sessions={n:ort.InferenceSession(str(out/(n+'.onnx')),providers=['CPUExecutionProvider']) for n in ['text','sound','decoder']}
     proof=[]
-    for sentence in ['Merhaba Gökhan, bugün hava çok güzel.','İnternet olmadan da konuşabiliyorum.']:
+    for sentence in ['Merhaba dünya, bugün hava çok güzel.','İnternet olmadan da konuşabiliyorum.']:
         start=time.monotonic(); piece=engine.piece(frontend(sentence),0,42); engine.plan([piece],1); engine.think([piece]); L,T=piece.letters,piece.frames
         h,dur=sessions['text'].run(None,{'ids':piece.ids[None].numpy(),'mask':np.ones((1,L),bool)})
         counts=np.clip(np.rint(np.bincount(piece.cw.numpy(),weights=dur[0])),1,250).astype(np.int64)

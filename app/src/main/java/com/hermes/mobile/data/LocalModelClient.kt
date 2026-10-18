@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Yerel LLM karar katmanı — **saf** (Android yok, JVM testi koşar).
  *
- * Sözleşme (node1 :8888, caddy ardındaki sunucu — K19 kanıtı 16.10.2026,
+ * Sözleşme (yerel düğüm :8888, caddy ardındaki sunucu — K19 kanıtı 16.10.2026,
  * 18.10.2026 canlı /v1/models ile yeniden doğrulandı):
  *  - `GET /v1/models` → `{"data":[{"id":"GLM-5.3-Flash-EXL3",...}]}`
  *  - `POST /v1/chat/completions` → OpenAI standardı (`choices[0].message.content`).
@@ -25,7 +25,7 @@ object LocalModelLogic {
 
     /**
      * Yerli varsayılan model kimliği — düğümün /v1/models listesinden
-     * (K19; 18.10.2026 canlı doğrulama: 127.0.0.1:8888 ve 192.168.1.99:8888
+     * (K19; 18.10.2026 canlı doğrulama: 127.0.0.1:8888 ve 192.0.2.11:8888
      * yalnız GLM-5.3-Flash-EXL3 servis ediyor; eski "Qwen/Qwen3.8-Flash-Next"
      * kilidi sohbet isteğini 404'e düşürüyordu).
      */
@@ -137,7 +137,7 @@ object LocalModelLogic {
 
     /** Sohbette/kartta gösterilen köken etiketi. */
     fun sourceLabel(t: (String, String) -> String): String =
-        t("Yerel (node1)", "Local (node1)")
+        t("Yerel düğüm", "Local node")
 
     /** Hata gövdesinden kısa ipucu (azami 200 karakter). */
     fun bodySnippet(body: String?): String? =

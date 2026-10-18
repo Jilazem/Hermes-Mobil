@@ -21,7 +21,7 @@ private fun String.toWs(): String = this
 data class ServerProfile(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
-    /** Örn. "http://192.168.1.10:9150" — sondaki eğik çizgi olmadan. */
+    /** Örn. "http://192.0.2.10:9150" — sondaki eğik çizgi olmadan. */
     val baseUrl: String,
     /** HERMES_DASHBOARD_SESSION_TOKEN (token modu). */
     val token: String,
@@ -29,7 +29,7 @@ data class ServerProfile(
     /**
      * Ev ağı dışından erişim adresi (Tailscale, Cloudflare tüneli, DDNS…).
      *
-     * `baseUrl` genelde `192.168.1.x` gibi özel bir adres; mobil veriden
+     * `baseUrl` genelde özel ağ (LAN) adresi; mobil veriden
      * erişilemiyor ("failed to connect ... after 15000ms"). Bu alan doluysa
      * LAN'a ulaşılamadığında otomatik olarak buraya düşülür.
      */

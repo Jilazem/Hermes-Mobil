@@ -46,13 +46,13 @@ class EmaOfflineSelfTestActivity : ComponentActivity() {
                     val done=CompletableDeferred<Unit>()
                     val voice=JarvisVoice.create(this@EmaOfflineSelfTestActivity).also { speaker=it }
                     voice.onDone={ done.complete(Unit) }; voice.onError={ done.completeExceptionally(IllegalStateException(it)) }
-                    voice.say("Merhaba Gökhan. Ben Hermes. EMA artık telefonunda çalışıyor. Bu sesi üretirken internet veya Mac kullanmıyorum. Sesimi dilediğin zaman uygulamadan tekrar dinleyebilirsin.")
+                    voice.say("Merhaba dünya. Ben Hermes. EMA artık telefonunda çalışıyor. Bu sesi üretirken internet veya Mac kullanmıyorum. Sesimi dilediğin zaman uygulamadan tekrar dinleyebilirsin.")
                     voice.finish(); withTimeout(60_000) { done.await() }
                     step("PASS uninterrupted offline EMA speech completed"); return@launch
                 }
                 val proofs=File(filesDir,"ema-offline-proof").apply { mkdirs() }
                 val hashes=mutableListOf<String>()
-                listOf("Merhaba Gökhan. Ben Hermes. Yeni sesim EMA.","İnternet olmadan telefonunda konuşabiliyorum.").forEachIndexed { i,text ->
+                listOf("Merhaba dünya. Ben Hermes. Yeni sesim EMA.","İnternet olmadan telefonunda konuşabiliyorum.").forEachIndexed { i,text ->
                     val started=android.os.SystemClock.elapsedRealtime()
                     val wav=client.speak(text)
                     val seconds=(wav.size-44)/96000.0
@@ -69,7 +69,7 @@ class EmaOfflineSelfTestActivity : ComponentActivity() {
                 val voice=JarvisVoice.create(this@EmaOfflineSelfTestActivity).also { speaker=it }
                 check(voice is EmaVoice)
                 voice.onDone={ completions.incrementAndGet();done.complete(Unit) };voice.onError={ errors.complete(it) }
-                voice.say("Merhaba Gökhan. Ben Hermes.");voice.say("İnternetsiz sesim hazır.");voice.finish()
+                voice.say("Merhaba dünya. Ben Hermes.");voice.say("İnternetsiz sesim hazır.");voice.finish()
                 withTimeout(90_000) { done.await() };check(completions.get()==1 && !errors.isCompleted)
                 step("PASS production voice factory; queued local playback completed once")
                 completions.set(0)

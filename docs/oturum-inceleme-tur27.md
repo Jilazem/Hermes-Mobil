@@ -4,13 +4,13 @@ Tarih: 03.10.2026 · İnceleyen: cd-android · Son commit aeb6f8a
 
 ## 1) Mobil (Hermes-Mobil)
 
-### Bulgu 1 — Yerel model (node1) hattında geçmiş YOK (kök neden, ŞİKÂYET 1)
+### Bulgu 1 — Yerel model hattında geçmiş YOK (kök neden, ŞİKÂYET 1)
 - `data/LocalModelClient.kt:120-123` (`LocalModelLogic.chatBody`): istek gövdesi
   yalnız `system` + TEK `user` mesajı üretir — önceki turlar hiçbir zaman istekle
   gitmez. `data/LocalModelClient.kt:235-241` (`LocalModelClient.chat`): `text`
   parametresi tek metin, geçmiş parametresi yok.
 - `ChatViewModel.kt:835` (`sendLocalAssistant`): `client.chat(label, ...)` —
-  sohbetteki `items`'tan geçmiş kurulmuyor. Ayarlar'da "Yerel (node1)" seçiliyken
+  sohbetteki `items`'tan geçmiş kurulmuyor. Ayarlar'da "Yerel düğüm" seçiliyken
   HER mesaj ilk mesaj gibi gider — patronun "konuyu bilmiyor, devam edemiyor"
   şikâyetinin bu hatta kök nedeni.
 - DÜZELTİLDİ: `chatBody(model, system, history, userText)` geçmişli gövde +

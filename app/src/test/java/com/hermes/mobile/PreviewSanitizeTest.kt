@@ -14,7 +14,7 @@ import org.junit.Test
  * Tur-4 kusur A/B — kart önizlemesi ARTIK ham makine çıktısı gösteremez.
  *
  * Emülatörde görülen gerçek örnekler (ekran görüntüsü kanıtı):
- *   {"status": "success", "output": "=== ESBLESME: /Users/gokhan… len 11050…"}
+ *   {"status": "success", "output": "=== ESBLESME: /Users/ornek… len 11050…"}
  *   [IMPORTANT: You are running as a scheduled cron job. DELIVER…]
  *
  * Kural: JSON/tool çıktısı, cron-sistem promptu ve markdown çiti ATILIR;
@@ -27,7 +27,7 @@ class PreviewSanitizeTest {
 
     @Test
     fun `ham json ciktisi onizleme olmaz`() {
-        val raw = """{"status": "success", "output": "=== ESBLESME: /Users/gokhan/rapor len 11050"}"""
+        val raw = """{"status": "success", "output": "=== ESBLESME: /Users/ornek/rapor len 11050"}"""
         assertTrue(isMachineNoise(raw))
         assertEquals("", meaningfulPreview(raw))
         assertEquals("", topicFromPreview(raw))
@@ -124,8 +124,8 @@ class PreviewSanitizeTest {
 
     @Test
     fun `kisi ve kanal adlari konu degildir`() {
-        assertTrue(isGenericIdentityTitle("Gökhan Uzman"))
-        assertTrue(isGenericIdentityTitle("Gökhan Uzman".lowercase()))
+        assertTrue(isGenericIdentityTitle("Örnek Kullanıcı"))
+        assertTrue(isGenericIdentityTitle("Örnek Kullanıcı".lowercase()))
         assertTrue(isGenericIdentityTitle("telegram"))
         assertTrue(isGenericIdentityTitle("desktop telegram"))
         assertTrue(isGenericIdentityTitle("Telegram Desktop"))

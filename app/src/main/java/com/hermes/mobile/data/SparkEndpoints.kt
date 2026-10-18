@@ -8,7 +8,7 @@ package com.hermes.mobile.data
  *    `X-Hermes-Session-Token` başlığını `SPARK_GATE_TOKEN` ile karşılaştırıyor;
  *    LaunchAgent ortamında bu değişken **tanımlı değil** → hiçbir istek eşleşmez)
  *  - `GET /api/sparks` (yerel, tokenli) → **404** (Hermes panosunda böyle bir uç yok)
- *  - `GET http://192.168.1.101:5555/api/sparks` (LAN, doğrudan sparkDash) → **200** ✓
+ *  - `GET http://192.0.2.10:5555/api/sparks` (LAN, doğrudan sparkDash) → **200** ✓
  *
  * Yani çalışan yol LAN'da doğrudan 5555; dış yolda kapı anahtarı sunucu tarafında
  * eksik. Uygulamanın işi: **doğru adayları sırayla denemek** (tek sağlıklı adres),
