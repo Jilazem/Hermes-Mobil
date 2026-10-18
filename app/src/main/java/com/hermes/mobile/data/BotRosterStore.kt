@@ -36,6 +36,15 @@ class BotRosterStore(private val dir: File) {
     /** Testin de bildiği sabit ad — bozuk dosya senaryosu buna yazar. */
     private val file = File(dir, "bot-roster.json")
 
+    /**
+     * K22 — yedek GERİ YÜKLEME: listeyi bütünüyle yazar (üzerine-yaz modu
+     * eski kartları silebilsin diye). Geçersiz kartlar yazılmaz — kaydet'in
+     * fail-closed kuralı burada da geçerli.
+     */
+    fun degistir(cards: List<BotCard>) = synchronized(lock) {
+        write(cards.filter { BotRosterLogic.validate(it.name, it.personality) == null })
+    }
+
     /** Kartlar kaydetme sırasıyla; görüntü sırasını [BotRosterLogic.sortedForDisplay] verir. */
     fun yukle(): List<BotCard> = synchronized(lock) { read() }
 

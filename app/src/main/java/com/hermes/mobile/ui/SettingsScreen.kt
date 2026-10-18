@@ -182,6 +182,10 @@ fun SettingsScreen(
         AssistantModeLogic.RoleStatus(AssistantModeLogic.RoleState.None),
     /** "Hermes'i varsayılan asistan yap" — sistem rol diyaloğunu açar. */
     onMakeDefaultAssistant: () -> Unit = {},
+    /** K22 — yedeklenebilir veriyi toplar (AppViewModel.yedekVerisi). */
+    onYedekTopla: () -> com.hermes.mobile.data.YedekDosya = { com.hermes.mobile.data.YedekDosya(1) },
+    /** K22 — yedeği seçilen çakışma politikasıyla cihaza uygular. */
+    onYedekUygula: (com.hermes.mobile.data.YedekDosya, com.hermes.mobile.data.YedekModu) -> Unit = { _, _ -> },
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
@@ -975,6 +979,16 @@ fun SettingsScreen(
             }
         }
 
+        // ── K22: YEDEKLE / GERİ YÜKLE — SAF ile tek JSON (tokensız) ──
+        if (open == SettingsCategory.Yedekleme) {
+            item {
+                YedeklemePanel(
+                    onTopla = onYedekTopla,
+                    onUygula = onYedekUygula,
+                )
+            }
+        }
+
         if (open == SettingsCategory.Developer) {
     item { Header(S.t2("Geliştirici", "Developer")) }
             item {
@@ -1557,7 +1571,7 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
 
 
 /** Ayar kategorileri — panonun bölüm listesiyle aynı desen. */
-enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, OnayMerkezi, Botlarim, Developer }
+enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, OnayMerkezi, Botlarim, Yedekleme, Developer }
 
 @Composable
 private fun catLabel(c: SettingsCategory): String = when (c) {
@@ -1573,6 +1587,8 @@ private fun catLabel(c: SettingsCategory): String = when (c) {
     SettingsCategory.OnayMerkezi -> S.t2("Onay merkezi", "Approval center")
     // K18B-G1: kalıcı bot kimlikleri — roster kartları.
     SettingsCategory.Botlarim -> S.t2("Botlarım", "My bots")
+    // K22: kişisel veri yedeği — export/import (tokensız).
+    SettingsCategory.Yedekleme -> S.t2("Yedekle / Geri Yükle", "Backup / Restore")
     SettingsCategory.Developer -> S.t2(S.t2("Geliştirici", "Developer"), "Developer")
 }
 
@@ -1588,6 +1604,7 @@ private fun catHint(c: SettingsCategory): String = when (c) {
     SettingsCategory.Privacy -> S.t2("Kilit, token, bildirimler", "Lock, token, notifications")
     SettingsCategory.OnayMerkezi -> S.t2("Senin onayın bekleniyor", "Waiting on your yes")
     SettingsCategory.Botlarim -> S.t2("Kalıcı bot kartları: ad, kişilik, model", "Persistent bot cards: name, personality, model")
+    SettingsCategory.Yedekleme -> S.t2("Kişisel veriyi tek JSON'a yedekle (token yedeklenmez)", "Back up personal data to one JSON (no tokens)")
     SettingsCategory.Developer -> S.t2("Ham olaylar", "Raw events")
 }
 

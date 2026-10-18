@@ -9,8 +9,13 @@ import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.HermesStatus
 import com.hermes.mobile.data.ProbeResult
+import com.hermes.mobile.data.BotRosterStore
 import com.hermes.mobile.data.SavedPrompt
 import com.hermes.mobile.data.SavedPromptsStore
+import com.hermes.mobile.data.ProfilYedekBayraklari
+import com.hermes.mobile.data.YedekDosya
+import com.hermes.mobile.data.YedekMantik
+import com.hermes.mobile.data.YedekModu
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.data.ServerProfileStore
 import com.hermes.mobile.data.SessionFlags
@@ -82,6 +87,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Kayıtlı promptlar — SavedPromptsStore (SessionFlagsStore kalıbı, cihazda). */
     private val promptsStore = SavedPromptsStore(app)
+
+    /** K22 — kalıcı bot kimlikleri: yedekleme toplama/geri yükleme için. */
+    private val botStore = BotRosterStore(app)
 
     private val _savedPrompts = MutableStateFlow<List<SavedPrompt>>(emptyList())
     val savedPrompts: StateFlow<List<SavedPrompt>> = _savedPrompts.asStateFlow()
@@ -436,6 +444,64 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun clearError() = _state.update { it.copy(error = null) }
+
+    // ── K22 — kişisel veri yedekleme (export/import, tokensız) ────────
+
+    /**
+     * Cihazdaki yedeklenebilir veriyi toplar. Token'lı ALANLAR DAHİL gelir;
+     * export [YedekStore.serialize] içinde gizsizleştirilir. Geri yükleme
+     * birleştirme kararını da cihaz gerçeği üzerinden kurabilmek için
+     * burada sırlar tutulur.
+     */
+    fun yedekVerisi(): YedekDosya {
+        val profiles = store.list()
+        return YedekDosya(
+            schemaVersion = com.hermes.mobile.data.YEDEK_SCHEMA_VERSION,
+            exportedAt = System.currentTimeMillis(),
+            botlar = botStore.yukle(),
+            promptlar = promptsStore.yukle(),
+            profiller = profiles,
+            aktifProfilId = store.activeId(),
+            oturumBayraklari = profiles.map {
+                ProfilYedekBayraklari(it.id, flagsStore.load(it.id))
+            },
+            ayarlar = settingsStore.settings.value,
+            ozelTemalar = settingsStore.customThemes.value,
+        )
+    }
+
+    /**
+     * Yedeği cihaza uygular: botlar + promptlar + profiller + bayraklar
+     * tercihler + özel temalar. Sonuç her depoya diske yazılır ve state
+     * tazelenir (reloadProfiles → bayraklar + oturum listesi).
+     */
+    fun yedekUygula(yedek: YedekDosya, mod: YedekModu) {
+        val mevcut = yedekVerisi()
+        val hedef = when (mod) {
+            YedekModu.Birlestir -> YedekMantik.birlestir(mevcut, yedek)
+            YedekModu.UzerineYaz -> YedekMantik.uzerineYaz(mevcut, yedek)
+        }
+        botStore.degistir(hedef.botlar)
+        promptsStore.degistir(hedef.promptlar)
+        _savedPrompts.value = hedef.promptlar
+        // Profil token'ları: birleştirmede cihazdaki korunur (aynı id'de
+        // cihaz kazanır), üzerine-yazda yedek sırsız gelir — kullanıcı girer.
+        store.save(hedef.profiller)
+        val aktif = hedef.aktifProfilId
+        if (aktif != null && hedef.profiller.any { it.id == aktif }) {
+            store.setActiveId(aktif)
+        }
+        hedef.oturumBayraklari.forEach { flagsStore.save(it.profileId, it.flags) }
+        settingsStore.update { hedef.ayarlar }
+        if (mod == YedekModu.UzerineYaz) {
+            // Üzerine-yaz: yedekte olmayan cihaz temaları silinir.
+            val yedekTemalar = hedef.ozelTemalar.map { it.id }.toSet()
+            mevcut.ozelTemalar.filter { it.id !in yedekTemalar }
+                .forEach { settingsStore.deleteTheme(it.id) }
+        }
+        hedef.ozelTemalar.forEach { settingsStore.saveTheme(it) }
+        reloadProfiles()
+    }
 }
 
 enum class GatewayAction { Start, Stop, Restart }

@@ -43,6 +43,13 @@ class SavedPromptsStore(private val dir: File) {
     /** Testin de bildiği sabit ad — bozuk dosya senaryosu buna yazar. */
     private val file = File(dir, "saved-prompts.json")
 
+    /**
+     * K22 — yedek GERİ YÜKLEME: listeyi bütünüyle yazar (üzerine-yaz modu
+     * eski kayıtları silebilsin diye). SessionFlagsStore kalıbı: hata yutulur,
+     * en iyi çaba.
+     */
+    fun degistir(items: List<SavedPrompt>) = synchronized(lock) { write(items) }
+
     /** Yığını olduğu sırayla döndürür (ekleme sırası; en eski üstte). */
     fun yukle(): List<SavedPrompt> = synchronized(lock) { read() }
 
