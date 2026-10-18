@@ -1537,6 +1537,10 @@ private fun HermesApp(
                         // ve sistem diyaloğu dönüşünde tazelenir.
                         assistantRole = assistantRoleState,
                         onMakeDefaultAssistant = onMakeDefaultAssistant,
+                        // K22: kişisel veri yedeği — toplama ve uygulama aynı
+                        // AppViewModel üzerinden; dosya G/Ç'si panelde (SAF).
+                        onYedekTopla = viewModel::yedekVerisi,
+                        onYedekUygula = viewModel::yedekUygula,
                         onUpdate = viewModel.settingsStore::update,
                         onSaveTheme = viewModel.settingsStore::saveTheme,
                         onDeleteTheme = viewModel.settingsStore::deleteTheme,

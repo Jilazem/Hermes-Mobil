@@ -325,6 +325,42 @@ Also:
 
 ---
 
+## Backup & restore (K22)
+
+**Settings → Backup / Restore** (Ayarlar → Yedekle / Geri Yükle) writes your
+personal data to a single JSON file via the system file picker (SAF), with a
+suggested name of `hermes-mobil-yedek-YYYYMMDD-HHmm.json`:
+
+- bot identities (BotRoster cards) and saved prompts,
+- profile / connection settings — server URLs, remote & relay & bridge
+  addresses, notes (with the active profile),
+- session flags — hidden (deleted), archived, pinned, renamed, followed,
+- user preferences (theme, voice/persona, model choices, notifications, …)
+  and custom themes.
+
+**Gateway tokens are never backed up.** `ServerProfile.token`,
+`ServerProfile.geminiApiKey` and `AppSettings.emaToken` are emptied before
+serialization, and the file carries a `token: yok` marker. The reason: the
+backup file lives in Documents / Drive / any sync folder the user chooses —
+a file that travels belongs to places without secrets. After a restore you
+re-enter the token once; everything else comes back.
+
+Import asks for a collision policy after showing a preview (how many bots,
+prompts, profiles, flag sets, themes are inside):
+
+- **Merge** — device records are kept; entries missing on the device are
+  added (by id). Profiles with the same id keep the device copy so your
+  live token is never clobbered; session flags are unioned; the EMA token
+  and active profile of the device are preserved.
+- **Overwrite** — the backup replaces its counterparts; tokens arrive empty
+  and are re-entered by you.
+
+Corrupt, empty or future-schema files (`schemaVersion` newer than the app)
+are rejected with a clear message — the app never crashes on a bad backup
+file. All rules above are locked by `app/src/test/.../YedekMantikTest.kt`.
+
+---
+
 ## Privacy
 
 Personal identifiers, internal hostnames, tokens, and private addresses are
