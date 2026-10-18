@@ -9,7 +9,10 @@ yeni dal `feat/v4-birlesik`. Android Auto + sohbet ekranı EMA'dan korunacak; V3
 (eski hat, `origin/feat/k16-patron-onceligi`) kanıtla üstün olduğu oturum yığını
 (K13c birleştirme, K12b izolasyon, K10c silme, K16 yoğunluk düşüşü), K19 model listesi
 düzeltmesi ve K29'un iki talebi (czip merge önerisi, oturumu yeniye taşıma) porta
-edilecek. Teslim: tüm birim testleri geçen bir dal + arm64 debug APK
+edilecek. Ayrıca patron ek talebi (18.10, kart yorumu): **oturum açılış konumu** —
+sohbet açıldığında en sona otomatik atlama yok, son okunan mesajdan sonrasına (ilk
+okunmamış satıra) konumlanma (M8; V3 TUR-31 mekanizması taban, cihazda saklanan
+son-okunan konumuyla; sohbet arayüzünün kendisi EMA'da kalır). Teslim: tüm birim testleri geçen bir dal + arm64 debug APK
 (`05-GEICICI/2026-10-17-apk-v4/`) + MD5/sha256 + değişen dosya listesi. Paket adı
 `com.hermes.mobile.v3` KALIR (build.gradle.kts'e dokunulmaz). Detay matris:
 `V4-MERGE-MATRISI.md`.
@@ -32,6 +35,11 @@ edilecek. Teslim: tüm birim testleri geçen bir dal + arm64 debug APK
 6. `app-arm64-v8a-debug.apk` üretilir; MD5 + sha256 + `apksigner verify` çıktısı kartta
    (komut çıktısı + dosya yolu).
 7. cd-denetmen denetimi GEÇTİ verdict'i kart yorumunda.
+8. Oturum açılış konumu (patron eki): oturum aç → ilk okunmamış mesaj görünür; okuyup
+   çık → tekrar aç → kaldığı yerden devam (son-okunan konumu cihazda saklanır, mesaj
+   sayısı değişince kaymaya masun — konum satır indeksiyle değil mesaj kimliği/zamanla
+   tutulur); "En sona git" düğmesi/çipi her zaman erişilebilir. Saf kararlar birim
+   testiyle kilitli (ChatScreenScrollTest).
 
 ## Kaynaklar
 
@@ -77,12 +85,20 @@ edilecek. Teslim: tüm birim testleri geçen bir dal + arm64 debug APK
    Doğrulama: yeni saf-mantık testleri 0 fail; mock-gateway e2e emülatör ekran kanıtı
    (screencap yolu kartta).
 
-6. Tam paket: `./gradlew testDebugUnitTest` (tümü) + `assembleDebug` arm64 APK.
+6. M8 oturum açılış konumu: V3 TUR-31 mekanizmasını port et (seenRows/unreadRows +
+   "sona git" yüzen buton, f7ee83f); EMA ChatScreen'e "ilk okunmamış satıra konumlan"
+   davranışı ekle — son-okunan konumu oturum başına cihazda saklanır (mesaj kimliği/
+   zaman damgası; satır indeksi değil, mesaj sayısı değişse de kaymaz), "En sona git"
+   her zaman erişilebilir.
+   Doğrulama: ChatScreenScrollTest (saf kararlar: ilk-okunmamış hedefi, sayaç, buton
+   görünürlüğü) 0 fail; saklanan konum mesaj sayısı değişimine dayanıklılık testi.
+
+7. Tam paket: `./gradlew testDebugUnitTest` (tümü) + `assembleDebug` arm64 APK.
    Doğrulama: test özeti "X tests, 0 failed" satırı; APK yolu
    `05-GEICICI/2026-10-17-apk-v4/`, `md5 -q` + `shasum -a 256` + `apksigner verify`
    çıktıları kart yorumuna yazılır.
 
-7. Denetim: commit listesi + kanıtlarla cd-denetmen'e gönderim.
+8. Denetim: commit listesi + kanıtlarla cd-denetmen'e gönderim.
    Doğrulama: denetim GEÇTİ verdict'i kart yorumunda; bulgu varsa döngü: düzelt → 6'yı tekrarla.
 
 ## Riskler / Patron kararı
