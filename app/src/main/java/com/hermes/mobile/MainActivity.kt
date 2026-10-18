@@ -1115,6 +1115,8 @@ private fun HermesApp(
                             bottom = innerPadding.calculateBottomPadding(),
                         ),
                 ) {
+                    // K13c: birleştirme durumu — çekmece satırı bunu çizer.
+                    val mergeDurum by viewModel.mergeDurum.collectAsStateWithLifecycle()
                     SessionDrawerContent(
                         rows = drawerRowList,
                         items = drawerItemList,
@@ -1194,6 +1196,12 @@ private fun HermesApp(
                         // Tur22 madde-3: ilk açılış — sunucudan liste henüz
                         // gelmediyse (boş + yükleniyor) iskelet çizilir.
                         loading = state.loading && state.sessions.isEmpty(),
+                        // K13c: birleştirme — sunucuda yapılır, buraya üst veri gelir.
+                        merge = mergeDurum,
+                        onMergeConfirm = { ids, baslik ->
+                            viewModel.mergeSessions(ids, baslik)
+                        },
+                        onMergeNotifyConsumed = viewModel::mergeBildiriminiTuket,
                     )
                 }
             },

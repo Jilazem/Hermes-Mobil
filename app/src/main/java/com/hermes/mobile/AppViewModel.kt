@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.hermes.mobile.data.SessionCache
+import com.hermes.mobile.data.SessionDeleteLogic
+import com.hermes.mobile.data.SessionMergeState
+import com.hermes.mobile.data.mergeSecilebilirMi
 
 data class SessionDetailState(
     val sessionId: String = "",
@@ -85,6 +88,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _savedPrompts = MutableStateFlow<List<SavedPrompt>>(emptyList())
     val savedPrompts: StateFlow<List<SavedPrompt>> = _savedPrompts.asStateFlow()
+
+    /** K13c: birleştirme akışının durumu — çekmece toplar (içerik inmez). */
+    private val _mergeDurum = MutableStateFlow(SessionMergeState())
+    val mergeDurum: StateFlow<SessionMergeState> = _mergeDurum.asStateFlow()
 
     init {
         // Depo küçük; açılışta bir kez diskten okunur, sonrası mutasyonlarla gelir.
@@ -302,11 +309,80 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutateFlags { f -> f.copy(renames = f.renames + (id to temiz)) }
     }
 
-    /** Silme = yerel gizleme (sunucu DELETE ucu yok); bkz. SessionFlagsStore. */
-    fun deleteSession(id: String) = mutateFlags { f ->
-        f.copy(hidden = f.hidden + id, pinned = f.pinned - id, archived = f.archived - id, followed = f.followed - id)
+    /**
+     * K10c — onaylı sohbet silme. Önce sunucudaki oturum kaydı silinir
+     * (DELETE /api/sessions/{id}); başarılıysa id'ye ait tüm yerel bayraklar
+     * da temizlenir ve liste tazelenir. Sunucuya ulaşılamazsa eski davranış —
+     * yalnız yerel gizleme — uygulanır ve kullanıcı hata bandıyla
+     * bilgilendirilir (sessiz veri kaybı yok: silme YAPILMADIĞI söylenir).
+     * Onay diyalogu SessionDrawer'dadır; burada otomatik (onaysız) silme yok.
+     */
+    fun deleteSession(id: String) {
+        val profile = _state.value.active
+        if (profile == null || profile.token.isBlank()) {
+            mutateFlags { SessionDeleteLogic.flagsAfterLocalHide(it, id) }
+            return
+        }
+        viewModelScope.launch {
+            val silindi = runCatching { HermesClient(profile).deleteSession(id) }.isSuccess
+            if (silindi) {
+                mutateFlags { SessionDeleteLogic.flagsAfterServerDelete(it, id) }
+                loadActiveDetails()
+            } else {
+                mutateFlags { SessionDeleteLogic.flagsAfterLocalHide(it, id) }
+                _state.update {
+                    it.copy(
+                        error = com.hermes.mobile.ui.tr(
+                            "Sunucudan silinemedi — oturum yalnızca bu cihazda gizlendi",
+                            "Server delete failed — session hidden on this device only",
+                        ),
+                    )
+                }
+            }
+        }
     }
 
+
+    /**
+     * K13c — çoklu seçilen oturumları sunucuda birleştirir. Kaynaklar sunucuda
+     * OKUNUR, birleşik içerik telefona inmez; başarılıysa liste tazelenir ve
+     * birleşik oturum KENDİ session_id'siyle listede görünür (K12b izolasyonu
+     * korunur). Sunucuya ulaşılamazsa hata durumu çekmecede gösterilir —
+     * sessiz başarısızlık yok, kaynaklara hiçbir şey olmaz.
+     */
+    fun mergeSessions(ids: List<String>, title: String?) {
+        if (!mergeSecilebilirMi(ids)) return
+        val profile = _state.value.active
+        if (profile == null || profile.token.isBlank()) {
+            _mergeDurum.value = SessionMergeState(
+                hata = com.hermes.mobile.ui.tr(
+                    "Sunucu bağlı değil — birleştirme yapılamadı",
+                    "Not connected — merge failed",
+                ),
+            )
+            return
+        }
+        _mergeDurum.value = SessionMergeState(calisiyor = true)
+        viewModelScope.launch {
+            runCatching { HermesClient(profile).mergeSessions(ids, title) }
+                .onSuccess { sonuc ->
+                    _mergeDurum.value = SessionMergeState(sonuc = sonuc)
+                    loadActiveDetails()
+                }
+                .onFailure { e ->
+                    _mergeDurum.value = SessionMergeState(
+                        hata = com.hermes.mobile.ui.tr(
+                            "Birleştirilemedi: ", "Merge failed: ",
+                        ) + (e.message ?: "").take(140),
+                    )
+                }
+        }
+    }
+
+    /** Birleştirme bildirimini temizler (çekmece satırı otomatik kalkar). */
+    fun mergeBildiriminiTuket() {
+        _mergeDurum.value = SessionMergeState()
+    }
 
     fun selectProfile(id: String) {
         store.setActiveId(id)

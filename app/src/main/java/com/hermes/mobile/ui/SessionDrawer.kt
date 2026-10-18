@@ -24,8 +24,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -76,6 +78,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hermes.mobile.InterventionKind
 import com.hermes.mobile.data.LiveSession
+import com.hermes.mobile.data.SessionMergeState
+import com.hermes.mobile.data.kaynakOzeti
+import com.hermes.mobile.data.mergeSecilebilirMi
 import com.hermes.mobile.ui.theme.HermesColors
 import kotlinx.coroutines.delay
 
@@ -150,6 +155,10 @@ fun SessionDrawerContent(
     onDismissDrawer: () -> Unit,
     /** Tur22 madde-3: oturum listesi ilk açılışta/ilk yenilemede iskelet. */
     loading: Boolean = false,
+    /** K13c: birleştirme durumu — birleştirme sunucuda; buraya yalnız üst veri gelir. */
+    merge: SessionMergeState = SessionMergeState(),
+    onMergeConfirm: (List<String>, String?) -> Unit = { _, _ -> },
+    onMergeNotifyConsumed: () -> Unit = {},
     onToggleFollow: (DrawerRow) -> Unit = {},
 ) {
     val haptics = LocalHapticFeedback.current
@@ -170,6 +179,18 @@ fun SessionDrawerContent(
         if (undoRow != null) {
             delay(5_000)
             undoRow = null
+        }
+    }
+
+    // K13c: çoklu seçim — uzun basma menüsündeki "Birleştir" ile açılır.
+    // Seçim dbId (sunucu oturum kimliği) üzerinden: birleştirme sunucuya gider.
+    var secimModu by remember { mutableStateOf(false) }
+    var secili by remember { mutableStateOf(setOf<String>()) }
+    var mergeOnay by remember { mutableStateOf(false) }
+    var mergeBaslik by remember { mutableStateOf("") }
+    val secimToggle: (DrawerRow) -> Unit = { row ->
+        if (row.dbId.isNotBlank()) {
+            secili = if (row.dbId in secili) secili - row.dbId else secili + row.dbId
         }
     }
 
@@ -241,6 +262,46 @@ fun SessionDrawerContent(
             )
         }
 
+        // K13c: seçim modu çubuğu — "N oturum seçildi · Birleştir · İptal".
+        if (secimModu) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    S.t2(
+                        secili.size.toString() + " oturum seçildi",
+                        secili.size.toString() + " selected",
+                    ),
+                    color = HermesColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = { mergeOnay = true },
+                    enabled = mergeSecilebilirMi(secili) && !merge.calisiyor,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                ) {
+                    Text(
+                        S.t2("Birleştir", "Merge"),
+                        color = HermesColors.Midground,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                TextButton(
+                    onClick = {
+                        secimModu = false
+                        secili = emptySet()
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                ) {
+                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextMuted, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+
         if (undoRow != null) {
             Row(
                 Modifier
@@ -268,6 +329,25 @@ fun SessionDrawerContent(
                     Text(S.t2("Geri al", "Undo"), color = HermesColors.Midground, style = MaterialTheme.typography.bodySmall)
                 }
             }
+        }
+
+        // K13c: birleştirme durumu satırı — ilerleme/sonuç/hata (içerik inmez).
+        when {
+            merge.calisiyor -> MergeDurumSatiri(S.t2("Birleştiriliyor…", "Merging…"), null)
+            merge.sonuc != null -> {
+                val sonuc = merge.sonuc
+                MergeDurumSatiri(
+                    S.t2(
+                        "Birleştirildi: " + sonuc.title + " (" + kaynakOzeti(sonuc) + ")",
+                        "Merged: " + sonuc.title + " (" + kaynakOzeti(sonuc) + ")",
+                    ),
+                ) { onMergeNotifyConsumed() }
+                LaunchedEffect(sonuc.sessionId) {
+                    delay(6_000)
+                    onMergeNotifyConsumed()
+                }
+            }
+            merge.hata != null -> MergeDurumSatiri(merge.hata) { onMergeNotifyConsumed() }
         }
 
         // tab 0 = Tümü, tab 2 = arşiv (aynı liste, farklı showArchived —
@@ -318,17 +398,23 @@ fun SessionDrawerContent(
                         DrawerSessionRow(
                             row = row,
                             onPick = {
-                                onPick(row)
-                                onDismissDrawer()
+                                if (secimModu) secimToggle(row) else {
+                                    onPick(row)
+                                    onDismissDrawer()
+                                }
                             },
                             onLongPress = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuRow = row
+                                if (secimModu) secimToggle(row) else menuRow = row
                             },
                             onArchiveSwipe = {
-                                onSetArchived(row, true)
-                                undoRow = row
+                                if (!secimModu) {
+                                    onSetArchived(row, true)
+                                    undoRow = row
+                                }
                             },
+                            secimModu = secimModu,
+                            seciliSecim = row.dbId in secili,
                         )
                     }
                 } else {
@@ -347,15 +433,19 @@ fun SessionDrawerContent(
                                 DrawerSessionRow(
                                     row = entry.row,
                                     onPick = {
-                                        onPick(entry.row)
-                                        onDismissDrawer()
+                                        if (secimModu) secimToggle(entry.row) else {
+                                            onPick(entry.row)
+                                            onDismissDrawer()
+                                        }
                                     },
                                     onLongPress = {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuRow = entry.row
+                                        if (secimModu) secimToggle(entry.row) else menuRow = entry.row
                                     },
                                     onArchiveSwipe = {
-                                        if (tab == 2) {
+                                        if (secimModu) {
+                                            // Seçim modunda kaydır-arşiv kapalı (kaza riski).
+                                        } else if (tab == 2) {
                                             // Arşiv görünümü: kaydır = arşivden çıkar.
                                             onSetArchived(entry.row, false)
                                         } else {
@@ -364,6 +454,8 @@ fun SessionDrawerContent(
                                         }
                                     },
                                     archivedMode = tab == 2,
+                                    secimModu = secimModu,
+                                    seciliSecim = entry.row.dbId in secili,
                                 )
                             }
                         }
@@ -538,6 +630,15 @@ fun SessionDrawerContent(
                 menuRow = null
                 deleteTarget = row
             },
+            onMerge = if (tab != 1 && row.dbId.isNotBlank()) {
+                {
+                    menuRow = null
+                    secimModu = true
+                    secili = setOf(row.dbId)
+                }
+            } else {
+                null
+            },
         )
     }
 
@@ -635,6 +736,62 @@ fun SessionDrawerContent(
         )
     }
 
+    // K13c: birleştirme onayı — sunucuda tek yeni oturum; başlık isteğe bağlı.
+    if (mergeOnay) {
+        AlertDialog(
+            onDismissRequest = { mergeOnay = false },
+            containerColor = HermesColors.Surface,
+            title = {
+                Text(
+                    S.t2("Oturumları birleştir", "Merge sessions"),
+                    color = HermesColors.TextPrimary,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        S.t2(
+                            secili.size.toString() + " oturum sunucuda tek yeni oturumda birleştirilecek; " +
+                                "kaynak başlıkları sınırlarla etiketlenir ve kaynaklara dokunulmaz. " +
+                                "İçerik telefona indirilmez.",
+                            secili.size.toString() + " sessions will be merged into one new session " +
+                                "server-side; sources are labeled and left untouched. " +
+                                "Content never reaches the phone.",
+                        ),
+                        color = HermesColors.TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = mergeBaslik,
+                        onValueChange = { mergeBaslik = it },
+                        label = { Text(S.t2("Başlık (isteğe bağlı)", "Title (optional)")) },
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onMergeConfirm(secili.filter { it.isNotBlank() }.distinct(), mergeBaslik)
+                        mergeOnay = false
+                        secimModu = false
+                        secili = emptySet()
+                        mergeBaslik = ""
+                    },
+                ) {
+                    Text(S.t2("Birleştir", "Merge"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mergeOnay = false }) {
+                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
+                }
+            },
+        )
+    }
+
     // Canlı sekmesi müdahale diyaloğu (Eski Canlı ekranıyla aynı dialog).
     liveIntervening?.let { target ->
         InterventionDialog(
@@ -644,6 +801,31 @@ fun SessionDrawerContent(
             onDismiss = onCloseIntervention,
             onSubmit = { kind, text -> onSubmitIntervention(target, kind, text) },
         )
+    }
+}
+
+/** K13c: birleştirme durum satırı — ilerleme/sonuç/hata; onKapat null = kapatma yok. */
+@Composable
+private fun MergeDurumSatiri(metin: String, onKapat: (() -> Unit)?) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .padding(start = 12.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            metin,
+            color = HermesColors.TextSecondary,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+        )
+        if (onKapat != null) {
+            TextButton(onClick = onKapat, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                Icon(Icons.Default.Close, null, tint = HermesColors.TextMuted, modifier = Modifier.size(14.dp))
+            }
+        }
     }
 }
 
@@ -744,6 +926,10 @@ private fun DrawerSessionRow(
     /** Tur22 madde-4: true = arşiv görünümü — satır Settled başlar (bayraklı
      * olmak burada normal); swipe ARŞİVDEN ÇIKARIR (çağıran tersini uygular). */
     archivedMode: Boolean = false,
+    /** K13c: true = çoklu seçim modu — satır dokunuşu seçim yapar (çağıran uygular). */
+    secimModu: Boolean = false,
+    /** K13c: seçim modunda bu satır seçili mi (dbId üzerinden). */
+    seciliSecim: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
     val dismissState = rememberSwipeToDismissBoxState(
@@ -839,6 +1025,24 @@ private fun DrawerSessionRow(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // K13c: çoklu seçim göstergesi — seçim modunda durum noktasının yerine.
+            if (secimModu) {
+                if (seciliSecim) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = S.t2("Seçili", "Selected"),
+                        tint = HermesColors.Midground,
+                        modifier = Modifier.size(18.dp),
+                    )
+                } else {
+                    Box(
+                        Modifier
+                            .size(16.dp)
+                            .border(1.5.dp, HermesColors.TextFaint, CircleShape),
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+            }
             // Durum noktası (FR-003): boş = çizilmez (yer tutucu boşluk kalır).
             when (row.dot) {
                 "green" -> DrawerDot(HermesColors.Online)
@@ -1005,6 +1209,8 @@ private fun DrawerActionSheet(
     onRename: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
+    /** K13c: null değilse "Birleştir" satırı — seçim moduna geçirir. */
+    onMerge: (() -> Unit)? = null,
     onToggleFollow: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1072,6 +1278,13 @@ private fun DrawerActionSheet(
                 label = if (row.archived) S.t2("Arşivden çıkar", "Unarchive") else S.t2("Arşivle", "Archive"),
                 onClick = onArchive,
             )
+            if (onMerge != null) {
+                DrawerSheetRow(
+                    icon = Icons.AutoMirrored.Filled.CallMerge,
+                    label = S.t2("Birleştir…", "Merge…"),
+                    onClick = onMerge,
+                )
+            }
             DrawerSheetRow(
                 icon = Icons.Default.Delete,
                 label = S.t2("Sil", "Delete"),

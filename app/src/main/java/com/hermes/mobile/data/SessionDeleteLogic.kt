@@ -12,12 +12,13 @@ package com.hermes.mobile.data
  */
 object SessionDeleteLogic {
 
-    /** Sunucudan silindi: id'ye ait tüm bayrakları düşür. */
+    /** Sunucudan silindi: id'ye ait tüm bayrakları düşür (EMA: takip dahil). */
     fun flagsAfterServerDelete(flags: SessionFlags, id: String): SessionFlags = flags.copy(
         hidden = flags.hidden - id,
         pinned = flags.pinned - id,
         archived = flags.archived - id,
         renames = flags.renames - id,
+        followed = flags.followed - id,
     )
 
     /** Sunucu silinemedi: yalnız yerel gizleme (K10c öncesi davranış). */

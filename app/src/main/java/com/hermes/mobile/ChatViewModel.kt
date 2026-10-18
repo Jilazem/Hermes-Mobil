@@ -7,6 +7,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hermes.mobile.data.ConnectionState
+import com.hermes.mobile.data.ChatIsolation
+import com.hermes.mobile.data.isCzipReadRef
 import com.hermes.mobile.data.AwaitReplyService
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.ApprovalCenter
@@ -1279,6 +1281,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val gw = client
         val online = gw != null && _state.value.connection is ConnectionState.Open
 
+        // K12b: çıplak czip okuma referansı (paket/görev) sohbete İÇERİK
+        // dökmez — K6 sözleşmesi: okuma masaüstünde, görünmez tek seferlik
+        // oturumda yapılır; sohbete yalnız referans + kısa özet notu düşer.
+        // Çevrimdışıysa normal kuyruk akışına düşer (mesaj kaybolmasın).
+        if (ready.isEmpty() && online && isCzipReadRef(body)) {
+            sendCzipRead(gw!!, body)
+            return
+        }
+
         val label = buildString {
             ready.forEach { appendLine("[${it.label}]") }
             append(body)
@@ -1357,6 +1368,91 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             _state.update { it.copy(sending = false) }
+        }
+    }
+
+    /**
+     * K12b: çıplak czip okuma referansını çalıştırır — paket/görev İÇERİĞİ
+     * bu sohbete mesaj olarak DÜŞMEZ. Okuma, [improvePrompt] ile aynı
+     * kalıpta görünmez tek seferlik oturumda yapılır (iki yönlü yalıtım:
+     * `invisibleSessions` + aktif-oturum filtresi); sohbete yalnız
+     * referans + kısa özet notu yazılır. Okuma sürerken kullanıcı başka
+     * sohbete geçtiyse not O sohbete düşmez.
+     */
+    private fun sendCzipRead(gw: GatewayWsClient, ref: String) {
+        val sidAtStart = _state.value.sessionId
+        _state.update {
+            it.copy(
+                items = it.items + ChatItem.User(nextKey("u"), ref),
+                agentBusy = true,
+            )
+        }
+        viewModelScope.launch {
+            val sonuc = runCatching { runCzipRead(gw, ref) }
+            _state.update { st ->
+                if (st.sessionId != sidAtStart) st // ara sohbete içerik sızmasın
+                else st.copy(
+                    agentBusy = false,
+                    items = st.items + sonuc.fold(
+                        onSuccess = { cevap ->
+                            val ozet = com.hermes.mobile.data.czipReadOzet(cevap)
+                            ChatItem.Notice(
+                                nextKey("n"),
+                                if (ozet.isBlank()) tr(
+                                    "czip okundu — içerik sohbete dökülmedi (masaüstünde okundu)",
+                                    "czip read done — content not dumped into the chat (read on desktop)",
+                                ) else tr(
+                                    "czip okundu — içerik sohbete dökülmedi (masaüstünde okundu):\n",
+                                    "czip read done — content not dumped into the chat (read on desktop):\n",
+                                ) + ozet,
+                            )
+                        },
+                        onFailure = { e ->
+                            ChatItem.Notice(
+                                nextKey("n"),
+                                tr("czip okunamadı: ", "czip read failed: ") + (e.message ?: ""),
+                                isError = true,
+                            )
+                        },
+                    ),
+                )
+            }
+        }
+    }
+
+    /** Görünmez oturumda czip okur; yanıtı döndürür (içerik sohbete girmez). */
+    private suspend fun runCzipRead(gw: GatewayWsClient, ref: String, timeoutMs: Long = 180_000): String {
+        val sid = gw.createSession(activeProfile)
+        invisibleSessions += sid
+        try {
+            val birikim = StringBuilder()
+            val tamam = CompletableDeferred<String>()
+            val job = viewModelScope.launch {
+                gw.events.collect { e ->
+                    if (e.sessionId != sid) return@collect
+                    when (e.type) {
+                        "message.delta" -> birikim.append(e.text.orEmpty())
+                        "message.complete" ->
+                            tamam.complete(birikim.toString().ifBlank { e.text.orEmpty() })
+                        "error" ->
+                            tamam.completeExceptionally(
+                                IllegalStateException(e.text ?: tr("AI hatası", "AI error")),
+                            )
+                    }
+                }
+            }
+            try {
+                gw.submitPrompt(sid, ref)
+                return withTimeoutOrNull(timeoutMs) { tamam.await() }
+                    ?: run {
+                        runCatching { gw.interrupt(sid) }
+                        throw IllegalStateException(tr("czip okuma zaman aşımı", "czip read timed out"))
+                    }
+            } finally {
+                job.cancel()
+            }
+        } finally {
+            invisibleSessions -= sid
         }
     }
 
@@ -1592,6 +1688,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         var done = false
         val job = viewModelScope.launch {
             gw.events.collect { e ->
+                if (ChatIsolation.foreignEvent(e.sessionId, sid)) return@collect
                 when (e.type) {
                     "message.complete" -> { done = true }
                     "error" -> { done = false; throw kotlinx.coroutines.CancellationException() }
@@ -2384,6 +2481,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         payload: kotlinx.serialization.json.JsonObject? = null,
     ) {
         if (isFromInvisibleSession(sessionId)) return
+        // K12b: oturum izolasyonu — gateway aynı sokete birden çok oturumun
+        // olayını `session_id` etiketiyle basar (activate aboneleri yerinden
+        // etmez). Etiketi yok saymak bir sohbetin yanıtını DİĞER sohbete
+        // döküyordu; etiketli olay yalnız aktif sohbetin oturumundan geçer.
+        if (ChatIsolation.foreignEvent(sessionId, _state.value.sessionId)) return
         when (type) {
             "message.start" -> {
                 // Yeni yanıt: saat sıfırdan başlar, göstergenin donmuş hali düşer.
