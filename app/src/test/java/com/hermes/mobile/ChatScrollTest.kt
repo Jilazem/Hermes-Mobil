@@ -1,9 +1,16 @@
 package com.hermes.mobile
 
+import com.hermes.mobile.ui.firstUnreadRowIndex
+import com.hermes.mobile.ui.newestTsOf
+import com.hermes.mobile.ui.scrollButtonVisible
 import com.hermes.mobile.ui.shouldPinToBottom
 import com.hermes.mobile.ui.streamSignature
+import com.hermes.mobile.ui.unreadRowCount
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -98,5 +105,54 @@ class ChatScrollTest {
             false,
             shouldPinToBottom(userPinnedBottom = true, scrolling = false, empty = true),
         )
+    }
+
+    // ── M8 (patron eki): açılış konumu + sona git butonu — saf kararlar ──
+
+    @Test
+    fun `buton en altta degilken ve liste bos degilken gorunur`() {
+        assertTrue(scrollButtonVisible(followBottom = false, rowsEmpty = false))
+        assertFalse(scrollButtonVisible(followBottom = true, rowsEmpty = false))
+        assertFalse(scrollButtonVisible(followBottom = false, rowsEmpty = true))
+    }
+
+    @Test
+    fun `okunmamis sayaci negatif olmaz`() {
+        assertEquals(3, unreadRowCount(totalRows = 10, seenRows = 7))
+        assertEquals(0, unreadRowCount(totalRows = 5, seenRows = 9))
+    }
+
+    @Test
+    fun `ilk okunmamis satir zamana gore bulunur`() {
+        val ts = listOf(100.0, 110.0, 120.0, 130.0)
+        assertEquals(2, firstUnreadRowIndex(ts, lastReadTs = 110.0))
+        // Hepsi okunmuşsa hedef YOK (davranış: en altta kal).
+        assertNull(firstUnreadRowIndex(ts, lastReadTs = 130.0))
+        assertNull(firstUnreadRowIndex(ts, lastReadTs = 999.0))
+        // Kayıt yokken karar verilmez (eski davranış: en altta).
+        assertNull(firstUnreadRowIndex(ts, lastReadTs = null))
+    }
+
+    @Test
+    fun `mesaj sayisi degisse de konum karari sabit kalir - satir indeksi degil damga`() {
+        // Oturumda 4 mesajken okundu kaydı 110; sonra BAŞINA 2 mesaj EKLENDİ.
+        // İndeks kayar (2→4) ama KARAR aynı mesaja (damga 120) çıkar —
+        // patron eki kabul ölçütü: "mesaj sayısı değişince kaymaya dayanıklı".
+        val tsOnce = listOf(100.0, 110.0, 120.0, 130.0)
+        val tsSonra = listOf(90.0, 95.0, 100.0, 110.0, 120.0, 130.0)
+        val iOnce = firstUnreadRowIndex(tsOnce, 110.0)!!
+        val iSonra = firstUnreadRowIndex(tsSonra, 110.0)!!
+        assertEquals(120.0, tsOnce[iOnce]!!, 0.0)
+        assertEquals(120.0, tsSonra[iSonra]!!, 0.0)
+    }
+
+    @Test
+    fun `damgasiz satirlar atlanir ve kayit geriye gitmez`() {
+        assertEquals(1, firstUnreadRowIndex(listOf(null, 110.0, null, 130.0), 100.0))
+        assertNull(firstUnreadRowIndex(listOf(null, null), 100.0))
+        assertEquals(130.0, newestTsOf(listOf(110.0, 130.0), 120.0)!!, 0.0)
+        // Görülen en yeni eskiyse kayıt GERİYE GİTMEZ (okunmamış korunur).
+        assertEquals(120.0, newestTsOf(listOf(110.0), 120.0)!!, 0.0)
+        assertNull(newestTsOf(listOf(null, null), null))
     }
 }

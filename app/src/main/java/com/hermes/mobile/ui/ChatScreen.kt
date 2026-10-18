@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
@@ -76,6 +78,8 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -98,6 +102,7 @@ import com.hermes.mobile.ToolState
 import com.hermes.mobile.liveThinkingTail
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.BotRosterStore
+import com.hermes.mobile.data.ChatScrollPositionStore
 import com.hermes.mobile.data.HermesProfile
 import com.hermes.mobile.data.PhoneIntent
 import com.hermes.mobile.data.SavedPrompt
@@ -285,6 +290,16 @@ fun ChatScreen(
         if (botBadge == null) emptySet() else botBadgeRowKeys(rows)
     }
 
+    // M8 (patron eki) + TUR-31: "sona git" butonu — takip açıkken görülen
+    // satır sayısı hatırlanır; takip kapalıyken gelen yeni satırlar
+    // okunmamış sayacıdır. Buton en altta değilken HER ZAMAN erişilebilir.
+    val scrollScope = rememberCoroutineScope()
+    var seenRows by remember { mutableStateOf(0) }
+    LaunchedEffect(followBottom, rows.size) {
+        if (followBottom) seenRows = rows.size
+    }
+    val unreadRows = unreadRowCount(rows.size, seenRows)
+
     // Kullanıcı bilinçli olarak yukarı kaydırırsa takip kapanır; alta dönünce
     // kendiliğinden açılır. (Eski kodda bayrağı false'a çeken hiçbir yol
     // yoktu — tek emniyet 'en altta değilse kaydırma' dalıydı.)
@@ -332,6 +347,40 @@ fun ChatScreen(
         // kenere oturur, ilk satırı header altında kalmaz; akışta alt satır
         // her zaman görünür.
         listState.scrollToItem(rows.lastIndex)
+    }
+
+    // M8 (patron eki): oturum AÇILIŞ KONUMU — en sona otomatik atlama YOK.
+    // Son okunan mesajdan sonrasına (ilk okunmamış satıra) konumlan; konum
+    // oturum başına cihazda saklanır (mesaj ZAMAN DAMGASIYLA — satır indeksi
+    // değil; mesaj sayısı değişse de kaymaz). Okunmamış yok/kayıt yoksa
+    // davranış eski hâliyle (en altta) kalır.
+    val scrollPosContext = LocalContext.current.applicationContext
+    val scrollPosStore = remember { ChatScrollPositionStore(scrollPosContext) }
+    var openingHandled by remember { mutableStateOf(false) }
+    LaunchedEffect(state.sessionId, state.storedSessionId, state.historyLoading) {
+        if (state.historyLoading) {
+            openingHandled = false
+            return@LaunchedEffect
+        }
+        if (openingHandled || rows.isEmpty()) return@LaunchedEffect
+        openingHandled = true
+        val sid = state.storedSessionId ?: state.sessionId ?: return@LaunchedEffect
+        val lastRead = scrollPosStore.okunanZaman(sid) ?: return@LaunchedEffect
+        val hedef = firstUnreadRowIndex(rows.map { chatRowTs(it) }, lastRead) ?: return@LaunchedEffect
+        if (hedef > 0) {
+            listState.scrollToItem(hedef)
+            followBottom = false
+            userPinnedBottom = false
+        }
+    }
+
+    // M8: okundu işareti — kullanıcı en ALTTA (takip açık) olduğunda görülen
+    // en yeni damga cihaza yazılır. Yukarıdayken (takip kapalı) İLERLETİLMEZ:
+    // "okuyup çık → tekrar aç → kaldığı yerden devam" sözleşmesi budur.
+    LaunchedEffect(followBottom, state.items) {
+        if (!followBottom) return@LaunchedEffect
+        val sid = state.storedSessionId ?: state.sessionId ?: return@LaunchedEffect
+        scrollPosStore.kaydet(sid, newestTsOf(rows.map { chatRowTs(it) }, null))
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
@@ -443,6 +492,23 @@ fun ChatScreen(
                     }
                     item { Spacer(Modifier.height(6.dp)) }
                 }
+            }
+
+            // M8 + TUR-31: "sona git" yüzen butonu — en altta değilken sağ
+            // altta HER ZAMAN erişilebilir; basınca animasyonlu sona kayar,
+            // okunmamış sayısı rozet olarak.
+            if (scrollButtonVisible(followBottom, rows.isEmpty())) {
+                ScrollToBottomButton(
+                    unread = unreadRows,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 14.dp, bottom = 10.dp),
+                    onClick = {
+                        scrollScope.launch {
+                            listState.animateScrollToItem(rows.lastIndex)
+                        }
+                    },
+                )
             }
         }
 
@@ -926,6 +992,102 @@ internal fun streamSignature(items: List<ChatItem>): String =
             is ChatItem.Approval -> "K:${item.key}:${item.answered ?: ""}"
         }
     }
+
+/**
+ * TUR-31 + M8: "sona git" yüzen butonu — sağ alt köşede yuvarlak ↓.
+ *
+ * En altta değilken HER ZAMAN görünür/erişilebilir ([scrollButtonVisible]);
+ * basınca animasyonlu sona kayar. Takip kapalıyken gelen yeni satır sayısı
+ * rozettir (99+ tavan).
+ */
+@Composable
+private fun ScrollToBottomButton(
+    unread: Int,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(HermesColors.Surface)
+            .border(1.dp, HermesColors.BorderStrong, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Default.KeyboardArrowDown,
+            contentDescription = S.t2("Sona git", "Scroll to bottom"),
+            tint = HermesColors.TextSecondary,
+            modifier = Modifier.size(24.dp),
+        )
+        if (unread > 0) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(HermesColors.Busy),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    if (unread > 99) "99+" else unread.toString(),
+                    color = HermesColors.TextPrimary,
+                    fontSize = 9.sp,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+    }
+}
+
+// ── TUR-31 + M8: "sona git" yüzen butonu — saf kararlar (ChatScrollTest) ─────
+
+/**
+ * Buton görünür mü: kullanıcı en altta DEĞİL ve görülecek satır var.
+ * (Liste boşken buton anlamsız; takip açıkken zaten en alttadır.)
+ */
+internal fun scrollButtonVisible(followBottom: Boolean, rowsEmpty: Boolean): Boolean =
+    !followBottom && !rowsEmpty
+
+/**
+ * Okunmamış sayacı: takip KAPALIYKEN gelen yeni satır sayısı.
+ * [seenRows] = son kez en altta görünürkenki satır sayısı; sayaç asla
+ * negatif olmaz ve satır silinince kendiliğinden düşer.
+ */
+internal fun unreadRowCount(totalRows: Int, seenRows: Int): Int =
+    (totalRows - seenRows).coerceAtLeast(0)
+
+/** Satırın zaman damgası — User/Assistant dışında null (M8). */
+internal fun chatRowTs(row: ChatRow): Double? =
+    (row as? ChatRow.Single)?.item?.let {
+        when (it) {
+            is ChatItem.User -> it.ts
+            is ChatItem.Assistant -> it.ts
+            else -> null
+        }
+    }
+
+/**
+ * M8: İLK okunmamış satırın indeksi — [lastReadTs]'ten SONRAKI ilk damgalı
+ * satır. Bulunamazsa null (davranış: en altta kal). Damgasız satırlar
+ * atlanır; mesaj sayısı değişse de zamana göre karar SABİT kalır
+ * (satır indeksiyle tutmanın aksine — patron ekinin kabul ölçütü).
+ */
+internal fun firstUnreadRowIndex(rowTimestamps: List<Double?>, lastReadTs: Double?): Int? {
+    if (lastReadTs == null) return null
+    val index = rowTimestamps.indexOfFirst { it != null && it > lastReadTs }
+    return if (index < 0) null else index
+}
+
+/**
+ * M8: okundu işareti güncellemesi — damgalı satırların EN YENİSİ ile mevcut
+ * kaydın büyüğü. Okunmamış yoksa (tümü eski) kayıt GERİYE GİTMEZ.
+ */
+internal fun newestTsOf(rowTimestamps: List<Double?>, current: Double?): Double? {
+    val enYeni = rowTimestamps.filterNotNull().maxOrNull() ?: return current
+    return if (current == null || enYeni > current) enYeni else current
+}
 
 // ── Tur-14: tarih-saat ayraçları ─────────────────────────────────────────────
 // Claude/ChatGPT/Grok düzeni: mesajlar gün bölümlerinde çizilir; gün içinde
