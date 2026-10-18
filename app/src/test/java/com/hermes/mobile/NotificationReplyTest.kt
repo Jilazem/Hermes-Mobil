@@ -14,7 +14,7 @@ class NotificationReplyTest {
     @Test fun `fragments wait for completion and are accumulated`() {
         val reply = NotificationReply("chat")
         assertFalse(reply.accept(event("message.delta", "Merhaba ")))
-        assertFalse(reply.accept(event("message.delta", "Gökhan.")))
+        assertFalse(reply.accept(event("message.delta", "Örnek.")))
         assertNull(reply.result)
         assertTrue(reply.accept(event("message.complete")))
         assertEquals("Merhaba dünya.", reply.result)
