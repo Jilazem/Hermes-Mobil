@@ -1,0 +1,72 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugAarMetadata
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :app:javaPreCompileDebug
+> Task :app:processDebugResources
+
+> Task :app:compileDebugKotlin
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/assistant/JarvisVoice.kt:266:19 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/assistant/JarvisVoice.kt:273:48 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/assistant/JarvisVoice.kt:274:19 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:117:50 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:117:75 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:126:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:127:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:134:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:135:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:168:14 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:170:14 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/HermesCarService.kt:171:14 'fun setActionStrip(p0: @NonNull() ActionStrip!): @NonNull() ListTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:182:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:183:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:203:18 'fun setTitle(p0: @NonNull() CharSequence!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/car/MirrorScreen.kt:204:18 'fun setHeaderAction(p0: @NonNull() Action!): @NonNull() MessageTemplate.Builder!' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:268:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/data/GatewayWsClient.kt:293:13 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/BotRosterScreen.kt:427:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1153:59 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/ChatScreen.kt:1530:31 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/Composer.kt:283:48 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/Composer.kt:574:36 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/DrivingScreen.kt:99:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/LiveVoiceSheet.kt:155:68 'val Icons.Filled.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:68:40 'val Icons.Filled.Subject: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Subject.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/PanelScreen.kt:454:76 'val Icons.Filled.InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/PermissionRows.kt:60:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:293:40 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SessionDrawer.kt:897:53 'val Icons.Filled.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Undo.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:58:42 'val Icons.Filled.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Send.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/main/java/com/hermes/mobile/ui/SourceBadge.kt:59:38 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/CrashGuardTest.kt:39:52 Division by zero.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/ProfileChipLogicTest.kt:87:9 'static fun assertEquals(p0: (Array<Any!>..Array<out Any!>?), p1: (Array<Any!>..Array<out Any!>?)): Unit' is deprecated. Deprecated in Java.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/SessionFlowTur19Test.kt:141:46 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+w: file:///Volumes/EX/90-ARSIV/MAC-TASINAN/Documents/Codex/2026-10-07/files-mentioned-by-the-user-g/work/Hermes-Mobil/app/src/test/java/com/hermes/mobile/SessionFlowTur19Test.kt:143:21 Java type mismatch: inferred type is 'kotlin.String?', but 'kotlin.String' was expected.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+
+BUİLD SUCCESSFUL in 54s
+22 actionable tasks: 22 executed
+EXIT=0

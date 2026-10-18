@@ -342,3 +342,73 @@ fun sessionExpiredNotice(expiredTitle: String): String =
         "«$expiredTitle» süresi doldu, son oturum açıldı",
         "«$expiredTitle» expired — opened the last session",
     )
+
+/**
+ * K21 — oturum satırı sağa-çek İKİ AŞAMALI SİL: saf durum makinesi
+ * (Compose'suz, birim testli).
+ *
+ * Konumlar satır genişliğinin kesri: 0 = yerinde, +1 = tam sağa, -1 = tam
+ * sola. Silme kararı bırakma eşiğine (konum) bağlıdır — brief:
+ * "bırakma eşiği geçilirse".
+ *
+ * Fazlar:
+ *  - [Phase.Idle]: sağa ilk çekim ARM eşikini geçerse satır [Target.Stuck]
+ *    (yarıda takılır) ve Armed olur — bırakınca geri toplanmaz. Sola tam
+ *    çekim arşivler.
+ *  - [Phase.Armed]: ikinci sağa çekim DELETE eşikini geçerse silme uygulanır
+ *    ve faz Idle'a döner; sola geri çekim / ARM altına düşüş takılmayı
+ *    SIFIRLAR (brief: "satır sola geri çekilirse ... normal duruma döner").
+ *
+ * Armed fazda sola çekim ASLA arşivlemesin: brief sıfırlama yolunu tek
+ * tanımlar; arşiv yalnız Idle'daki sola çekimdir.
+ */
+object SwipeDeleteLogic {
+    enum class Phase { Idle, Armed }
+
+    /** Bırakışta satırın toplanacağı konum. */
+    enum class Target { Settled, Stuck }
+
+    /** 1. çekimde (Idle) satırı takılı konuma bırakan en düşük kesir. */
+    const val ARM_THRESHOLD = 0.25f
+
+    /** Armed fazda ikinci çekimin sileceği en düşük kesir. */
+    const val DELETE_THRESHOLD = 0.75f
+
+    /** Idle fazda sola çekimin arşivleyeceği en düşük kesir (negatif). */
+    const val ARCHIVE_THRESHOLD = -0.5f
+
+    /** Takılı satırın kalıcı konumu — satır genişliğinin yarısı. */
+    const val STUCK_FRACTION = 0.5f
+
+    data class Decision(
+        val phase: Phase,
+        val target: Target,
+        /** Satır bu bırakışta takılı konuma geçiyor (1. çekim). */
+        val arm: Boolean = false,
+        /** Yerel gizleme (sil) uygulanacak. */
+        val delete: Boolean = false,
+        /** Arşivleme uygulanacak (sola tam çekim). */
+        val archive: Boolean = false,
+        /** Takılı faz sıfırlandı (başka eşik geçilmedi). */
+        val reset: Boolean = false,
+    )
+
+    /**
+     * Bırakış kararı. `positionFraction` = satırın o anki yatay konumu
+     * (satır genişliğinin kesri).
+     */
+    fun onRelease(phase: Phase, positionFraction: Float): Decision = when {
+        phase == Phase.Idle && positionFraction <= ARCHIVE_THRESHOLD ->
+            Decision(Phase.Idle, Target.Settled, archive = true)
+        positionFraction < ARM_THRESHOLD ->
+            Decision(Phase.Idle, Target.Settled, reset = phase == Phase.Armed)
+        phase == Phase.Idle ->
+            // 1. çekim: uzaklık fark etmez — satır YARIDA TAKILIR (brief).
+            Decision(Phase.Armed, Target.Stuck, arm = true)
+        positionFraction > DELETE_THRESHOLD ->
+            Decision(Phase.Idle, Target.Settled, delete = true)
+        else ->
+            // Armed + ARM..DELETE arası: takılı kaldığı yerde kalır.
+            Decision(Phase.Armed, Target.Stuck)
+    }
+}

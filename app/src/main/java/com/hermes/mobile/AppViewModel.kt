@@ -307,6 +307,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         f.copy(hidden = f.hidden + id, pinned = f.pinned - id, archived = f.archived - id, followed = f.followed - id)
     }
 
+    /** K21: yerel gizlemeyi geri al — hidden'dan çıkarır (sunucuya gitmez). */
+    fun restoreSession(id: String) = mutateFlags { f ->
+        f.copy(hidden = f.hidden - id)
+    }
+
 
     fun selectProfile(id: String) {
         store.setActiveId(id)
