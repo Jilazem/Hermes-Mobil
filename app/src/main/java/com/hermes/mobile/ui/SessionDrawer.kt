@@ -1,15 +1,21 @@
 package com.hermes.mobile.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +64,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -71,10 +80,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.hermes.mobile.InterventionKind
 import com.hermes.mobile.data.LiveSession
@@ -84,6 +95,8 @@ import com.hermes.mobile.data.kaynakOzeti
 import com.hermes.mobile.data.mergeSecilebilirMi
 import com.hermes.mobile.ui.theme.HermesColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Tur-16 — oturum çekmecesi (Claude / Grok / Gemini tarzı, tek ekran).
@@ -98,8 +111,9 @@ import kotlinx.coroutines.delay
  *
  * Satır (FR-003): durum noktası (çalışan=yeşil, bekleyen=sarı, bitti=gri),
  * başlık (ham id ASLA — [displayLabel] filtresi), tek satır son mesaj
- * önizlemesi, göreli saat. Uzun basma alt sayfa (FR-004), sağa kaydırma
- * arşivler ("Geri al" satırı ile), aktif oturum vurguludur (FR-006).
+ * önizlemesi, göreli saat. Uzun basma alt sayfa (FR-004), K21: sola tam
+ * çekim arşivler, sağa çekim iki aşamalı siler ("Geri al" satırıyla),
+ * aktif oturum vurguludur (FR-006).
  *
  * Canlı sekmesi (FR-007): Canlı akışın çekmece içi hâli — bağlan / müdahale
  * / dur; ayrı ekran yok.
@@ -133,6 +147,10 @@ fun SessionDrawerContent(
     onSetArchived: (DrawerRow, Boolean) -> Unit,
     onUndoArchive: (DrawerRow) -> Unit,
     onDelete: (DrawerRow) -> Unit,
+    /** K21: sağa çek ikinci aşama — yerel gizleme (sunucuya gitmez). */
+    onDeleteSwipe: (DrawerRow) -> Unit = {},
+    /** K21: silme geri al — hidden kümesinden çıkarır (yerel). */
+    onUndoDelete: (DrawerRow) -> Unit = {},
     onConnectLive: (LiveSession) -> Unit,
     /** Döküm (SessionDetailScreen) — satır uzun basma menüsünden; tur-14
      *  'Döküm' erişimi korunur (FR-009 regresyon yok). */
@@ -178,12 +196,17 @@ fun SessionDrawerContent(
     // Geri-al satırı (kaydırarak arşiv, FR-004). Global SnackbarHost çekmeceyi
     // gölgelediğinden kendi inline satırı — 5 sn sonra kendiliğinden kalkar.
     var undoRow by remember { mutableStateOf<DrawerRow?>(null) }
+    // K21: geri-al türü — arşiv mi yerel gizleme mi (satır metni + geri-al yolu).
+    var undoKind by remember { mutableStateOf(UndoKind.Archive) }
     LaunchedEffect(undoRow?.key) {
         if (undoRow != null) {
             delay(5_000)
             undoRow = null
         }
     }
+    // K21: takılı sil satırı — "listede başka yere dokunulursa sıfırla"
+    // için satır DIŞINDA tutulur (tek kaynak: key; null = takılı yok).
+    var deleteArmedKey by remember { mutableStateOf<String?>(null) }
 
     // K13c: çoklu seçim — uzun basma menüsündeki "Birleştir" ile açılır.
     // Seçim dbId (sunucu oturum kimliği) üzerinden: birleştirme sunucuya gider.
@@ -318,15 +341,19 @@ fun SessionDrawerContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    S.t2("Arşivlendi", "Archived"),
+                    if (undoKind == UndoKind.Archive) S.t2("Arşivlendi", "Archived")
+                    else S.t2("Silindi", "Deleted"),
                     color = HermesColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(
                     onClick = {
-                        onUndoArchive(undoRow!!)
+                        val target = undoRow
                         undoRow = null
+                        if (target != null) {
+                            if (undoKind == UndoKind.Archive) onUndoArchive(target) else onUndoDelete(target)
+                        }
                     },
                     contentPadding = PaddingValues(horizontal = 8.dp),
                 ) {
@@ -446,20 +473,34 @@ fun SessionDrawerContent(
                             row = row,
                             onPick = {
                                 if (secimModu) secimToggle(row) else {
+                                    // K21: listede başka yere dokunma takılı sil
+                                    // satırını sıfırlar.
+                                    deleteArmedKey = null
                                     onPick(row)
                                     onDismissDrawer()
                                 }
                             },
                             onLongPress = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                deleteArmedKey = null
                                 if (secimModu) secimToggle(row) else menuRow = row
                             },
                             onArchiveSwipe = {
                                 if (!secimModu) {
                                     onSetArchived(row, true)
                                     undoRow = row
+                                    undoKind = UndoKind.Archive
                                 }
                             },
+                            onDeleteSwipe = {
+                                deleteArmedKey = null
+                                onDeleteSwipe(row)
+                                undoRow = row
+                                undoKind = UndoKind.Delete
+                            },
+                            deleteArmed = deleteArmedKey == row.key,
+                            onArmDelete = { deleteArmedKey = row.key },
+                            onResetDelete = { if (deleteArmedKey == row.key) deleteArmedKey = null },
                             secimModu = secimModu,
                             seciliSecim = row.dbId in secili,
                         )
@@ -481,12 +522,14 @@ fun SessionDrawerContent(
                                     row = entry.row,
                                     onPick = {
                                         if (secimModu) secimToggle(entry.row) else {
+                                            deleteArmedKey = null
                                             onPick(entry.row)
                                             onDismissDrawer()
                                         }
                                     },
                                     onLongPress = {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        deleteArmedKey = null
                                         if (secimModu) secimToggle(entry.row) else menuRow = entry.row
                                     },
                                     onArchiveSwipe = {
@@ -498,8 +541,18 @@ fun SessionDrawerContent(
                                         } else {
                                             onSetArchived(entry.row, true)
                                             undoRow = entry.row
+                                            undoKind = UndoKind.Archive
                                         }
                                     },
+                                    onDeleteSwipe = {
+                                        deleteArmedKey = null
+                                        onDeleteSwipe(entry.row)
+                                        undoRow = entry.row
+                                        undoKind = UndoKind.Delete
+                                    },
+                                    deleteArmed = deleteArmedKey == entry.row.key,
+                                    onArmDelete = { deleteArmedKey = entry.row.key },
+                                    onResetDelete = { if (deleteArmedKey == entry.row.key) deleteArmedKey = null },
                                     archivedMode = tab == 2,
                                     secimModu = secimModu,
                                     seciliSecim = entry.row.dbId in secili,
@@ -962,28 +1015,66 @@ private fun DrawerSearchField(
     )
 }
 
+/** K21: geri-al satırının türü — arşiv mi yerel gizleme mi. */
+private enum class UndoKind { Archive, Delete }
+
 /**
- * Çekmece oturum satırı (FR-003/FR-004): SwipeToDismissBox ile sağa kaydır =
- * arşivle; dokun = seç + çekmeceyi kapat; uzun bas = alt sayfa. Aktif oturum
- * SurfaceDim dolgusuyla vurgulanır.
- *
- * `row.archived` true olduğunda (kaydırma KENDİ arşiv kararı değil, bayrak
- * sonucu çizer) satır soldan-kaymış durur; "Geri al" bayrağı kaldırınca
- * LaunchedEffect konumu Settled'a geri çeker.
+ * Çekmece oturum satırı (FR-003/FR-004): Tümü/Gruplar görünümünde K21 iki
+ * aşamalı swipe ([TwoStageSwipeRow]); arşiv görünümünde tur22
+ * [ArchiveSwipeRow] KORUNUR (brief madde-4: arşiv görünümü etkilenmez).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun DrawerSessionRow(
     row: DrawerRow,
     onPick: () -> Unit,
     onLongPress: () -> Unit,
     onArchiveSwipe: () -> Unit,
-    /** Tur22 madde-4: true = arşiv görünümü — satır Settled başlar (bayraklı
-     * olmak burada normal); swipe ARŞİVDEN ÇIKARIR (çağıran tersini uygular). */
+    /** Tur22 madde-4: true = arşiv görünümü — mevcut SwipeToDismissBox yolu. */
     archivedMode: Boolean = false,
     /** K13c: true = çoklu seçim modu — satır dokunuşu seçim yapar (çağıran uygular). */
     secimModu: Boolean = false,
     /** K13c: seçim modunda bu satır seçili mi (dbId üzerinden). */
+    seciliSecim: Boolean = false,
+    /** K21: ikinci aşama silme uygulanınca çağrılır (yerel gizleme). */
+    onDeleteSwipe: () -> Unit = {},
+    /** K21: bu satır takılı sil fazında mı (üst katman tek kaynağı). */
+    deleteArmed: Boolean = false,
+    /** K21: satır takılı konuma geçti (üst katman kaydetsin). */
+    onArmDelete: () -> Unit = {},
+    /** K21: bu satırın takılı fazı kendi içinde sıfırlandı. */
+    onResetDelete: () -> Unit = {},
+) {
+    if (archivedMode) {
+        ArchiveSwipeRow(
+            row, onPick, onLongPress, onArchiveSwipe, archivedMode,
+            secimModu, seciliSecim,
+        )
+    } else {
+        TwoStageSwipeRow(
+            row, onPick, onLongPress, onArchiveSwipe,
+            onDeleteSwipe, deleteArmed, onArmDelete, onResetDelete,
+            secimModu, seciliSecim,
+        )
+    }
+}
+
+/**
+ * Arşiv görünümü satırı — tur22 madde-4 SwipeToDismissBox davranışı
+ * BİREBİR korunur: sağa çek = arşivden çıkar (kaydırma KENDİ kararı değil,
+ * bayrak sonucu çizer; bayrak kalkınca Settled'a toplanır).
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun ArchiveSwipeRow(
+    row: DrawerRow,
+    onPick: () -> Unit,
+    onLongPress: () -> Unit,
+    onArchiveSwipe: () -> Unit,
+    /** Çağıran yalnız arşiv görünümünde kullanır (true); etiketler buna göre. */
+    archivedMode: Boolean = true,
+    /** K13c: çoklu seçim modu (arşiv görünümünde de desteklenir). */
+    secimModu: Boolean = false,
+    /** K13c: seçili mi. */
     seciliSecim: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -1060,44 +1151,7 @@ private fun DrawerSessionRow(
             }
         },
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 60.dp)
-                .background(
-                    when {
-                        row.current -> HermesColors.SurfaceDim
-                        else -> HermesColors.Background
-                    },
-                )
-                .combinedClickable(
-                    interactionSource = interaction,
-                    indication = androidx.compose.material3.ripple(),
-                    onClick = onPick,
-                    onLongClick = onLongPress,
-                )
-                .graphicsLayer { scaleX = rowScale; scaleY = rowScale }
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // K13c: çoklu seçim göstergesi — seçim modunda durum noktasının yerine.
-            if (secimModu) {
-                if (seciliSecim) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = S.t2("Seçili", "Selected"),
-                        tint = HermesColors.Midground,
-                        modifier = Modifier.size(18.dp),
-                    )
-                } else {
-                    Box(
-                        Modifier
-                            .size(16.dp)
-                            .border(1.5.dp, HermesColors.TextFaint, CircleShape),
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-            }
+        DrawerRowSurface(row, interaction, rowScale, onPick, onLongPress, secimModu, seciliSecim) {
             // Durum noktası (FR-003): boş = çizilmez (yer tutucu boşluk kalır).
             when (row.dot) {
                 "green" -> DrawerDot(HermesColors.Online)
@@ -1130,6 +1184,297 @@ private fun DrawerSessionRow(
                     // Tur-21: JEV rozeti — gateway alanı gelmiyorsa HİÇ çizilmez
                     // (yer tutucu yok, uydurma yok). Renkler paletten:
                     // Online/Yedek2/BadgeWarn tur-17 palet eşlemesiyle sabit.
+                    when (val badge = com.hermes.mobile.data.JevBadgeLogic.parse(row.jev)) {
+                        com.hermes.mobile.data.JevBadgeLogic.Badge.None -> Unit
+                        else -> {
+                            Box(
+                                Modifier
+                                    .size(7.dp)
+                                    .background(
+                                        when (badge) {
+                                            com.hermes.mobile.data.JevBadgeLogic.Badge.Green -> HermesColors.Online
+                                            com.hermes.mobile.data.JevBadgeLogic.Badge.Yellow -> HermesColors.Busy
+                                            else -> HermesColors.Danger
+                                        },
+                                        CircleShape,
+                                    )
+                            )
+                            Spacer(Modifier.width(5.dp))
+                        }
+                    }
+                    Text(
+                        formatRelative(row.epochSeconds),
+                        color = HermesColors.TextFaint,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+                if (row.preview.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        row.preview,
+                        color = HermesColors.TextMuted,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Satır içeriği — her iki swipe uygulamasının (ArchiveSwipeRow /
+ * TwoStageSwipeRow) paylaştığı ortak çizim: durum noktası, başlık, JEV
+ * rozeti, saat, önizleme. Dokun = seç, uzun bas = alt sayfa; basılıyken
+ * hafif ölçek (tur22 madde-2).
+ */
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun DrawerRowSurface(
+    row: DrawerRow,
+    interaction: MutableInteractionSource,
+    rowScale: Float,
+    onPick: () -> Unit,
+    onLongPress: () -> Unit,
+    /** K13c: çoklu seçim modu — satır dokunuşu seçim yapar (çağıran uygular). */
+    secimModu: Boolean = false,
+    /** K13c: seçim modunda bu satır seçili mi (dbId üzerinden). */
+    seciliSecim: Boolean = false,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .background(
+                if (row.current) HermesColors.SurfaceDim else HermesColors.Background,
+            )
+            .combinedClickable(
+                interactionSource = interaction,
+                indication = androidx.compose.material3.ripple(),
+                onClick = onPick,
+                onLongClick = onLongPress,
+            )
+            .graphicsLayer { scaleX = rowScale; scaleY = rowScale }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // K13c: çoklu seçim göstergesi — seçim modunda durum noktasının yerine.
+        if (secimModu) {
+            if (seciliSecim) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = S.t2("Seçili", "Selected"),
+                    tint = HermesColors.Midground,
+                    modifier = Modifier.size(18.dp),
+                )
+            } else {
+                Box(
+                    Modifier
+                        .size(16.dp)
+                        .border(1.5.dp, HermesColors.TextFaint, CircleShape),
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+        content()
+    }
+}
+
+/**
+ * K21 — oturum satırı iki aşamalı swipe (Tümü/Gruplar görünümü):
+ *
+ *  - SAĞA 1. çekim: ARM eşiği geçilirse satır YARIDA TAKILIR — kırmızı
+ *    zemin + "Silmek için tekrar çek" ipucu; bırakınca toplanmaz.
+ *  - Takılıyken SAĞA 2. tam çekim (bırakma eşiği geçilirse): yerel gizleme
+ *    (sunucuya gitmez) + "Silindi — Geri Al" satırı.
+ *  - SOLA tam çekim: arşivle + "Arşivlendi — Geri Al".
+ *  - SIFIRLAMA: takılı satır sola geri çekilirse veya üst katman
+ *    (listede başka yere dokunma) armed bayrağını kaldırırsa normal duruma
+ *    döner.
+ *
+ * Karar mantığı [SwipeDeleteLogic]'te (saf, birim testli); composable
+ * yalnız eşleme yapar. Konumlar Animatable offset (px) — satır genişliği
+ * onSizeChanged ile ölçülür.
+ */
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun TwoStageSwipeRow(
+    row: DrawerRow,
+    onPick: () -> Unit,
+    onLongPress: () -> Unit,
+    onArchiveSwipe: () -> Unit,
+    onDeleteSwipe: () -> Unit,
+    deleteArmed: Boolean,
+    onArmDelete: () -> Unit,
+    onResetDelete: () -> Unit,
+    /** K13c: çoklu seçim modu. */
+    secimModu: Boolean = false,
+    /** K13c: seçili mi. */
+    seciliSecim: Boolean = false,
+) {
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    var rowWidthPx by remember(row.key) { mutableFloatStateOf(0f) }
+    val offset = remember(row.key) { Animatable(0f) }
+    var phase by remember(row.key) { mutableStateOf(SwipeDeleteLogic.Phase.Idle) }
+
+    // "Listede başka yere dokunulursa" sıfırlaması: üst katman armed
+    // bayrağını kaldırdığında takılı satır toplanır (tek kaynak üstte).
+    LaunchedEffect(deleteArmed) {
+        if (!deleteArmed && phase == SwipeDeleteLogic.Phase.Armed) {
+            phase = SwipeDeleteLogic.Phase.Idle
+            offset.animateTo(0f)
+        }
+    }
+
+    val dragState = rememberDraggableState { delta ->
+        scope.launch {
+            offset.snapTo((offset.value + delta).coerceIn(-rowWidthPx, rowWidthPx))
+        }
+    }
+
+    val interaction = remember(row.key) { MutableInteractionSource() }
+    val pressedState by interaction.collectIsPressedAsState()
+    val reduced = LocalReducedMotion.current
+    val rowScale by animateFloatAsState(
+        targetValue = if (pressedState && !reduced) 0.985f else 1f,
+        animationSpec = if (reduced) tween(0) else tween(HermesMotion.FAST_MS),
+        label = "cekmece-iki-asamali-olcek",
+    )
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .onSizeChanged { if (it.width > 0) rowWidthPx = it.width.toFloat() }
+            .draggable(
+                state = dragState,
+                orientation = Orientation.Horizontal,
+                onDragStopped = { _ ->
+                    val w = rowWidthPx
+                    if (w > 0f) {
+                        val d = SwipeDeleteLogic.onRelease(phase, offset.value / w)
+                        phase = d.phase
+                        when {
+                            d.archive -> {
+                                onArchiveSwipe()
+                                scope.launch { offset.animateTo(0f) }
+                            }
+                            d.delete -> {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onResetDelete()
+                                onDeleteSwipe()
+                                scope.launch { offset.snapTo(0f) }
+                            }
+                            d.arm -> {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onArmDelete()
+                                scope.launch { offset.animateTo(w * SwipeDeleteLogic.STUCK_FRACTION) }
+                            }
+                            d.target == SwipeDeleteLogic.Target.Stuck ->
+                                scope.launch { offset.animateTo(w * SwipeDeleteLogic.STUCK_FRACTION) }
+                            else ->
+                                scope.launch { offset.animateTo(0f) }
+                        }
+                    }
+                },
+            ),
+    ) {
+        // Zemin: sağa sürüklemede soldan kırmızı sil ipucu (takılıyken
+        // koyu + "tekrar çek"), sola sürüklemede sağdan arşiv — mevcut
+        // arşiv görsel dili korunur.
+        if (offset.value > 1f) {
+            Row(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        HermesColors.Danger.copy(
+                            alpha = if (deleteArmed) 0.32f else 0.16f,
+                        ),
+                    )
+                    .padding(start = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = S.t2("Sil", "Delete"),
+                    tint = HermesColors.Danger,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (deleteArmed) S.t2("Silmek için tekrar çek", "Swipe again to delete")
+                    else S.t2("Sil", "Delete"),
+                    color = HermesColors.Danger,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        } else if (offset.value < -1f) {
+            Row(
+                Modifier
+                    .matchParentSize()
+                    .background(HermesColors.Danger.copy(alpha = 0.16f))
+                    .padding(end = 20.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    S.t2("Arşivle", "Archive"),
+                    color = HermesColors.Danger,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    Icons.Default.Archive,
+                    contentDescription = S.t2("Arşivle", "Archive"),
+                    tint = HermesColors.Danger,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        DrawerRowSurface(
+            row,
+            interaction,
+            rowScale,
+            onPick,
+            onLongPress,
+            secimModu,
+            seciliSecim,
+            modifier = Modifier.offset { IntOffset(offset.value.roundToInt(), 0) },
+        ) {
+            // Durum noktası (FR-003): boş = çizilmez (yer tutucu boşluk kalır).
+            when (row.dot) {
+                "green" -> DrawerDot(HermesColors.Online)
+                "yellow" -> DrawerDot(HermesColors.Busy)
+                "grey" -> DrawerDot(HermesColors.Offline)
+                else -> Box(Modifier.size(8.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (row.pinned) {
+                        Icon(
+                            Icons.Default.PushPin,
+                            contentDescription = S.t2("Sabitlenmiş", "Pinned"),
+                            tint = HermesColors.Midground,
+                            modifier = Modifier.size(11.dp),
+                        )
+                        Spacer(Modifier.width(5.dp))
+                    }
+                    Text(
+                        row.title,
+                        color = if (row.current) HermesColors.Midground else HermesColors.TextPrimary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (row.current) FontWeight.Medium else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    // Tur-21: JEV rozeti — gateway alanı gelmiyorsa HİÇ çizilmez
+                    // (yer tutucu yok, uydurma yok).
                     when (val badge = com.hermes.mobile.data.JevBadgeLogic.parse(row.jev)) {
                         com.hermes.mobile.data.JevBadgeLogic.Badge.None -> Unit
                         else -> {

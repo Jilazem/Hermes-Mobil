@@ -342,6 +342,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** K21: yerel gizlemeyi geri al — hidden'dan çıkarır (sunucuya gitmez). */
+    fun restoreSession(id: String) = mutateFlags { f ->
+        f.copy(hidden = f.hidden - id)
+    }
+
 
     /**
      * K13c — çoklu seçilen oturumları sunucuda birleştirir. Kaynaklar sunucuda

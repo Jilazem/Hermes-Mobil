@@ -1155,6 +1155,13 @@ private fun HermesApp(
                             viewModel.setArchived(row.dbId.ifBlank { row.liveId }, false)
                         },
                         onDelete = { row -> viewModel.deleteSession(row.dbId.ifBlank { row.liveId }) },
+                        // K21: sağa çek iki aşamalı sil — yerel gizleme + geri al.
+                        onDeleteSwipe = { row ->
+                            viewModel.deleteSession(row.dbId.ifBlank { row.liveId })
+                        },
+                        onUndoDelete = { row ->
+                            viewModel.restoreSession(row.dbId.ifBlank { row.liveId })
+                        },
                         onOpenTranscript = { row ->
                             // Döküm (tur-14 erişimi korunur): id + başlık çözülü gider.
                             viewModel.openSessionById(
