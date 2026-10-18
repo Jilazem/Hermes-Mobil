@@ -12,9 +12,38 @@ Your server. Your phone. Your model keys never leave either.
 [![No WebView](https://img.shields.io/badge/WebView-none-2F6B4F)](#why-this-exists)
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
 
-[Build it](#build-it) · [Connect your server](#connect-your-server) · [Phone control](#the-agent-can-use-the-phone) · [Report a bug](https://github.com/Jilazem/Hermes-Mobil/issues)
+[Build it](#build-it--derleme) · [Connect your server](#connect-your-server--sunucuya-bağlanma) · [Phone control](#the-agent-can-use-the-phone) · [Report a bug](https://github.com/Jilazem/Hermes-Mobil/issues)
 
 </div>
+
+**Türkçe:** Hermes Mobile, kendi donanımınızda çalışan bir AI ajanını Android
+telefonunuza taşıyan yerli (native) bir istemcidir. Sohbet, canlı ses, kamera,
+bildirimler ve telefon kontrolü telefonda; ajan, araçları ve hafızası
+sunucunuzda kalır. Anahtarlar telefona inmez, bulut aktarıcı yoktur.
+
+---
+
+## Feature list / Özellik listesi (K10–K22)
+
+| Özellik / Feature | Açıklama |
+|---|---|
+| Sohbet & akış / Chat & streaming | Düşünce blokları, araç kartları, tehlikeli komut onay kartları |
+| Oturum yönetimi / Sessions | Yerel önbellek, arşiv, sabitleme, yeniden adlandırma, çift yönlü senkron |
+| Oturum birleştirme / Session merge | Çoklu seçim → birleştirme, "yeniye taşı", ortak paket önerisi |
+| Swipe jestleri / Swipe gestures | Sola çek = arşiv, sağa iki aşamalı çek = sil (geri alınabilir) |
+| Çalışan oturuma müdahale / Steer | Telegram/cron/CLI'de başlayan oturuma canlı mesaj enjeksiyonu |
+| Bot kimlikleri & mağaza / Bots | Kalıcı bot kartları (ad/kişilik/model), 4 adımlı sihirbaz, hazır Türkçe botlar |
+| İzin merkezi / Permissions | 4 izin ayrı kart, onboarding, reddedilen izin için Ayarlar köprüsü |
+| Model seçimi / Model picker | Canlı `/v1/models` doğrulaması, yerel & uzak beyin, yeniden dene |
+| Yoğunluk düşüşü / Busy failover | Yerel düğüm doygunsa uzak uca zehirsiz düşüş + bildirim |
+| Canlı ses & çevrimdışı TTS / Voice | Gemini Live (anahtar sunucuda), cihaz üstü Piper EMA sesi, araç modu |
+| Telefon kontrolü / Phone tools | Aç-kapa oku: uygulamalar, arama, SMS taslağı, takvim, bildirim okuma |
+| Köprü (ajan→telefon) / Bridge | Giden WS + MCP araç sunucusu; NAT/CGNAT'a takılmaz |
+| Sunucu panosu / Dashboard | Terminal, dosya, log, zamanlanmış işler, GPU/CPU izleme |
+| Teşhis / Diagnostics | Soket/HTTP hataları, sır maskeleme, çevrimdışı kuyruk |
+| Yedekleme / Backup | Botlar+promptlar+profiller+oturum bayrakları tek JSON'da; token ASLA |
+
+---
 
 Hermes Mobile turns an Android phone into a first-class surface for an agent
 running on hardware you own. The phone handles interaction — chat, live voice,
@@ -41,7 +70,41 @@ reads replies with the downloaded EMA voice model. See the
 
 ---
 
-## Screenshots
+## Architecture / Mimari
+
+```
+Telefon (bu uygulama)                    Sunucunuz (sizin donanımınız)
+┌─────────────────────────┐   WS/HTTPS   ┌──────────────────────────────┐
+│  Compose UI             │◄────────────►│  Hermes ajanı (araçlar,      │
+│  ChatViewModel          │  /api/ws     │  hafıza, cron, Telegram)     │
+│  SessionMerge/K16/K21   │              │  gateway :9150               │
+│  VoiceApiClient         │──HTTP──────► │  /api/* uçları               │
+└──────────┬──────────────┘              │  relay (canlı ses, :9170)    │
+           │                              │  phone_bridge (:9180)+MCP    │
+   yerel LLM (LAN)                        └──────────────────────────────┘
+   /v1/chat/completions
+```
+
+- **Gateway WebSocket (`/api/ws`):** tek uzun ömürlü bağlantı; olay akışı,
+  düşünce blokları, araç kartları ve onay istekleri üzerinden gelir. Soket
+  düşünce aynı ajan oturumuna yeniden bağlanır (`session attach`), kopukluk
+  UI'ı sessizleştirmez.
+- **Müdahale (`session.steer`):** halihazırda çalışan bir oturumun turuna
+  mesaj enjekte eder — işi atmadan yön değiştirme. Telegram'dan, cron'dan veya
+  CLI'dan başlayan oturumlar telefonda canlı görünür.
+- **Yerel model:** LAN'daki OpenAI-uyumlu uca (`/v1/chat/completions`) doğrudan
+  bağlanır; seçim kilit, tercih değil — yerel uç aşağıdaysa buluta sessizce
+  düşmez, hata gösterir. Doygunlukta (sıra/timeout) sağlıklı adrese
+  zehirsiz düşüş ve bildirim yapılır.
+- **Canlı ses:** telefon → sunucudaki küçük Python röle (`relay/`) → sağlayıcı;
+  anahtar yalnız sunucu ortam değişkenindedir. Aynı ana menşe üzerinden
+  `/live-relay` yolu ile dışarıdan da erişilir.
+- **Telefon köprüsü:** telefon sunucuya **giden** WS açar; ajan MCP araç
+  sunucusu üzerinden telefona erişir. Port açma, VPN, USB gerekmez.
+
+---
+
+## Screenshots / Ekran görüntüleri
 
 <p align="center">
   <img src="docs/shots/01-chat-empty.png" width="200" alt="Chat">
@@ -66,9 +129,9 @@ personal; with it on, none do.
 
 ---
 
-## What it does
+## What it does / Ne yapar
 
-### Chat and sessions
+### Chat and sessions / Sohbet ve oturumlar
 
 - Streaming replies over the agent's WebSocket protocol, with thinking
   blocks, tool-call cards, and approval prompts for dangerous commands.
@@ -80,7 +143,7 @@ personal; with it on, none do.
   back to the most recent one if the server has expired it.
 - Offline composer: messages queue and send themselves on reconnect.
 
-### Live voice and camera
+### Live voice and camera / Canlı ses ve kamera
 
 - Bidirectional audio through the Gemini Live API with barge-in, proxied by a
   small relay (`relay/`) so the API key stays on your server.
@@ -101,7 +164,7 @@ personal; with it on, none do.
   preference — if the local node is down the app shows an error and stays
   local. It never silently falls back to the cloud.
 
-### The agent can use the phone
+### The agent can use the phone / Ajan telefonu kullanabilir
 
 Typed and spoken commands resolve **on the device** — no round trip, no model
 call, no network:
@@ -128,7 +191,7 @@ is required. Anything you don't grant just disables that one capability.
 Deeper control (Wi-Fi, Bluetooth, DND, shell) is available through
 [Shizuku](https://shizuku.rikka.app/) and is off by default.
 
-### The agent can reach the phone, too
+### The agent can reach the phone, too / Ajan telefona da ulaşabilir
 
 The commands above run when **you** type or speak them. That left half the
 problem unsolved: an agent started by cron, Telegram or the CLI could never
@@ -160,14 +223,14 @@ Off by default, and read-only when first enabled. The rules are deliberate:
 Two tools exist only for this direction: `phone_notify` and `phone_speak` —
 the agent reaching *you*, rather than only answering when asked.
 
-### Server dashboard
+### Server dashboard / Sunucu panosu
 
 Status, terminal, files, logs, scheduled jobs (pause/resume/reschedule/run),
 skills, MCP servers, webhooks, pairing, raw config — plus GPU/CPU/memory and
 temperatures from one or more
 [sparkDash](https://github.com/MiaAI-Lab/sparkDash) nodes.
 
-### Diagnostics
+### Diagnostics / Teşhis
 
 Most failures in a mobile agent client are silent — a socket closes and the UI
 keeps saying "Thinking", a schema changes and a list comes back empty, and
@@ -182,7 +245,7 @@ matched only the word `Bearer` and left the token in the clear.
 
 ---
 
-## Connect your server
+## Connect your server / Sunucuya bağlanma
 
 This is a client. It does not include, host, or provision a backend — you need
 your own agent server reachable from the phone, and keeping it running and
@@ -192,13 +255,13 @@ The app stores server profiles, tokens, and keys in
 `EncryptedSharedPreferences` backed by the Android Keystore. Nothing is
 written to plain files and nothing is committed to this repo.
 
-### On your home network
+### On your home network / Ev ağında
 
 Enter the server's LAN address, for example `http://192.0.2.10:9150`, plus
 its session token. Plain HTTP is allowed for private addresses and rejected
 for public hosts.
 
-### From outside — reverse proxy
+### From outside — reverse proxy / Dışarıdan: ters vekil
 
 The recommended route. Put the agent behind a proxy that terminates real TLS
 on a hostname you control, then use `https://hermes.example.com`.
@@ -220,12 +283,12 @@ The app derives the address itself: `ws://<lan-ip>:9170` on your network,
 `wss://<host>/live-relay` from outside. The relay verifies the same token the
 app already holds and closes unauthorised sockets with code `4401`.
 
-### From outside — Tailscale
+### From outside — Tailscale / Dışarıdan: Tailscale
 
 Put the server and the phone on the same tailnet and use the tailnet address.
 Nothing is exposed to the public internet.
 
-### Connection troubleshooting
+### Connection troubleshooting / Bağlantı sorun giderme
 
 If the app cannot reach the server, check in this order:
 
@@ -238,7 +301,7 @@ If the app cannot reach the server, check in this order:
 
 ---
 
-## Build it
+## Build it / Derleme
 
 There is no signed release yet — build the debug APK, or produce your own
 signed build. Requires JDK 17 and Android SDK Platform 35.
@@ -262,7 +325,7 @@ general-purpose assistants.
 
 ---
 
-## Server compatibility
+## Server compatibility / Sunucu uyumluluğu
 
 Tested against the server build pinned in
 [`UPSTREAM_TESTED.md`](UPSTREAM_TESTED.md). The upstream agent does not
@@ -278,7 +341,7 @@ one panel fail without taking the app down.
 
 ---
 
-## Project map
+## Project map / Proje haritası
 
 - [`app/src/main/java/com/hermes/mobile/data/`](app/src/main/java/com/hermes/mobile/data/)
   — networking, phone tools, on-device intent parsing, diagnostics, storage.
@@ -293,7 +356,7 @@ one panel fail without taking the app down.
 
 ---
 
-## Acknowledgements
+## Acknowledgements / Teşekkürler
 
 **[Hungbocluaqua/hermex-android-port](https://github.com/Hungbocluaqua/hermex-android-port)**
 — thank you. That project is a native Kotlin/Compose Android port of
@@ -325,7 +388,7 @@ Also:
 
 ---
 
-## Backup & restore (K22)
+## Backup & restore (K22) / Yedekleme ve geri yükleme (K22)
 
 **Settings → Backup / Restore** (Ayarlar → Yedekle / Geri Yükle) writes your
 personal data to a single JSON file via the system file picker (SAF), with a
@@ -361,7 +424,7 @@ file. All rules above are locked by `app/src/test/.../YedekMantikTest.kt`.
 
 ---
 
-## Privacy
+## Privacy / Gizlilik
 
 Personal identifiers, internal hostnames, tokens, and private addresses are
 stripped before anything is published here, and the check runs as a build step
@@ -369,7 +432,7 @@ that fails rather than warns. If you fork this, point it at your own agent and
 keep credentials out of source — the app reads them from encrypted storage at
 runtime.
 
-## License
+## License / Lisans
 
 MIT — see [LICENSE](LICENSE).
 
