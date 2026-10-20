@@ -27,7 +27,7 @@ Grok Bot / GPT Custom GPT karşılığı özel bot çerçevesi, stdlib Python:
 
 ```
 $ python3 -m pytest backend/bot_framework/tests -q
-63 passed in 13.96s
+64 passed in 14.41s
 
 $ python3 backend/bot_framework/e2e_demo.py
 EXIT=0  →  "ok": true
@@ -63,10 +63,11 @@ format=hermes-bot, id_changed=true, same_persona=true) · delete_bot(204)
 - SQLite tek dosya; yedekleme stratejisi uygulama dışında (K22 yedek akışıyla
   birlikte değerlendirilmeli).
 
-## Bağımsız denetim (cd-denetmen, 1. tur)
+## Bağımsız denetim (cd-denetmen, 1. ve 2. tur)
 
-Verdict: **GECTI** (`denetim/verdict-v5-5-bot-cercevesi.json`), 3 koşul + 2 ORTA
-bulgu. Bu turda hepsi kapatıldı:
+1. tur verdict: **GECTI** (`denetim/verdict-v5-5-bot-cercevesi.json`), 3 koşul + 2 ORTA
+bulgu. 2. tur verdict: **GECTI**, 3/3 koşul KAPANDI
+(`denetim/verdict-v5-5-bot-cercevesi-t2.json`; 63→64 test). Bulgu ve düzeltmeler:
 
 | Bulgu | Düzeltme |
 |---|---|
@@ -76,8 +77,9 @@ bulgu. Bu turda hepsi kapatıldı:
 | DUSUK-4: token karşılaştırması sabit zamanlı değil | `hmac.compare_digest` |
 | DUSUK-5: metin içine gömülü sır taranmıyor | Alan düzeyi sözleşme olarak bırakıldı (README'de yazılı) |
 | DUSUK-6/7: uç sayısı dokümanda yanlış; LAN kapısı yalnız CLI'da | Docstring 14 uç; `make_server` yerel olmayan bağ + token yoksa `ValueError` |
+| DUSUK-8 (2. tur): ~1,07 MB üstü gövdede hâlâ broken pipe | Drain üst sınırı 8 MB'a çıkarıldı; `body_too_large` yanıtı `Connection: close` ile dönüyor; 2 MB gövde testi eklendi. 8 MB üstü gövde bilinçli olarak bağlantıyı kapatır (DoS odunleşimi) |
 
-Her düzeltme için yeni test eklendi (5 test); toplam 63.
+Her düzeltme için yeni test eklendi (6 test); toplam 64.
 
 ## Commit
 

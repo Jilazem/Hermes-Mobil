@@ -182,6 +182,23 @@ class ApiTests(HttpCase):
             self.assertEqual(exc.code, 400)
             self.assertEqual(json.loads(exc.read().decode("utf-8"))["error"], "body_too_large")
 
+    def test_body_far_too_large_gets_400(self):
+        """2 MB gövde de 400 görmeli (drain üst sınırı 8 MB)."""
+        big = b'{"name":"' + b"x" * 2_000_000 + b'","persona":"p"}'
+        req = urllib.request.Request(
+            self.base + "/api/bots",
+            data=big,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req, timeout=20)
+            self.fail("2 MB gövde kabul edildi")
+        except urllib.error.HTTPError as exc:
+            self.assertEqual(exc.code, 400)
+            self.assertEqual(json.loads(exc.read().decode("utf-8"))["error"], "body_too_large")
+            self.assertEqual(exc.headers.get("Connection"), "close")
+
     def test_invalid_content_length_gets_400(self):
         """Denetim DUSUK-3: sayısal olmayan Content-Length 400 dönmeli, 500 değil."""
         import http.client

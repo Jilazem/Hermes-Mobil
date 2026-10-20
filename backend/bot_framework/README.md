@@ -63,3 +63,6 @@ kullanır; gerçek model için `OpenAIResponder(base_url)` (OpenAI uyumlu yerel 
 - Eşzamanlı çok süreçli yazma için tek süreç varsayılır (SQLite + süreç içi kilit).
 - Oturum mesaj tavanı varsayılan 400; persona her zaman ilk elemanda kalır.
 - Bot silindiğinde oturumları da silinir (bkz. `BotStore.delete_bot`).
+- HTTP gövde sınırı 1 MB. Sınır aşımında sunucu gövdeyi en çok 8 MB'a kadar okuyup
+  atar ve `400 body_too_large` + `Connection: close` döner; 8 MB üstü gövdede
+  bağlantı bilinçli olarak kapatılır (bellek/DoS koruması).

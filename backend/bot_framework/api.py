@@ -38,6 +38,7 @@ from .store import BotStore, import_payload
 from .templates import bot_from_template, list_templates
 
 MAX_BODY = 1_000_000  # 1 MB — bot tanımı ve sohbet turu için fazlasıyla yeterli
+MAX_DRAIN = 8_000_000  # sınır aşımında istemciye 400'ü ulaştırmak için okunacak üst sınır
 
 
 class Api:
@@ -120,7 +121,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:  # sessiz: journal'a yazılmaz
         return
 
-    def _send(self, status: int, payload: Optional[Any] = None) -> None:
+    def _send(self, status: int, payload: Optional[Any] = None, close: bool = False) -> None:
         body = b""
         if payload is not None:
             body = json.dumps(payload, ensure_ascii=False, indent=None).encode("utf-8")
@@ -129,12 +130,15 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if close:
+            self.send_header("Connection", "close")
+            self.close_connection = True
         self.end_headers()
         if body:
             self.wfile.write(body)
 
     def _error(self, status: int, code: str, message: str) -> None:
-        self._send(status, {"error": code, "message": message})
+        self._send(status, {"error": code, "message": message}, close=(code == "body_too_large"))
 
     def _read_json(self) -> Any:
         raw_length = self.headers.get("Content-Length") or 0
@@ -145,8 +149,9 @@ class Handler(BaseHTTPRequestHandler):
         if length <= 0:
             return None
         if length > MAX_BODY:
-            # Gövdeyi okuyup at ki istemci 400'ü alabilsin (okunmamış gövde RST üretir).
-            drained = self.rfile.read(min(length, MAX_BODY + 65536))
+            # Gövdeyi (en çok MAX_DRAIN'e kadar) okuyup at ki istemci 400'ü alabilsin;
+            # okunmamış gövde TCP RST üretir. MAX_DRAIN üstünde bağlantı kapatılır.
+            drained = self.rfile.read(min(length, MAX_DRAIN))
             if len(drained) < length:
                 self.close_connection = True
             raise BotValidationError("body_too_large", "Gövde 1 MB sınırını aşıyor")
