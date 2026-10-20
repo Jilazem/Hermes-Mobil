@@ -111,4 +111,4 @@ def bot_from_template(
                     "unknown_field", "Şablon geçersiz kılması: %s" % key_name
                 )
             data[key_name] = value
-    return Bot.create(now=now, **data)
+    return Bot.from_dict(data, now=now)

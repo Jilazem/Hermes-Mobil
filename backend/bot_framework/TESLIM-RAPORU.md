@@ -17,8 +17,8 @@ Grok Bot / GPT Custom GPT karşılığı özel bot çerçevesi, stdlib Python:
   persona'yı korur; `LocalResponder` (deterministik) ve `OpenAIResponder`
   (OpenAI uyumlu yerel uç) takılabilir.
 - **Şablonlar** (`templates.py`): asistan, kod, araştırma, bilirkişi.
-- **HTTP API** (`api.py`, `server.py`): 13 uç; varsayılan 127.0.0.1:8765,
-  LAN'a açarken `--token` zorunlu; bot tanımına sır yazılmaz.
+- **HTTP API** (`api.py`, `server.py`): 14 uç; varsayılan 127.0.0.1:8765,
+  LAN'a açarken `--token` zorunlu (kütüphane düzeyinde de); bot tanımına sır yazılmaz.
 - **UI şartnamesi** (`UI-SPEC.md`): cd-android için ekranlar, alan sınırları,
   uçlar, hata kodları, kabul ölçütleri.
 - **E2E kanıt** (`e2e_demo.py`): gerçek HTTP + geçici SQLite ile tam yaşam döngüsü.
@@ -27,7 +27,7 @@ Grok Bot / GPT Custom GPT karşılığı özel bot çerçevesi, stdlib Python:
 
 ```
 $ python3 -m pytest backend/bot_framework/tests -q
-58 passed in 11.83s
+63 passed in 13.96s
 
 $ python3 backend/bot_framework/e2e_demo.py
 EXIT=0  →  "ok": true
@@ -62,6 +62,22 @@ format=hermes-bot, id_changed=true, same_persona=true) · delete_bot(204)
   ayrımı eklenmedi (model ucu katmanına bırakıldı).
 - SQLite tek dosya; yedekleme stratejisi uygulama dışında (K22 yedek akışıyla
   birlikte değerlendirilmeli).
+
+## Bağımsız denetim (cd-denetmen, 1. tur)
+
+Verdict: **GECTI** (`denetim/verdict-v5-5-bot-cercevesi.json`), 3 koşul + 2 ORTA
+bulgu. Bu turda hepsi kapatıldı:
+
+| Bulgu | Düzeltme |
+|---|---|
+| ORTA-1: `from-template` override yolu sır/şema kapısını atlıyordu (500 + TypeError) | `templates.bot_from_template` artık `Bot.from_dict` kapısından geçiyor → `secret_not_allowed` / `unknown_field` 400 |
+| ORTA-2: 1 MB üzeri gövdede istemci 400'ü göremiyordu (broken pipe) | `_read_json` gövdeyi okuyup atıyor; gerekirse `close_connection` → 400 `body_too_large` istemciye ulaşıyor |
+| DUSUK-3: sayısal olmayan `Content-Length` 500 + istisna metni sızdırıyordu | try/except → 400 `invalid_content_length`; 500 gövdesi artık genel mesaj |
+| DUSUK-4: token karşılaştırması sabit zamanlı değil | `hmac.compare_digest` |
+| DUSUK-5: metin içine gömülü sır taranmıyor | Alan düzeyi sözleşme olarak bırakıldı (README'de yazılı) |
+| DUSUK-6/7: uç sayısı dokümanda yanlış; LAN kapısı yalnız CLI'da | Docstring 14 uç; `make_server` yerel olmayan bağ + token yoksa `ValueError` |
+
+Her düzeltme için yeni test eklendi (5 test); toplam 63.
 
 ## Commit
 

@@ -7,20 +7,24 @@ gelir, bot tanımına ASLA yazılmaz.
 Yollar:
   GET    /health
   GET    /api/templates
+  GET    /api/tools                       yetenek kataloğu
   GET    /api/bots
   POST   /api/bots                       {name, persona, emoji?, tools?, model?,
                                           think_mode?, welcome_message?, profile?}
+  POST   /api/bots/from-template         {key, overrides?}
+  POST   /api/bots/import                {format:"hermes-bot", version, bot:{...}}
   GET    /api/bots/{id}
   PATCH  /api/bots/{id}                  kısmi güncelleme
   DELETE /api/bots/{id}
   GET    /api/bots/{id}/export           taşınabilir JSON paketi
-  POST   /api/bots/import                {format:"hermes-bot", version, bot:{...}}
   POST   /api/bots/{id}/chat             {message, session_id?}
   GET    /api/sessions/{id}
   GET    /api/sessions?bot_id={id}
+(14 uç; yöntem+yol çifti sayısı)
 """
 from __future__ import annotations
 
+import hmac
 import json
 import threading
 import time
@@ -133,10 +137,18 @@ class Handler(BaseHTTPRequestHandler):
         self._send(status, {"error": code, "message": message})
 
     def _read_json(self) -> Any:
-        length = int(self.headers.get("Content-Length") or 0)
+        raw_length = self.headers.get("Content-Length") or 0
+        try:
+            length = int(raw_length)
+        except (TypeError, ValueError):
+            raise BotValidationError("invalid_content_length", "Content-Length sayı olmalı")
         if length <= 0:
             return None
         if length > MAX_BODY:
+            # Gövdeyi okuyup at ki istemci 400'ü alabilsin (okunmamış gövde RST üretir).
+            drained = self.rfile.read(min(length, MAX_BODY + 65536))
+            if len(drained) < length:
+                self.close_connection = True
             raise BotValidationError("body_too_large", "Gövde 1 MB sınırını aşıyor")
         raw = self.rfile.read(length)
         try:
@@ -148,7 +160,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.token:
             return True
         header = self.headers.get("Authorization") or ""
-        return header == "Bearer %s" % self.token
+        return hmac.compare_digest(header, "Bearer %s" % self.token)
 
     def _route(self, method: str) -> None:
         if not self._authorized():
@@ -270,8 +282,8 @@ class Handler(BaseHTTPRequestHandler):
         except ChatError as exc:
             status = 404 if exc.code.endswith("_not_found") else 400
             self._error(status, exc.code, exc.message)
-        except Exception as exc:  # pragma: no cover - beklenmedik
-            self._error(500, "internal_error", "Sunucu hatası: %s" % exc)
+        except Exception:  # pragma: no cover - beklenmedik; istisna metni DIŞARI VERİLMEZ
+            self._error(500, "internal_error", "Sunucu hatası")
 
     def do_GET(self) -> None:
         self._route("GET")
@@ -293,6 +305,9 @@ def make_server(
     token: Optional[str] = None,
     engine: Optional[ChatEngine] = None,
 ) -> ThreadingHTTPServer:
+    # Kütüphane düzeyinde de aynı kapı: yerel olmayan bağ + token yok → açma.
+    if host not in ("127.0.0.1", "localhost", "::1") and not token:
+        raise ValueError("LAN'a açarken token zorunlu (genel paylaşım yok)")
     handler = type(
         "BoundHandler",
         (Handler,),

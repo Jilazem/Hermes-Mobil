@@ -148,6 +148,56 @@ class ApiTests(HttpCase):
         self.assertEqual(status, 400)
         self.assertEqual(body["error"], "template_unknown")
 
+    def test_from_template_overrides_reject_secret(self):
+        """Denetim ORTA-1: override yolu sır/şema kapısını atlamamalı."""
+        status, body = self.call(
+            "POST",
+            "/api/bots/from-template",
+            {"key": "kod", "overrides": {"api_key": "SECRET-XYZ"}},
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"], "secret_not_allowed")
+        self.assertEqual(self.call("GET", "/api/bots")[1]["bots"], [])
+
+    def test_from_template_overrides_reject_unknown_field(self):
+        status, body = self.call(
+            "POST", "/api/bots/from-template", {"key": "kod", "overrides": {"uydurma": 1}}
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"], "unknown_field")
+
+    def test_body_too_large_gets_400(self):
+        """Denetim ORTA-2: sınır aşımında istemci 400'ü GÖRMELİ (RST değil)."""
+        big = b'{"name":"' + b"x" * 1_000_100 + b'","persona":"p"}'
+        req = urllib.request.Request(
+            self.base + "/api/bots",
+            data=big,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req, timeout=15)
+            self.fail("1 MB üzeri gövde kabul edildi")
+        except urllib.error.HTTPError as exc:
+            self.assertEqual(exc.code, 400)
+            self.assertEqual(json.loads(exc.read().decode("utf-8"))["error"], "body_too_large")
+
+    def test_invalid_content_length_gets_400(self):
+        """Denetim DUSUK-3: sayısal olmayan Content-Length 400 dönmeli, 500 değil."""
+        import http.client
+
+        conn = http.client.HTTPConnection("127.0.0.1", self.httpd.server_address[1], timeout=10)
+        try:
+            conn.putrequest("POST", "/api/bots")
+            conn.putheader("Content-Length", "abc")
+            conn.endheaders()
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, 400)
+            body = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(body["error"], "invalid_content_length")
+        finally:
+            conn.close()
+
     def test_export_import_over_http(self):
         _, created = self.call(
             "POST", "/api/bots", {"name": "Taşınan", "persona": "taşınan", "tools": ["vision"]}
@@ -251,6 +301,18 @@ class ApiTests(HttpCase):
         status, body = self.call("GET", "/api/yok")
         self.assertEqual(status, 404)
         self.assertEqual(body["error"], "not_found")
+
+
+class LibraryGuardTests(unittest.TestCase):
+    def test_nonlocal_bind_without_token_refused(self):
+        """Denetim DUSUK-7: LAN bağı + token yok → kütüphane düzeyinde de reddet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            store = BotStore(os.path.join(tmp, "b.db"))
+            try:
+                with self.assertRaises(ValueError):
+                    make_server(store, host="0.0.0.0", port=0)
+            finally:
+                store.close()
 
 
 class TokenTests(HttpCase):
