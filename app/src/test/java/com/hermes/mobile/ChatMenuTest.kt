@@ -38,6 +38,33 @@ class ChatMenuTest {
         assertFalse(chatMenuActions(agentBusy = false).contains(ChatMenuAction.Stop))
     }
 
+    // ── K24: Çatalla ────────────────────────────────────────────────
+
+    @Test
+    fun `k24 calisan ajanda catalla gorunur`() {
+        assertTrue(chatMenuActions(agentBusy = true).contains(ChatMenuAction.Fork))
+    }
+
+    @Test
+    fun `k24 bosta catalla yok — sakli oturum yoksa`() {
+        assertFalse(chatMenuActions(agentBusy = false).contains(ChatMenuAction.Fork))
+    }
+
+    @Test
+    fun `v51b bosta sakli mac oturumu catallanabilir`() {
+        // V5-1B: pasif (Mac'te açılmış) oturum session.branch_stored ile
+        // çatallanır; menüde boşta da görünmeli.
+        val items = chatMenuActions(agentBusy = false, canFork = true)
+        assertTrue(items.contains(ChatMenuAction.Fork))
+        assertEquals("boşta müdahale/durdurma yok", true, !items.contains(ChatMenuAction.Stop))
+    }
+
+    @Test
+    fun `k24 catalla durdurmadan once gelir`() {
+        val items = chatMenuActions(agentBusy = true)
+        assertTrue(items.indexOf(ChatMenuAction.Fork) < items.indexOf(ChatMenuAction.Stop))
+    }
+
     @Test
     fun `mudahale sonucu sessiz kalmaz`() {
         val ok = interventionNotice(InterventionKind.Redirect, "queued")

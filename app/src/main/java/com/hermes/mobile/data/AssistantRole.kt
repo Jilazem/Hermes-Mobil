@@ -41,6 +41,7 @@ object AssistantRole {
 
     /** Hermes asistan rolünü tutuyor mu — API 29+ (kesin cevap). */
     fun selfHolds(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val rm = roleManager(context) ?: return false
         return try {
             rm.isRoleHeld(RoleManager.ROLE_ASSISTANT)
@@ -89,6 +90,7 @@ object AssistantRole {
      * [settingsIntent] ile Ayarlar'a yönlendirir.
      */
     fun requestIntent(context: Context): Intent? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val rm = roleManager(context) ?: return null
         val available = try {
             rm.isRoleAvailable(RoleManager.ROLE_ASSISTANT)

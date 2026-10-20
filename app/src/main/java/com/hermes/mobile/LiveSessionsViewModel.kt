@@ -151,7 +151,13 @@ class LiveSessionsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _state.update { it.copy(sending = true) }
             val outcome = runCatching {
-                when (kind) {
+                // V5-1B: steer/redirect YALNIZ süren turda anlamlı. Boştaki
+                // (Mac'te açık ama turu bitmiş) oturuma "ekle" isteği
+                // `session.steer` ile `rejected` dönüyordu; doğru yol
+                // saklı kimliği canlıya çevirip prompt.submit etmek.
+                if (!session.canIntervene) {
+                    gw.continueStoredSession(session.dbId, body) + " (devam)"
+                } else when (kind) {
                     InterventionKind.Add -> gw.steer(session.id, body)
                     InterventionKind.Redirect -> gw.redirect(session.id, body)
                 }

@@ -18,6 +18,7 @@ enum class ChatMenuAction {
     Model,
     Reasoning,
     Intervene,
+    Fork,
     Stop,
 }
 
@@ -43,9 +44,11 @@ enum class BubbleAction {
     Copy,
 }
 
-fun chatMenuActions(agentBusy: Boolean): List<ChatMenuAction> =
+fun chatMenuActions(agentBusy: Boolean, canFork: Boolean = false): List<ChatMenuAction> =
     if (agentBusy) {
-        listOf(ChatMenuAction.Model, ChatMenuAction.Reasoning, ChatMenuAction.Intervene, ChatMenuAction.Stop)
+        listOf(ChatMenuAction.Model, ChatMenuAction.Reasoning, ChatMenuAction.Intervene, ChatMenuAction.Fork, ChatMenuAction.Stop)
     } else {
-        listOf(ChatMenuAction.Model, ChatMenuAction.Reasoning)
+        // V5-1B: boştaki SAKLI (Mac) oturum da çatallanabilir (branch_stored);
+        // eskiden "Çatalla" yalnız ajan çalışırken görünüyordu.
+        listOfNotNull(ChatMenuAction.Model, ChatMenuAction.Reasoning, ChatMenuAction.Fork.takeIf { canFork })
     }

@@ -318,7 +318,7 @@ data class AppSettings(
      * "/telefon <görev>" bu adrese gider; Artemis telefonu kablosuz ADB ile
      * kullanır. Boşsa özellik kapalı.
      */
-    val artemisUrl: String = "http://192.168.140.20:8000",
+    val artemisUrl: String = "",
     /**
      * Ajan (Telegram/cron/sohbet/Android Auto yanıtı) senin adına sohbetlere
      * yanıt gönderebilsin mi (`phone_reply`). Geri alınamaz bir eylem olduğu
@@ -345,7 +345,7 @@ data class AppSettings(
     /** Hitap ("efendim" gibi). Boşsa hitap yok. */
     val assistantAddress: String = "efendim",
     /** "Ekranda ne var / bunu özetle" sorularında ekran metnini ajana ekle. */
-    val assistantScreenContext: Boolean = true,
+    val assistantScreenContext: Boolean = false,
     /** "Hey Jarvis" uyandırma kelimesi dinlensin mi (mikrofon ön plan servisi). */
     val wakeWordEnabled: Boolean = false,
     /** "yuksek" | "normal" | "siki" — bkz. WakeWordLogic.Sensitivity. */

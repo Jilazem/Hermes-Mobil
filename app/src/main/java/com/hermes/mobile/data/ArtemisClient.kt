@@ -30,7 +30,17 @@ class ArtemisClient(baseUrl: String) {
         baseUrl.trim().let { if (it.contains("://")) it else "http://$it" },
     )
 
+    init {
+        val uri = java.net.URI(base)
+        require(uri.scheme in setOf("http", "https") && uri.userInfo == null &&
+            uri.host != null && isPrivateHost(uri.host)) {
+            "Artemis requires a private LAN endpoint; authenticated remote control is not configured."
+        }
+    }
+
     private val http = OkHttpClient.Builder()
+        .followRedirects(false)
+        .followSslRedirects(false)
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()

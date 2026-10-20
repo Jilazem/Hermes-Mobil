@@ -17,6 +17,8 @@ import com.hermes.mobile.MainActivity
 @RequiresApi(Build.VERSION_CODES.N)
 class VoiceTileService : TileService() {
 
+    // The deprecated overload is reachable only below API 34.
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         super.onClick()
         val intent = Intent(this, MainActivity::class.java)

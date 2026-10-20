@@ -162,6 +162,30 @@ data class LiveSession(
 data class ActiveSessionsResponse(val sessions: List<LiveSession> = emptyList())
 
 /**
+ * K24 — `session.branch` çatalı sonucu: canlı bir oturumun o ana kadarki
+ * bağlamıyla açılan YENİ saklı çocuğun kimlikleri. `sessionId` süreç içi
+ * (RPC'lerin beklediği), `storedSessionId` kanonik DB anahtarı —
+ * `LiveSession.dbId` ile aynı ayrım.
+ */
+data class ForkedSession(
+    val sessionId: String,
+    val storedSessionId: String = "",
+    val title: String = "",
+    val parent: String = "",
+    val messageCount: Int = 0,
+)
+
+/**
+ * V5-1B — `file.attach` sonucu: [refText] modelin açabildiği `@file:…`
+ * referansı, [path] gateway ana makinesindeki gerçek yol.
+ */
+data class FileAttachRef(
+    val name: String,
+    val path: String,
+    val refText: String,
+)
+
+/**
  * GET /api/profiles → profiles[]
  *
  * Her profil kendi `~/.hermes/profiles/<ad>` dizininde yaşıyor: kendi SOUL.md'si

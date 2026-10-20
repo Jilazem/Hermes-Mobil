@@ -290,18 +290,35 @@ class MainActivity : ComponentActivity() {
                 "data:$mime;base64,$b64" to displayName(uri, "gorsel.png")
             }.onSuccess { (dataUrl, name) ->
                 withContext(Dispatchers.Main) { chatViewModel.attachImage(dataUrl, name) }
+            }.onFailure { e ->
+                // V5-1B: hata YUTULMAZ — kullanıcı "bulunamadı" değil nedeni görsün.
+                DiagLog.e("Attach", "görsel okunamadı: $uri", e)
+                withContext(Dispatchers.Main) {
+                    chatViewModel.reportAttachmentError(e.message ?: uri.toString())
+                }
             }
         }
     }
 
     private fun attachFileFromUri(uri: Uri) {
+        // OpenDocument verdiği okuma izni süreç ölürse kaybolur; kalıcılaştır
+        // (bazı sağlayıcılar izin vermez — o durumda okuma yine hemen yapılır).
+        runCatching {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }.onFailure { DiagLog.w("Attach", "kalıcı URI izni alınamadı: ${it.message}") }
         lifecycleScope.launch(Dispatchers.IO) {
             runCatching {
+                val mime = contentResolver.getType(uri) ?: "application/octet-stream"
                 val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     ?: error("Dosya okunamadı")
-                bytes to displayName(uri, "dosya.bin")
-            }.onSuccess { (bytes, name) ->
-                withContext(Dispatchers.Main) { chatViewModel.attachFile(bytes, name) }
+                Triple(bytes, displayName(uri, "dosya.bin"), mime)
+            }.onSuccess { (bytes, name, mime) ->
+                withContext(Dispatchers.Main) { chatViewModel.attachFile(bytes, name, mime) }
+            }.onFailure { e ->
+                DiagLog.e("Attach", "dosya okunamadı: $uri", e)
+                withContext(Dispatchers.Main) {
+                    chatViewModel.reportAttachmentError(e.message ?: uri.toString())
+                }
             }
         }
     }
@@ -1405,6 +1422,7 @@ private fun HermesApp(
                         // KALAN-2: ⋯ → Müdahale — çalışan ajana açık sohbetten
                         // talimat (session.steer / session.redirect).
                         onIntervene = chatViewModel::intervene,
+                        onFork = chatViewModel::forkSession,
                         // Balona uzun basma → "Buna cevap verme" / "Ayrı dal aç"
                         // (Hermes'in kendi /steer ve /branch komutları; sohbeti
                         // kesmeden aynı hattan koşar).

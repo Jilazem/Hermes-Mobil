@@ -209,6 +209,129 @@ class GatewayWsClient(private val profile: ServerProfile) {
     }
 
     /**
+     * V5-1B — görseli gateway'in KENDİ sözleşmesiyle (`image.attach_bytes`)
+     * oturuma iliştirir.
+     *
+     * Eski yol `/api/files/upload-stream` + `/image uploads/x.png` idi: yükleme
+     * göreli bir yol dönüyor, gateway ise görseli `HERMES_HOME/images/` altında
+     * arıyor → `image not found` (canlı kanıt: 4016). Uzaktaki istemci için
+     * doğru uç `image.attach_bytes`; yol çözümü sunucuda yapılır.
+     */
+    suspend fun attachImageBytes(
+        sessionId: String,
+        contentBase64: String,
+        filename: String,
+    ): String? {
+        val result = request(
+            "image.attach_bytes",
+            buildJsonObject {
+                put("session_id", JsonPrimitive(sessionId))
+                put("content_base64", JsonPrimitive(contentBase64))
+                put("filename", JsonPrimitive(filename))
+            },
+            timeoutMs = 60_000,
+        )
+        val obj = result?.jsonObject ?: return null
+        if (obj["attached"]?.jsonPrimitive?.contentOrNullSafe() == "false") return null
+        return obj["path"]?.jsonPrimitive?.contentOrNullSafe()?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * V5-1B — görsel olmayan dosyayı `file.attach` ile oturuma iliştirir.
+     * Dönen `ref_text` (`@file:…`) modelin gerçekten açabildiği yoldur; eski
+     * `Ek dosya: uploads/x.pdf` metni gateway'in dosya köküne göre çözülmüyordu.
+     */
+    suspend fun attachFileDataUrl(
+        sessionId: String,
+        dataUrl: String,
+        name: String,
+    ): FileAttachRef? {
+        val result = request(
+            "file.attach",
+            buildJsonObject {
+                put("session_id", JsonPrimitive(sessionId))
+                put("data_url", JsonPrimitive(dataUrl))
+                put("name", JsonPrimitive(name))
+            },
+            timeoutMs = 120_000,
+        )
+        val obj = result?.jsonObject ?: return null
+        val path = obj["path"]?.jsonPrimitive?.contentOrNullSafe().orEmpty()
+        val refText = obj["ref_text"]?.jsonPrimitive?.contentOrNullSafe().orEmpty()
+        if (path.isBlank() && refText.isBlank()) return null
+        return FileAttachRef(name = name, path = path, refText = refText.ifBlank { "@file:$path" })
+    }
+
+    /**
+     * V5-1B — SAKLI (Mac'te açılmış, o an canlı olmayan) bir oturumu bütün
+     * geçmişiyle çatallar (`session.branch_stored`). `session.branch` yalnız
+     * süreç içi canlı oturumda çalışır; pasif Mac oturumunda "Çatalla"
+     * düğmesi bu yüzden sessizce başarısız oluyordu.
+     */
+    suspend fun forkSession(
+        sessionId: String,
+        name: String? = null,
+        idempotencyKey: String? = null,
+    ): ForkedSession? {
+        val result = request(
+            "session.branch",
+            buildJsonObject {
+                put("session_id", JsonPrimitive(sessionId))
+                if (!name.isNullOrBlank()) put("name", JsonPrimitive(name))
+                if (idempotencyKey != null) put("idempotency_key", JsonPrimitive(idempotencyKey))
+            },
+        )
+        return parseForkResponse(result)
+    }
+
+    companion object {
+        fun parseForkResponse(result: JsonElement?): ForkedSession? {
+            val obj = result?.jsonObject ?: return null
+            val sid = obj["session_id"]?.jsonPrimitive?.contentOrNullSafe() ?: return null
+            return ForkedSession(
+                sessionId = sid,
+                storedSessionId = obj["stored_session_id"]?.jsonPrimitive?.contentOrNullSafe().orEmpty(),
+                title = obj["title"]?.jsonPrimitive?.contentOrNullSafe().orEmpty(),
+                parent = obj["parent"]?.jsonPrimitive?.contentOrNullSafe().orEmpty(),
+                messageCount = (obj["message_count"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 0,
+            )
+        }
+    }
+
+    suspend fun forkStoredSession(
+        parentStoredId: String,
+        name: String? = null,
+        idempotencyKey: String? = null,
+    ): ForkedSession? {
+        val result = request(
+            "session.branch_stored",
+            buildJsonObject {
+                put("parent_session_id", JsonPrimitive(parentStoredId))
+                if (!name.isNullOrBlank()) put("name", JsonPrimitive(name))
+                if (idempotencyKey != null) put("idempotency_key", JsonPrimitive(idempotencyKey))
+            },
+            timeoutMs = 120_000,
+        )
+        return parseForkResponse(result)
+    }
+
+    /**
+     * V5-1B — pasif oturuma DEVAM: saklı kimliği canlıya çevirip mesajı
+     * gönderir. Çekmecedeki Mac oturumuna "ekle" derken `session.steer`
+     * çağırmak `rejected` dönüyordu (steer yalnız süren turda anlamlı);
+     * boştaki oturumda doğru yol resume + prompt.submit.
+     */
+    suspend fun continueStoredSession(
+        storedSessionId: String,
+        text: String,
+        agentProfile: String? = null,
+    ): String {
+        val runtime = resumeSession(storedSessionId, agentProfile)
+        submitPrompt(runtime, text)
+        return runtime
+    }
+
+    /**
      * Slash komutu çalıştırır — Telegram bot'undaki `/model`, `/cron`, `/skills`…
      * komutlarının aynısı. Çıktı düz metin döner.
      */

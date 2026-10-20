@@ -41,6 +41,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ExpandLess
@@ -144,6 +145,7 @@ fun ChatScreen(
      * sorulur, gönderim ChatViewModel'de yapılır.
      */
     onIntervene: (com.hermes.mobile.InterventionKind, String) -> Unit = { _, _ -> },
+    onFork: () -> Unit = {},
     /** Düşünce panosundaki çaba seçimi — `/reasoning <seviye>` slash komutu. */
     onReasoningLevel: (String) -> Unit = {},
     /** Gateway'in rapor ettiği aktif /reasoning seviyesi (null = bilinmiyor). */
@@ -398,6 +400,7 @@ fun ChatScreen(
             onOpenProfiles,
             onOpenReasoning = { reasoningSheet = true },
             onIntervene = { interventionOpen = true },
+            onFork = onFork,
             onStop = onStop,
             activeProfileName,
             onOpenDrawer = onOpenDrawer,
@@ -541,6 +544,15 @@ fun ChatScreen(
                 style = MonoTextStyle,
                 color = HermesColors.TextFaint,
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 3.dp),
+            )
+        }
+
+        if (state.steerQueued) {
+            Text(
+                S.t2("Direktif kuyrukta — ajan sıradaki adımında işleyecek", "Directive queued — the agent will process it on its next step"),
+                style = MonoTextStyle,
+                color = HermesColors.Midground,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 3.dp).testTag("k24_steer_queued"),
             )
         }
 
@@ -727,6 +739,7 @@ private fun chatMenuLabel(action: ChatMenuAction): String = when (action) {
     ChatMenuAction.Model -> S.t2("Model ve profiller", "Model and profiles")
     ChatMenuAction.Reasoning -> S.t2("Düşünme", "Thinking")
     ChatMenuAction.Intervene -> S.t2("Müdahale…", "Steer…")
+    ChatMenuAction.Fork -> S.t2("Çatalla", "Fork")
     ChatMenuAction.Stop -> S.t2("Durdur", "Stop")
 }
 
@@ -735,6 +748,7 @@ private fun chatMenuIcon(action: ChatMenuAction) = when (action) {
     ChatMenuAction.Model -> Icons.Default.Tune
     ChatMenuAction.Reasoning -> Icons.Default.Psychology
     ChatMenuAction.Intervene -> Icons.Default.EditNote
+    ChatMenuAction.Fork -> Icons.AutoMirrored.Filled.CallSplit
     ChatMenuAction.Stop -> Icons.Default.Stop
 }
 
@@ -748,6 +762,7 @@ private fun ChatHeader(
     onOpenProfiles: () -> Unit,
     onOpenReasoning: () -> Unit,
     onIntervene: () -> Unit,
+    onFork: () -> Unit,
     onStop: () -> Unit,
     activeProfileName: String,
     onOpenDrawer: () -> Unit = {},
@@ -842,7 +857,7 @@ private fun ChatHeader(
                     enabled = !state.sessionId.isNullOrBlank() && !state.agentBusy,
                     onClick = { menuOpen = false; onContinueInCar() },
                 )
-                chatMenuActions(state.agentBusy).forEach { action ->
+                chatMenuActions(state.agentBusy, canFork = state.storedSessionId != null).forEach { action ->
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -867,6 +882,7 @@ private fun ChatHeader(
                                 ChatMenuAction.Model -> onOpenModelPicker()
                                 ChatMenuAction.Reasoning -> onOpenReasoning()
                                 ChatMenuAction.Intervene -> onIntervene()
+                                ChatMenuAction.Fork -> onFork()
                                 ChatMenuAction.Stop -> onStop()
                             }
                         },

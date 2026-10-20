@@ -217,11 +217,22 @@ private const val LOCAL_HISTORY_LIMIT = 20
 data class PendingAttachment(
     val label: String,
     val kind: AttachmentKind,
-    /** Sunucuya yüklendikten sonra dolar. */
+    /** Sunucuya yüklendikten sonra dolar (eski HTTP yolu; artık boş). */
     val remotePath: String? = null,
     val uploading: Boolean = true,
     val error: String? = null,
-)
+    /**
+     * V5-1B — içerik URI'sinden okunan ham baytların base64'ü. Ek, gönderim
+     * anında gateway sözleşmesiyle (`image.attach_bytes` / `file.attach`)
+     * iliştirilir; dosya yolu yerelleştirme sorunu böylece kalmaz.
+     */
+    val contentBase64: String? = null,
+    /** İçerik türü (`image/png`, `application/pdf`…). */
+    val mime: String = "application/octet-stream",
+) {
+    /** Gönderime hazır mı: bayt var, hata yok. */
+    val ready: Boolean get() = contentBase64 != null && error == null
+}
 
 enum class AttachmentKind { Image, File }
 
@@ -261,7 +272,43 @@ data class ChatState(
      * (metin önce girdiye düşer, ses kullanıcı dokununca başlar) DEĞİŞMEZ.
      */
     val assistantMode: Boolean = false,
+    val steerQueued: Boolean = false,
 )
+
+/**
+ * V5-1B — `data:` URL'ini (mime, base64) çiftine ayrıştırır; saf fonksiyon
+ * (JVM testi `V51BAttachmentTest`). Geçersizse null.
+ */
+fun splitDataUrl(dataUrl: String): Pair<String, String>? {
+    if (!dataUrl.startsWith("data:")) return null
+    val comma = dataUrl.indexOf(',')
+    if (comma <= 5) return null
+    val meta = dataUrl.substring(5, comma)
+    val mime = meta.substringBefore(';').ifBlank { "application/octet-stream" }
+    val b64 = dataUrl.substring(comma + 1)
+    return if (b64.isBlank()) null else mime to b64
+}
+
+/** V5-1B — `file.attach` için veri URL'i (saf; test edilir). */
+fun attachmentDataUrl(mime: String, base64: String): String =
+    "data:${mime.ifBlank { "application/octet-stream" }};base64,$base64"
+
+/**
+ * K24 — steer durumundan çip kararı: yalnız `queued` kuyruğa alınmış sayılır
+ * (saf fonksiyon, ForkSteerK24Test).
+ */
+fun steerQueuedAfter(status: String): Boolean = status == "queued"
+
+/**
+ * K24 — çatallama bildirimi (saf fonksiyon): yeni oturumun adıyla tek satır.
+ */
+fun forkNotice(title: String): String = tr("Çatallandı: $title", "Forked: $title")
+
+/**
+ * K24 — çatallama başarısızlık bildirimi (saf fonksiyon): sessiz başarısızlık yok.
+ */
+fun forkFailedNotice(reason: String): String =
+    tr("Çatallanamadı ($reason)", "Could not fork ($reason)")
 
 /**
  * Müdahale sonucu sohbete yazılan tek satır (KALAN-2) — saf fonksiyon
@@ -433,44 +480,50 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         (this as? ShareUploadPlan.Unreadable)?.name.orEmpty()
 
     /**
-     * Staging kopyasını SEÇİLEN HEDEF'in profilinde gerçekten yükler:
-     * [HermesClient.uploadManagedFile] (File) → POST /api/files/upload-stream.
-     * Yük ek olarak sohbet girdisinde görünür; gönderim kullanıcı onaylıdır.
-     * Yükleme sonrası kopya silinir (cache birikmez — denetmen #1).
+     * Staging kopyasını ek olarak sohbete alır (V5-1B).
+     *
+     * Eski yol dosyayı hemen HTTP ile yükleyip göreli `uploads/…` yolunu
+     * saklıyordu; gönderimde bu yol sunucuda çözülmüyordu. Artık baytlar
+     * yerelde base64'e alınır, gönderim anında `file.attach` ile gateway'e
+     * iliştirilir; kopya hemen silinir (cache birikmez).
      */
     fun attachShareFile(plan: ShareUploadPlan.Upload) {
         val file = java.io.File(plan.stagedPath)
-        val p = profile ?: run {
-            // Kullanıcıya görünür (YENI-2): sunucu bağlantısı yoksa dosya
-            // yüklenemez — sessiz DiagLog değil, uyarı şeridi.
-            DiagLog.w("ShareUpload", "profil yok — ${plan.name} yüklenemedi")
-            _shareWarning.value = tr(
-                "Sunucuya bağlı değil — dosya yüklenemedi: ",
-                "Not connected to server, file not uploaded: ",
-            ) + plan.name
-            runCatching { file.delete() }
-            return
-        }
         if (!file.isFile) {
             DiagLog.w("ShareUpload", "staging kopyası yok: ${plan.stagedPath}")
             _shareWarning.value = tr("Dosya kopyası okunamadı: ", "File copy unreadable: ") + plan.name
             return
         }
-        val placeholder = PendingAttachment(plan.name, AttachmentKind.File)
-        _state.update { it.copy(attachments = it.attachments + placeholder) }
         viewModelScope.launch {
-            runCatching { HermesClient(p).uploadManagedFile(file, plan.name) }
-                .onSuccess { path ->
-                    DiagLog.i("ShareUpload", "yüklendi: ${plan.name} -> $path (${file.length()} B)")
-                    markAttachment(plan.name, path, null)
-                }
-                .onFailure { e ->
-                    DiagLog.e("ShareUpload", "yükleme başarısız: ${plan.name}", e)
-                    markAttachment(plan.name, null, e.message ?: "Yüklenemedi")
-                }
-            // Gönderim sonrası staging temizliği (yüklemesiz de silinir).
+            runCatching {
+                val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+                require(bytes.isNotEmpty()) { "boş dosya" }
+                bytes
+            }.onSuccess { bytes ->
+                DiagLog.i("ShareUpload", "eklendi: ${plan.name} (${bytes.size} B)")
+                attachFile(bytes, plan.name, mime = guessMime(plan.name))
+            }.onFailure { e ->
+                DiagLog.e("ShareUpload", "okuma başarısız: ${plan.name}", e)
+                _shareWarning.value = tr("Dosya okunamadı: ", "Could not read file: ") + plan.name
+            }
             runCatching { file.delete() }
         }
+    }
+
+    /** Dosya adından kaba MIME; sunucu içeriğe göre yine doğrular. */
+    private fun guessMime(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "pdf" -> "application/pdf"
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "txt" -> "text/plain"
+        "csv" -> "text/csv"
+        "json" -> "application/json"
+        "doc" -> "application/msword"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "xls" -> "application/vnd.ms-excel"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "zip" -> "application/zip"
+        else -> "application/octet-stream"
     }
 
     fun shareText(text: String) {
@@ -1310,7 +1363,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val body = text.trim()
-        val ready = _state.value.attachments.filter { it.remotePath != null }
+        val ready = _state.value.attachments.filter { it.ready }
         if (body.isEmpty() && ready.isEmpty()) return
         // V5-3: araç sohbeti açıkken telefon tarafının mesajı da AA akışına düşsün.
         com.hermes.mobile.data.Notifier.carFlow(
@@ -1404,15 +1457,24 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching {
                 val sid = ensureConversation(gw)
-                // Görseller ajana TUI'nin `/image <path>` komutuyla verilir —
-                // dashboard'ın yapıştırma akışının aynısı. Diğer dosyalar yolla
-                // birlikte metne gömülür; ajan kendi dosya araçlarıyla açar.
+                // V5-1B: ekler gateway sözleşmesiyle iliştirilir —
+                // `image.attach_bytes` görseli sunucunun kendi görsel köküne
+                // yazar, `file.attach` gerçek `@file:` referansı döndürür.
+                // Eski `/image uploads/…` + "Ek dosya: uploads/…" metni göreli
+                // yol yüzünden sunucuda bulunamıyordu.
                 ready.filter { it.kind == AttachmentKind.Image }.forEach { att ->
-                    gw.submitPrompt(sid, "/image ${att.remotePath}")
+                    val b64 = att.contentBase64 ?: error("Görsel içeriği boş: ${att.label}")
+                    gw.attachImageBytes(sid, b64, att.label)
+                        ?: error(tr("Görsel eklenemedi: ", "Could not attach image: ") + att.label)
                 }
                 val fileNote = ready
                     .filter { it.kind == AttachmentKind.File }
-                    .joinToString("\n") { "Ek dosya: ${it.remotePath}" }
+                    .map { att ->
+                        val b64 = att.contentBase64 ?: error("Dosya içeriği boş: ${att.label}")
+                        val ref = gw.attachFileDataUrl(sid, "data:${att.mime};base64,$b64", att.label)
+                            ?: error(tr("Dosya eklenemedi: ", "Could not attach file: ") + att.label)
+                        "Ek dosya: ${att.label} → ${ref.refText}"
+                    }.joinToString("\n")
                 val prompt = listOf(fileNote, body).filter { it.isNotBlank() }.joinToString("\n\n")
                 if (prompt.isNotBlank()) submitConversationPrompt(gw, sid, prompt)
             }.onFailure { e ->
@@ -1834,8 +1896,84 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 st.copy(
                     items = st.items +
                         ChatItem.Notice(nextKey("n"), interventionNotice(kind, finalStatus)),
+                    steerQueued = steerQueuedAfter(finalStatus),
                 )
             }
+        }
+    }
+
+    /**
+     * K24 — "Çatalla": süren oturumu o ana kadarki bağlamıyla YENİ bir saklı
+     * oturuma dallandırır (gateway `session.branch`). Orijinal oturum
+     * etkilenmez — sunucuda canlılığını ve süren turunu korur; mobil yeni
+     * çatala geçer ve tek satır bildirim yazar. Çatal, listede normal bir
+     * oturum olarak görünür (kanonik DB satırı server tarafında açılır).
+     */
+    fun forkSession() {
+        val gw = client ?: return
+        val st = _state.value
+        val live = st.sessionId
+        val stored = st.storedSessionId ?: live?.let { gw.storedSessionId(it) }
+        if (live == null && stored == null) {
+            _state.update {
+                it.copy(items = it.items + ChatItem.Notice(nextKey("n"), forkFailedNotice("oturum yok"), isError = true))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            // Aynı istek kaybolursa yeniden deneme AYNI çocuğu döndürür.
+            val idem = java.util.UUID.randomUUID().toString()
+            var failure: String? = null
+
+            // 1) Canlı oturum: o ana kadarki bağlam (session.branch).
+            var result = live?.let { sid ->
+                runCatching { gw.forkSession(sid, idempotencyKey = idem) }
+                    .onFailure { failure = it.message }
+                    .getOrNull()
+            }
+
+            // 2) V5-1B: canlı değilse SAKLI oturum (Mac'te açılmış, süreç içi
+            //    kaydı düşmüş olabilir) → session.branch_stored bütün geçmişi
+            //    sunucuda kopyalar. Eski kod yalnız session.branch deniyordu ve
+            //    pasif Mac oturumunda sessizce başarısız oluyordu.
+            if (result == null && stored != null) {
+                result = runCatching { gw.forkStoredSession(stored, idempotencyKey = idem) }
+                    .onFailure { failure = it.message }
+                    .getOrNull()
+            }
+
+            if (result == null) {
+                _state.update {
+                    it.copy(
+                        items = it.items + ChatItem.Notice(
+                            nextKey("n"), forkFailedNotice(failure ?: "bilinmeyen hata"), isError = true,
+                        ),
+                    )
+                }
+                return@launch
+            }
+
+            val title = result.title.ifBlank { st.topic.ifBlank { "Çatal" } }
+            // Mobil yeni çatala geçer; banner continueSession'da Notice olur ve
+            // durum sıfırlamasından korunur.
+            continueSession(result.sessionId, result.storedSessionId, title, forkNotice(title))
+        }
+    }
+
+    /**
+     * V5-1B — ek seçici hatasını görünür kılar. Eskiden `runCatching` hatayı
+     * yutuyordu: kullanıcı "foto/dosya bulunamadı" görüyor, nedenini görmüyordu.
+     */
+    fun reportAttachmentError(reason: String) {
+        _state.update {
+            it.copy(
+                items = it.items + ChatItem.Notice(
+                    nextKey("n"),
+                    tr("Ek okunamadı: $reason", "Could not read attachment: $reason"),
+                    isError = true,
+                ),
+            )
         }
     }
 
@@ -1867,34 +2005,44 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Ekler ─────────────────────────────────────────────────────────
 
+    /**
+     * V5-1B — görseli yerelde base64 olarak tutar; gönderim anında
+     * `image.attach_bytes` ile gateway'e iliştirilir. Eski HTTP yükleme yolu
+     * göreli `uploads/…` döndürüyordu ve `/image uploads/x.png` sunucuda
+     * `image not found` (4016) veriyordu — canlı kanıtla doğrulandı.
+     */
     fun attachImage(dataUrl: String, filename: String) {
-        val p = profile ?: return
-        val placeholder = PendingAttachment(filename, AttachmentKind.Image)
-        _state.update { it.copy(attachments = it.attachments + placeholder) }
-        viewModelScope.launch {
-            runCatching { HermesClient(p).uploadChatImage(dataUrl, filename) }
-                .onSuccess { res -> markAttachment(filename, res.path, null) }
-                .onFailure { e -> markAttachment(filename, null, e.message ?: "Yüklenemedi") }
-        }
+        val parsed = splitDataUrl(dataUrl)
+            ?: run { reportAttachmentError(filename); return }
+        val (mime, b64) = parsed
+        if (b64.isBlank()) { reportAttachmentError(filename); return }
+        val item = PendingAttachment(
+            label = filename,
+            kind = AttachmentKind.Image,
+            uploading = false,
+            contentBase64 = b64,
+            mime = mime,
+        )
+        _state.update { it.copy(attachments = it.attachments + item) }
     }
 
-    fun attachFile(bytes: ByteArray, filename: String) {
-        val p = profile ?: return
-        val placeholder = PendingAttachment(filename, AttachmentKind.File)
-        _state.update { it.copy(attachments = it.attachments + placeholder) }
-        viewModelScope.launch {
-            runCatching { HermesClient(p).uploadManagedFile(bytes, filename) }
-                .onSuccess { path -> markAttachment(filename, path, null) }
-                .onFailure { e -> markAttachment(filename, null, e.message ?: "Yüklenemedi") }
-        }
+    fun attachFile(bytes: ByteArray, filename: String, mime: String = "application/octet-stream") {
+        if (bytes.isEmpty()) { reportAttachmentError(filename); return }
+        val item = PendingAttachment(
+            label = filename,
+            kind = AttachmentKind.File,
+            uploading = false,
+            contentBase64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP),
+            mime = mime,
+        )
+        _state.update { it.copy(attachments = it.attachments + item) }
     }
 
     private fun markAttachment(label: String, path: String?, error: String?) {
         _state.update { st ->
             st.copy(
                 attachments = st.attachments.map {
-                    if (it.label == label && it.uploading)
-                        it.copy(remotePath = path, uploading = false, error = error)
+                    if (it.label == label) it.copy(remotePath = path, uploading = false, error = error)
                     else it
                 }
             )
@@ -2426,6 +2574,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                             else tr("📱 Artemis 30 dk içinde bitmedi (sunucuda sürüyor olabilir)", "📱 Artemis did not finish in 30 min")),
                         agentBusy = false,
                         statusLine = null,
+                        steerQueued = false,
                     )
                 }
             }.onFailure { e ->
@@ -2437,6 +2586,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                             isError = true),
                         agentBusy = false,
                         statusLine = null,
+                        steerQueued = false,
                     )
                 }
             }
@@ -2711,6 +2861,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         },
                         agentBusy = false,
                         statusLine = null,
+                        steerQueued = false,
                     )
                 }
                 // Sesli kip açıkken yanıtı oku; TTS bitince eller-serbest döngü

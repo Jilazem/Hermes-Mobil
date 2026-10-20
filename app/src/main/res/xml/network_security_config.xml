@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Hermes sunucuları ev ağında / Tailscale üzerinde düz HTTP konuşur
-  (the server: http://192.168.140.20:9150). Kullanıcı istediği host'u profil olarak
-  ekleyebildiği için host listesi derleme zamanında bilinemez; bu yüzden
-  cleartext genel olarak açık. Profil URL'i https ise TLS zaten kullanılır.
--->
+<!-- Release requires TLS with system trust. Personal LAN HTTP is debug-only. -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
 </network-security-config>

@@ -495,15 +495,30 @@ private fun downloadBitmap(url: String): android.graphics.Bitmap? {
     val client = okhttp3.OkHttpClient.Builder()
         .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
     val request = okhttp3.Request.Builder().url(url).build()
     client.newCall(request).execute().use { resp ->
         if (!resp.isSuccessful) return null
-        val bytes = resp.body?.bytes() ?: return null
+        val body = resp.body ?: return null
+        if (body.contentType()?.type != "image") return null
+        val limit = 8L * 1024 * 1024
+        if (body.contentLength() > limit) return null
+        val source = body.source()
+        val buffer = okio.Buffer()
+        while (buffer.size <= limit) {
+            if (source.read(buffer, minOf(8192L, limit + 1 - buffer.size)) == -1L) break
+        }
+        if (buffer.size > limit) return null
+        val bytes = buffer.readByteArray()
         // Sınırı önce ölç, sonra uygun örnekle indirilen baytları çöz.
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0 ||
+            bounds.outWidth > 32_768 || bounds.outHeight > 32_768 ||
+            bounds.outWidth.toLong() * bounds.outHeight > 100_000_000L) return null
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 1600) sample *= 2
         val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }

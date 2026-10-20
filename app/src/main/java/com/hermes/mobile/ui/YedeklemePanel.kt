@@ -146,10 +146,10 @@ fun YedeklemePanel(
             S.t2(
                 "Bot tanımları, kayıtlı prompt'lar, profil/bağlantı ayarları, " +
                     "oturum bayrakları ve tercihler tek JSON dosyasına yazılır. " +
-                    "Gateway token'ları yedekLENMEZ; geri yükleme sonrası yeniden girilir.",
+                    "Kişisel içerik içerebilir; dosya şifrelenmez. Gateway token'ları yedekLENMEZ; geri yükleme sonrası yeniden girilir.",
                 "Bot identities, saved prompts, profile/connection settings, session " +
                     "flags and preferences are written to a single JSON file. Gateway " +
-                    "tokens are NOT backed up; re-enter them after a restore.",
+                    "tokens are NOT backed up; re-enter them after a restore. May contain personal content; the file is not encrypted.",
             ),
             color = HermesColors.TextMuted,
             style = MaterialTheme.typography.labelSmall,
@@ -189,8 +189,8 @@ fun YedeklemePanel(
                     )
                     Text(
                         S.t2(
-                            "Bu yedek token içermez. Çakışma politikasını seçin:",
-                            "This backup contains no tokens. Choose the collision policy:",
+                            "Bu yedek kişisel içerik içerebilir ve şifrelenmez; token içermez. Çakışma politikasını seçin:",
+                            "This unencrypted backup may contain personal content, but no tokens. Choose the collision policy:",
                         ),
                         color = HermesColors.TextMuted,
                         style = MaterialTheme.typography.labelSmall,
