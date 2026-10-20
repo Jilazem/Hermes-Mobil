@@ -60,6 +60,8 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<LiveVoiceState> = _state.asStateFlow()
 
     private var client: LiveVoiceClient? = null
+    private var owner: String? = null
+    private var startJob: Job? = null
     private var jobs = mutableListOf<Job>()
     private var profile: ServerProfile? = null
     private val router = AudioRouter(app)
@@ -145,7 +147,13 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
         )
         client = c
 
-        jobs += viewModelScope.launch { c.state.collect { s -> _state.update { it.copy(state = s) } } }
+        jobs += viewModelScope.launch { c.state.collect { s ->
+            if (client !== c) return@collect
+            if (s == LiveVoiceClient.State.Error) {
+                stop()
+                _state.update { it.copy(state = s, driving = false) }
+            } else _state.update { it.copy(state = s) }
+        } }
         jobs += viewModelScope.launch { c.userTranscript.collect { t -> _state.update { it.copy(userText = t) } } }
         jobs += viewModelScope.launch { c.modelTranscript.collect { t -> _state.update { it.copy(modelText = t) } } }
         jobs += viewModelScope.launch { c.level.collect { l -> _state.update { it.copy(level = l) } } }
@@ -161,19 +169,36 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
         // değil: telefon aracı Maps/Ayarlar açtığında uygulama arka plana
         // düşüyor ve Android mikrofonu ancak bu servisle veriyor. Bu olmadan
         // "yol tarifi aç" dedikten sonra konuşmaya devam edilemiyordu.
-        DrivingModeService.start(getApplication(), driving = _state.value.driving)
-
         _state.update { it.copy(error = null, userText = "", modelText = "") }
-        c.start()
+        val lease = "live-${java.util.UUID.randomUUID()}"
+        owner = lease
+        DrivingModeService.acquire(getApplication(), lease, driving = _state.value.driving) { stopDriving() }
+        startJob = viewModelScope.launch {
+            try {
+                kotlinx.coroutines.withTimeout(5_000) { DrivingModeService.startAndAwait(getApplication(), lease) }
+                if (owner == lease && client === c) c.start()
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                if (owner == lease) {
+                    stop()
+                    _state.update { it.copy(error = "Sesli oturum hazırlanamadı — yeniden dene") }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                if (owner == lease) {
+                    stop()
+                    _state.update { it.copy(error = "Sesli oturum başlatılamadı") }
+                }
+            }
+        }
     }
 
     fun stop() {
-        // Sürüş kipi açıkken servis kalmalı; onu `stopDriving` kapatıyor.
-        if (!_state.value.driving) DrivingModeService.stop(getApplication())
+        startJob?.cancel(); startJob = null
         jobs.forEach { it.cancel() }
         jobs.clear()
         client?.release()
         client = null
+        owner?.let { DrivingModeService.stop(getApplication(), it) }; owner = null
         _state.update { it.copy(state = LiveVoiceClient.State.Idle, level = 0f, speakLevel = 0f) }
     }
 
@@ -186,12 +211,10 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun startDriving() {
         _state.update { it.copy(driving = true) }
-        DrivingModeService.start(getApplication(), driving = true)
-        if (!state.value.isRunning) start()
+        start()
     }
 
     fun stopDriving() {
-        DrivingModeService.stop(getApplication())
         _state.update { it.copy(driving = false) }
         stop()
     }
@@ -248,7 +271,6 @@ class LiveVoiceViewModel(app: Application) : AndroidViewModel(app) {
     fun clearError() = _state.update { it.copy(error = null) }
 
     override fun onCleared() {
-        DrivingModeService.stop(getApplication())
         camera.release()
         stop()
         super.onCleared()

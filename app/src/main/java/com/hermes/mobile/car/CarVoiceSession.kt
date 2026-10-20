@@ -26,6 +26,7 @@ class CarVoiceSession(private val context: CarContext, private val changed: (Str
     private val audio = context.getSystemService(AudioManager::class.java)
     private var generation = 0
     private var released = false
+    private var owner: String? = null
     var busy: Boolean = false
         private set
 
@@ -53,10 +54,13 @@ class CarVoiceSession(private val context: CarContext, private val changed: (Str
         cancel()
         val token = generation
         busy = true
+        val lease = "car-${java.util.UUID.randomUUID()}"
+        owner = lease
+        DrivingModeService.acquire(context, lease, driving = true) { cancel() }
         changed("Sesli oturum hazırlanıyor…", true)
         turn = scope.launch {
             try {
-                withTimeoutOrNull(5_000) { DrivingModeService.startAndAwait(context, driving = true); true }
+                withTimeoutOrNull(5_000) { DrivingModeService.startAndAwait(context, lease); true }
                     ?: throw IllegalStateException("Sesli oturum hazırlanamadı — yeniden Konuş'a dokun")
                 val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
@@ -134,7 +138,7 @@ class CarVoiceSession(private val context: CarContext, private val changed: (Str
         runCatching { record?.stopRecording() }; record = null
         voice?.release(); voice = null
         focus?.let { audio?.abandonAudioFocusRequest(it) }; focus = null
-        if (busy) DrivingModeService.stop(context)
+        owner?.let { DrivingModeService.stop(context, it) }; owner = null
         busy = false
         changed("Hazır — Konuş'a dokun", false)
     }
@@ -144,6 +148,9 @@ class CarVoiceSession(private val context: CarContext, private val changed: (Str
         if (!released && SettingsStore(context).settings.value.assistantContinuous) {
             val token = generation
             busy = true
+            val lease = "car-followup-${java.util.UUID.randomUUID()}"
+            owner = lease
+            DrivingModeService.acquire(context, lease, driving = true) { cancel() }
             changed("Yanıt tamamlandı — yeniden dinleyeceğim; İptal ile durdur", true)
             turn = scope.launch { delay(600); if (generation == token && !released) begin() }
         } else changed("Yanıt tamamlandı — Konuş'a dokunabilirsin", false)

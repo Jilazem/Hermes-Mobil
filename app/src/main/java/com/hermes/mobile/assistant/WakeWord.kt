@@ -170,10 +170,23 @@ class WakeWordEngine(context: Context) : AutoCloseable {
 
 /** Jarvis paneli açıkken mikrofonu bırak (tanıyıcı kullanacak), kapanınca geri al. */
 object WakeWordControl {
-    private val _paused = MutableStateFlow(false)
-    val paused: StateFlow<Boolean> = _paused.asStateFlow()
-    fun pause() { _paused.value = true }
-    fun resume() { _paused.value = false }
+    private const val TRIGGER = "wake-trigger"
+    private var triggerHeld = false
+    val paused = com.hermes.mobile.data.VoiceSessions.owners.paused
+    @Volatile internal var recording = false
+    fun pause() {
+        if (triggerHeld) return
+        com.hermes.mobile.data.VoiceSessions.owners.acquire(TRIGGER, false, false) { resume() }
+        triggerHeld = true
+    }
+    fun resume() {
+        if (!triggerHeld) return
+        triggerHeld = false
+        com.hermes.mobile.data.VoiceSessions.owners.release(TRIGGER)
+    }
+    suspend fun awaitIdle() {
+        while (recording) delay(10)
+    }
 
     private val _running = MutableStateFlow(false)
     val running: StateFlow<Boolean> = _running.asStateFlow()
@@ -229,10 +242,12 @@ class WakeWordService : Service() {
                 if (rec == null) { delay(2_000); continue }
                 engine.reset(); detector.reset()
                 try {
+                    WakeWordControl.recording = true
+                    if (WakeWordControl.paused.value) continue
                     rec.startRecording()
                     while (scope.isActive && !WakeWordControl.paused.value) {
                         var got = 0
-                        while (got < chunk.size) {
+                        while (got < chunk.size && !WakeWordControl.paused.value) {
                             val r = rec.read(chunk, got, chunk.size - got)
                             if (r <= 0) break
                             got += r
@@ -240,13 +255,16 @@ class WakeWordService : Service() {
                         if (got < chunk.size) break
                         if (detector.feed(engine.process(chunk))) {
                             DiagLog.i("wakeword", "Hey Jarvis algılandı")
-                            WakeWordControl.pause()
-                            withContext(Dispatchers.Main) { onWake() }
+                            withContext(Dispatchers.Main) {
+                                WakeWordControl.pause()
+                                onWake()
+                            }
                         }
                     }
                 } finally {
                     runCatching { rec.stop() }
                     rec.release()
+                    WakeWordControl.recording = false
                 }
             }
         } finally {

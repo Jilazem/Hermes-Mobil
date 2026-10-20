@@ -22,6 +22,7 @@ class CarFocusProofActivity : ComponentActivity() {
         fun step(text:String) { file.appendText(text+"\n");view.text=file.readText() }
         file.writeText("")
         lifecycleScope.launch {
+            val owner = "focus-proof-${java.util.UUID.randomUUID()}"
             val manager=getSystemService(AudioManager::class.java)
             val request=AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
                 .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
@@ -29,7 +30,8 @@ class CarFocusProofActivity : ComponentActivity() {
                 .setOnAudioFocusChangeListener {}.build()
             try {
                 if(foreground) {
-                    withTimeout(5_000) { DrivingModeService.startAndAwait(this@CarFocusProofActivity,true) }
+                    DrivingModeService.acquire(this@CarFocusProofActivity, owner, true) { finish() }
+                    withTimeout(5_000) { DrivingModeService.startAndAwait(this@CarFocusProofActivity,owner) }
                     step("FOREGROUND_READY")
                 }
                 step("MOVE_TO_HOME")
@@ -39,7 +41,7 @@ class CarFocusProofActivity : ComponentActivity() {
             } catch(e:Exception) { step("FAIL ${e.javaClass.simpleName}") }
             finally {
                 manager.abandonAudioFocusRequest(request)
-                if(foreground) DrivingModeService.stop(this@CarFocusProofActivity)
+                if(foreground) DrivingModeService.stop(this@CarFocusProofActivity,owner)
                 step("CLEANUP_DONE")
             }
         }

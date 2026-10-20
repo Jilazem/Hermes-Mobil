@@ -46,28 +46,36 @@ class DrivingModeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                VoiceSessions.owners.stopAll()
                 stopSelf()
                 return START_NOT_STICKY
             }
         }
 
-        driving = intent?.getBooleanExtra(EXTRA_DRIVING, false) ?: false
         val ready = intent?.let { IntentCompat.getParcelableExtra(it, EXTRA_READY, ResultReceiver::class.java) }
+        if (!VoiceSessions.owners.foreground) {
+            ready?.send(0, null)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        driving = VoiceSessions.owners.driving
         try {
             startForegroundCompat()
         } catch (e: Exception) {
-            if (ready == null) throw e
-            ready.send(0, null)
+            ready?.send(0, null)
+            VoiceSessions.owners.stopAll()
             stopSelf()
             return START_NOT_STICKY
         }
         // Wake lock yalnız sürüş kipinde: normal dinlemede ekran kapanınca
         // işlemciyi zorla ayakta tutmak pili boşuna yiyor.
-        if (driving) acquireWakeLock()
+        if (driving) acquireWakeLock() else {
+            runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
+            wakeLock = null
+        }
         ready?.send(1, null)
-        // Sistem öldürürse yeniden başlatma: kullanıcı sürüş kipini açıkça
-        // kapatmadıkça ses oturumu sürmeli.
-        return START_STICKY
+        // Sahipsiz process restart mikrofon oturumunu diriltmez; kullanıcı yeniden başlatır.
+        return START_NOT_STICKY
     }
 
     private fun startForegroundCompat() {
@@ -169,7 +177,12 @@ class DrivingModeService : Service() {
         private const val EXTRA_READY = "foreground_ready"
 
         /** Android 15+ requires a running foreground service before car audio focus. */
-        suspend fun startAndAwait(context: Context, driving: Boolean = false) = suspendCancellableCoroutine<Unit> { continuation ->
+        suspend fun startAndAwait(context: Context, owner: String) {
+            com.hermes.mobile.assistant.WakeWordControl.awaitIdle()
+            awaitForeground(context, owner)
+        }
+
+        private suspend fun awaitForeground(context: Context, owner: String) = suspendCancellableCoroutine<Unit> { continuation ->
             val ready = object : ResultReceiver(Handler(Looper.getMainLooper())) {
                 override fun onReceiveResult(resultCode: Int, resultData: android.os.Bundle?) {
                     if (!continuation.isActive) return
@@ -177,9 +190,9 @@ class DrivingModeService : Service() {
                     else continuation.resumeWithException(IllegalStateException("Sesli oturum başlatılamadı; mikrofon iznini denetle"))
                 }
             }
-            continuation.invokeOnCancellation { stop(context) }
+            continuation.invokeOnCancellation { Handler(Looper.getMainLooper()).post { stop(context, owner) } }
             val intent = Intent(context, DrivingModeService::class.java)
-                .putExtra(EXTRA_DRIVING, driving).putExtra(EXTRA_READY, ready)
+                .putExtra(EXTRA_READY, ready)
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
                 else context.startService(intent)
@@ -188,9 +201,12 @@ class DrivingModeService : Service() {
             }
         }
 
-        fun start(context: Context, driving: Boolean = false) {
+        fun acquire(context: Context, owner: String, driving: Boolean = false, cancel: () -> Unit) {
+            VoiceSessions.owners.acquire(owner, true, driving, cancel)
+        }
+
+        fun start(context: Context) {
             val intent = Intent(context, DrivingModeService::class.java)
-                .putExtra(EXTRA_DRIVING, driving)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -198,8 +214,10 @@ class DrivingModeService : Service() {
             }
         }
 
-        fun stop(context: Context) {
-            context.stopService(Intent(context, DrivingModeService::class.java))
+        fun stop(context: Context, owner: String) {
+            VoiceSessions.owners.release(owner)
+            if (!VoiceSessions.owners.foreground) context.stopService(Intent(context, DrivingModeService::class.java))
+            else start(context)
         }
     }
 }

@@ -59,6 +59,8 @@ data class JarvisState(
  */
 class JarvisEngine(
     private val context: Context,
+    private val voiceFactory: (Context) -> JarvisVoice = { JarvisVoice.create(it) },
+    private val settingsProvider: () -> com.hermes.mobile.data.AppSettings = { SettingsStore(context).settings.value },
     private val onHide: () -> Unit,
 ) {
     private val _state = MutableStateFlow(JarvisState())
@@ -66,7 +68,7 @@ class JarvisEngine(
 
     private val main = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main + CrashGuard.handler)
-    private val settings get() = SettingsStore(context).settings.value
+    private val settings get() = settingsProvider()
     private val brain = JarvisBrain(context, scope)
     private val tools by lazy { PhoneTools(context, ShizukuBridge()) }
     private var generation = 0L
@@ -76,6 +78,7 @@ class JarvisEngine(
     private var turn: Job? = null
     private var silentFollowups = 0
     private var focus: AudioFocusRequest? = null
+    private var focusGeneration = 0L
     private val audio = context.getSystemService(AudioManager::class.java)
 
     /** Ekran bağlamı (VoiceInteractionSession.onHandleAssist doldurur). */
@@ -84,10 +87,26 @@ class JarvisEngine(
 
     val lastSessionId: String? get() = brain.lastSessionId
 
-    private fun newVoice(): JarvisVoice = JarvisVoice.create(context).also { v ->
-        v.onLevel = { lvl -> _state.update { it.copy(level = lvl) } }
-        v.onError = { message -> main.post { _state.update { it.copy(error = message) } } }
-        v.onDone = { main.post { afterSpeaking() } }
+    private val owner = "phone-${java.util.UUID.randomUUID()}"
+    private var ownsMicrophone = false
+
+    private fun ownMicrophone() {
+        if (ownsMicrophone) return
+        com.hermes.mobile.data.VoiceSessions.owners.acquire(owner, false, false) { stop() }
+        ownsMicrophone = true
+        WakeWordControl.resume() // transfer the wake-trigger lease to this engine
+    }
+
+    private fun newVoice(): JarvisVoice = voiceFactory(context)
+
+    /** Bind once per turn to an immutable voice identity and generation. */
+    private fun bindVoice(then: () -> Unit = { afterSpeaking() }) {
+        val v = voice
+        val token = generation
+        fun current() = token == generation && voice === v
+        v.onLevel = { lvl -> main.post { if (current()) _state.update { it.copy(level = lvl) } } }
+        v.onError = { message -> main.post { if (current()) fail(message) } }
+        v.onDone = { main.post { if (current()) then() } }
     }
 
     // ── Dışarıdan ──────────────────────────────────────────────────────
@@ -95,7 +114,7 @@ class JarvisEngine(
     /** Panel açıldı: Google gibi hemen dinlemeye başla. */
     fun start() {
         // "Hey Jarvis" dinleyicisi mikrofonu bıraksın (tanıyıcı kullanacak).
-        WakeWordControl.pause()
+        ownMicrophone()
         interruptAll()
         // Ses stüdyosunda yapılan seçim her açılışta geçerli olsun.
         voice.release()
@@ -149,6 +168,8 @@ class JarvisEngine(
         interruptAll()
         _state.update { it.copy(phase = JarvisPhase.Idle, level = 0f) }
         releaseFocus()
+        com.hermes.mobile.data.VoiceSessions.owners.release(owner)
+        ownsMicrophone = false
         WakeWordControl.resume()
     }
 
@@ -164,8 +185,11 @@ class JarvisEngine(
     // ── Dinleme ────────────────────────────────────────────────────────
 
     private fun listen(beep: Boolean, retry: Boolean = false) {
-        val recognitionToken = ++recognitionGeneration
+        ++generation
+        voice.onDone = null; voice.onLevel = null; voice.onError = null
         voice.stop()
+        ownMicrophone()
+        val recognitionToken = ++recognitionGeneration
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -180,7 +204,7 @@ class JarvisEngine(
             return
         }
         rec.setRecognitionListener(listenerFor(recognitionToken, retry))
-        grabFocus()
+        if (!grabFocus()) { fail("Ses odağı alınamadı — yeniden dene"); return }
         _state.update { it.copy(phase = JarvisPhase.Listening, heard = "", error = null, level = 0f, tool = null) }
         if (beep) earcon()
         main.postDelayed({
@@ -192,8 +216,14 @@ class JarvisEngine(
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
             }
-            runCatching { rec.startListening(intent) }
-                .onFailure { fail("Dinleme başlatılamadı: ${it.message}") }
+            scope.launch {
+                try {
+                    kotlinx.coroutines.withTimeout(2_000) { WakeWordControl.awaitIdle() }
+                    if (recognitionToken == recognitionGeneration && _state.value.phase == JarvisPhase.Listening) rec.startListening(intent)
+                } catch (e: Exception) {
+                    if (recognitionToken == recognitionGeneration) fail("Dinleme başlatılamadı")
+                }
+            }
         }, if (beep) 160L else 0L)
     }
 
@@ -206,7 +236,7 @@ class JarvisEngine(
         }
         override fun onBufferReceived(buffer: ByteArray?) = Unit
         override fun onEndOfSpeech() {
-            _state.update { it.copy(level = 0f) }
+            if (token == recognitionGeneration) _state.update { it.copy(level = 0f) }
         }
 
         override fun onError(error: Int) {
@@ -214,8 +244,8 @@ class JarvisEngine(
             when (error) {
                 SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
                     silentFollowups++
+                    stop()
                     _state.update { it.copy(phase = JarvisPhase.Idle, level = 0f, hint = "Dinlemek için dokun") }
-                    releaseFocus()
                 }
                 SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_CLIENT -> {
                     // Önceki oturumun artığı: tanıyıcıyı yenileyip bir kez daha dene.
@@ -263,7 +293,13 @@ class JarvisEngine(
     // ── Karar ─────────────────────────────────────────────────────────
 
     private fun handle(text: String) {
+        ownMicrophone()
+        if (!grabFocus()) { fail("Ses odağı alınamadı — yeniden dene"); return }
         val turnToken = ++generation
+        // Never reuse a voice whose worker may still deliver a callback.
+        voice.release()
+        voice = newVoice()
+        bindVoice()
         ++recognitionGeneration
         _state.update { it.copy(phase = JarvisPhase.Thinking, heard = text, answer = "", tool = null, error = null, hint = null, level = 0f) }
         DiagLog.i("jarvis", "soru (${text.length} krkt)")
@@ -351,12 +387,7 @@ class JarvisEngine(
 
     /** Tek seferlik konuşma; bitince [then]. */
     private fun speakOnce(text: String, then: () -> Unit) {
-        val token = generation
-        voice.onDone = { main.post {
-            if (token != generation) return@post
-            voice.onDone = { main.post { afterSpeaking() } }
-            then()
-        } }
+        bindVoice(then)
         _state.update { it.copy(phase = JarvisPhase.Speaking) }
         voice.say(text)
         voice.finish()
@@ -368,8 +399,7 @@ class JarvisEngine(
         if (JarvisLogic.shouldListenAgain(settings.assistantContinuous, silentFollowups) && _state.value.hint == null) {
             listen(beep = true)
         } else {
-            _state.update { it.copy(phase = JarvisPhase.Idle) }
-            releaseFocus()
+            stop()
         }
     }
 
@@ -382,28 +412,40 @@ class JarvisEngine(
         runCatching { recognizer?.cancel(); recognizer?.destroy() }
         recognizer = null
         voice.stop()
-        voice.onDone = { main.post { afterSpeaking() } }
+        voice.onDone = null
+        voice.onError = null
+        voice.onLevel = null
     }
 
     private fun fail(msg: String) {
+        interruptAll()
         _state.update { it.copy(phase = JarvisPhase.Error, error = msg, level = 0f) }
         releaseFocus()
+        com.hermes.mobile.data.VoiceSessions.owners.release(owner)
+        ownsMicrophone = false
     }
 
     // ── Ses odağı + işaret sesi ────────────────────────────────────────
 
-    private fun grabFocus() {
-        if (focus != null) return
+    private fun grabFocus(): Boolean {
+        if (focus != null) return true
+        val token = ++focusGeneration
         val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build(),
-            ).build()
-        runCatching { audio.requestAudioFocus(req) }
+            ).setOnAudioFocusChangeListener({ change ->
+                if (token == focusGeneration && focus != null && (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)) {
+                    fail("Ses odağı kaybedildi — yeniden dene")
+                }
+            }, main).build()
+        if (runCatching { audio.requestAudioFocus(req) }.getOrNull() != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return false
         focus = req
+        return true
     }
 
     private fun releaseFocus() {
+        ++focusGeneration
         focus?.let { runCatching { audio.abandonAudioFocusRequest(it) } }
         focus = null
     }

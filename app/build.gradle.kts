@@ -49,6 +49,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     buildFeatures { compose = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
 
     // Mimariye göre ayrı APK: telefon (arm64) ~yarı boyut; x86_64 yalnız emülatör için.
     // (Tek evrensel APK 100 MB'ı aşıyordu — GitHub dosya sınırı.)
@@ -120,6 +121,7 @@ dependencies {
     implementation(files("libs/onnxruntime-java-bridge-1.28.0.aar"))
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
