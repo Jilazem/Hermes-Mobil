@@ -689,6 +689,7 @@ private enum class Tab(val icon: ImageVector) {
     Following(Icons.Default.StarOutline),
     Panel(Icons.Default.GridView),
     Settings(Icons.Default.Tune),
+    Bots(Icons.Default.GridView),
 }
 
 /** Etiketler dile göre çözülüyor, o yüzden enum sabiti olamaz. */
@@ -698,6 +699,7 @@ private fun Tab.label(): String = when (this) {
     Tab.Notifications -> S.t2("Bildirimler", "Notifications")
     Tab.Following -> S.t2("Takip", "Following")
     Tab.Panel -> S.tabPanel
+    Tab.Bots -> S.t2("Botlar", "Bots")
     Tab.Settings -> S.tabSettings
 }
 
@@ -823,6 +825,7 @@ private fun HermesApp(
             Tab.Notifications -> "Bildirimler"
             Tab.Following -> "Takip"
             Tab.Panel -> "Pano"
+            Tab.Bots -> "Botlar"
             Tab.Settings -> "Ayarlar"
         }
     }
@@ -1059,7 +1062,7 @@ private fun HermesApp(
             if (detail == null && !voice.driving && !cameraFullScreen && !serversScreen && !shareTargetVisible && !WindowInsets.isImeVisible) {
                 NavigationBar(containerColor = HermesColors.Surface) {
                     // Ana gezinme: sohbet akışı, bildirim kutusu ve takip edilen oturumlar.
-                    listOf(Tab.Chat, Tab.Notifications, Tab.Following).forEach { entry ->
+                    listOf(Tab.Chat, Tab.Notifications, Tab.Following, Tab.Bots).forEach { entry ->
                         NavigationBarItem(
                             selected = tab == entry,
                             onClick = {
@@ -1560,6 +1563,7 @@ private fun HermesApp(
                             )
                         },
                     )
+                    Tab.Bots -> com.hermes.mobile.ui.BotFrameworkScreen()
                     Tab.Settings -> SettingsScreen(
                         onOpenPanel = { tab = Tab.Panel },
                         shizukuState = shizukuState,
