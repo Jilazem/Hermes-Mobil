@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.ChatIsolation
 import com.hermes.mobile.data.isCzipReadRef
+import com.hermes.mobile.data.CzipAutoLogic
+import com.hermes.mobile.data.CzipAutoState
 import com.hermes.mobile.data.AwaitReplyService
 import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.ApprovalCenter
@@ -1954,6 +1956,51 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         return gw.createSession(profileArg).also { id ->
             _sessionProfile.value = profileArg
             onSessionChanged?.invoke(id)
+            ensureCzipAuto(gw, id)
+        }
+    }
+
+    /**
+     * V5-4 CZIP AUTO tercihi — ayarlardan gelir ([AppSettings.czipAuto]),
+     * varsayılan AÇIK (AGENTS.md: czip-auto her oturumda açık başlar).
+     * Kapatılırsa uygulama sunucu czip ayarına dokunmaz.
+     */
+    var czipAutoEnabled: Boolean = true
+
+    /** V5-4: ekrandaki czip-auto kanıt satırı bu oturum yaşamında en az bir kez yazıldı mı. */
+    private var czipAutoBildirildi = false
+
+    /**
+     * V5-4 CZIP AUTO: yeni oturum açıldığında arka plan paketlemesinin
+     * (czip auto) açık olduğunu doğrular; kapalıysa/tanınmıysa `oto aç` ile
+     * açar ve sonucu ekranda tek satır bildirimle kanıtlar.
+     *
+     * Sunucu tarafı kalıcıdır (czip/ayar.json `oto=true` + czip-auto
+     * `on_session_start` hook'u); bu güvence yalnız ayar sürüklenmişse
+     * devreye girer. Gönderimi engellemez: ilk mesaj yola çıkarken arka
+     * planda koşar ([GatewayWsClient.slashExec] bloklamaz, kendi coroutine'i).
+     * Açık durumda bildirim yalnız ilk kez yazılır; sonraki oturumlarda
+     * garanti sessizdir.
+     */
+    private fun ensureCzipAuto(gw: GatewayWsClient, sid: String) {
+        if (!czipAutoEnabled) return
+        viewModelScope.launch {
+            val status = runCatching { gw.slashExec(sid, CzipAutoLogic.STATUS_COMMAND) }.getOrDefault("")
+            var on = CzipAutoLogic.state(status) == CzipAutoState.ON
+            for (command in CzipAutoLogic.ensureCommands(status)) {
+                val output = runCatching { gw.slashExec(sid, command) }.getOrDefault("")
+                on = CzipAutoLogic.state(output) == CzipAutoState.ON
+            }
+            if (on && czipAutoBildirildi) return@launch
+            czipAutoBildirildi = true
+            _state.update {
+                it.copy(
+                    items = it.items + ChatItem.Notice(
+                        nextKey("n"),
+                        tr(CzipAutoLogic.noticeTr(on), CzipAutoLogic.noticeEn(on)),
+                    ),
+                )
+            }
         }
     }
 

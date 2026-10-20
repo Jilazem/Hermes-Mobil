@@ -516,6 +516,8 @@ class MainActivity : ComponentActivity() {
                 // kişiliği/sesi kullanır.
                 LaunchedEffect(settings, state.active?.id) {
                     voiceViewModel.settings = settings
+                    // V5-4 CZIP AUTO tercihi — ayarlardan gelir, varsayılan AÇIK.
+                    chatViewModel.czipAutoEnabled = settings.czipAuto
                     chatViewModel.preferredModel = settings.modelsByServer[state.active?.id]
                         ?: settings.lastModel.takeIf { settings.modelsByServer.isEmpty() }.orEmpty()
                     // Bot (profil) ataması kalıcı — son kullanılan çip

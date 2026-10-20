@@ -1,0 +1,25 @@
+== GERCEK GATEWAY: yeni oturum (bu oturum) sonrasi czip oto durum ==
+2026-10-20 09:40:23
+
+czip settings (/Users/gokhanuzman/.hermes/profiles/cd-android/czip/ayar.json)
+  esik_oran : %50   (cap)
+  kalan_token: 70,000   (pack when this much room is left)
+  mutlak_token: off   (pack when prompt tokens hit this count)
+     262k window -> fires at 131,072 (%50)  rule: esik_oran
+     1000k window -> fires at 500,000 (%50)  rule: esik_oran
+  kademeler : %50, %75, %90
+  oto       : ON   (on = decide and pack without asking)
+  oto_pasif : off
+  decision gate: off
+  gate is local; cloud fallback is disabled
+
+== czip oto ac (idempotent) ==
+oto -> ON
+
+== auto-start.json (on_session_start damgasi) ==
+{
+ "at": 1792477621.4720798,
+ "pid": 19527
+}
+== ayar.json (oto) ==
+oto = True

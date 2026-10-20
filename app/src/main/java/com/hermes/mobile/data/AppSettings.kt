@@ -129,6 +129,13 @@ data class AppSettings(
     val expandTools: Boolean = false,
     val renderMarkdown: Boolean = true,
     val historyLimit: Int = 150,
+    /**
+     * V5-4 CZIP AUTO: yeni oturumlarda arka plan paketlemesinin (czip auto)
+     * açık olduğunun güvencesi. AGENTS.md kuralı gereği varsayılan AÇIK;
+     * tercih burada hatırlanır. Kapatılırsa uygulama sunucu czip ayarına
+     * dokunmaz — sunucu tarafı kalıcıdır (czip/ayar.json `oto=true`).
+     */
+    val czipAuto: Boolean = true,
 
     // ── Telefon denetimi ─────────────────────────────────────────────
     /**
