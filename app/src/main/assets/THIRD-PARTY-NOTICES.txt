@@ -1,0 +1,1342 @@
+==============================================================================
+HERMES MOBIL v5 — ÜÇÜNCÜ TARAF BİLDİRİMLERİ (THIRD-PARTY NOTICES)
+==============================================================================
+Uygulama  : Hermes Mobil (com.hermesmobile.app) — sürüm adı "5c", versionCode 5
+Oluşturma : 2026-10-20
+Kapsam    : :app:releaseRuntimeClasspath — APK'ya giren derleme zamanı sınıf yolu.
+            Envanter kaydı (gradlew çıktısı, ham):
+            /Volumes/EX/007-HERMES-M4-LIVE/05-CIKTILAR/hermes-mobil-v5/kayitlar/releaseRuntimeArtifacts.txt
+            118 çözümlenmiş artifact satırı → 115 benzersiz grup:artefakt:sürüm
+            + 2 yerel dosya bağımlılığı (app/libs AAR).
+            Not: R8 küçültmesi sonrası bazı kod parçaları APK'dan elenebilir;
+            bu envanter derleme zamanı sınıf yolunu listeler.
+Doğrulama : Lisans TÜRÜ ve METNİ yalnızca aşağıdaki kaynaklardan alındı:
+            (1) bileşenin jar/aar dosyası içindeki LICENSE/NOTICE dosyası
+            (2) aynı sürümün Gradle cache POM lisans beyanı (yalnız litert:
+                litert-1.4.2.pom / litert-api-1.4.2.pom)
+            (3) vendor dizini: app/src/main/assets/arena/LICENSE-three.txt,
+                app/libs/onnxruntime-java-bridge-1.28.0.aar içi META-INF/LICENSE-ORT.txt
+            Lisans metni bulunamayan bileşen "KAYNAK YOK" olarak işaretlendi.
+            HİÇBİR LİSANS METNİ UYDURULMAMIŞTIR; eksikler açıkça belirtilmiştir.
+
+Yol kısaltmaları:
+  REPO  = /Volumes/EX/007-HERMES-M4-LIVE/12-PROJELER/Hermes-Mobil-v5-integration
+  CACHE = /Volumes/EX/80-YEREL/gradle-home/caches/modules-2/files-2.1
+
+------------------------------------------------------------------------------
+BÖLÜM 1 — YEREL AAR / JAR (app/libs, gradle dosya bağımlılığı; APK'ya girer)
+------------------------------------------------------------------------------
+
+1.1 sherpa-onnx-1.13.8.aar
+    Bileşen : sherpa-onnx (JNI/native: libsherpa-c-api, libsherpa-cxx-api,
+              libkaldi-native-fbank-core, libsherpa-onnx-core, libsherpa-onnx-c-api,
+              libonnxruntime.so (ONNX Runtime yerel kitaplığı, gömülü),
+              libespeak-ng.so ve ses verisi (espeak-ng-data/) dahil)
+    Sürüm   : 1.13.8
+    Lisans  : KAYNAK YOK — AAR içinde LICENSE/NOTICE dosyası bulunamadı
+              (zip taraması 2026-10-20; vendor dizininde de lisans dosyası yok).
+              Lisans türü doğrulanamadı; metin uydurulmadı.
+    Telif   : — (kaynak yok)
+    Kaynak  : /Volumes/EX/007-HERMES-M4-LIVE/12-PROJELER/Hermes-Mobil-v5-integration/app/libs/sherpa-onnx-1.13.8.aar
+    Not     : AAR içindeki libonnxruntime.so ONNX Runtime projesine aittir; o
+              projenin resmî lisans metni Ek D'dedir (kaynak: köprü AAR'ına, ORT
+              1.28.0 resmî kaynağından konan META-INF/LICENSE-ORT.txt; sherpa
+              içindeki libonnxruntime.so sürümü 1.28.2'dir). Bu, sherpa-onnx
+              bileşeninin kendi lisansının doğrulandığı anlamına gelmez.
+
+1.2 onnxruntime-java-bridge-1.28.0.aar
+    Bileşen : ONNX Runtime Java JNI köprüsü (libonnxruntime4j_jni.so); bu depodaki
+              relay/build_ort_java_bridge.py ile ORT 1.28.0 resmî kaynak kodundan
+              derlendi (classes.jar = ORT resmî Java API kodu)
+    Sürüm   : 1.28.0
+    Lisans  : MIT License — DOĞRULANDI (AAR içi META-INF/LICENSE-ORT.txt; tam
+              metin Ek D)
+    Telif   : Copyright (c) Microsoft Corporation (bkz. Ek D)
+    Kaynak  : /Volumes/EX/007-HERMES-M4-LIVE/12-PROJELER/Hermes-Mobil-v5-integration/app/libs/onnxruntime-java-bridge-1.28.0.aar → META-INF/LICENSE-ORT.txt
+
+------------------------------------------------------------------------------
+BÖLÜM 2 — JAVASCRIPT (app/src/main/assets/arena; Android WebView'a yüklenir)
+------------------------------------------------------------------------------
+
+2.1 three.min.js — three.js
+    Bileşen : three.js (minified)
+    Sürüm   : r147 (kanıt: minified dosyada sürüm sabiti "147";
+              /Volumes/EX/007-HERMES-M4-LIVE/12-PROJELER/Hermes-Mobil-v5-integration/app/src/main/assets/arena/three.min.js)
+    Lisans  : MIT License — DOĞRULANDI (vendor lisans dosyası; tam metin Ek E)
+    Telif   : Copyright © 2010-2022 three.js authors (bkz. Ek E)
+    Kaynak  : /Volumes/EX/007-HERMES-M4-LIVE/12-PROJELER/Hermes-Mobil-v5-integration/app/src/main/assets/arena/three.min.js (kod)
+              /Volumes/EX/007-HERMES-M4-LIVE/12-PROJELER/Hermes-Mobil-v5-integration/app/src/main/assets/arena/LICENSE-three.txt (lisans metni)
+
+2.2 arena3d.js, cage.js, cage-engine.js, outrun.js
+    Birinci taraf (bu projeye ait) uygulama kodu; three.js r147 üzerine yazıldı.
+    Üçüncü taraf bileşen değildir; lisansı uygulamanın kendi lisansıdır (REPO/LICENSE, MIT).
+
+------------------------------------------------------------------------------
+BÖLÜM 3 — MAVEN BİLEŞENLERİ (releaseRuntimeClasspath; 115 benzersiz G:A:V)
+            Ek JS paketi yok (yalnız Bölüm 2'deki yerel three.js).
+------------------------------------------------------------------------------
+
+Biçim: bileşen:sürüm / lisans / telif satırı / tam lisans metni veya kaynak yolu.
+"kaynak yok" = artefakt içinde LICENSE/NOTICE dosyası yok VE aynı sürümün
+POM lisans beyanı cache'te yok → lisans türü doğrulanamadı, metin uydurulmadı.
+
+[001] androidx.activity:activity:1.9.3 (2 satır çözümlendi, aynı dosya)
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.activity/activity/1.9.3/643a69bf29d8eaedac8bd2974296d15a8748ba54/activity-1.9.3.aar (tarama: 2026-10-20)
+
+[002] androidx.activity:activity-compose:1.9.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.activity/activity-compose/1.9.3/a164a9b2befba58b27451b4bc071c5335c500872/activity-compose-1.9.3.aar (tarama: 2026-10-20)
+
+[003] androidx.activity:activity-ktx:1.9.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.activity/activity-ktx/1.9.3/a1ac8704cfd955139ae60b07a8fcfc6cab8f218b/activity-ktx-1.9.3.aar (tarama: 2026-10-20)
+
+[004] androidx.annotation:annotation-experimental:1.4.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.annotation/annotation-experimental/1.4.1/7851235e2a16ce50270a74b555edaf9209b42864/annotation-experimental-1.4.1.aar (tarama: 2026-10-20)
+
+[005] androidx.annotation:annotation-jvm:1.8.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.annotation/annotation-jvm/1.8.1/b8a16fe526014b7941c1debaccaf9c5153692dbb/annotation-jvm-1.8.1.jar (tarama: 2026-10-20)
+
+[006] androidx.appcompat:appcompat:1.1.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.appcompat/appcompat/1.1.0/351d3409fe51f3d862bd2b1bcc0f3b6ded29460e/appcompat-1.1.0.aar (tarama: 2026-10-20)
+
+[007] androidx.appcompat:appcompat-resources:1.1.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.appcompat/appcompat-resources/1.1.0/a573b2ab146d686244721ef1038d08043f18c67f/appcompat-resources-1.1.0.aar (tarama: 2026-10-20)
+
+[008] androidx.arch.core:core-common:2.2.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.arch.core/core-common/2.2.0/5e1b8b81dfd5f52c56a8d53b18ca759c19a301f3/core-common-2.2.0.jar (tarama: 2026-10-20)
+
+[009] androidx.arch.core:core-runtime:2.2.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.arch.core/core-runtime/2.2.0/39705982680d78556b679ef9d5400d4f17509b0b/core-runtime-2.2.0.aar (tarama: 2026-10-20)
+
+[010] androidx.autofill:autofill:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.autofill/autofill/1.0.0/d95a6e3b895ad8f037dd01d88c87138b6d5eb507/autofill-1.0.0.aar (tarama: 2026-10-20)
+
+[011] androidx.camera:camera-camera2:1.4.1
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/camera/camera-camera2/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.camera/camera-camera2/1.4.1/cf556feaad7517af11fa8ea8657fcedf7c8218bc/camera-camera2-1.4.1.aar → META-INF/androidx/camera/camera-camera2/LICENSE.txt
+
+[012] androidx.camera:camera-core:1.4.1
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/camera/camera-core/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.camera/camera-core/1.4.1/d50cd5c5e8e6b1c6855a0026e987a2edb2321513/camera-core-1.4.1.aar → META-INF/androidx/camera/camera-core/LICENSE.txt
+
+[013] androidx.camera:camera-lifecycle:1.4.1
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/camera/camera-lifecycle/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.camera/camera-lifecycle/1.4.1/345c857febab16f29b20ed25f472415da6c03673/camera-lifecycle-1.4.1.aar → META-INF/androidx/camera/camera-lifecycle/LICENSE.txt
+
+[014] androidx.camera:camera-video:1.4.1
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/camera/camera-video/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.camera/camera-video/1.4.1/ce61662203969160d6f166340111f4b03f5f326b/camera-video-1.4.1.aar → META-INF/androidx/camera/camera-video/LICENSE.txt
+
+[015] androidx.camera:camera-view:1.4.1
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/camera/camera-view/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.camera/camera-view/1.4.1/86a406b7df50d24dcb1bdd59a4c0ed43ecb3d536/camera-view-1.4.1.aar → META-INF/androidx/camera/camera-view/LICENSE.txt
+
+[016] androidx.car.app:app:1.7.0
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/car/app/app/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.car.app/app/1.7.0/368eb3df2522b17368912c34129ebf3c1f0f9519/app-1.7.0.aar → META-INF/androidx/car/app/app/LICENSE.txt
+
+[017] androidx.car.app:app-projected:1.7.0
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/car/app/app-projected/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.car.app/app-projected/1.7.0/6e609a24f545e0af78387b2981217b712043824c/app-projected-1.7.0.aar → META-INF/androidx/car/app/app-projected/LICENSE.txt
+
+[018] androidx.collection:collection-jvm:1.4.4
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.collection/collection-jvm/1.4.4/da13a7e557c430276b8cb490420effebc1398c0d/collection-jvm-1.4.4.jar (tarama: 2026-10-20)
+
+[019] androidx.collection:collection-ktx:1.4.4
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.collection/collection-ktx/1.4.4/2ad14aed781c4a73ed4dbb421966d408a0a06686/collection-ktx-1.4.4.jar (tarama: 2026-10-20)
+
+[020] androidx.compose.animation:animation-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.animation/animation-android/1.7.5/d56bb7dc853b96d72639feafa479f2236515d12b/animation-release.aar (tarama: 2026-10-20)
+
+[021] androidx.compose.animation:animation-core-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.animation/animation-core-android/1.7.5/67d7ebb3f53921a605ce41e5b9ba5a212c7646b/animation-core-release.aar (tarama: 2026-10-20)
+
+[022] androidx.compose.foundation:foundation-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.foundation/foundation-android/1.7.5/deb4ec7d76431ce2a9179f702cfe17db099196cb/foundation-release.aar (tarama: 2026-10-20)
+
+[023] androidx.compose.foundation:foundation-layout-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.foundation/foundation-layout-android/1.7.5/2ff3103d05c2a020ba83e316099c322a7366f4bd/foundation-layout-release.aar (tarama: 2026-10-20)
+
+[024] androidx.compose.material:material-icons-core-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.material/material-icons-core-android/1.7.5/5c1be323cc5970f4c761ee4bc04a4a03c55e673a/material-icons-core-release.aar (tarama: 2026-10-20)
+
+[025] androidx.compose.material:material-icons-extended-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.material/material-icons-extended-android/1.7.5/7f99672e6beef9c5e5a6627671a139fe6aad57ed/material-icons-extended-release.aar (tarama: 2026-10-20)
+
+[026] androidx.compose.material:material-ripple-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.material/material-ripple-android/1.7.5/d7265412c8281e6499f15024a3326a6730989bda/material-ripple-release.aar (tarama: 2026-10-20)
+
+[027] androidx.compose.material3:material3-android:1.3.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.material3/material3-android/1.3.1/98016d623b96c25adbc6498aabf07507de258a62/material3-release.aar (tarama: 2026-10-20)
+
+[028] androidx.compose.runtime:runtime-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.runtime/runtime-android/1.7.5/46caecf848d887667bedaadd19131044d12a37d4/runtime-release.aar (tarama: 2026-10-20)
+
+[029] androidx.compose.runtime:runtime-saveable-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.runtime/runtime-saveable-android/1.7.5/d1ef810e8ddf95285686422cc1af3f7c9494a206/runtime-saveable-release.aar (tarama: 2026-10-20)
+
+[030] androidx.compose.ui:ui-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.ui/ui-android/1.7.5/1cc23a4d273407ef91e50717fca15a25cce765b0/ui-release.aar (tarama: 2026-10-20)
+
+[031] androidx.compose.ui:ui-geometry-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.ui/ui-geometry-android/1.7.5/c996445d52a1b07ca80b57c45815fed13ae7a642/ui-geometry-release.aar (tarama: 2026-10-20)
+
+[032] androidx.compose.ui:ui-graphics-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.ui/ui-graphics-android/1.7.5/cfa7668e2a926c316310b7ac8c544a23ce32dd89/ui-graphics-release.aar (tarama: 2026-10-20)
+
+[033] androidx.compose.ui:ui-text-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.ui/ui-text-android/1.7.5/9061ff3d05e3be0121a43b71b38289f0723ba0a8/ui-text-release.aar (tarama: 2026-10-20)
+
+[034] androidx.compose.ui:ui-tooling-preview-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.ui/ui-tooling-preview-android/1.7.5/dee9e0705b2a4d3ed51bacde81be81d96cde6aad/ui-tooling-preview-release.aar (tarama: 2026-10-20)
+
+[035] androidx.compose.ui:ui-unit-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.ui/ui-unit-android/1.7.5/e8fc180297c7d6961de79fbcfc1401ef5c28248c/ui-unit-release.aar (tarama: 2026-10-20)
+
+[036] androidx.compose.ui:ui-util-android:1.7.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.compose.ui/ui-util-android/1.7.5/2c5e20d991a91858d1de801663b2dd804fdbcbaf/ui-util-release.aar (tarama: 2026-10-20)
+
+[037] androidx.concurrent:concurrent-futures:1.1.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.concurrent/concurrent-futures/1.1.0/50b7fb98350d5f42a4e49704b03278542293ba48/concurrent-futures-1.1.0.jar (tarama: 2026-10-20)
+
+[038] androidx.concurrent:concurrent-futures-ktx:1.1.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.concurrent/concurrent-futures-ktx/1.1.0/b4c245baf36d1a9e7defaf3be84f7a2ad4e1c797/concurrent-futures-ktx-1.1.0.jar (tarama: 2026-10-20)
+
+[039] androidx.core:core:1.13.1 (2 satır çözümlendi, aynı dosya)
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.core/core/1.13.1/4606d420282fe1e5c8d5c4e647ec188e1045b7be/core-1.13.1.aar (tarama: 2026-10-20)
+
+[040] androidx.core:core-ktx:1.13.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.core/core-ktx/1.13.1/f595b8c10fad9099f71a3c1fc6ded1c9b5010190/core-ktx-1.13.1.aar (tarama: 2026-10-20)
+
+[041] androidx.cursoradapter:cursoradapter:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.cursoradapter/cursoradapter/1.0.0/74014983a86b83cbce534dec4e7aa9312f5f5d82/cursoradapter-1.0.0.aar (tarama: 2026-10-20)
+
+[042] androidx.customview:customview:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.customview/customview/1.0.0/30f5ff6075d112f8076e733b24410e68159735b6/customview-1.0.0.aar (tarama: 2026-10-20)
+
+[043] androidx.customview:customview-poolingcontainer:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.customview/customview-poolingcontainer/1.0.0/579fc832cf0e5be08d8d9571850b50d22d9de3c/customview-poolingcontainer-1.0.0.aar (tarama: 2026-10-20)
+
+[044] androidx.datastore:datastore-android:1.1.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.datastore/datastore-android/1.1.1/7a8d9ff6fd8cf0694179320055cb1d04b5ea8584/datastore-release.aar (tarama: 2026-10-20)
+
+[045] androidx.datastore:datastore-core-android:1.1.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.datastore/datastore-core-android/1.1.1/cc90a97dbaf20ab27eb0299832d8db0d82591cec/datastore-core-release.aar (tarama: 2026-10-20)
+
+[046] androidx.datastore:datastore-core-okio-jvm:1.1.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.datastore/datastore-core-okio-jvm/1.1.1/cba5887aaa9316d650b3ebc667243ed3a05f4407/datastore-core-okio-jvm-1.1.1.jar (tarama: 2026-10-20)
+
+[047] androidx.datastore:datastore-preferences-android:1.1.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.datastore/datastore-preferences-android/1.1.1/927dbd4a74ba99501b1d879a22fa6fda1111d01e/datastore-preferences-release.aar (tarama: 2026-10-20)
+
+[048] androidx.datastore:datastore-preferences-core-jvm:1.1.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.datastore/datastore-preferences-core-jvm/1.1.1/e562d4a944240c0e67317f0b862da24aca3aabc/datastore-preferences-core-jvm-1.1.1.jar (tarama: 2026-10-20)
+
+[049] androidx.drawerlayout:drawerlayout:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.drawerlayout/drawerlayout/1.0.0/dd02c7e207136e1272b33815cc61e57676ed13a2/drawerlayout-1.0.0.aar (tarama: 2026-10-20)
+
+[050] androidx.emoji2:emoji2:1.3.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.emoji2/emoji2/1.3.0/37ed42991ddf77924510472dba632314aab1c9d9/emoji2-1.3.0.aar (tarama: 2026-10-20)
+
+[051] androidx.exifinterface:exifinterface:1.3.2
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.exifinterface/exifinterface/1.3.2/ce8e52ca0749a3b6d07758a26e1cc642180bb4d7/exifinterface-1.3.2.aar (tarama: 2026-10-20)
+
+[052] androidx.fragment:fragment:1.1.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.fragment/fragment/1.1.0/5f9efc7569e651415a0958d6b3e6226ef2825c24/fragment-1.1.0.aar (tarama: 2026-10-20)
+
+[053] androidx.graphics:graphics-path:1.0.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.graphics/graphics-path/1.0.1/7e243033abd313c7202428422a01d48691378e33/graphics-path-1.0.1.aar (tarama: 2026-10-20)
+
+[054] androidx.interpolator:interpolator:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.interpolator/interpolator/1.0.0/8a01fa254a23b9388571eb6334b03707c7d122d7/interpolator-1.0.0.aar (tarama: 2026-10-20)
+
+[055] androidx.lifecycle:lifecycle-common-java8:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-common-java8/2.8.7/2ad14aed781c4a73ed4dbb421966d408a0a06686/lifecycle-common-java8-2.8.7.jar (tarama: 2026-10-20)
+
+[056] androidx.lifecycle:lifecycle-common-jvm:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-common-jvm/2.8.7/7174a594afb73a9ad9ac9074ce78b94af3cc52a7/lifecycle-common-jvm-2.8.7.jar (tarama: 2026-10-20)
+
+[057] androidx.lifecycle:lifecycle-livedata:2.8.7 (2 satır çözümlendi, aynı dosya)
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-livedata/2.8.7/363b8ac5575168fa0a7e31fdc61429b088183f5/lifecycle-livedata-2.8.7.aar (tarama: 2026-10-20)
+
+[058] androidx.lifecycle:lifecycle-livedata-core:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-livedata-core/2.8.7/62e7efadd1ee10a038f39caa0a0242e19ae150dd/lifecycle-livedata-core-2.8.7.aar (tarama: 2026-10-20)
+
+[059] androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-livedata-core-ktx/2.8.7/7f37506aa6cb89d1ba7b9b0b16bc97b4e57b5826/lifecycle-livedata-core-ktx-2.8.7.aar (tarama: 2026-10-20)
+
+[060] androidx.lifecycle:lifecycle-process:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-process/2.8.7/f9a66901525bbd05d398d4feddec4f0c39708099/lifecycle-process-2.8.7.aar (tarama: 2026-10-20)
+
+[061] androidx.lifecycle:lifecycle-runtime-android:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-runtime-android/2.8.7/279be810b484a629edf73cea65cdd85f91233cca/lifecycle-runtime-release.aar (tarama: 2026-10-20)
+
+[062] androidx.lifecycle:lifecycle-runtime-compose-android:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-runtime-compose-android/2.8.7/5851a3aee97f0a9157a97beafd457304629b60a1/lifecycle-runtime-compose-release.aar (tarama: 2026-10-20)
+
+[063] androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-runtime-ktx-android/2.8.7/4efeb13bc2500635dcffc517b401cb5270c6aa42/lifecycle-runtime-ktx-release.aar (tarama: 2026-10-20)
+
+[064] androidx.lifecycle:lifecycle-viewmodel:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-viewmodel/2.8.7/b24817e8c78b402c8d44acf07aeacd71f000ead2/lifecycle-viewmodel-2.8.7.aar (tarama: 2026-10-20)
+
+[065] androidx.lifecycle:lifecycle-viewmodel-android:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-viewmodel-android/2.8.7/443f0c8663ee9d8424ee258f1d06e14fc9081327/lifecycle-viewmodel-release.aar (tarama: 2026-10-20)
+
+[066] androidx.lifecycle:lifecycle-viewmodel-compose-android:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-viewmodel-compose-android/2.8.7/4ad6d776a6552a3b0df2252f68a1eef6a3bf7710/lifecycle-viewmodel-compose-release.aar (tarama: 2026-10-20)
+
+[067] androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-viewmodel-ktx/2.8.7/f74daa218503c75030c39f8d5dcd8750c163792/lifecycle-viewmodel-ktx-2.8.7.aar (tarama: 2026-10-20)
+
+[068] androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.7
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.lifecycle/lifecycle-viewmodel-savedstate/2.8.7/a276ea2c0c811d5fac2c3fe03ddba78122c41deb/lifecycle-viewmodel-savedstate-2.8.7.aar (tarama: 2026-10-20)
+
+[069] androidx.loader:loader:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.loader/loader/1.0.0/8af8b6cec0da85c207d03e15840e0722cbc71e70/loader-1.0.0.aar (tarama: 2026-10-20)
+
+[070] androidx.media:media:1.6.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.media/media/1.6.0/db8f393321275a13f52eb5ff28f96931f238865e/media-1.6.0.aar (tarama: 2026-10-20)
+
+[071] androidx.navigation:navigation-common:2.8.4
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/navigation/navigation-common/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.navigation/navigation-common/2.8.4/9fbc09d0d5e9cc22cdf33f51272aaebbdc9d49b4/navigation-common-2.8.4.aar → META-INF/androidx/navigation/navigation-common/LICENSE.txt
+
+[072] androidx.navigation:navigation-common-ktx:2.8.4
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/navigation/navigation-common-ktx/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.navigation/navigation-common-ktx/2.8.4/e658d9fe53670620b3f9d8ecd15eec2c3b0c8b54/navigation-common-ktx-2.8.4.aar → META-INF/androidx/navigation/navigation-common-ktx/LICENSE.txt
+
+[073] androidx.navigation:navigation-compose:2.8.4
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/navigation/navigation-compose/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.navigation/navigation-compose/2.8.4/c73daf52e768abb5fde513fa9254c4fe2a426077/navigation-compose-2.8.4.aar → META-INF/androidx/navigation/navigation-compose/LICENSE.txt
+
+[074] androidx.navigation:navigation-runtime:2.8.4
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/navigation/navigation-runtime/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.navigation/navigation-runtime/2.8.4/a6b176420075d856964b36489b4deb095789be8a/navigation-runtime-2.8.4.aar → META-INF/androidx/navigation/navigation-runtime/LICENSE.txt
+
+[075] androidx.navigation:navigation-runtime-ktx:2.8.4
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi META-INF/androidx/navigation/navigation-runtime-ktx/LICENSE.txt)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek A
+      Kaynak : CACHE/androidx.navigation/navigation-runtime-ktx/2.8.4/58b3d7c5dc3995787218a0117e15625a7c489a5a/navigation-runtime-ktx-2.8.4.aar → META-INF/androidx/navigation/navigation-runtime-ktx/LICENSE.txt
+
+[076] androidx.profileinstaller:profileinstaller:1.3.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.profileinstaller/profileinstaller/1.3.1/c0bac819b4f88a648011542273373d1e5093e3a7/profileinstaller-1.3.1.aar (tarama: 2026-10-20)
+
+[077] androidx.savedstate:savedstate:1.2.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.savedstate/savedstate/1.2.1/e364fc9dec32aa569d855f85864e50250318a093/savedstate-1.2.1.aar (tarama: 2026-10-20)
+
+[078] androidx.savedstate:savedstate-ktx:1.2.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.savedstate/savedstate-ktx/1.2.1/b86d338d91b1c26193a42b1d87be9bb02123fa16/savedstate-ktx-1.2.1.aar (tarama: 2026-10-20)
+
+[079] androidx.security:security-crypto:1.1.0-alpha06
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.security/security-crypto/1.1.0-alpha06/d23f6c36fbbeea99668bf077e14184bb2d4fc7d1/security-crypto-1.1.0-alpha06.aar (tarama: 2026-10-20)
+
+[080] androidx.startup:startup-runtime:1.1.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.startup/startup-runtime/1.1.1/9d4ba67056aff98b69eadc1477c19a1e67cb9470/startup-runtime-1.1.1.aar (tarama: 2026-10-20)
+
+[081] androidx.tracing:tracing:1.2.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.tracing/tracing/1.2.0/a6ac2cc501278fdc99c56b428548e0cd1e9300f7/tracing-1.2.0.aar (tarama: 2026-10-20)
+
+[082] androidx.tracing:tracing-ktx:1.2.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.tracing/tracing-ktx/1.2.0/f151f88aed5054c9db05c90acb6b09728d3b1d81/tracing-ktx-1.2.0.aar (tarama: 2026-10-20)
+
+[083] androidx.vectordrawable:vectordrawable:1.1.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.vectordrawable/vectordrawable/1.1.0/eac7a364fff534035a2a6cb17770a1288315f69f/vectordrawable-1.1.0.aar (tarama: 2026-10-20)
+
+[084] androidx.vectordrawable:vectordrawable-animated:1.1.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.vectordrawable/vectordrawable-animated/1.1.0/fcda1161354501471c30a4e077af6b5c4d4eddc6/vectordrawable-animated-1.1.0.aar (tarama: 2026-10-20)
+
+[085] androidx.versionedparcelable:versionedparcelable:1.1.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.versionedparcelable/versionedparcelable/1.1.1/18e18071e7715679e0593c570217edeb5ca48b9e/versionedparcelable-1.1.1.aar (tarama: 2026-10-20)
+
+[086] androidx.viewpager:viewpager:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/androidx.viewpager/viewpager/1.0.0/1f90e13820f96c2fb868f9674079a551678d68b2/viewpager-1.0.0.aar (tarama: 2026-10-20)
+
+[087] com.google.ai.edge.litert:litert:1.4.2
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi LICENSE)
+      POM    : aynı sürüm POM beyanı: "The Apache Software License, Version 2.0"
+               (CACHE/com/google/ai/edge/litert/litert/1.4.2/.../litert-1.4.2.pom)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek B
+      Kaynak : CACHE/com.google.ai.edge.litert/litert/1.4.2/7d56d65bea6eab856c924c19cdf3c34d61bc76a4/litert-1.4.2.aar → LICENSE
+
+[088] com.google.ai.edge.litert:litert-api:1.4.2
+      Lisans : Apache License 2.0 — DOĞRULANDI (artefakt içi LICENSE)
+      POM    : aynı sürüm POM beyanı: "The Apache Software License, Version 2.0"
+               (CACHE/com/google/ai/edge/litert/litert-api/1.4.2/.../litert-api-1.4.2.pom)
+      Telif  : — (doğrulanmış lisans metninde telif satırı yok)
+      Metin  : tam metin Ek B
+      Kaynak : CACHE/com.google.ai.edge.litert/litert-api/1.4.2/5fe427c2280937eec7d22370da7463814d99273c/litert-api-1.4.2.aar → LICENSE
+
+[089] com.google.auto.value:auto-value-annotations:1.6.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.auto.value/auto-value-annotations/1.6.3/b88c1bb7f149f6d2cc03898359283e57b08f39cc/auto-value-annotations-1.6.3.jar (tarama: 2026-10-20)
+
+[090] com.google.code.findbugs:jsr305:3.0.2
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.code.findbugs/jsr305/3.0.2/25ea2e8b0c338a877313bd4672d3fe056ea78f0d/jsr305-3.0.2.jar (tarama: 2026-10-20)
+
+[091] com.google.code.gson:gson:2.8.9
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.code.gson/gson/2.8.9/8a432c1d6825781e21a02db2e2c33c5fde2833b9/gson-2.8.9.jar (tarama: 2026-10-20)
+
+[092] com.google.crypto.tink:tink-android:1.8.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.crypto.tink/tink-android/1.8.0/bda82b49568d444a3b54773ca5aa487816473295/tink-android-1.8.0.jar (tarama: 2026-10-20)
+
+[093] com.google.errorprone:error_prone_annotations:2.11.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.errorprone/error_prone_annotations/2.11.0/c5a0ace696d3f8b1c1d8cc036d8c03cc0cbe6b69/error_prone_annotations-2.11.0.jar (tarama: 2026-10-20)
+
+[094] com.google.guava:failureaccess:1.0.1
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.guava/failureaccess/1.0.1/1dcf1de382a0bf95a3d8b0849546c88bac1292c9/failureaccess-1.0.1.jar (tarama: 2026-10-20)
+
+[095] com.google.guava:guava:31.1-android
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.guava/guava/31.1-android/9222c47cc3ae890f07f7c961bbb3cb69050fe4aa/guava-31.1-android.jar (tarama: 2026-10-20)
+
+[096] com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/b421526c5f297295adef1c886e5246c39d4ac629/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar (tarama: 2026-10-20)
+
+[097] com.google.j2objc:j2objc-annotations:1.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.google.j2objc/j2objc-annotations/1.3/ba035118bc8bac37d7eff77700720999acd9986d/j2objc-annotations-1.3.jar (tarama: 2026-10-20)
+
+[098] com.squareup.okhttp3:okhttp:4.12.0
+      Lisans : KAYNAK YOK (okhttp'un kendi lisansı için artefaktda LICENSE
+               dosyası yok; aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Ek     : artefakt içinde üçüncü taraf VERİ bildirimi var:
+               okhttp3/internal/publicsuffix/NOTICE — Public Suffix List verisi
+               (publicsuffix.org), Mozilla Public License 2.0; tam metin Ek F
+      Kaynak : CACHE/com.squareup.okhttp3/okhttp/4.12.0/2f4525d4a200e97e1b87449c2cd9bd2e25b7e8cd/okhttp-4.12.0.jar → okhttp3/internal/publicsuffix/NOTICE
+
+[099] com.squareup.okio:okio-jvm:3.6.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/com.squareup.okio/okio-jvm/3.6.0/5600569133b7bdefe1daf9ec7f4abeb6d13e1786/okio-jvm-3.6.0.jar (tarama: 2026-10-20)
+
+[100] dev.rikka.shizuku:aidl:13.1.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/dev.rikka.shizuku/aidl/13.1.5/457504c277d796adea698b80b4e765f98dd0799a/aidl-13.1.5.aar (tarama: 2026-10-20)
+
+[101] dev.rikka.shizuku:api:13.1.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/dev.rikka.shizuku/api/13.1.5/1f760c56493bdbc01462930e75bb325033b36fe2/api-13.1.5.aar (tarama: 2026-10-20)
+
+[102] dev.rikka.shizuku:provider:13.1.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/dev.rikka.shizuku/provider/13.1.5/4135b99cae9362fe2f63380230d04a9bcba9be3f/provider-13.1.5.aar (tarama: 2026-10-20)
+
+[103] dev.rikka.shizuku:shared:13.1.5
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/dev.rikka.shizuku/shared/13.1.5/8c4e73ce466cd27aff10565d2ec49809c258f974/shared-13.1.5.aar (tarama: 2026-10-20)
+
+[104] org.checkerframework:checker-qual:3.12.0
+      Lisans : MIT License — DOĞRULANDI (artefakt içi META-INF/LICENSE.txt)
+      Telif  : Copyright 2004-present by the Checker Framework developers
+      Metin  : tam metin Ek C
+      Kaynak : CACHE/org.checkerframework/checker-qual/3.12.0/d5692f0526415fcc6de94bb5bfbd3afd9dd3b3e5/checker-qual-3.12.0.jar → META-INF/LICENSE.txt
+
+[105] org.jetbrains:annotations:23.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains/annotations/23.0.0/8cc20c07506ec18e0834947b84a864bfc094484e/annotations-23.0.0.jar (tarama: 2026-10-20)
+
+[106] org.jetbrains.kotlin:kotlin-android-extensions-runtime:1.9.22
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlin/kotlin-android-extensions-runtime/1.9.22/ee3bc0c3b55cb516ac92d6a093e1b939166b86a2/kotlin-android-extensions-runtime-1.9.22.jar (tarama: 2026-10-20)
+
+[107] org.jetbrains.kotlin:kotlin-parcelize-runtime:1.9.22
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlin/kotlin-parcelize-runtime/1.9.22/de4a21d6560cadd035c69ba3af3ad1afecc95299/kotlin-parcelize-runtime-1.9.22.jar (tarama: 2026-10-20)
+
+[108] org.jetbrains.kotlin:kotlin-stdlib:2.0.21
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlin/kotlin-stdlib/2.0.21/618b539767b4899b4660a83006e052b63f1db551/kotlin-stdlib-2.0.21.jar (tarama: 2026-10-20)
+
+[109] org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlin/kotlin-stdlib-jdk7/1.9.10/bc5bfc2690338defd5195b05c57562f2194eeb10/kotlin-stdlib-jdk7-1.9.10.jar (tarama: 2026-10-20)
+
+[110] org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlin/kotlin-stdlib-jdk8/1.9.10/c7510d64a83411a649c76f2778304ddf71d7437b/kotlin-stdlib-jdk8-1.9.10.jar (tarama: 2026-10-20)
+
+[111] org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlinx/kotlinx-coroutines-android/1.7.3/38d9cad3a0b03a10453b56577984bdeb48edeed5/kotlinx-coroutines-android-1.7.3.jar (tarama: 2026-10-20)
+
+[112] org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.7.3/2b09627576f0989a436a00a4a54b55fa5026fb86/kotlinx-coroutines-core-jvm-1.7.3.jar (tarama: 2026-10-20)
+
+[113] org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.7.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlinx/kotlinx-serialization-core-jvm/1.7.3/1f226780b845ff9206474c05159245d861556249/kotlinx-serialization-core-jvm-1.7.3.jar (tarama: 2026-10-20)
+
+[114] org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.7.3
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm/1.7.3/6701e8c68d9e82387ce72ee96e8ddf058208d58f/kotlinx-serialization-json-jvm-1.7.3.jar (tarama: 2026-10-20)
+
+[115] org.jspecify:jspecify:1.0.0
+      Lisans : KAYNAK YOK (artefakt içinde LICENSE/NOTICE dosyası yok;
+               aynı sürümün POM lisans beyanı cache'te yok)
+      Telif  : — (kaynak yok)
+      Kaynak : CACHE/org.jspecify/jspecify/1.0.0/7425a601c1c7ec76645a78d22b8c6a627edee507/jspecify-1.0.0.jar (tarama: 2026-10-20)
+
+------------------------------------------------------------------------------
+BÖLÜM 4 — APK DIŞINDA (bilgi amaçlı): çalışma anında indirilen modeller
+------------------------------------------------------------------------------
+
+4.1 openWakeWord "Hey Jarvis" uyandırma kelimesi modelleri (.tflite)
+    APK'ya GÖMÜLMEZ; ilk kullanımda indirilir (SHA256 doğrulamalı), uygulama
+    veri dizinine (filesDir/wakeword) yazılır.
+    Kaynak: https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/
+            melspectrogram.tflite, embedding_model.tflite, hey_jarvis_v0.1.tflite
+    Lisans: KAYNAK YOK (lisans metni sağlanmadı). Depo içi kod notu şunu beyan
+            ediyor (kaynak: REPO/app/src/main/java/com/hermes/mobile/assistant/
+            WakeWord.kt, "WakeWordModels" dokümantasyon bloğu): "openWakeWord
+            kodu Apache-2.0; hazır modeller CC BY-NC-SA 4.0 (kişisel, ticari
+            olmayan kullanım) — bu yüzden APK'ya gömülmez." Bu beyan doğrulanmış
+            lisans metni DEĞİLDİR; metni bu bildirime eklenmemiştir.
+
+==============================================================================
+EKLER — DOĞRULANMIŞ TAM LİSANS METİNLERİ (artefakt/vendor içinden, olduğu gibi)
+==============================================================================
+
+------------------------------------------------------------------------------
+EK A — Apache License 2.0 (tam metin)
+Kaynak: artefakt içi lisans dosyaları; aşağıdaki 12 bileşenin metni birebir aynıdır
+(sha256 ilk 12 hex: 809fa1ed2145): androidx.camera:*:1.4.1 (5),
+androidx.car.app:app|app-projected:1.7.0 (2), androidx.navigation:*:2.8.4 (5).
+Örnek yolu: CACHE/androidx.camera/camera-core/1.4.1/.../camera-core-1.4.1.aar
+→ META-INF/androidx/camera/camera-core/LICENSE.txt
+------------------------------------------------------------------------------
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+
+------------------------------------------------------------------------------
+EK B — Apache License 2.0, LiteRT (tam metin)
+Kaynak: CACHE/com.google.ai.edge.litert/litert/1.4.2/.../litert-1.4.2.aar → LICENSE
+ve CACHE/com.google.ai.edge.litert/litert-api/1.4.2/.../litert-api-1.4.2.aar → LICENSE
+(iki metin birebir aynıdır; sha256 ilk 12 hex: 71c6915d0426)
+------------------------------------------------------------------------------
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+## Some of TensorFlow's code is derived from Caffe, which is subject to the following copyright notice:
+
+COPYRIGHT
+
+All contributions by the University of California:
+
+Copyright (c) 2014, The Regents of the University of California (Regents)
+All rights reserved.
+
+All other contributions:
+
+Copyright (c) 2014, the respective contributors
+All rights reserved.
+
+Caffe uses a shared copyright model: each contributor holds copyright over
+their contributions to Caffe. The project versioning records all such
+contribution and copyright details. If a contributor wants to further mark
+their specific copyright on a particular contribution, they should indicate
+their copyright solely in the commit message of the change when it is
+committed.
+
+LICENSE
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+   DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+   ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+CONTRIBUTION AGREEMENT
+
+By contributing to the BVLC/caffe repository through pull-request, comment,
+or otherwise, the contributor releases their content to the
+license and copyright terms herein.
+
+
+------------------------------------------------------------------------------
+EK C — MIT License, org.checkerframework:checker-qual:3.12.0 (tam metin)
+Kaynak: CACHE/org.checkerframework/checker-qual/3.12.0/.../checker-qual-3.12.0.jar
+→ META-INF/LICENSE.txt
+------------------------------------------------------------------------------
+Checker Framework qualifiers
+Copyright 2004-present by the Checker Framework developers
+
+MIT License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+------------------------------------------------------------------------------
+EK D — MIT License, ONNX Runtime (tam metin)
+Kaynak: REPO/app/libs/onnxruntime-java-bridge-1.28.0.aar → META-INF/LICENSE-ORT.txt
+(relay/build_ort_java_bridge.py bu dosyayı ORT 1.28.0 resmî kaynak LICENSE dosyasından
+AAR'a koyar)
+------------------------------------------------------------------------------
+MIT License
+
+Copyright (c) Microsoft Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+------------------------------------------------------------------------------
+EK E — MIT License, three.js (tam metin)
+Kaynak: REPO/app/src/main/assets/arena/LICENSE-three.txt
+------------------------------------------------------------------------------
+The MIT License
+
+Copyright © 2010-2022 three.js authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+------------------------------------------------------------------------------
+EK F — Public Suffix List bildirimi (tam metin)
+Kaynak: CACHE/com.squareup.okhttp3/okhttp/4.12.0/.../okhttp-4.12.0.jar
+→ okhttp3/internal/publicsuffix/NOTICE
+------------------------------------------------------------------------------
+Note that publicsuffixes.gz is compiled from The Public Suffix List:
+https://publicsuffix.org/list/public_suffix_list.dat
+
+It is subject to the terms of the Mozilla Public License, v. 2.0:
+https://mozilla.org/MPL/2.0/
+
+=== BİLDİRİM SONU ===
