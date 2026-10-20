@@ -1352,10 +1352,30 @@ private fun HermesApp(
                                     .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, appContext.packageName)
                                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                             } else if (sid != null && profile != null) {
-                                com.hermes.mobile.data.Notifier.agentReply(appContext,
+                                // V5-3: sohbet akışını araç ekranına taşı. AA yalnız aktif
+                                // oturumu SIRASINDA gelen bildirimlerin geçmişini gösterir;
+                                // konuşma geçmişle başlar ve her mesajda güncellenir.
+                                val now = System.currentTimeMillis()
+                                val history = chat.items.mapNotNull { item ->
+                                    when (item) {
+                                        is ChatItem.User -> com.hermes.mobile.data.CarConversation.Msg(
+                                            true, item.text,
+                                            com.hermes.mobile.data.CarConversation.timeOf(item.ts, now))
+                                        is ChatItem.Assistant -> com.hermes.mobile.data.CarConversation.Msg(
+                                            false, item.text,
+                                            com.hermes.mobile.data.CarConversation.timeOf(item.ts, now))
+                                        else -> null
+                                    }
+                                } + com.hermes.mobile.data.CarConversation.Msg(false,
                                     "Araç sohbeti hazır. Android Auto’daki Hermes mesajına sesle yanıt ver; aynı sohbetten devam edeceğim ve cevabımı EMA ile okuyacağım. EMA’yı durdurmak için Hermes konuşuyor bildirimini kullanabilirsin.",
-                                    sessionId = sid, profileId = profile.id, force = true,
-                                    carVoice = true)
+                                    System.currentTimeMillis())
+                                com.hermes.mobile.data.Notifier.carConversationStart(
+                                    appContext,
+                                    sessionId = sid,
+                                    profileId = profile.id,
+                                    title = chat.topic.ifBlank { "Hermes" },
+                                    history = history,
+                                )
                                 android.widget.Toast.makeText(appContext,
                                     "Android Auto bağlıyken Hermes mesajına yanıt ver",
                                     android.widget.Toast.LENGTH_LONG).show()

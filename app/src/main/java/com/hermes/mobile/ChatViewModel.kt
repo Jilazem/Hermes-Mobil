@@ -1312,6 +1312,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val body = text.trim()
         val ready = _state.value.attachments.filter { it.remotePath != null }
         if (body.isEmpty() && ready.isEmpty()) return
+        // V5-3: araç sohbeti açıkken telefon tarafının mesajı da AA akışına düşsün.
+        com.hermes.mobile.data.Notifier.carFlow(
+            getApplication(), body,
+            _state.value.storedSessionId ?: _state.value.sessionId,
+            profileId, isUser = true,
+        )
 
         // Telefon eylemi mi? Ajan sunucuda koşuyor, telefona ulaşamaz; bu işleri
         // cihazın kendisi yapmalı. Eşleşme yoksa mesaj olduğu gibi ajana gider.

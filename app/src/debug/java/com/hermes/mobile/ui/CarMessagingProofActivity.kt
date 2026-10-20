@@ -68,6 +68,29 @@ class CarMessagingProofActivity : ComponentActivity() {
                 check(NotificationCompat.getInvisibleActions(n).any {
                     it.semanticAction == NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ && !it.showsUserInterface })
                 step("PASS MessagingStyle, reply RemoteInput, invisible mark-read; conversation scoped")
+                // V5-3: akış kanıtı — konuşma BİRİKMELİ (AA yalnız oturum sırasında
+                // gelen bildirimlerin mesaj geçmişini gösterir; tek seferlik tek
+                // satır güncellenmez ve "yeni mesajınız yok" dışında bir şey
+                // görünmez).
+                val flowCount = intent.getIntExtra("flow", 0)
+                for (i in 1..flowCount) {
+                    Notifier.carFlow(this@CarMessagingProofActivity, "Kullanıcı soru $i",
+                        sid, profile.id, isUser = true)
+                    Notifier.carFlow(this@CarMessagingProofActivity, "Hermes cevap $i",
+                        sid, profile.id, isUser = false)
+                    delay(300)
+                }
+                if (flowCount > 0) {
+                    val updated = checkNotNull(nm.activeNotifications.firstOrNull { it.tag == notice.tag })
+                    val texts = checkNotNull(NotificationCompat.MessagingStyle
+                        .extractMessagingStyleFromNotification(updated.notification)?.messages
+                    ).map { it.text.toString() }
+                    check(texts.size >= flowCount * 2 + 1) { "akış birikmedi: ${texts.size}" }
+                    check(texts.contains("Kullanıcı soru 1") && texts.contains("Hermes cevap $flowCount"))
+                    check(CarConversation.messages().map { it.text }.containsAll(texts))
+                    step("PASS V5-3 akış: aynı konuşmada ${texts.size} mesaj birikti")
+                    step("MSGS " + texts.joinToString(" | "))
+                }
                 if (testReply) {
                     val fill = Intent()
                     val remote = Bundle().apply { putCharSequence(ReplyService.KEY_REPLY,

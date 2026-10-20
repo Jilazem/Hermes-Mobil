@@ -1,0 +1,52 @@
+Current Notification Manager state:
+  Notification List:
+    NotificationRecord(0x0c02dbb2: pkg=com.hermes.mobile.v3 user=UserHandle{0} id=4870 tag=car:c80890e9-8000-4d6c-a33f-41ad4ff52d6a/car-messaging-diagnostic importance=3 key=0|com.hermes.mobile.v3|4870|car:c80890e9-8000-4d6c-a33f-41ad4ff52d6a/car-messaging-diagnostic|10192: Notification(channel=hermes_replies shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x0 color=0x00000000 category=msg actions=1 vis=PRIVATE))
+      uid=10192 userId=0
+      opPkg=com.hermes.mobile.v3
+      icon=Icon(typ=RESOURCE pkg=com.hermes.mobile.v3 id=0x01080077)
+      flags=0x0
+      originalFlags=0x0
+      pri=0
+      key=0|com.hermes.mobile.v3|4870|car:c80890e9-8000-4d6c-a33f-41ad4ff52d6a/car-messaging-diagnostic|10192
+      seen=false
+      groupKey=0|com.hermes.mobile.v3|4870|car:c80890e9-8000-4d6c-a33f-41ad4ff52d6a/car-messaging-diagnostic|10192
+      notification=
+            fullscreenIntent=null
+            contentIntent=PendingIntent{9d3f703: PendingIntentRecord{b69b877 com.hermes.mobile.v3 startActivity (allowlist: e55f802:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=0
+            when=1792482818024
+            tickerText=null
+            vis=0
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            actions={
+                [0] "Yanıtla" -> PendingIntent{3d54680: PendingIntentRecord{541fce4 com.hermes.mobile.v3 startService (allowlist: e55f802:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+              }
+            extras={
+--
+  mHasLight=false
+  mNotificationPulseEnabled=true
+  mSoundNotificationKey=0|com.hermes.mobile.v3|4870|car:c80890e9-8000-4d6c-a33f-41ad4ff52d6a/car-messaging-diagnostic|10192
+  mVibrateNotificationKey=null
+  mDisableNotificationEffects=false
+  mCallState=CALL_STATE_IDLE
+  mSystemReady=true
+  mMaxPackageEnqueueRate=5.0
+  hideSilentStatusBar=false
+  mArchive=Archive (0 notifications)
+
+  Snoozed notifications:
+
+ Pending snoozed notifications
+
+  Ranking Config:
+    mSignalExtractors.length = 11
+      NotificationChannelExtractor
+      NotificationAdjustmentExtractor
+      BubbleExtractor
+      ValidateNotificationPeople

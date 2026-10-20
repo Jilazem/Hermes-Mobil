@@ -1,0 +1,5 @@
+PASS test conversation ready
+PASS MessagingStyle, reply RemoteInput, invisible mark-read; conversation scoped
+PASS V5-3 akış: aynı konuşmada 5 mesaj birikti
+MSGS Hermes araç mesajlaşma denemesi hazır. | Kullanıcı soru 1 | Hermes cevap 1 | Kullanıcı soru 2 | Hermes cevap 2
+RESULT PASS

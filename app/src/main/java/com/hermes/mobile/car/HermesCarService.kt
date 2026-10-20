@@ -15,6 +15,7 @@ import androidx.car.app.model.Template
 import androidx.car.app.validation.HostValidator
 import com.hermes.mobile.data.CrashGuard
 import com.hermes.mobile.data.HermesClient
+import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.ServerProfileStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +58,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     private var error: String? = null
     private var statusLine = ""
     private var systemLine = ""
-    private var sessionLines: List<String> = emptyList()
+    private var sessionLines: List<HermesSession> = emptyList()
 
     init {
         // P5: Screen onDestroy override etmez; DefaultLifecycleObserver ile
@@ -94,7 +95,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                     "Gateway ${status.gatewayState} · v${status.version} · ${status.activeAgents} ajan",
                     stats?.let { "CPU %${it.cpuPercent.toInt()} · RAM %${it.memory.percent.toInt()} · Disk %${it.disk.percent.toInt()}" }
                         ?: "Sistem istatistikleri alınamadı",
-                    sessions.filter { it.isActive }.take(3).map { "${it.title.take(40)} · ${it.messageCount} mesaj" },
+                    sessions.filter { it.isActive }.take(5),
                 )
             }
             withContext(Dispatchers.Main) {
@@ -158,8 +159,23 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             if (sessionLines.isEmpty()) {
                 addItem(Row.Builder().setTitle("Etkin oturum yok").build())
             } else {
-                sessionLines.forEach { line ->
-                    addItem(Row.Builder().setTitle("Etkin oturum").addText(line).build())
+                sessionLines.forEach { session ->
+                    addItem(
+                        Row.Builder()
+                            .setTitle(CarChatLogic.title(session.serverTitle ?: session.title, session.id))
+                            .addText(
+                                listOfNotNull(
+                                    "${session.messageCount} mesaj",
+                                    session.preview?.takeIf { it.isNotBlank() }?.let { CarChatLogic.snippet(it) },
+                                ).joinToString(" · ")
+                            )
+                            .setOnClickListener {
+                                screenManager.push(
+                                    CarMessagesScreen(carContext, session.id, session.serverTitle ?: session.title)
+                                )
+                            }
+                            .build()
+                    )
                 }
             }
         }.build()

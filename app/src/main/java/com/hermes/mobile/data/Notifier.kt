@@ -173,6 +173,130 @@ object Notifier {
     fun dismissCarConversation(context: Context, profileId: String, sessionId: String) {
         val conversation = "${android.net.Uri.encode(profileId)}/${android.net.Uri.encode(sessionId)}"
         channel(context).cancel("car:$conversation", 4870)
+        CarConversation.close(profileId, sessionId)
+    }
+
+    /**
+     * V5-3: araç sohbetini sohbet GEÇMİŞİYLE başlatır. AA yalnız aktif oturumu
+     * sırasında gelen bildirimleri gösterir; akışın görünmesi için konuşma
+     * başlatılır ve her mesajda yeniden bildirilir.
+     */
+    fun carConversationStart(
+        context: Context,
+        sessionId: String?,
+        profileId: String?,
+        title: String?,
+        history: List<CarConversation.Msg>,
+    ) {
+        val targetProfile = profileId ?: ServerProfileStore(context).activeId().orEmpty()
+        val msgs = CarConversation.start(targetProfile, sessionId, title, history)
+        postCarConversation(context, targetProfile, sessionId, msgs)
+    }
+
+    /**
+     * V5-3: sohbet akışını aktif araç konuşmasına düşürür. Konuşma başka bir
+     * oturumdaysa ya da hiç başlamadıysa sessizce hiçbir şey yapmaz.
+     */
+    fun carFlow(context: Context, text: String, sessionId: String?, profileId: String?, isUser: Boolean) {
+        val targetProfile = profileId ?: ServerProfileStore(context).activeId().orEmpty()
+        val msgs = CarConversation.append(targetProfile, sessionId,
+            CarConversation.Msg(isUser, text, System.currentTimeMillis())) ?: return
+        postCarConversation(context, targetProfile, sessionId, msgs)
+    }
+
+    /** Araç konuşmasını AA uyumlu MessagingStyle bildirimi olarak yollar. */
+    private fun postCarConversation(
+        context: Context,
+        targetProfile: String,
+        sessionId: String?,
+        msgs: List<CarConversation.Msg>,
+    ) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
+        val conversation = "${android.net.Uri.encode(targetProfile)}/${android.net.Uri.encode(sessionId.orEmpty())}"
+        val tag = "car:$conversation"
+        val id = 4870
+        val open = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, com.hermes.mobile.MainActivity::class.java)
+                .putExtra(com.hermes.mobile.MainActivity.EXTRA_OPEN_SESSION, sessionId)
+                .putExtra(com.hermes.mobile.MainActivity.EXTRA_OPEN_PROFILE, targetProfile)
+                .putExtra("hermes_action", "notifications")
+                .setData(android.net.Uri.parse("hermes://reply/${android.net.Uri.encode(targetProfile)}/${android.net.Uri.encode(sessionId.orEmpty())}"))
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val remoteInput = androidx.core.app.RemoteInput.Builder(ReplyService.KEY_REPLY)
+            .setLabel("Yanıtla…")
+            .build()
+        val replyIntent = Intent(context, ReplyService::class.java)
+            .setAction(ReplyService.ACTION_REPLY)
+            .setData(android.net.Uri.parse("hermes://notification-reply/$conversation/ema"))
+            .putExtra(ReplyService.EXTRA_CAR_VOICE, true)
+            .putExtra(ReplyService.EXTRA_SESSION, sessionId)
+            .putExtra(ReplyService.EXTRA_PROFILE, targetProfile)
+        val replyPending = PendingIntent.getService(
+            context,
+            0,
+            replyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+        val replyAction = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_send, "Yanıtla", replyPending,
+        )
+            .addRemoteInput(remoteInput)
+            .setAllowGeneratedReplies(true)
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+            .setShowsUserInterface(false)
+            .build()
+        val markRead = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_view, "Okundu",
+            PendingIntent.getBroadcast(
+                context, id,
+                Intent(context, MarkReadReceiver::class.java)
+                    .setData(android.net.Uri.parse("hermes://notification-read/$conversation/$id"))
+                    .putExtra(MarkReadReceiver.EXTRA_ID, id)
+                    .putExtra(MarkReadReceiver.EXTRA_TAG, tag),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+            .setShowsUserInterface(false)
+            .build()
+        val me = androidx.core.app.Person.Builder().setName("Sen").setKey("me").build()
+        val hermes = androidx.core.app.Person.Builder().setName("Hermes").setKey("hermes").setBot(true).build()
+        // AA kuralı: MessagingStyle konuşmadaki TÜM mesajları taşır — akış böylece
+        // araç ekranında birikerek görünür.
+        val style = NotificationCompat.MessagingStyle(me)
+            .setConversationTitle(CarConversation.currentTitle().ifBlank { "Hermes" })
+            .setGroupConversation(false)
+        msgs.forEach { m ->
+            style.addMessage(
+                CarConversation.Msg(m.isUser, m.text, m.time).let {
+                    NotificationCompat.MessagingStyle.Message(
+                        it.text, it.time, if (it.isUser) me else hermes,
+                    )
+                },
+            )
+        }
+        val last = msgs.lastOrNull()?.text.orEmpty()
+        val n = NotificationCompat.Builder(context, CHANNEL_REPLIES)
+            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setContentTitle("Hermes")
+            .setContentText(last)
+            .setStyle(style)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(open)
+            .addAction(replyAction)
+            .addInvisibleAction(markRead)
+            // Konuşma akışı sürerken tıklanınca kaybolmasın (AA'da "yeni mesajınız
+            // yok"a düşmemesi için).
+            .setAutoCancel(false)
+            .setOngoing(false)
+            .build()
+        channel(context).notify(tag, id, n)
     }
 
     /**
@@ -193,6 +317,19 @@ object Notifier {
         if (text.isNotBlank()) ActivityInbox.get(context).add(ActivityNotice(profileId = targetProfile,
             sessionId = sessionId, title = title.ifBlank { "Hermes" }, text = text.take(4_000),
             read = appVisible && visibleSession == (targetProfile to sessionId), kind = kind))
+        if (kind in mutedKinds) return
+        // V5-3: araç konuşması ya akışı besler (aktif konuşma) ya da yeni konuşma açar.
+        if (carVoice) {
+            val msg = CarConversation.Msg(false, text, System.currentTimeMillis())
+            val msgs = CarConversation.append(targetProfile, sessionId, msg)
+                ?: CarConversation.start(targetProfile, sessionId, title, listOf(msg))
+            postCarConversation(context, targetProfile, sessionId, msgs)
+            return
+        }
+        if (CarConversation.isActive(targetProfile, sessionId)) {
+            carFlow(context, text, sessionId, targetProfile, isUser = false)
+            return
+        }
         if (appVisible && !force) return
         if (kind in mutedKinds) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)

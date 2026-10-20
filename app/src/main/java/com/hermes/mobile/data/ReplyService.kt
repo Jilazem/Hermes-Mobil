@@ -69,6 +69,8 @@ class ReplyService : Service() {
         var gateway: GatewayWsClient? = null
         try {
             check(profile != null && profile.token.isNotBlank()) { "Sunucu profili yok" }
+            // V5-3: araçtan sesle yazılan soru da akışa düşsün (iki taraflı akış).
+            if (carVoice) Notifier.carFlow(this, text, session, profile?.id ?: profileId, isUser = true)
             // Local phone commands are handled on IO, never on the service's UI thread.
             val phone = PhoneIntent.parse(text)?.takeIf { carVoice || it.tool == "phone_messages" || it.tool == "phone_reply" }
             if (phone != null) {
