@@ -893,7 +893,11 @@ private fun HermesApp(
     val inbox = remember(appContext) { ActivityInbox.get(appContext) }
     val allNotices by inbox.items.collectAsStateWithLifecycle()
     val notices = remember(allNotices, state.active?.id) { noticesForProfile(allNotices, state.active?.id) }
-    val unreadCount = notices.count { !it.read }
+    // V5-2: sessiz türler rozeti şişirmez (kutuda kalır).
+    val unreadCount = com.hermes.mobile.data.unreadNoticeCount(notices, settings.mutedNoticeKinds)
+    androidx.compose.runtime.SideEffect {
+        com.hermes.mobile.data.Notifier.mutedKinds = settings.mutedNoticeKinds
+    }
     var previousLive by remember(state.active?.id) { mutableStateOf<List<LiveSession>?>(null) }
     LaunchedEffect(live.sessions, live.fetched, live.error, state.active?.id, state.flags.followed) {
         val pid = state.active?.id ?: return@LaunchedEffect
@@ -1454,8 +1458,17 @@ private fun HermesApp(
                     Tab.Notifications -> NotificationsScreen(
                         notices = notices,
                         onRead = inbox::markRead,
-                        onReadAll = { state.active?.id?.let(inbox::markProfileRead) },
+                        onReadAll = { state.active?.id?.let { pid -> inbox.markKindsRead(pid, com.hermes.mobile.data.NoticeKind.ALL.toSet()) } },
                         onSettings = { tab = Tab.Settings },
+                        mutedKinds = settings.mutedNoticeKinds,
+                        onToggleMute = { kind ->
+                            viewModel.settingsStore.update { st ->
+                                st.copy(
+                                    mutedNoticeKinds = if (kind in st.mutedNoticeKinds) st.mutedNoticeKinds - kind else st.mutedNoticeKinds + kind,
+                                )
+                            }
+                        },
+                        onDelete = { id -> inbox.remove(id) },
                         onOpen = { notice ->
                             notice.sessionId?.let { sid ->
                                 val title = followingRowList.firstOrNull { it.dbId == sid || it.liveId == sid }?.title ?: notice.title
@@ -1707,12 +1720,26 @@ private fun HermesApp(
                         it.copy(showBrokenModels = !it.showBrokenModels)
                     }
                 },
-                onSelect = { provider, model, persist ->
-                    chatViewModel.selectModel(provider, model, persist)
+                // V5-2: son kullanılanlar — sıralı liste (son seçim başta, en fazla 5).
+                recentModels = settings.recentModels,
+                currentThink = reasoningStatus.effort ?: settings.reasoningLevel,
+                onThinkChosen = { level ->
+                    viewModel.settingsStore.update { st -> st.copy(reasoningLevel = level) }
+                    chatViewModel.setReasoningEffort(level)
+                },
+                onSelect = { provider, model, persist, think ->
+                    chatViewModel.selectModel(provider, model, persist, think)
                     // Sıklık sayacı: "sık kullanılan" bölümü buradan besleniyor.
                     viewModel.settingsStore.update { st ->
                         val key = "$provider/$model"
-                        st.copy(modelUsage = st.modelUsage + (key to (st.modelUsage[key] ?: 0) + 1))
+                        st.copy(
+                            modelUsage = st.modelUsage + (key to (st.modelUsage[key] ?: 0) + 1),
+                            // V5-2: sıra listesi — son seçim başa, en fazla 5.
+                            recentModels = (listOf(key) + st.recentModels.filterNot { it == key }).take(5),
+                            // V5-2: düşünme kademesi de hatırlansın (oturum
+                            // bazlı kayıt ChatViewModel'de; bu yalnız son değer).
+                            reasoningLevel = think ?: st.reasoningLevel,
+                        )
                     }
                     modelSheet = false
                 },

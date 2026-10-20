@@ -408,6 +408,21 @@ data class AppSettings(
     val hiddenModels: Set<String> = emptySet(),
 
     /**
+     * V5-2: sessize alınan bildirim türleri ([NoticeKind] sabitleri).
+     *
+     * Sessiz tür Bildirimler kutusuna yazılır ama durum çubuğuna düşmez;
+     * sekme rozeti de saymaz. "Bildirimler" sekmesindeki sessiz menüsü
+     * yazar ([NotificationsScreen]).
+     */
+    val mutedNoticeKinds: Set<String> = emptySet(),
+
+    /**
+     * V5-2: "Son kullanılan modeller" — "sağlayıcı/model", en son seçim başta
+     * (en fazla 5). [modelUsage] sayım, bu ise sıradır.
+     */
+    val recentModels: List<String> = emptyList(),
+
+    /**
      * Son kullanılan prompt çipi (bot/profil ataması).
      *
      * Composer üstündeki yatay çiplerden seçilen profil. Yalnız YENİ

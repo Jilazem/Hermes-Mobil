@@ -2,6 +2,8 @@ package com.hermes.mobile.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hermes.mobile.data.ActivityNotice
+import com.hermes.mobile.data.NoticeKind
+import com.hermes.mobile.data.noticeVisible
 import com.hermes.mobile.ui.theme.HermesColors
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,19 +37,88 @@ private fun WorkspaceHeader(title: String, subtitle: String, onSettings: () -> U
     }
 }
 
+/** V5-2: bildirim türü etiketi (tek yer — filtre çipleri ve rozet aynı metni kullanır). */
 @Composable
-fun NotificationsScreen(notices: List<ActivityNotice>, onRead: (String) -> Unit, onOpen: (ActivityNotice) -> Unit, onReadAll: () -> Unit, onSettings: () -> Unit) {
+private fun noticeKindLabel(kind: String): String = when (kind) {
+    NoticeKind.CRON -> S.t2("Zamanlanmış", "Scheduled")
+    NoticeKind.SYSTEM -> S.t2("Sistem", "System")
+    NoticeKind.REPLY -> S.t2("Yanıt", "Reply")
+    NoticeKind.FOLLOW -> S.t2("Takip", "Follow")
+    NoticeKind.AGENT -> S.t2("Ajan", "Agent")
+    else -> kind
+}
+
+/**
+ * V5-2 madde 6 — sistem/cron bildirimleri ayrı sekmede.
+ *
+ * [onToggleMute] sessiz türü ayarlara yazar; sessiz tür kutuya yine düşer
+ * (kayıp yok) ama durum çubuğuna çıkmaz ve rozeti şişirmez.
+ * [onDelete] tek bildirimi kaldırır.
+ */
+@Composable
+fun NotificationsScreen(
+    notices: List<ActivityNotice>,
+    onRead: (String) -> Unit,
+    onOpen: (ActivityNotice) -> Unit,
+    onReadAll: () -> Unit,
+    onSettings: () -> Unit,
+    mutedKinds: Set<String> = emptySet(),
+    onToggleMute: (String) -> Unit = {},
+    onDelete: (String) -> Unit = {},
+) {
     var unreadOnly by rememberSaveable { mutableStateOf(false) }
-    val visible = notices.filter { !unreadOnly || !it.read }
+    var kindFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var muteMenu by remember { mutableStateOf(false) }
+    val visible = notices.filter { noticeVisible(it, kindFilter?.let { k -> setOf(k) } ?: emptySet(), unreadOnly) }
     Column(Modifier.fillMaxSize()) {
-        WorkspaceHeader(S.t2("Bildirimler", "Notifications"), S.t2("Hermes yanıtları ve takip güncellemeleri", "Hermes replies and followed session updates"), onSettings) {
+        WorkspaceHeader(S.t2("Bildirimler", "Notifications"), S.t2("Zamanlanmış görevler ve sistem bildirimleri — sohbet akışına karışmaz", "Scheduled jobs and system notices — kept out of the chat flow"), onSettings) {
             if (notices.any { !it.read }) IconButton(onClick = onReadAll) {
                 Icon(Icons.Default.DoneAll, S.t2("Tümünü okundu işaretle", "Mark all read"), tint = HermesColors.TextMuted)
             }
+            Box {
+                IconButton(onClick = { muteMenu = true }) {
+                    Icon(
+                        Icons.Default.NotificationsOff,
+                        S.t2("Tür sessize al", "Mute kinds"),
+                        tint = if (mutedKinds.isEmpty()) HermesColors.TextMuted else HermesColors.Midground,
+                    )
+                }
+                DropdownMenu(expanded = muteMenu, onDismissRequest = { muteMenu = false }) {
+                    Text(
+                        S.t2("Sessiz türler", "Muted kinds"),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = HermesColors.TextMuted,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    NoticeKind.ALL.forEach { kind ->
+                        DropdownMenuItem(
+                            text = { Text(noticeKindLabel(kind)) },
+                            leadingIcon = {
+                                Checkbox(checked = kind in mutedKinds, onCheckedChange = null)
+                            },
+                            onClick = { onToggleMute(kind) },
+                        )
+                    }
+                }
+            }
         }
-        Row(Modifier.padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.padding(horizontal = 18.dp).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FilterChip(selected = !unreadOnly, onClick = { unreadOnly = false }, label = { Text(S.t2("Tümü", "All")) })
             FilterChip(selected = unreadOnly, onClick = { unreadOnly = true }, label = { Text(S.t2("Okunmamış", "Unread")) })
+            NoticeKind.ALL.forEach { kind ->
+                FilterChip(
+                    selected = kindFilter == kind,
+                    onClick = { kindFilter = if (kindFilter == kind) null else kind },
+                    label = {
+                        Text(
+                            if (kind in mutedKinds) "🔕 " + noticeKindLabel(kind) else noticeKindLabel(kind),
+                        )
+                    },
+                )
+            }
         }
         if (visible.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -64,8 +137,12 @@ fun NotificationsScreen(notices: List<ActivityNotice>, onRead: (String) -> Unit,
                 }.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (!notice.read) { Box(Modifier.size(7.dp).background(HermesColors.Online, MaterialTheme.shapes.small)); Spacer(Modifier.width(8.dp)) }
+                        Text(noticeKindLabel(notice.kind), color = HermesColors.Midground, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(end = 8.dp))
                         Text(notice.title, color = HermesColors.TextPrimary, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(SimpleDateFormat("dd MMM · HH:mm", Locale.getDefault()).format(Date(notice.time)), color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
+                        IconButton(onClick = { onDelete(notice.id) }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, S.t2("Bildirimi sil", "Delete notification"), tint = HermesColors.TextFaint, modifier = Modifier.size(16.dp))
+                        }
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(notice.text, color = HermesColors.TextSecondary, maxLines = 8, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)

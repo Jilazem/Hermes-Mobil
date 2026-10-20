@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -63,6 +64,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -233,6 +235,9 @@ fun ChatScreen(
     var reasoningSheet by remember { mutableStateOf(false) }
     // KALAN-2: ⋯ → "Müdahale" bu diyaloğu açar (yalnız ajan çalışırken).
     var interventionOpen by remember { mutableStateOf(false) }
+    // V5-2: açılacak dış bağlantı — onay penceresi açıkken dolu ([ChatItemView]
+    // içindeki tıklanabilir bağlantılar buraya gelir).
+    var pendingLink by remember { mutableStateOf<String?>(null) }
 
     var draft by rememberSaveable { mutableStateOf("") }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
@@ -476,6 +481,7 @@ fun ChatScreen(
                                     row.item,
                                     onApproval,
                                     onOpenFile,
+                                    onOpenLink = { pendingLink = it },
                                     fullFlow = fullChatFlow,
                                     onSpeak = onSpeak,
                                     onBubbleAction = onBubbleAction,
@@ -659,6 +665,45 @@ fun ChatScreen(
             onSubmit = { kind, text ->
                 onIntervene(kind, text)
                 interventionOpen = false
+            },
+        )
+    }
+
+    // V5-2: dış bağlantılar ONAYLA açılır. Mesajlar model çıktısı olduğu için
+    // tek dokunuşla sistem tarayıcısına geçilmez. URL ayrıca [safeExternalUrl]
+    // (javascript:, data:, file:, vb. reddi) kapısından geçmeden buraya gelmez.
+    pendingLink?.let { url ->
+        val dialogContext = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { pendingLink = null },
+            containerColor = HermesColors.Surface,
+            title = { Text(S.t2("Bağlantıyı aç", "Open link"), color = HermesColors.TextPrimary) },
+            text = {
+                Text(
+                    url,
+                    color = HermesColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingLink = null
+                    runCatching {
+                        dialogContext.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(url),
+                            )
+                        )
+                    }
+                }) {
+                    Text(S.t2("Aç", "Open"), color = HermesColors.Midground)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingLink = null }) {
+                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextSecondary)
+                }
             },
         )
     }
@@ -1204,6 +1249,8 @@ private fun ChatItemView(
     item: ChatItem,
     onApproval: (String, Boolean) -> Unit,
     onOpenFile: (FileRef) -> Unit = {},
+    /** V5-2: tıklanabilir bağlantı — onay penceresi çağırandadır. */
+    onOpenLink: (String) -> Unit = {},
     onOpenProfiles: () -> Unit = {},
     activeProfileName: String = "",
     /**
@@ -1254,6 +1301,7 @@ private fun ChatItemView(
                         markdown = item.text,
                         streaming = item.streaming,
                         modifier = Modifier.fillMaxWidth(),
+                        onOpenLink = onOpenLink,
                     )
                     DropdownMenu(
                         expanded = menu,

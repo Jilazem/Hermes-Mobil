@@ -25,7 +25,26 @@ object Notifier {
     private const val AGENT_MSG_ID = 4814
 
     private const val CHANNEL_REPLIES = "hermes_replies"
-    private val nextId = java.util.concurrent.atomic.AtomicInteger(1000)
+
+    /**
+     * V5-3: oturum başına konuşma bildirimi kimliği. Sabit kimlik, aynı
+     * oturumun yanıtlarının araç ekranında TEK konuşma olarak birikmesini
+     * sağlar; her yanıt için yeni bildirim açmak geçmişi kaybettiriyordu.
+     */
+    private const val CONVERSATION_ID = 4871
+
+    /** Oturum başına son mesajlar (bellek içi; süreç ölünce sıfırlanır). */
+    private val conversations =
+        java.util.Collections.synchronizedMap(HashMap<String, MutableList<Pair<String, Long>>>())
+
+    /** Konuşma geçmişine mesaj ekler ve güncel listeyi döndürür (en çok 12). */
+    private fun rememberMessage(profileId: String, key: String, text: String): List<Pair<String, Long>> =
+        synchronized(conversations) {
+            val list = conversations.getOrPut("$profileId/$key") { mutableListOf() }
+            list.add(text to System.currentTimeMillis())
+            while (list.size > 12) list.removeAt(0)
+            list.toList()
+        }
 
     /**
      * Uygulama görünür mü? `MainActivity.onStart/onStop` günceller.
@@ -34,6 +53,15 @@ object Notifier {
     @Volatile
     var appVisible: Boolean = false
     @Volatile var visibleSession: Pair<String, String?>? = null
+
+    /**
+     * V5-2: sessize alınan bildirim türleri ([NoticeKind]).
+     *
+     * [MainActivity] ayarlardan günceller. Sessiz tür kutuya YİNE yazar
+     * (kayıp olmasın) ama durum çubuğuna düşmez.
+     */
+    @Volatile
+    var mutedKinds: Set<String> = emptySet()
 
     private fun channel(context: Context): NotificationManager {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -90,10 +118,32 @@ object Notifier {
      * haber ("yedekleme bitti", "toplantıya 10 dakika") — kullanıcı
      * uygulamaya bakıyor olsa bile görünmesi gerekiyor, çünkü sohbette
      * karşılığı olan bir mesaj yok.
+     *
+     * V5-2: [kind] bildirimi cron/sistem/ajan diye sınıflandırır ve [mutedKinds]
+     * içindeyse kutuya yazıp durum çubuğunu atlar. [id] verilirse aynı olayın
+     * tekrarı kutuya ikinci kez girmez (deterministik kimlik).
      */
-    fun agentMessage(context: Context, title: String, text: String) {
-        val profileId = ServerProfileStore(context).activeId().orEmpty()
-        if (text.isNotBlank()) ActivityInbox.get(context).add(ActivityNotice(profileId = profileId, title = title, text = text.take(4_000), kind = "agent"))
+    fun agentMessage(
+        context: Context,
+        title: String,
+        text: String,
+        kind: String = NoticeKind.AGENT,
+        sessionId: String? = null,
+        profileId: String? = null,
+        id: String? = null,
+    ) {
+        val profile = profileId ?: ServerProfileStore(context).activeId().orEmpty()
+        if (text.isNotBlank()) ActivityInbox.get(context).add(
+            ActivityNotice(
+                id = id ?: java.util.UUID.randomUUID().toString(),
+                profileId = profile,
+                sessionId = sessionId,
+                title = title,
+                text = text.take(4_000),
+                kind = kind,
+            ),
+        )
+        if (kind in mutedKinds) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
         ) return
@@ -137,12 +187,14 @@ object Notifier {
         profileId: String? = null,
         title: String = "Hermes",
         carVoice: Boolean = false,
+        kind: String = NoticeKind.REPLY,
     ) {
         val targetProfile = profileId ?: ServerProfileStore(context).activeId().orEmpty()
         if (text.isNotBlank()) ActivityInbox.get(context).add(ActivityNotice(profileId = targetProfile,
             sessionId = sessionId, title = title.ifBlank { "Hermes" }, text = text.take(4_000),
-            read = appVisible && visibleSession == (targetProfile to sessionId)))
+            read = appVisible && visibleSession == (targetProfile to sessionId), kind = kind))
         if (appVisible && !force) return
+        if (kind in mutedKinds) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
         ) return
@@ -189,8 +241,14 @@ object Notifier {
             .setShowsUserInterface(false)
             .build()
 
-        val tag = if (carVoice) "car:$conversation" else null
-        val id = if (carVoice) 4870 else nextId.incrementAndGet()
+        // V5-3: tek oturum = tek konuşma. Etiket kimliği oturuma sabitlenir;
+        // aksi hâlde her yanıt yeni bir bildirim açar ve araç ekranında sohbet
+        // geçmişi görünmez ("yeni mesajınız yok").
+        val conversationKey = sessionId?.takeIf { it.isNotBlank() } ?: "default"
+        val tag = if (carVoice) "car:$conversation" else "conv:$conversation"
+        val id = if (carVoice) 4870 else CONVERSATION_ID
+        val history = rememberMessage(targetProfile, conversationKey, text.trim().take(4_000))
+
         val markRead = NotificationCompat.Action.Builder(
             android.R.drawable.ic_menu_view, "Okundu",
             PendingIntent.getBroadcast(
@@ -210,7 +268,8 @@ object Notifier {
         val me = androidx.core.app.Person.Builder().setName("Sen").setKey("me").build()
         val hermes = androidx.core.app.Person.Builder().setName("Hermes").setKey("hermes").setBot(true).build()
         val style = NotificationCompat.MessagingStyle(me)
-            .addMessage(short, System.currentTimeMillis(), hermes)
+            .setConversationTitle(title.ifBlank { "Hermes" })
+        history.forEach { (line, at) -> style.addMessage(line, at, hermes) }
         val n = NotificationCompat.Builder(context, CHANNEL_REPLIES)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
             .setContentTitle("Hermes")
@@ -220,7 +279,8 @@ object Notifier {
             .setContentIntent(open)
             .addAction(replyAction)
             .addInvisibleAction(markRead)
-            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setAutoCancel(false)
             .build()
 
         channel(context).notify(tag, id, n)

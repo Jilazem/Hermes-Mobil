@@ -1,8 +1,10 @@
 package com.hermes.mobile.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -46,6 +49,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hermes.mobile.data.ModelProvider
 import com.hermes.mobile.data.RECOMMENDED_MODELS
+import com.hermes.mobile.data.thinkLabel
+import com.hermes.mobile.data.thinkLevelsFor
+import com.hermes.mobile.data.thinkSupported
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
 import com.hermes.mobile.data.DemoMask
@@ -90,16 +96,36 @@ fun ModelPickerSheet(
     hiddenModels: Set<String>,
     pinnedModels: List<String>,
     modelUsage: Map<String, Int>,
+    /**
+     * V5-2: "Son kullanılan modeller" — "sağlayıcı/model", en son seçim başta.
+     * Sıradır; sayım [modelUsage]'dedir.
+     */
+    recentModels: List<String> = emptyList(),
+    /** V5-2: etkin düşünme kademesi (`/reasoning` çabası, ör. "medium"). */
+    currentThink: String? = null,
+    /** V5-2: düşünme kademesi çipe dokunulunca — çağıran `/reasoning`'e yazar. */
+    onThinkChosen: (String) -> Unit = {},
     showBroken: Boolean,
     onToggleShowBroken: () -> Unit,
     onTogglePin: (String) -> Unit,
     onToggleHidden: (String) -> Unit,
-    onSelect: (provider: String, model: String, persist: Boolean) -> Unit,
+    /**
+     * V5-2: [think] yeni modelin desteklediği kademedir; model düşünceyi
+     * desteklemiyorsa `null` (sunucu varsayılanı).
+     */
+    onSelect: (provider: String, model: String, persist: Boolean, think: String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var query by remember { mutableStateOf("") }
     var persist by remember { mutableStateOf(false) }
+
+    /**
+     * Seçilen satırın düşünce kademesi: eldeki seçim bu modelde geçerliyse
+     * korunur, değilse `null`. Yanlış kademeyle model değiştirmek, sunucu
+     * reddettiğinde sessiz bozulma demek — burada düşürülür.
+     */
+    fun thinkFor(model: String): String? = currentThink?.takeIf { thinkSupported(model, it) }
 
     val q = query.trim().lowercase()
 
@@ -132,13 +158,21 @@ fun ModelPickerSheet(
     val pinned = pinnedModels.mapNotNull { key -> allRows.firstOrNull { it.key == key } }
         .filter(::matches)
 
+    // V5-2: "Son kullanılanlar" — SIRA (son seçim başta), kullanım sayımı değil.
+    val recents = recentModels.mapNotNull { key -> allRows.firstOrNull { it.key == key } }
+        .filter { it.key !in pinnedModels && !it.hidden && matches(it) }
+
     // Sık kullanılanlar: sabitlenenler zaten üstte, tekrar etmesin.
     val frequent = allRows
-        .filter { it.uses > 0 && it.key !in pinnedModels && !it.hidden && matches(it) }
+        .filter {
+            it.uses > 0 && it.key !in pinnedModels && it.key !in recentModels &&
+                !it.hidden && matches(it)
+        }
         .sortedByDescending { it.uses }
         .take(5)
 
-    val shownKeys = pinned.map { it.key }.toSet() + frequent.map { it.key }.toSet()
+    val shownKeys = pinned.map { it.key }.toSet() + recents.map { it.key }.toSet() +
+        frequent.map { it.key }.toSet()
 
     val recommended = RECOMMENDED_MODELS
         .mapNotNull { rec -> allRows.firstOrNull { it.key == "${rec.provider}/${rec.model}" } }
@@ -156,10 +190,11 @@ fun ModelPickerSheet(
     val pinnedLabel = S.t2("Sabitlenen", "Pinned")
     val frequentLabel = S.t2("Sık kullanılan", "Frequently used")
     val recommendedLabel = S.t2("Önerilen", "Recommended")
+    val recentLabel = S.t2("Son kullanılan", "Recent")
     val recommendedHint = S.t2("bu sunucuda ölçüldü", "measured on this server")
     // Üç boyut ayrı ayrı anahtar: sabitleme bir modeli "önerilen"den alıp
     // "sabitlenen"e taşıdığında toplam değişmiyor ama liste yeniden diziliyor.
-    LaunchedEffect(pinned.size, frequent.size, recommended.size) {
+    LaunchedEffect(pinned.size, recents.size, frequent.size, recommended.size) {
         listState.scrollToItem(0)
     }
 
@@ -210,6 +245,71 @@ fun ModelPickerSheet(
             }
             Spacer(Modifier.height(6.dp))
 
+            // V5-2 madde 8: düşünme kademeleri — modele göre. Etkin model
+            // ([currentModel]) destekledikleri gösterilir; bilinmeyen modelde
+            // THINK_LEVELS'in tamamı açık kalır (yanlış kısıtlama kilitler).
+            // Çipe dokunma anında uygulanır ([onThinkChosen] → `/reasoning`),
+            // model satırına dokunulduğunda seçim [thinkFor] ile taşınır.
+            val thinkLevels = remember(currentModel) { thinkLevelsFor(currentModel) }
+            if (thinkLevels.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        S.t2("Düşünme", "Thinking"),
+                        color = HermesColors.TextFaint,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        S.t2("etkin modele göre", "for the active model"),
+                        color = HermesColors.TextFaint,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    thinkLevels.forEach { level ->
+                        val selected = level == currentThink
+                        Row(
+                            Modifier
+                                .background(
+                                    if (selected) HermesColors.Midground.copy(alpha = 0.22f)
+                                    else HermesColors.SurfaceDim,
+                                    RoundedCornerShape(14.dp),
+                                )
+                                .border(
+                                    1.dp,
+                                    if (selected) HermesColors.Midground else HermesColors.Border,
+                                    RoundedCornerShape(14.dp),
+                                )
+                                .clickable { onThinkChosen(level) }
+                                .padding(horizontal = 11.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (selected) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = HermesColors.Midground,
+                                    modifier = Modifier.size(13.dp),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            Text(
+                                thinkLabel(level),
+                                color = if (selected) HermesColors.Midground else HermesColors.TextSecondary,
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -241,6 +341,7 @@ fun ModelPickerSheet(
                 // `fun section()` yapıyordu; içindeki `item()` çağrıları
                 // LazyColumn'a hiç kaydolmadığı için bölümler görünmüyordu.
                 val topSections = listOf(
+                    Triple("son", recentLabel to null, recents),
                     Triple("pin", pinnedLabel to null, pinned),
                     Triple("sik", frequentLabel to null, frequent),
                     Triple("onerilen", recommendedLabel to recommendedHint, recommended),
@@ -266,7 +367,7 @@ fun ModelPickerSheet(
                                 selected = row.model == currentModel,
                                 pinned = row.key in pinnedModels,
                                 prominent = true,
-                                onSelect = { onSelect(row.provider, row.model, persist) },
+                                onSelect = { onSelect(row.provider, row.model, persist, thinkFor(row.model)) },
                                 onTogglePin = { onTogglePin(row.key) },
                                 onToggleHidden = { onToggleHidden(row.key) },
                             )
@@ -337,7 +438,7 @@ fun ModelPickerSheet(
                                 selected = row.model == currentModel,
                                 pinned = row.key in pinnedModels,
                                 prominent = false,
-                                onSelect = { onSelect(row.provider, row.model, persist) },
+                                onSelect = { onSelect(row.provider, row.model, persist, thinkFor(row.model)) },
                                 onTogglePin = { onTogglePin(row.key) },
                             onToggleHidden = { onToggleHidden(row.key) },
                         )

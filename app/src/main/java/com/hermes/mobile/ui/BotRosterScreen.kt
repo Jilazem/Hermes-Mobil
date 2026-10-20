@@ -527,7 +527,9 @@ private fun BotEditorSheet(
             onToggleShowBroken = {},
             onTogglePin = {},
             onToggleHidden = {},
-            onSelect = { p, m, _ ->
+            onSelect = { p, m, _, _ ->
+                // Bot kartı yalnız sağlayıcı+model tutar; düşünme kademesi
+                // burada kartın işi değil (V5-2 madde 8 sohbet tarafında).
                 provider = p
                 model = m
                 modelSheet = false

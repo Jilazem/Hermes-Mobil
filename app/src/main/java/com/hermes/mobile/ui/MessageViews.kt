@@ -49,6 +49,8 @@ fun MessageBubble(
     message: SessionMessage,
     modifier: Modifier = Modifier,
     onOpenFile: (FileRef) -> Unit = {},
+    /** V5-2: tıklanabilir bağlantı — açma onayı çağıranda ([ChatScreen]). */
+    onOpenLink: (String) -> Unit = {},
     /**
      * Tur-4 (H): dökümde düşünme bloğu ayrı "Ayrıntı" satırına katlandığı için
      * burada YENİDEN çizilmez (çift gösterim olurdu).
@@ -59,7 +61,7 @@ fun MessageBubble(
         message.isUser -> UserBubble(message, modifier)
         message.isTool -> ToolResultCard(message, modifier)
         message.isSystem -> CollapsedBlock(S.t2("Sistem istemi", "System prompt"), message.content.orEmpty(), modifier)
-        else -> AssistantBlock(message, modifier, onOpenFile, withReasoning)
+        else -> AssistantBlock(message, modifier, onOpenFile, withReasoning, onOpenLink)
     }
 }
 
@@ -89,6 +91,7 @@ private fun AssistantBlock(
     modifier: Modifier,
     onOpenFile: (FileRef) -> Unit = {},
     withReasoning: Boolean = true,
+    onOpenLink: (String) -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (withReasoning && !message.reasoning.isNullOrBlank()) {
@@ -97,7 +100,7 @@ private fun AssistantBlock(
             Spacer(Modifier.height(6.dp))
         }
         if (!message.content.isNullOrBlank()) {
-            MarkdownText(message.content, Modifier.fillMaxWidth())
+            MarkdownText(message.content, Modifier.fillMaxWidth(), onOpenLink = onOpenLink)
             FileRefRow(remember(message.content) { extractFileRefs(message.content) }, onOpenFile)
         }
         message.toolCalls.forEach { call ->

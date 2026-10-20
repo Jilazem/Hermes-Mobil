@@ -1,35 +1,50 @@
 package com.hermes.mobile.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -38,7 +53,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import com.hermes.mobile.data.MediaKind
+import com.hermes.mobile.data.mediaKindOf
+import com.hermes.mobile.data.safeExternalUrl
 import com.hermes.mobile.ui.theme.HermesColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Hafif Markdown görüntüleyici.
@@ -74,6 +96,11 @@ fun MarkdownText(
      * Tamamlanan balonlar için varsayılan false — davranış değişmez.
      */
     streaming: Boolean = false,
+    /**
+     * V5-2: bağlantıya dokunma. Tıklanabilir bağlantılar bu geri çağrıyı
+     * GÜVENLİ URL ile çağırır; açma onayı çağıranda ([ChatScreen]).
+     */
+    onOpenLink: (String) -> Unit = {},
 ) {
     val blocks = remember(markdown) { parseMarkdown(markdown) }
     // Telegram: ardışık maddeler BİTİŞİK, bloklar arası boş satır. Tek sabit
@@ -93,30 +120,38 @@ fun MarkdownText(
                 is MdGroup.Tight -> Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     group.items.forEachIndexed { itemIndex, item ->
                         val suffix = streamCursorSuffix(lastGroup, itemIndex == group.items.lastIndex)
-                        ListItemRow(item, inline, color, fontSize, bodyLine, cursorSuffix = suffix)
+                        ListItemRow(item, inline, color, fontSize, bodyLine, cursorSuffix = suffix, onOpenLink = onOpenLink)
                     }
                 }
 
                 is MdGroup.Solo -> when (val block = group.block) {
                     is MdBlock.Code -> CodeBlock(block, cursorSuffix = streamCursorSuffix(lastGroup, true))
 
+                    // V5-2: medya blokları — bağlantı onayı olmadan görüntülenir
+                    // (sunucu URL'si değil, http/https görsel/Video); dokunma
+                    // tam ekran açar, javascript: vb. [safeExternalUrl]'de ölür.
+                    is MdBlock.Image -> MarkdownImage(block.alt, block.url)
+                    is MdBlock.Video -> MarkdownVideo(block.url, block.label)
+
                     // FR-001: hiyerarşi KALINLIKLA, boyutla değil — başlık gövdeyle
                     // aynı punto, yalnız daha ağır (SemiBold). Eski 19/17/15.sp
                     // boyut şişirmesi kaldırıldı.
-                    is MdBlock.Heading -> Text(
+                    is MdBlock.Heading -> LinkedText(
                         inlineMarkdown(block.text, inline) + AnnotatedString(streamCursorSuffix(lastGroup, true)),
                         color = HermesColors.TextPrimary,
                         fontSize = fontSize,
+                        bodyLine = bodyLine,
+                        onOpenLink = onOpenLink,
                         fontWeight = FontWeight.SemiBold,
-                        lineHeight = bodyLine,
                     )
 
                     // FR-005: gövde Telegram ikincil tonu (#d1d1d1 civarı), 15sp.
-                    is MdBlock.Paragraph -> Text(
+                    is MdBlock.Paragraph -> LinkedText(
                         inlineMarkdown(block.text, inline) + AnnotatedString(streamCursorSuffix(lastGroup, true)),
                         color = color,
                         fontSize = fontSize,
-                        lineHeight = bodyLine,
+                        bodyLine = bodyLine,
+                        onOpenLink = onOpenLink,
                     )
 
                     is MdBlock.Quote -> Row(
@@ -131,12 +166,14 @@ fun MarkdownText(
                                 .height(20.dp)
                                 .background(HermesColors.BorderStrong),
                         )
-                        Text(
+                        LinkedText(
                             // Alıntı içi devam satırları da \n taşır; tek Text.
+                            // V5-2: alıntı içinde bağlantı tıklanabilir kalsın.
                             inlineMarkdown(block.text, inline) + AnnotatedString(streamCursorSuffix(lastGroup, true)),
                             color = HermesColors.TextMuted,
                             fontSize = fontSize,
-                            lineHeight = bodyLine,
+                            bodyLine = bodyLine,
+                            onOpenLink = onOpenLink,
                             modifier = Modifier.padding(start = 9.dp, top = 4.dp, bottom = 4.dp),
                         )
                     }
@@ -151,7 +188,7 @@ fun MarkdownText(
                     // Yalnız liste maddesi Tight'a gider; Solo'ya düşen tek madde
                     // (liste tek satırlık) burada da doğru çizilir.
                     is MdBlock.Bullet, is MdBlock.Numbered ->
-                        ListItemRow(block, inline, color, fontSize, bodyLine)
+                        ListItemRow(block, inline, color, fontSize, bodyLine, onOpenLink = onOpenLink)
                 }
             }
         }
@@ -174,6 +211,7 @@ private fun ListItemRow(
     bodyLine: androidx.compose.ui.unit.TextUnit,
     // TUR-29A: akış imleci — yalnız çağıranın belirlediği son blokta boş değil.
     cursorSuffix: String = "",
+    onOpenLink: (String) -> Unit = {},
 ) {
     val level = block.levelIndentDp
     val mark = when (block) {
@@ -194,11 +232,12 @@ private fun ListItemRow(
             lineHeight = bodyLine,
             modifier = Modifier.width(LIST_MARK_GUTTER_DP.dp),
         )
-        Text(
+        LinkedText(
             inlineMarkdown(block.textForItem(), inline) + AnnotatedString(cursorSuffix),
             color = color,
             fontSize = fontSize,
-            lineHeight = bodyLine,
+            bodyLine = bodyLine,
+            onOpenLink = onOpenLink,
             modifier = Modifier.weight(1f),
         )
     }
@@ -298,6 +337,180 @@ private fun CodeBlock(
     }
 }
 
+// ── V5-2: tıklanabilir bağlantı + medya ────────────────────────────────
+
+/** Bağlantı etiketi — [LinkedText] dokunuşta bu etiketi arar. */
+internal const val LINK_TAG = "URL"
+
+/**
+ * Bağlantı etiketli metin — dokunulan bağlantı [onOpenLink]'e güvenli URL ile
+ * iletilir. Açma onayı ÇAĞIRANDA: bu katman yalnız URL'yi doğrular ve iletir.
+ */
+@Composable
+private fun LinkedText(
+    text: AnnotatedString,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    bodyLine: androidx.compose.ui.unit.TextUnit,
+    onOpenLink: (String) -> Unit,
+    fontWeight: FontWeight? = null,
+    modifier: Modifier = Modifier,
+) {
+    var layout by remember(text) { mutableStateOf<TextLayoutResult?>(null) }
+    Text(
+        text,
+        color = color,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        lineHeight = bodyLine,
+        modifier = modifier.pointerInput(text) {
+            detectTapGestures { pos ->
+                val lr = layout ?: return@detectTapGestures
+                val offset = lr.getOffsetForPosition(pos)
+                text.getStringAnnotations(LINK_TAG, offset, offset)
+                    .firstOrNull()
+                    ?.let { ann -> safeExternalUrl(ann.item)?.let(onOpenLink) }
+            }
+        },
+        onTextLayout = { layout = it },
+    )
+}
+
+/**
+ * Uzaktan görsel — OkHttp + BitmapFactory, harici kütüphane yok.
+ *
+ * En uzun kenar 1600px'e örneklenir (telefon ekranına fazlasıyla yeter);
+ * başarısız indirmede görsel yerine alt metin kalır, balon çökmez.
+ */
+@Composable
+private fun MarkdownImage(alt: String, url: String) {
+    val safe = safeExternalUrl(url) ?: return
+    var bitmap by remember(safe) { mutableStateOf<ImageBitmap?>(null) }
+    var failed by remember(safe) { mutableStateOf(false) }
+    var fullScreen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(safe) {
+        val bmp = withContext(Dispatchers.IO) { runCatching { downloadBitmap(safe) }.getOrNull() }
+        if (bmp == null) failed = true else bitmap = bmp.asImageBitmap()
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(HermesColors.SurfaceDim)
+            .clickable(enabled = bitmap != null) { fullScreen = true },
+    ) {
+        val img = bitmap
+        if (img != null) {
+            Image(
+                bitmap = img,
+                contentDescription = alt.ifBlank { null },
+                contentScale = ContentScale.FillWidth,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Text(
+                if (failed) S.t2("Görsel yüklenemedi", "Image failed to load")
+                else alt.ifBlank { S.t2("Görsel yükleniyor…", "Loading image…") },
+                color = HermesColors.TextMuted,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(12.dp),
+            )
+        }
+    }
+
+    if (fullScreen && bitmap != null) {
+        Dialog(onDismissRequest = { fullScreen = false }) {
+            Image(
+                bitmap = bitmap!!,
+                contentDescription = alt.ifBlank { null },
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 640.dp)
+                    .clip(MaterialTheme.shapes.medium),
+            )
+        }
+    }
+}
+
+/**
+ * Video kartı — dokununca yerleşik [android.widget.VideoView] ile oynatılır.
+ *
+ * Med3/ExoPlayer bağımlılığı eklenmedi: WebView'den farkı, burada HTML/JS
+ * katmanı hiç çalışmaz. Yine yalnız güvenli http/https kaynak oynatılır.
+ */
+@Composable
+private fun MarkdownVideo(url: String, label: String) {
+    val safe = safeExternalUrl(url) ?: return
+    var playing by remember { mutableStateOf(false) }
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
+            .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
+            .clickable { playing = true }
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Default.PlayArrow,
+            contentDescription = S.t2("Videoyu oynat", "Play video"),
+            tint = HermesColors.Midground,
+            modifier = Modifier.width(18.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            label.ifBlank { S.t2("Video", "Video") },
+            color = HermesColors.TextPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+        )
+    }
+
+    if (playing) {
+        Dialog(onDismissRequest = { playing = false }) {
+            AndroidView(
+                factory = { ctx ->
+                    android.widget.VideoView(ctx).apply {
+                        setMediaController(android.widget.MediaController(ctx).also { it.setAnchorView(this) })
+                        setVideoURI(android.net.Uri.parse(safe))
+                        setOnPreparedListener { mp -> mp.isLooping = false; start() }
+                    }
+                },
+                onRelease = { it.stopPlayback() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(MaterialTheme.shapes.medium),
+            )
+        }
+    }
+}
+
+/** Görseli indirip örnekler; hata/null dönerse çağıran alt metni gösterir. */
+private fun downloadBitmap(url: String): android.graphics.Bitmap? {
+    val client = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+    val request = okhttp3.Request.Builder().url(url).build()
+    client.newCall(request).execute().use { resp ->
+        if (!resp.isSuccessful) return null
+        val bytes = resp.body?.bytes() ?: return null
+        // Sınırı önce ölç, sonra uygun örnekle indirilen baytları çöz.
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 1600) sample *= 2
+        val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+        return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+    }
+}
+
 // ── Ayrıştırma ────────────────────────────────────────────────────────
 
 // internal: JVM'de Compose'suz test edilebilir render modeli (FR-002/FR-003).
@@ -317,6 +530,15 @@ sealed interface MdBlock {
     data class Numbered(val number: Int, val text: String, val indent: Int) : MdBlock
     data class Quote(val text: String) : MdBlock
     data object Rule : MdBlock
+
+    /**
+     * V5-2: görsel bloğu — `![alt](url)` ya da tek satır görsel URL'si.
+     * Yalnız güvenli URL taşır ([safeExternalUrl] ayrıştırmada doğrular).
+     */
+    data class Image(val alt: String, val url: String) : MdBlock
+
+    /** V5-2: video bloğu — tek satır video URL'si. */
+    data class Video(val url: String, val label: String) : MdBlock
 
     /** Liste maddesi mi? (bitişik çizim + gruplama kararı için). */
     val isListItem: Boolean get() = this is Bullet || this is Numbered
@@ -369,6 +591,15 @@ internal val BULLET = Regex("""^(\s*)[-*+]\s+(.*)$""")
 internal val NUMBERED = Regex("""^(\s*)(\d+)[.)]\s+(.*)$""")
 internal val HEADING = Regex("""^(#{1,6})\s+(.*)$""")
 
+/** V5-2: `![alt](url)` görsel bloğu. */
+internal val IMAGE_BLOCK = Regex("""^!\[([^\]]*)\]\(([^)\s]+)\)$""")
+
+/** V5-2: tek başına http(s) URL satırı (medya adayı). */
+internal val BARE_URL_LINE = Regex("""^https?://\S+$""")
+
+/** V5-2: satır içi otomatik bağlantı — boşluk/parantezle biter. */
+internal val BARE_URL = Regex("""https?://[^\s<>()\[\]"']+""")
+
 private fun indentOf(leading: String): Int = leading.length / 2
 
 /** Satır bir blok başlangıcı mı? (devam satırı tespiti için). */
@@ -379,7 +610,10 @@ private fun startsBlock(line: String): Boolean =
         HEADING.matches(line) ||
         BULLET.matches(line) ||
         NUMBERED.matches(line) ||
-        line.trimStart().startsWith("> ")
+        line.trimStart().startsWith("> ") ||
+        // V5-2: görsel/medya satırı, açık maddenin devamına karışmaz.
+        IMAGE_BLOCK.matches(line.trim()) ||
+        (BARE_URL_LINE.matches(line.trim()) && mediaKindOf(line.trim()) != MediaKind.NONE)
 
 internal fun parseMarkdown(source: String): List<MdBlock> {
     val blocks = mutableListOf<MdBlock>()
@@ -485,6 +719,34 @@ internal fun parseMarkdown(source: String): List<MdBlock> {
             itemLines = mutableListOf(line.trimStart().removePrefix("> ").trim())
             i++
             continue
+        }
+
+        // V5-2: `![alt](url)` görsel bloğu ve tek satır medya URL'si.
+        // Yalnız güvenli URL bloğa girer; güvenli değilse satır düz metin kalır.
+        val trimmed = line.trim()
+        val imageMatch = IMAGE_BLOCK.matchEntire(trimmed)
+        if (imageMatch != null && safeExternalUrl(imageMatch.groupValues[2]) != null) {
+            flushAll()
+            blocks += MdBlock.Image(imageMatch.groupValues[1], imageMatch.groupValues[2])
+            i++
+            continue
+        }
+        if (BARE_URL_LINE.matches(trimmed) && safeExternalUrl(trimmed) != null) {
+            when (mediaKindOf(trimmed)) {
+                MediaKind.IMAGE -> {
+                    flushAll()
+                    blocks += MdBlock.Image(trimmed.substringAfterLast('/'), trimmed)
+                    i++
+                    continue
+                }
+                MediaKind.VIDEO -> {
+                    flushAll()
+                    blocks += MdBlock.Video(trimmed, trimmed.substringAfterLast('/'))
+                    i++
+                    continue
+                }
+                MediaKind.NONE -> Unit
+            }
         }
 
         // Buraya kadar: boş olmayan, blok işareti taşımayan satır.
@@ -616,13 +878,45 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInline(
                         source.indexOf(')', openParen)
                     else -1
                 if (closeParen < 0) { append(source[i]); i++ } else {
+                    // V5-2: [metin](url) artık TIKLANABİLİR — URL, LINK_TAG
+                    // etiketi olarak yazının altına gömülür (LinkedText okur).
+                    val target = source.substring(openParen + 1, closeParen)
+                    val labelStart = length
                     withStyle(
                         SpanStyle(
                             color = colors.link,
                             textDecoration = TextDecoration.Underline,
                         )
                     ) { appendInline(source.substring(i + 1, closeBracket), depth + 1, colors) }
+                    if (safeExternalUrl(target) != null) {
+                        addStringAnnotation(LINK_TAG, target, labelStart, length)
+                    }
                     i = closeParen + 1
+                }
+            }
+
+            // V5-2: çıplak http(s) URL'ler de otomatik bağlantı olur; güvenli
+            // değilse (javascript: vb. bu kalıba zaten girmez) düz metin kalır.
+            source.startsWith("http://", i) || source.startsWith("https://", i) -> {
+                val match = BARE_URL.find(source, i)
+                if (match == null || match.range.first != i) {
+                    append(source[i]); i++
+                } else {
+                    val raw = match.value
+                    val candidate = raw.trimEnd('.', ',', ';', ':', '!', '?')
+                    val safe = safeExternalUrl(candidate)
+                    if (safe == null) {
+                        append(raw); i += raw.length
+                    } else {
+                        val start = length
+                        withStyle(
+                            SpanStyle(color = colors.link, textDecoration = TextDecoration.Underline)
+                        ) { append(safe) }
+                        addStringAnnotation(LINK_TAG, safe, start, length)
+                        // Kesilen noktalama düz metin olarak geri yazılır.
+                        append(raw.substring(candidate.length))
+                        i += raw.length
+                    }
                 }
             }
 

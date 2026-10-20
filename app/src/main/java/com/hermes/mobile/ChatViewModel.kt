@@ -8,6 +8,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hermes.mobile.data.ConnectionState
 import com.hermes.mobile.data.ChatIsolation
+import com.hermes.mobile.data.NoticeKind
+import com.hermes.mobile.data.classifyNoticeKind
+import com.hermes.mobile.data.foreignNoticeId
+import com.hermes.mobile.data.isForeignSession
 import com.hermes.mobile.data.isCzipReadRef
 import com.hermes.mobile.data.CzipAutoLogic
 import com.hermes.mobile.data.CzipAutoState
@@ -1232,6 +1236,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private val specialistStore by lazy { com.hermes.mobile.data.VoiceSpecialistSessions(getApplication()) }
+
+    /** V5-2: oturum başına model/düşünme hafızası — JSON defter ([SessionChoiceStore]). */
+    private val sessionChoices by lazy { com.hermes.mobile.data.SessionChoiceStore(getApplication()) }
     private var voiceRouteJob: Job? = null
 
     /** Continuous microphone replies use a real isolated Hermes profile, with the current chat as context. */
@@ -2109,10 +2116,21 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
 
-    fun selectModel(provider: String, model: String, persist: Boolean = false) {
+    fun selectModel(provider: String, model: String, persist: Boolean = false, think: String? = null) {
+        // V5-2: seçim oturum defterine yazılır — oturum yeniden açıldığında
+        // [restoreSessionChoice] geri getirir. `think` null ise yalnız model
+        // hatırlanır; düşünme kademesine dokunulmaz (yanlış kısıtlama yok).
+        fun rememberChoice() {
+            sessionChoices.put(
+                _state.value.storedSessionId ?: _state.value.sessionId,
+                com.hermes.mobile.data.SessionChoice(provider, model, think),
+            )
+        }
+
         if (_state.value.sessionId == null && !persist) {
             preferredModel = "$provider|$model"
             _state.update { it.copy(currentModel = model) }
+            if (think != null) setReasoningEffort(think)
             onModelChosen?.invoke(provider, model)
             return
         }
@@ -2126,8 +2144,26 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 check(modelSwitchAccepted(output)) { output.trim().ifBlank { "Model değiştirilemedi" } }
                 preferredModel = "$provider|$model"
                 _state.update { it.copy(currentModel = model) }
+                if (think != null) setReasoningEffort(think)
+                rememberChoice()
                 onModelChosen?.invoke(provider, model)
             }.onFailure { e -> _state.update { it.copy(notice = e.message ?: "Model değiştirilemedi") } }
+        }
+    }
+
+    /**
+     * V5-2: oturum bazlı model/düşünme hafızası — oturum açılırken kayıtlı
+     * seçim geri gelir. Kayıt YOKSA hiçbir şey olmaz; sessiz varsayılan yok.
+     * Düşünme kademesi `/reasoning`'den, model [selectModel] yolundan geçer.
+     */
+    private fun restoreSessionChoice(storedId: String) {
+        val saved = sessionChoices.get(storedId) ?: return
+        val think = saved.think
+        if (think != null && think != reasoningStatus.value.effort) setReasoningEffort(think)
+        val model = saved.model
+        val provider = saved.provider
+        if (!model.isNullOrBlank() && !provider.isNullOrBlank() && model != _state.value.currentModel) {
+            selectModel(provider, model, persist = false, think = think)
         }
     }
 
@@ -2482,6 +2518,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
 
+        // V5-2: oturum bazlı model/düşünme hafızası — kayıt varsa geri gelir.
+        restoreSessionChoice(dbId.ifBlank { liveId })
+
         sessionLoadJob = viewModelScope.launch {
             // Oturum gateway'in belleğinde hâlâ duruyor mu? Duruyorsa tam
             // süreklilik (aynı bağlam); durmuyorsa geçmişi yine gösteririz ama
@@ -2590,6 +2629,32 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         payload: kotlinx.serialization.json.JsonObject? = null,
     ) {
         if (isFromInvisibleSession(sessionId)) return
+        // V5-2 madde 6: başka oturumdan gelen TAMAMLANMIŞ mesajlar (cron,
+        // Telegram, CLI konuşmaları) sohbet akışına KARIŞMAZ — bildirim
+        // kutusuna tür sınıflandırmasıyla düşer. Akış parçaları (delta) zaten
+        // yalnız aktif oturumda anlam taşır; onlar sessizce atılır.
+        if (type == "message.complete" &&
+            isForeignSession(sessionId, _state.value.sessionId, _state.value.storedSessionId)
+        ) {
+            val body = text.orEmpty().trim()
+            if (body.isNotBlank()) {
+                val kind = classifyNoticeKind(null, "", body)
+                Notifier.agentMessage(
+                    getApplication(),
+                    title = when (kind) {
+                        NoticeKind.CRON -> tr("Zamanlanmış görev", "Scheduled job")
+                        NoticeKind.SYSTEM -> tr("Sistem bildirimi", "System notice")
+                        else -> tr("Başka oturum", "Another session")
+                    },
+                    text = body,
+                    kind = kind,
+                    sessionId = sessionId,
+                    profileId = profile?.id,
+                    id = foreignNoticeId(sessionId, body),
+                )
+            }
+            return
+        }
         // K12b: oturum izolasyonu — gateway aynı sokete birden çok oturumun
         // olayını `session_id` etiketiyle basar (activate aboneleri yerinden
         // etmez). Etiketi yok saymak bir sohbetin yanıtını DİĞER sohbete

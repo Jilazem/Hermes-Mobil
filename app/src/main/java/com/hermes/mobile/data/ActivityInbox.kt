@@ -21,6 +21,8 @@ data class ActivityNotice(
     val time: Long = System.currentTimeMillis(),
     val read: Boolean = false,
     val kind: String = "reply",
+    /** Kaynak (cron/telegram/cli…); tür sınıflandırmasının kanıtı olarak saklanır. */
+    val source: String? = null,
 )
 
 /** Profil sınırını koruyan, cihazdaki Hermes bildirim geçmişi. */
@@ -53,6 +55,15 @@ class ActivityInbox private constructor(context: Context) {
     fun markSessionRead(profileId: String, sessionId: String) = save(_items.value.map {
         if (it.profileId == profileId && it.sessionId == sessionId) it.copy(read = true) else it
     })
+
+    /** V5-2: filtre menüsündeki "okundu" eylemi — yalnız seçili türler. */
+    @Synchronized
+    fun markKindsRead(profileId: String, kinds: Set<String>) = save(_items.value.map {
+        if (it.profileId == profileId && it.kind in kinds) it.copy(read = true) else it
+    })
+
+    @Synchronized
+    fun remove(id: String) = save(_items.value.filterNot { it.id == id })
 
     private fun save(items: List<ActivityNotice>) {
         if (items == _items.value) return
