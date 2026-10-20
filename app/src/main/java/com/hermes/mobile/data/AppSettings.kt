@@ -320,6 +320,11 @@ data class AppSettings(
      */
     val artemisUrl: String = "",
     /**
+     * Artemis API belirteci. Release'de (strict kip) zorunludur; isteklerde
+     * `Authorization: Bearer` başlığında taşınır, URL'ye asla yazılmaz.
+     */
+    val artemisToken: String = "",
+    /**
      * Ajan (Telegram/cron/sohbet/Android Auto yanıtı) senin adına sohbetlere
      * yanıt gönderebilsin mi (`phone_reply`). Geri alınamaz bir eylem olduğu
      * için Tam kontrol'den AYRI ve varsayılan KAPALI. Uygulamada kendin

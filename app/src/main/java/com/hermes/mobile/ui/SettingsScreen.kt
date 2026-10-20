@@ -2199,6 +2199,14 @@ private fun ArtemisCard(
             settings.artemisUrl,
         ) { v -> onUpdate { it.copy(artemisUrl = v.trim()) } }
         TextRow(
+            S.t2("Artemis belirteci (token)", "Artemis token"),
+            S.t2(
+                "Release'de zorunlu · Authorization: Bearer başlığında gider",
+                "Required in release · sent as Authorization: Bearer header",
+            ),
+            settings.artemisToken,
+        ) { v -> onUpdate { it.copy(artemisToken = v.trim()) } }
+        TextRow(
             S.t2("Cihaz seri no (isteğe bağlı)", "Device serial (optional)"),
             S.t2("Boşsa telefonun Wi-Fi IP'sinden bulunur", "Empty = matched by the phone's Wi-Fi IP"),
             settings.artemisDevice,
@@ -2235,7 +2243,7 @@ private fun ArtemisCard(
                     .clickable {
                         probe = "…"
                         scope.launch {
-                            val c = com.hermes.mobile.data.ArtemisClient(settings.artemisUrl)
+                            val c = com.hermes.mobile.data.ArtemisClient(settings.artemisUrl, settings.artemisToken)
                             probe = runCatching {
                                 val list = c.devices()
                                 if (list.isEmpty()) tr("Artemis ayakta, ama bağlı telefon yok (adb connect gerekli)",

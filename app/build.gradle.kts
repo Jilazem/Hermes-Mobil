@@ -30,10 +30,17 @@ android {
             applicationIdSuffix = providers.gradleProperty("hermesDebugSuffix").getOrElse(".v3")
             versionNameSuffix = "-ema-preview"
             isMinifyEnabled = false
+            // Artemis LAN kapısı (iş #1020): debug'da mevcut davranış — düz
+            // http + kimliksiz LAN erişimi serbest.
+            buildConfigField("Boolean", "ARTEMIS_STRICT", "false")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Artemis LAN kapısı (iş #1020): release'de yalnız https:// +
+            // private/loopback host + zorunlu token; http veya kimliksiz
+            // istek çalışma anında reddedilir (ArtemisClient).
+            buildConfigField("Boolean", "ARTEMIS_STRICT", "true")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -48,7 +55,11 @@ android {
 
     kotlinOptions { jvmTarget = "17" }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        // ARTEMIS_STRICT bayrakları BuildConfig'e yazılır (AGP 8'de kapalı gelir).
+        buildConfig = true
+    }
     testOptions { unitTests.isIncludeAndroidResources = true }
 
     // Mimariye göre ayrı APK: telefon (arm64) ~yarı boyut; x86_64 yalnız emülatör için.

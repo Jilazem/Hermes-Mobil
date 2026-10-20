@@ -29,9 +29,17 @@ class V5DistributionBoundaryTest {
 
     @Test fun artemisRejectsPublicAndCredentialBearingEndpoints() {
         for (url in listOf("https://example.com", "http://8.8.8.8", "http://user:pass@192.168.1.2", "file:///etc/test")) {
-            try { ArtemisClient(url); fail("Accepted unsafe endpoint") }
+            try { ArtemisClient(url, null, strict = false); fail("Accepted unsafe endpoint") }
             catch (expected: IllegalArgumentException) { /* fail-closed */ }
         }
-        assertEquals("http://192.168.1.2:8000", ArtemisClient("http://192.168.1.2:8000").base)
+        // İş #1020: varsaylan kip sürüm bayrağını izler — debug'da özel LAN'da
+        // http kabul, release'de http reddedilir (ayrıntı: ArtemisLanGateTest).
+        val base = "http://192.168.1.2:8000"
+        if (BuildConfig.ARTEMIS_STRICT) {
+            try { ArtemisClient(base); fail("release http kabul etti") }
+            catch (expected: IllegalArgumentException) { /* fail-closed */ }
+        } else {
+            assertEquals(base, ArtemisClient(base).base)
+        }
     }
 }

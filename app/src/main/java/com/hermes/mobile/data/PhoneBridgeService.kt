@@ -483,7 +483,7 @@ class PhoneBridgeService : Service() {
         val profile = (args["profile"] as? JsonPrimitive)?.content?.takeIf { it == "pro" || it == "flash" }
             ?: s.artemisProfile
         return runCatching {
-            val client = ArtemisClient(s.artemisUrl)
+            val client = ArtemisClient(s.artemisUrl, s.artemisToken)
             val devices = runCatching { client.devices() }.getOrDefault(emptyList())
             val serial = ArtemisLogic.pickDevice(devices, s.artemisDevice, null)
             val id = client.submit(goal, profile, serial)

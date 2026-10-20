@@ -592,6 +592,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     /** V3 Google Artemis ayarları (MainActivity settings'ten yazar). */
     @Volatile var artemisUrl: String = ""
+    @Volatile var artemisToken: String = ""
     @Volatile var artemisProfile: String = "flash"
     @Volatile var artemisDevice: String = ""
     private var artemisTaskId: String? = null
@@ -2549,7 +2550,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         viewModelScope.launch {
-            val client = com.hermes.mobile.data.ArtemisClient(url)
+            val client = com.hermes.mobile.data.ArtemisClient(url, artemisToken)
             runCatching {
                 val devices = runCatching { client.devices() }.getOrDefault(emptyList())
                 val serial = com.hermes.mobile.data.ArtemisLogic.pickDevice(devices, artemisDevice, phoneWifiIp())
@@ -2598,7 +2599,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private fun stopArtemis(): Boolean {
         val id = artemisTaskId ?: return false
         val url = artemisUrl
-        viewModelScope.launch { runCatching { com.hermes.mobile.data.ArtemisClient(url).stop(id) } }
+        viewModelScope.launch { runCatching { com.hermes.mobile.data.ArtemisClient(url, artemisToken).stop(id) } }
         return true
     }
 

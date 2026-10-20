@@ -563,6 +563,7 @@ class MainActivity : ComponentActivity() {
                     chatViewModel.assistantAutoRead = settings.assistantAutoRead
                     // V3: Google Artemis ("/telefon <görev>").
                     chatViewModel.artemisUrl = settings.artemisUrl.trim()
+                    chatViewModel.artemisToken = settings.artemisToken.trim()
                     chatViewModel.artemisProfile = settings.artemisProfile
                     chatViewModel.artemisDevice = settings.artemisDevice
                 }
