@@ -259,20 +259,20 @@ class PhoneBridgeService : Service() {
         DiagLog.i("bridge", "connecting to ${DiagLog.redact(url)}")
         setState(BridgeState.CONNECTING)
         live = false
-        socket = http.newWebSocket(Request.Builder().url(url).build(), Listener())
+        socket = http.newWebSocket(bridgeRequest(url, p.token), Listener())
     }
 
     /**
      * Köprü adresi. Röle ile aynı mantık: ev ağında doğrudan port, dışarıda
      * Hermes'in ters vekilindeki yol — ayrı port yönlendirmesi gerekmiyor.
      * Açık `bridgeUrl` verilmişse port türetmesi yapılmaz (sandbox/özel kurulum).
+     *
+     * Adres temizdir: kimlik URL'ye (`?token=…`) yazılmaz, yalnız
+     * `Authorization: Bearer` başlığında taşınır (bkz. [bridgeRequest]).
      */
     private fun bridgeUrl(p: ServerProfile): String? {
         val base = p.effectiveBridgeUrl
-        if (base.isBlank()) return null
-        val sep = if (base.contains("?")) "&" else "?"
-        val token = java.net.URLEncoder.encode(p.token, "UTF-8")
-        return "$base$sep" + "token=$token"
+        return if (base.isBlank()) null else base
     }
 
     /**
@@ -623,6 +623,22 @@ class PhoneBridgeService : Service() {
                 _state.value = value
             }
         val stateFlow: StateFlow<BridgeState> = _state.asStateFlow()
+
+        /**
+         * WS bağlantı isteği — kimlik bilgisi **başlıkta**.
+         *
+         * Eski sürümde token URL sorgusuna yazılıyordu (`?token=…`); adres
+         * böylece erişim log'unda, proxy dökümünde ve ters vekil kaydında tam
+         * yetkili sır olarak görünüyordu. URL temiz kalmalı: token yalnız
+         * `Authorization: Bearer <token>` başlığında taşınır. Köprü
+         * (phone_bridge.py) başlığı birincil kaynak, sorgu yolunu yalnız eski
+         * uygulamalar için geriye uyum fallback'i olarak kabul eder.
+         */
+        internal fun bridgeRequest(url: String, token: String): Request =
+            Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer $token")
+                .build()
 
         fun start(context: Context) {
             val s = SettingsStore(context).settings.value
