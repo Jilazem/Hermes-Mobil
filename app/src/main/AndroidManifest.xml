@@ -180,6 +180,20 @@
             android:exported="false"
             android:foregroundServiceType="dataSync|mediaPlayback" />
 
+        <!-- Ajanın ürettiği sunucu dosyalarını indirme sonrası harici
+             uygulamalara (PDF görüntüleyici vb.) güvenli biçimde açmak için.
+             Token artık URL'de değil başlıkta (iş #1021 B2) — dosya telefona
+             iner ve buradan okuma izniyle paylaşılır. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
+
         <!-- Shizuku sağlayıcısı. `permission` alanı normal uygulamaların
              erişimini engelliyor — Shizuku'nun kendi dokümanı bunu şart koşuyor. -->
         <provider

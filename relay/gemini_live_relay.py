@@ -317,11 +317,33 @@ def _query(path: str) -> dict[str, list[str]]:
     return parse_qs(urlparse(path).query)
 
 
-def _authorized(params: dict[str, list[str]]) -> bool:
+def _headers_raw(client) -> dict[str, str]:
+    """Bağlantı açılış başlıkları — `Authorization: Bearer` kanalı için."""
+    try:
+        raw = client.request.headers
+    except AttributeError:  # eski websockets sürümleri / test dublürları
+        return {}
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        return {str(k).lower(): str(v) for k, v in raw.items()}
+    # `Headers` benzeri (k, v) çiftleri yinelenebilir yapılar
+    try:
+        return {str(k).lower(): str(v) for k, v in raw}
+    except TypeError:
+        return {}
+
+
+def _authorized(params: dict[str, list[str]], headers: dict[str, str]) -> bool:
     if not HERMES_TOKEN:
         LOG.error("HERMES_DASHBOARD_SESSION_TOKEN bulunamadı — tüm bağlantılar reddedilir")
         return False
-    supplied = (params.get("token") or [""])[0]
+    auth = headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        supplied = auth[7:].strip()
+    else:
+        # Geriye uyum: eski istemciler token'u sorguda taşır.
+        supplied = (params.get("token") or [""])[0]
     return hmac.compare_digest(supplied, HERMES_TOKEN)
 
 
@@ -384,8 +406,12 @@ class HermesBridge:
     async def _ensure(self) -> None:
         if self._ws is not None and self._session_id:
             return
+        # Token artık başlıkta (iş #1021 B2): adres satırına/erişim
+        # kayıtlarına yazılmaz. Hermes /api/ws açılışı her ikisini de kabul eder.
         self._ws = await websockets.connect(
-            f"{HERMES_WS}?token={self._token}", max_size=None
+            HERMES_WS,
+            max_size=None,
+            extra_headers={"Authorization": f"Bearer {self._token}"},
         )
         self._req += 1
         rid = f"r{self._req}"
@@ -549,7 +575,7 @@ async def handle(client) -> None:
     params = _query(client.request.path)
     peer = getattr(client, "remote_address", ("?", 0))[0]
 
-    if not _authorized(params):
+    if not _authorized(params, _headers_raw(client)):
         LOG.warning("yetkisiz bağlantı reddedildi: %s", peer)
         await client.close(code=4401, reason="unauthorized")
         return

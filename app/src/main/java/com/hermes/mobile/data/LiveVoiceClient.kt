@@ -39,9 +39,10 @@ import kotlin.math.abs
  *
  * Telefon doğrudan Google'a değil, **sunucudaki röleye** bağlanır. İki yol var
  * ve ikisi de `ServerProfile.effectiveRelayUrl` tarafından türetiliyor:
- * ev ağında `ws://192.168.140.20:9170/live?token=…` (doğrudan), dışarıdan
- * `wss://<alan-adi>/live-relay/live?token=…` (Hermes'in ters vekilinde bir
- * yol; ayrı port yönlendirmesi gerekmiyor). Google API anahtarı
+ * ev ağında `ws://192.168.140.20:9170/live` (doğrudan), dışarıdan
+ * `wss://<alan-adi>/live-relay/live` (Hermes'in ters vekilinde bir
+ * yol; ayrı port yönlendirmesi gerekmiyor). Kimlik `Authorization: Bearer`
+ * başlığında taşınır (iş #1021 B2) — token URL'ye yazılmaz. Google API anahtarı
  * sunucuda kalır; telefonda yalnızca zaten kayıtlı olan Hermes tokeni bulunur.
  * Kullanıcı isterse kendi anahtarını `apiKeyOverride` ile geçebilir.
  *
@@ -145,41 +146,51 @@ class LiveVoiceClient(
         // kulağa dayamak mümkün değil.
         router?.begin()
 
-        socket = http.newWebSocket(Request.Builder().url(buildUrl()).build(), Listener())
+        socket = http.newWebSocket(openRequest(), Listener())
     }
 
     /**
-     * Kayda giden adres. `DiagLog` zaten `token=` ayıklıyor ama buraya da
-     * koyuyoruz: iki katman, birinin atlanması durumunda tokenin sızmaması için.
+     * Kayda giden adres. Token URL'de olmadığından artık adresin kendisi
+     * hassas değil; `DiagLog.redact` yine de `api_key=` için korunuyor.
      */
     private fun redactedUrl(): String = DiagLog.redact(buildUrl())
 
+    /**
+     * Röle açılış isteği: kimlik `Authorization: Bearer` başlığında
+     * (iş #1021 B2). Röle geriye uyum için `?token=` sorgusunu da kabul
+     * eder; yanlış/eksik token yine 4401 ile reddedilir.
+     */
+    fun openRequest(): okhttp3.Request =
+        okhttp3.Request.Builder()
+            .url(buildUrl())
+            .header("Authorization", "Bearer $hermesToken")
+            .build()
+
     private fun buildUrl(): String {
-        return buildString {
-            append(relayBase.trimEnd('/'))
-            append("/live?token=")
-            append(hermesToken)
-            apiKeyOverride?.takeIf { it.isNotBlank() }?.let {
-                append("&api_key=").append(it)
-            }
-            // Ayarlardan gelenler; boşsa röle kendi varsayılanını kullanır.
-            liveModel.takeIf { it.isNotBlank() }?.let {
-                append("&model=").append(java.net.URLEncoder.encode(it, "UTF-8"))
-            }
-            liveVoice.takeIf { it.isNotBlank() }?.let {
-                append("&voice=").append(java.net.URLEncoder.encode(it, "UTF-8"))
-            }
-            systemInstruction.takeIf { it.isNotBlank() }?.let {
-                append("&system=").append(java.net.URLEncoder.encode(it, "UTF-8"))
-            }
-            // Telefon araçları yalnız bu uygulama bağlandığında tanıtılsın —
-            // başka bir istemci onları yürütemez.
-            if (phoneTools != null) {
-                append("&phone_tools=1")
-                // Shizuku hazırsa derin araçlar da tanıtılsın.
-                if (shizukuReady) append("&shizuku=1")
-            }
+        // Sorgu parametreleri (kimlik YOK — token artık başlıkta, iş #1021 B2).
+        val params = ArrayList<String>(6)
+        apiKeyOverride?.takeIf { it.isNotBlank() }?.let {
+            params += "api_key=$it"
         }
+        // Ayarlardan gelenler; boşsa röle kendi varsayılanını kullanır.
+        liveModel.takeIf { it.isNotBlank() }?.let {
+            params += "model=" + java.net.URLEncoder.encode(it, "UTF-8")
+        }
+        liveVoice.takeIf { it.isNotBlank() }?.let {
+            params += "voice=" + java.net.URLEncoder.encode(it, "UTF-8")
+        }
+        systemInstruction.takeIf { it.isNotBlank() }?.let {
+            params += "system=" + java.net.URLEncoder.encode(it, "UTF-8")
+        }
+        // Telefon araçları yalnız bu uygulama bağlandığında tanıtılsın —
+        // başka bir istemci onları yürütemez.
+        if (phoneTools != null) {
+            params += "phone_tools=1"
+            // Shizuku hazırsa derin araçlar da tanıtılsın.
+            if (shizukuReady) params += "shizuku=1"
+        }
+        val query = if (params.isEmpty()) "" else "?" + params.joinToString("&")
+        return relayBase.trimEnd('/') + "/live" + query
     }
 
     fun stop() {
@@ -573,8 +584,7 @@ class LiveVoiceClient(
         scope.launch {
             kotlinx.coroutines.delay(delayMs)
             if (closedByUser) return@launch
-            val url = buildUrl()
-            socket = http.newWebSocket(Request.Builder().url(url).build(), Listener())
+            socket = http.newWebSocket(openRequest(), Listener())
         }
     }
 

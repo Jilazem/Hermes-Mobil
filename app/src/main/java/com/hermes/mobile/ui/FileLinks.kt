@@ -34,9 +34,11 @@ import com.hermes.mobile.ui.theme.MonoTextStyle
  * (`/media/user/EX/GDrive/...`). Masaüstü sürümde bu tıklanabilir; mobilde
  * düz metin olarak kalıyordu ve dosyaya ulaşmanın yolu yoktu.
  *
- * Sunucu `/api/files/download` ucunu **sorgu parametresiyle token** kabul edecek
- * şekilde açmış (`_QUERY_TOKEN_API_PATHS`) — yani bağlantı doğrudan tarayıcıya
- * ya da indiricilere verilebiliyor, özel başlık gerekmiyor.
+ * İndirme artık UYGULAMA İÇİNDE yapılır (iş #1021 B2): kimlik
+ * `Authorization: *** başlığında taşınır —
+ * [com.hermes.mobile.data.ServerFileDownload]. Dosya telefona iner,
+ * FileProvider ile açılır; token istek satırına, harici tarayıcıya ve
+ * erişim kayıtlarına yazılmaz.
  *
  * ⚠️ Yol tamamen kodlanmalı (`/` → `%2F`); yarım kodlanmış yol 404 dönüyor.
  */
@@ -65,11 +67,10 @@ fun extractFileRefs(text: String): List<FileRef> =
         .take(8)
         .toList()
 
-/** İndirme adresi — token sorgu parametresinde, yol tam kodlanmış. */
-fun downloadUrl(baseUrl: String, token: String, path: String): String {
+/** İndirilecek adres — YALNIZ yol; token burada YOK (iş #1021 B2). */
+fun downloadUrl(baseUrl: String, path: String): String {
     val encodedPath = java.net.URLEncoder.encode(path, "UTF-8")
-    val encodedToken = java.net.URLEncoder.encode(token, "UTF-8")
-    return "${baseUrl.trimEnd('/')}/api/files/download?path=$encodedPath&token=$encodedToken"
+    return "${baseUrl.trimEnd('/')}/api/files/download?path=$encodedPath"
 }
 
 /** Bir yanıtın altına düşen dosya kartları. */

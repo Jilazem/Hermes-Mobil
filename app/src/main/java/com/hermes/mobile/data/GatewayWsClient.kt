@@ -41,8 +41,9 @@ import java.util.concurrent.atomic.AtomicLong
  *   yanıt : {"id":"a1","result":{...}} | {"id":"a1","error":{"message":"..."}}
  *   olay  : {"method":"event","params":{"type":"message.delta","payload":{…}}}
  *
- * Token modunda kimlik `?token=` sorgu parametresiyle geçilir — gated modda
- * bunun yerine tek kullanımlık ticket gerekir (Faz 5).
+ * Kimlik `Authorization: *** başlığında taşınır (iş #1021 B2);
+ * sunucu geriye uyum için `?token=` sorgusunu da kabul eder. Gated
+ * modda tek kullanımlık ticket gerekir (Faz 5).
  */
 class GatewayWsClient(private val profile: ServerProfile) {
 
@@ -116,6 +117,18 @@ class GatewayWsClient(private val profile: ServerProfile) {
         openSocket()
     }
 
+    /**
+     * `/api/ws` açılış isteği. Kimlik `Authorization: Bearer` başlığında
+     * taşınır (iş #1021 B2): token URL satırına, vekil sunuculara ve erişim
+     * kayıtlarına yazılmaz. Sunucu geriye uyum için `?token=` sorgusunu da
+     * kabul eder; yanlış token yine 401 ile reddedilir.
+     */
+    fun openRequest(): Request =
+        Request.Builder()
+            .url("${profile.wsBase}/api/ws")
+            .header("Authorization", "Bearer ${profile.token}")
+            .build()
+
     private fun openSocket() {
         synchronized(openLock) {
             // P5: aynı anda iki açılış (connect + reconnect) eski soketi sızdırmasın;
@@ -126,9 +139,7 @@ class GatewayWsClient(private val profile: ServerProfile) {
             // Request.Builder.url ile FATAL EXCEPTION üretiyordu (2026-09-14
             // emülatör denetimi kanıtı: httpws:// şeması). Artık çökme YOK —
             // görünen hata durumu.
-            val request = runCatching {
-                Request.Builder().url("${profile.wsBase}/api/ws?token=${profile.token}").build()
-            }.getOrElse {
+            val request = runCatching { openRequest() }.getOrElse {
                 DiagLog.w("ws", "gecersiz ws adresi: ${profile.wsBase}")
                 _connection.value = ConnectionState.Error(
                     com.hermes.mobile.ui.tr(

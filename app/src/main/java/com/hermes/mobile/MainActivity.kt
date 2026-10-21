@@ -72,7 +72,7 @@ import com.hermes.mobile.ui.ChatScreen
 import com.hermes.mobile.ui.CommandPalette
 import com.hermes.mobile.ui.ConnectScreen
 import com.hermes.mobile.ui.FileRef
-import com.hermes.mobile.ui.downloadUrl
+import java.io.File
 import com.hermes.mobile.ui.DrivingScreen
 import com.hermes.mobile.ui.HomeScreen
 import com.hermes.mobile.ui.JarvisScreen
@@ -330,23 +330,35 @@ class MainActivity : ComponentActivity() {
         } ?: uri.lastPathSegment ?: fallback
 
     /**
-     * Ajanın ürettiği dosyayı sistem tarayıcısına/indiricisine açar.
+     * Ajanın ürettiği dosyayı UYGULAMA İÇİNDE indirir ve açar (iş #1021 B2).
      *
-     * Sunucu `/api/files/download` ucunda tokeni sorgu parametresi olarak kabul
-     * ediyor, böylece harici uygulamaya özel başlık geçirmek gerekmiyor.
+     * Kimlik `Authorization: *** başlığında taşınır; token URL'ye
+     * ve harici tarayıcıya/indiriciye hiç verilmez. Dosya uygulama
+     * önbelleğine iner, FileProvider üzerinden okuma izniyle açılır.
      * ⚠️ Yol tam kodlanmalı (`/` dahil) — yarım kodlanmış yol 404 dönüyor.
      */
     private fun openServerFile(profile: com.hermes.mobile.data.ServerProfile?, ref: FileRef) {
         val p = profile ?: return
         val base = p.activeUrl ?: p.normalizedUrl
         if (base.isBlank() || p.token.isBlank()) return
-        val url = downloadUrl(base, p.token, ref.path)
-        runCatching {
-            startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            )
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                val target = File(File(cacheDir, "server-files"), ref.name)
+                com.hermes.mobile.data.ServerFileDownload.downloadToFile(
+                    okhttp3.OkHttpClient(), base, p.token, ref.path, target,
+                )
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this@MainActivity, "$packageName.fileprovider", target,
+                )
+                startActivity(
+                    Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, com.hermes.mobile.data.ServerFileDownload.mimeFor(ref.name))
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                )
+            }.onFailure {
+                DiagLog.w("FileLinks", "sunucu dosyası indirilemedi/açılamadı: ${ref.name}: ${it.message}")
+            }
         }
     }
 

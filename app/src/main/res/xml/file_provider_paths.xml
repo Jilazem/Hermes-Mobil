@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sunucudan inen ajan dosyaları (cache/server-files) — FileProvider
+     üzerinden harici görüntüleyicilere okuma izniyle paylaşılır. -->
+<paths>
+    <cache-path name="server_files" path="server-files/" />
+</paths>
