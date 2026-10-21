@@ -43,36 +43,61 @@ class ChannelTokenHeaderTest {
     // ── 1) /api/ws — GatewayWsClient ────────────────────────────────────
 
     @Test
-    fun `gateway ws - token baslikta url temiz`() {
+    fun `gateway ws - token sorguda ve baslikta`() {
         val profile = ServerProfile(name = "t", baseUrl = "http://192.168.140.20:9150", token = gizli)
         val req = GatewayWsClient(profile).openRequest()
+        // Sunucu WS upgrade'inde tokeni YALNIZCA ?token= sorgusundan okur
+        // (web_server_chat.py `_ws_auth_ok`); sorgu yoksa el sıkışma 403.
+        assertEquals("sorguda token yok", gizli, req.url.queryParameter("token"))
+        assertEquals("/api/ws", req.url.encodedPath)
+        // Başlık HTTP/REST kanalları için korunur.
         assertEquals("Bearer $gizli", req.header("Authorization"))
-        val url = req.url.toString()
-        assertFalse("URL'de token adı var: $url", url.contains("token"))
-        assertFalse("URL'de sır var: $url", url.contains(gizli))
     }
 
     @Test
-    fun `gateway ws - yanlis token 401 ile reddedilir`() {
-        val profile = ServerProfile(
-            name = "t",
-            baseUrl = "ws://127.0.0.1:1", // gerçek adres dublürle eziliyor
-            token = "yanlis-token",
-        )
-        WsPolicyServer(gizli).use { server ->
+    fun `gateway ws - gercek el sikismasi sorgu tokeniyle 101 acar`() {
+        val profile = ServerProfile(name = "t", baseUrl = "ws://127.0.0.1:1", token = gizli)
+        val orijinal = GatewayWsClient(profile).openRequest()
+        WsQueryPolicyServer(gizli).use { server ->
+            server.acceptOne()
+            val builder = okhttp3.HttpUrl.Builder()
+                .scheme("http").host("127.0.0.1").port(server.port)
+                .addPathSegments("api/ws")
+            for (name in orijinal.url.queryParameterNames) {
+                orijinal.url.queryParameterValues(name).forEach { builder.addQueryParameter(name, it) }
+            }
+            val req = orijinal.newBuilder().url(builder.build()).build()
+            val opened = CountDownLatch(1)
+            val code = AtomicReference<Int?>(null)
+            val ws = OkHttpClient().newWebSocket(req, listener(opened, code))
+            assertTrue("el sıkışma tamamlanmadı", opened.await(5, TimeUnit.SECONDS))
+            assertEquals("sorgu tokeniyle 101 alınamadı", 101, code.get())
+            assertEquals("Bearer $gizli", server.authorization.get())
+            assertTrue(
+                "istek satırında token yok: ${server.requestLine.get()}",
+                server.requestLine.get().orEmpty().contains("token=$gizli"),
+            )
+            ws.cancel()
+        }
+    }
+
+    @Test
+    fun `gateway ws - yalniz baslikli eski istek reddedilir`() {
+        // KÖK NEDEN kilidi: eski B2 davranışı (yalnız Authorization, sorgu yok)
+        // gerçek sunucuda 403 alır. Dublür aynı politikayı uygular.
+        WsQueryPolicyServer(gizli).use { server ->
             server.acceptOne()
             val done = CountDownLatch(1)
             val code = AtomicReference<Int?>(null)
             val ws = OkHttpClient().newWebSocket(
-                // Adres dublürden; başlık istemcinin ürettiği gibi yanlış token.
                 okhttp3.Request.Builder()
-                    .url(server.url.replace("/phone", "/api/ws"))
-                    .header("Authorization", "Bearer yanlis-token")
+                    .url("ws://127.0.0.1:${server.port}/api/ws")
+                    .header("Authorization", "Bearer $gizli")
                     .build(),
                 listener(done, code),
             )
             assertTrue("yanıt gelmedi", done.await(5, TimeUnit.SECONDS))
-            assertEquals("yetkisiz istek reddedilmedi", 401, code.get())
+            assertEquals("başlık-only istek kabul edilmemeli", 403, code.get())
             ws.cancel()
         }
     }
@@ -276,8 +301,70 @@ class ChannelTokenHeaderTest {
         }
     }
 
-    /** HTTP indirme dublürü: doğru başlık 200 + gövde, aksi 401 (ham soket). */
-    private class HttpPolicyServer(private val expected: String) : AutoCloseable {
+    /**
+     * Gerçek gateway WS politikasının dublürü: token YALNIZCA `?token=` sorgusundan
+     * okunur; sorgu yoksa/yanlışsa 403. (web_server_chat.py `_ws_auth_ok` ile aynı.)
+     */
+    private class WsQueryPolicyServer(private val expected: String) : AutoCloseable {
+        private val serverSocket = ServerSocket(0, 8, InetAddress.getByName("127.0.0.1"))
+        val requestLine = AtomicReference<String?>(null)
+        val authorization = AtomicReference<String?>(null)
+        val port: Int get() = serverSocket.localPort
+
+        fun acceptOne() {
+            Thread {
+                runCatching { serverSocket.accept().use { serve(it) } }
+            }.apply { isDaemon = true }.start()
+        }
+
+        private fun serve(socket: Socket) {
+            val input = socket.getInputStream().bufferedReader(Charsets.ISO_8859_1)
+            val satir = input.readLine() ?: return
+            requestLine.set(satir)
+            var key: String? = null
+            var auth: String? = null
+            while (true) {
+                val line = input.readLine() ?: break
+                if (line.isEmpty()) break
+                val i = line.indexOf(':')
+                if (i <= 0) continue
+                when (line.substring(0, i).trim().lowercase()) {
+                    "sec-websocket-key" -> key = line.substring(i + 1).trim()
+                    "authorization" -> auth = line.substring(i + 1).trim()
+                }
+            }
+            authorization.set(auth)
+            val sorgu = satir.split(" ").getOrNull(1).orEmpty()
+            val tokenOk = sorgu.contains("token=$expected")
+            val out = socket.getOutputStream()
+            if (tokenOk && key != null) {
+                out.write(
+                    ("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n" +
+                        "Connection: Upgrade\r\nSec-WebSocket-Accept: ${acceptKey(key)}\r\n\r\n")
+                        .toByteArray(Charsets.ISO_8859_1)
+                )
+                out.flush()
+                socket.getInputStream().read()
+            } else {
+                val body = "forbidden"
+                out.write(
+                    ("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n" +
+                        "Content-Length: ${body.length}\r\nConnection: close\r\n\r\n$body")
+                        .toByteArray(Charsets.ISO_8859_1)
+                )
+                out.flush()
+            }
+        }
+
+        override fun close() = runCatching { serverSocket.close() }.let { }
+
+        private fun acceptKey(key: String): String = Base64.getEncoder().encodeToString(
+            MessageDigest.getInstance("SHA-1")
+                .digest((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").toByteArray(Charsets.US_ASCII))
+        )
+    }
+
+    /** HTTP indirme dublürü: doğru başlık 200 + gövde, aksi 401 (ham soket). */    private class HttpPolicyServer(private val expected: String) : AutoCloseable {
         private val serverSocket = ServerSocket(0, 8, InetAddress.getByName("127.0.0.1"))
         val port: Int get() = serverSocket.localPort
         val lastAuthorization = AtomicReference<String?>(null)

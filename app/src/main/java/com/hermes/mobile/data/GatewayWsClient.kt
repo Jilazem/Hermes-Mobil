@@ -23,6 +23,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -41,9 +42,9 @@ import java.util.concurrent.atomic.AtomicLong
  *   yanıt : {"id":"a1","result":{...}} | {"id":"a1","error":{"message":"..."}}
  *   olay  : {"method":"event","params":{"type":"message.delta","payload":{…}}}
  *
- * Kimlik `Authorization: *** başlığında taşınır (iş #1021 B2);
- * sunucu geriye uyum için `?token=` sorgusunu da kabul eder. Gated
- * modda tek kullanımlık ticket gerekir (Faz 5).
+ * Kimlik `?token=` sorgusunda taşınır (WS upgrade'inde sunucunun tek kabul
+ * ettiği yol) ve ayrıca `Authorization` başlığında gönderilir (iş #1021).
+ * Gated modda tek kullanımlık ticket gerekir (Faz 5).
  */
 class GatewayWsClient(private val profile: ServerProfile) {
 
@@ -118,16 +119,37 @@ class GatewayWsClient(private val profile: ServerProfile) {
     }
 
     /**
-     * `/api/ws` açılış isteği. Kimlik `Authorization: Bearer` başlığında
-     * taşınır (iş #1021 B2): token URL satırına, vekil sunuculara ve erişim
-     * kayıtlarına yazılmaz. Sunucu geriye uyum için `?token=` sorgusunu da
-     * kabul eder; yanlış token yine 401 ile reddedilir.
+     * `/api/ws` açılış isteği.
+     *
+     * İş #1021 KÖK NEDEN: B2'de kimlik yalnız `Authorization` başlığına
+     * taşınmıştı; oysa dashboard sunucusu WS upgrade'inde tokeni YALNIZCA
+     * `?token=` sorgusundan okur (hermes_cli/web_server_chat.py:
+     * `_ws_auth_ok` → `query_params.get("token")`; başlık yok sayılır,
+     * auth_middleware WS isteklerini olduğu gibi geçirir). Sonuç: el sıkışma
+     * 403 ile reddediliyor, soket hiç `Open` olmuyor — Ayarlar HTTP ping'i
+     * "çevrimiçi" derken sohbet "Sunucu bağlı değil" diyordu.
+     *
+     * Bu yüzden token HEM sorguda (sunucunun WS için tek kabul ettiği yol)
+     * HEM de başlıkta gönderilir; başlık HTTP/REST kanalları ve ileride
+     * sorguyu bırakacak sunucu sürümleri için korunur.
      */
-    fun openRequest(): Request =
-        Request.Builder()
-            .url("${profile.wsBase}/api/ws")
+    fun openRequest(): Request {
+        // OkHttp `HttpUrl` yalnız http/https şemalarını kabul eder; `wsBase`
+        // ws/wss üretir. Dönüştürmeden `toHttpUrlOrNull()` null döner ve her
+        // bağlantı "geçersiz ws adresi" ile düşerdi (iş #1021 ikinci kök neden).
+        val httpBase = profile.wsBase
+            .replaceFirst("wss://", "https://", ignoreCase = true)
+            .replaceFirst("ws://", "http://", ignoreCase = true)
+        val base = "$httpBase/api/ws".toHttpUrlOrNull()
+            ?: throw IllegalArgumentException("geçersiz ws adresi: ${profile.wsBase}")
+        val url = base.newBuilder()
+            .addQueryParameter("token", profile.token)
+            .build()
+        return Request.Builder()
+            .url(url)
             .header("Authorization", "Bearer ${profile.token}")
             .build()
+    }
 
     private fun openSocket() {
         synchronized(openLock) {

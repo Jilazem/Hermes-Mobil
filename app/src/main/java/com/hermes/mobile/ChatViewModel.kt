@@ -20,6 +20,7 @@ import com.hermes.mobile.data.AssistantModeLogic
 import com.hermes.mobile.data.ApprovalCenter
 import com.hermes.mobile.data.ApprovalEntry
 import com.hermes.mobile.data.DiagLog
+import com.hermes.mobile.data.GatewayLink
 import com.hermes.mobile.data.GatewayWsClient
 import com.hermes.mobile.data.JarvisIdentity
 import com.hermes.mobile.data.JarvisLoopController
@@ -1190,6 +1191,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val gw = GatewayWsClient(profile)
         client = gw
         _gateway.value = gw
+        // İş #1021: Ayarlar ve sohbet aynı durumu okusun diye tek kaynağa bağla.
+        GatewayLink.bind(gw)
 
         // Soket yenilendiğinde oturumu gateway'e yeniden bağla, kaçırılan yanıtı
         // tamamla, bekleyen mesajları gönder. Bu üçü olmadan "oturum koptu".
@@ -1239,6 +1242,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         eventJob?.cancel()
         stateJob?.cancel()
         client?.close()
+        client?.let { GatewayLink.release(it) }
         client = null
         _gateway.value = null
         profileId = null

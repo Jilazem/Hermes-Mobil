@@ -43,7 +43,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.mobile.AppState
+import com.hermes.mobile.data.ConnectionState
+import com.hermes.mobile.data.GatewayLink
 import com.hermes.mobile.data.ProbeResult
 import com.hermes.mobile.data.ServerProfile
 import com.hermes.mobile.ui.theme.HermesColors
@@ -61,6 +64,9 @@ fun ConnectScreen(
 ) {
     var editing by remember { mutableStateOf<ServerProfile?>(null) }
     var confirmDelete by remember { mutableStateOf<ServerProfile?>(null) }
+    // İş #1021: "bağlı" göstergesi artık HTTP yoklamasından değil, sohbetin
+    // kullandığı TEK WS durumundan (GatewayLink) okunur.
+    val live by GatewayLink.connection.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -94,6 +100,7 @@ fun ConnectScreen(
             ProfileRow(
                 profile = profile,
                 probe = state.probes[profile.id],
+                live = if (profile.id == state.active?.id) live else null,
                 isActive = profile.id == state.active?.id,
                 onSelect = { onSelect(profile.id) },
                 onEdit = { editing = profile },
@@ -168,16 +175,38 @@ fun ConnectScreen(
 private fun ProfileRow(
     profile: ServerProfile,
     probe: ProbeResult?,
+    /** Aktif profilin CANLI WS durumu; null = bu satır aktif değil (yalnız HTTP yoklaması). */
+    live: ConnectionState?,
     isActive: Boolean,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val (dotColor, statusText) = when (probe) {
-        is ProbeResult.Ok -> HermesColors.Online to
-            S.t2("çevrimiçi", "online") + " · ${probe.latencyMs} ms"
-        is ProbeResult.Fail -> HermesColors.Offline to probe.reason
-        null -> HermesColors.Busy to S.t2("yoklanıyor…", "probing…")
+    // İş #1021: "bağlı" YALNIZCA gerçek WS Open iken yazılır. HTTP yoklaması
+    // ayrı ve açıkça "HTTP erişimi" etiketiyle gösterilir; ikisi karışmaz.
+    val tokenMissing = profile.token.isBlank()
+    val (dotColor, statusText) = when {
+        tokenMissing -> HermesColors.Offline to
+            S.t2(
+                "Token girilmemiş — Düzenle > Oturum anahtarı",
+                "No token — Edit > Session token",
+            )
+        live != null -> when (live) {
+            ConnectionState.Open -> HermesColors.Online to S.t2("bağlı (canlı WS)", "connected (live WS)")
+            ConnectionState.Connecting -> HermesColors.Busy to S.t2("bağlanıyor…", "connecting…")
+            is ConnectionState.Error -> HermesColors.Offline to
+                S.t2("bağlantı kurulamadı: ${live.reason}", "not connected: ${live.reason}")
+            ConnectionState.Closed -> HermesColors.Offline to S.t2("bağlantı kapandı", "connection closed")
+            ConnectionState.Idle -> HermesColors.Busy to
+                S.t2("bağlantı kurulmadı — sohbeti açın", "not connected — open chat")
+        }
+        else -> when (probe) {
+            is ProbeResult.Ok -> HermesColors.Busy to
+                S.t2("HTTP erişimi var · ${probe.latencyMs} ms", "HTTP reachable · ${probe.latencyMs} ms")
+            is ProbeResult.Fail -> HermesColors.Offline to
+                S.t2("HTTP erişimi yok: ${probe.reason}", "HTTP unreachable: ${probe.reason}")
+            null -> HermesColors.Busy to S.t2("yoklanıyor…", "probing…")
+        }
     }
 
     HermesCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
@@ -212,7 +241,23 @@ private fun ProfileRow(
             )
         }
         Spacer(Modifier.height(2.dp))
-        Text(statusText, color = if (probe is ProbeResult.Ok) HermesColors.Online else HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
+        Text(
+            statusText,
+            color = if (dotColor == HermesColors.Online) HermesColors.Online
+            else if (dotColor == HermesColors.Offline) HermesColors.Danger
+            else HermesColors.TextFaint,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        // Aktif profilde WS durumu üstte; HTTP yoklaması ikinci satır olarak kalır
+        // (sunucu ayakta ama WS reddediyor ayrımı görünsün).
+        if (live != null && !tokenMissing) {
+            val http = when (probe) {
+                is ProbeResult.Ok -> S.t2("HTTP erişimi var · ${probe.latencyMs} ms", "HTTP reachable · ${probe.latencyMs} ms")
+                is ProbeResult.Fail -> S.t2("HTTP erişimi yok: ${probe.reason}", "HTTP unreachable: ${probe.reason}")
+                null -> S.t2("HTTP yoklanıyor…", "probing HTTP…")
+            }
+            Text(http, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
+        }
         if (profile.note.isNotBlank()) {
             Spacer(Modifier.height(4.dp))
             Text(profile.note, color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
