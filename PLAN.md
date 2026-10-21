@@ -1,5 +1,10 @@
 # V4 — Birleşik Hat PLAN.md (EMA + V3 en iyiler)
 
+## 1020-192115 dar kapsam
+Yalnız backend/bot_framework/UI-SPEC.md Android bağlantısı: liste/şablon/edit/sohbet/SAF.
+Önceki araç bütçesi hatasına karşı erken BOT-ANDROID.md ve ayrık loglar.
+Kabul: tokenlı gerçek HTTP backend, Android regresyon+compile+lint, XML sayımı ve emülatör UI dump. Gerçek model ile LocalResponder ayrılır; telefon/relay/Drive/push/restart yok. Nihai bağımsız QC ayrıca.
+
 Katman: büyük
 
 ## Amaç
