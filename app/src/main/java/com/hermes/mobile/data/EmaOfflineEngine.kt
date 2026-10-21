@@ -141,11 +141,56 @@ object EmaOfflineEngine {
 }
 
 class EmaOfflineSpeech(private val context: Context): EmaSpeech {
-    override suspend fun health() = EmaOfflineEngine.ready(context)
-    override suspend fun stream(text: String,onPcm:(ByteArray,Int)->Unit) = EmaOfflineEngine.stream(context,text,onPcm)
-    override suspend fun speak(text: String): ByteArray {
+    private val app = context.applicationContext
+    private val piper by lazy { LocalTtsEngine(app) }
+
+    private fun emaModelReady() = EmaModelStore.verified(EmaModelStore.directory(app))
+    private fun fallbackReady() = LocalTtsLogic.filesPresent(LocalTtsLogic.modelDir(app.filesDir))
+
+    /** EMA modeli yoksa yedek (Piper tr) ses motoru devreye girer; ikisi de yoksa false. */
+    override suspend fun health() = withContext(Dispatchers.IO) {
+        when {
+            emaModelReady() -> runCatching { EmaOfflineEngine.ready(app) }.getOrDefault(false)
+            fallbackReady() -> piper.ensureLoaded()
+            else -> false
+        }
+    }
+
+    override suspend fun stream(text: String,onPcm:(ByteArray,Int)->Unit) {
+        if (emaModelReady()) { EmaOfflineEngine.stream(app,text,onPcm); return }
+        val wav = fallbackWav(text)
+        var offset = 44 // 16-bit mono PCM WAV başlığı
+        while (offset < wav.size) {
+            val end = minOf(wav.size, offset + 4096)
+            onPcm(wav.copyOfRange(offset, end), 22050)
+            offset = end
+        }
+    }
+
+    override suspend fun speak(text: String): ByteArray =
+        if (emaModelReady()) emaSpeak(text) else fallbackWav(text)
+
+    /** Yedek yol: Piper tr_TR-fettah (LocalTtsDownloader) → 22050 Hz WAV. */
+    private suspend fun fallbackWav(text: String): ByteArray = withContext(Dispatchers.IO) {
+        if (!fallbackReady()) throw java.io.IOException(
+            "EMA çevrimdışı modeli yok — yedek ses de indirilmemiş. Ayarlar → Ses → EMA modelini indir; yedek ses otomatik iner."
+        )
+        if (!piper.ensureLoaded()) throw java.io.IOException("EMA çevrimdışı modeli yok — yedek ses motoru açılamadı")
+        val tmp = File(app.cacheDir, "ema-yedek-${System.currentTimeMillis()}.wav")
+        try {
+            piper.synthesize(text, tmp)
+            val bytes = tmp.readBytes()
+            check(bytes.size > 44) { "Yedek ses boş WAV döndürdü" }
+            DiagLog.i("ema", "yedek ses (piper) · ${bytes.size} bayt")
+            bytes
+        } finally {
+            runCatching { tmp.delete() }
+        }
+    }
+
+    private suspend fun emaSpeak(text: String): ByteArray {
         val out = ByteArrayOutputStream()
-        stream(text) { pcm,_ -> out.write(pcm) }
+        EmaOfflineEngine.stream(app, text) { pcm,_ -> out.write(pcm) }
         val data=out.toByteArray()
         val header=ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
         header.put("RIFF".toByteArray()).putInt(data.size+36).put("WAVEfmt ".toByteArray()).putInt(16)
