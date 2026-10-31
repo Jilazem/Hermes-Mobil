@@ -28,6 +28,19 @@ that server reachable and secured is the operator's job.
 
 ---
 
+## Preview
+
+![Hermes Mobile — hero](docs/promo/v2/promo-hero-1080x1920.png)
+
+![Hermes Mobile — feature set](docs/promo/v2/promo-features-1200x630.png)
+
+![Hermes Mobile — Android Auto](docs/promo/v2/promo-android-auto-1080x1920.png)
+
+Promo clip: [docs/promo/hermes-mobile-promo-v2.mp4](docs/promo/hermes-mobile-promo-v2.mp4)
+— 1080×1920, H.264, silent, 28 s.
+
+---
+
 ## Features
 
 ### Chat
@@ -119,8 +132,8 @@ Library cannot own the microphone. The app is sideloaded, so Android Auto needs
 
 A short vertical clip assembled from the screenshots in this repository:
 
-[docs/promo/hermes-mobile-promo.mp4](docs/promo/hermes-mobile-promo.mp4) —
-1080×1920, H.264, silent, ~27 s.
+[docs/promo/hermes-mobile-promo-v2.mp4](docs/promo/hermes-mobile-promo-v2.mp4) —
+1080×1920, H.264, silent, 28 s. Still images: `docs/promo/v2/`.
 
 ---
 
@@ -161,7 +174,7 @@ The app stores server profiles in `EncryptedSharedPreferences`. Plain HTTP is
 accepted for private LAN addresses and rejected for public hosts.
 
 - **Home network:** enter the server's LAN address, for example
-  `http://192.168.1.20:9150`, plus its session token.
+  `http://your-server:9150`, plus its session token.
 - **From outside:** put the agent behind a reverse proxy that terminates real
   TLS on a hostname you control and use `https://hermes.example.com`. The
   live-voice relay can be mounted as a path on the same origin

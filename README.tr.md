@@ -104,6 +104,19 @@ Telefon (bu uygulama)                    Sunucunuz (sizin donanımınız)
 
 ---
 
+## Tanıtım görselleri / Promo visuals
+
+<p align="center">
+  <img src="docs/promo/v2/promo-hero-1080x1920.png" width="240" alt="Hermes Mobile">
+  <img src="docs/promo/v2/promo-android-auto-1080x1920.png" width="240" alt="Android Auto">
+</p>
+
+![Özellik kartları](docs/promo/v2/promo-features-1200x630.png)
+
+Video: [docs/promo/hermes-mobile-promo-v2.mp4](docs/promo/hermes-mobile-promo-v2.mp4) — 1080×1920, 28 sn, sessiz.
+
+---
+
 ## Screenshots / Ekran görüntüleri
 
 <p align="center">
@@ -257,7 +270,7 @@ written to plain files and nothing is committed to this repo.
 
 ### On your home network / Ev ağında
 
-Enter the server's LAN address, for example `http://192.168.140.20:9150`, plus
+Enter the server's LAN address, for example `http://your-server:9150`, plus
 its session token. Plain HTTP is allowed for private addresses and rejected
 for public hosts.
 

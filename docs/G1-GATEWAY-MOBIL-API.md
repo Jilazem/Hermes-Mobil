@@ -6,7 +6,7 @@ Kapsam dışı: kimlik doğrulama modu değişikliği, port/Caddy değişikliği
 
 ## 1. Uç nokta zinciri (gerçek durum)
 
-    Telefon  →  http://192.168.1.99:9150   (Caddy, LAN)
+    Telefon  →  http://your-server:9150   (Caddy, LAN)
              →  127.0.0.1:9120             (hermes dashboard / gateway web API)
              →  /api/sessions, /api/ws, /api/files/*
 
@@ -90,5 +90,5 @@ Bu iş kapsamında hiçbir servis yeniden başlatılmadı, hiçbir yapılandırm
 ## 7. Mobil tarafı eşleşmesi (kod kanıtı)
 
 - `app/src/main/java/com/hermes/mobile/data/HermesClient.kt:581` → `SESSION_HEADER = "X-Hermes-Session-Token"` (satır 69 ile her isteğe ekleniyor).
-- `ServerProfile.kt:24` → taban adres örneği `http://192.168.140.20:9150`.
+- `ServerProfile.kt:24` → taban adres örneği `http://your-server:9150`.
 - WS bağlantısı `?token=` sorgusuyla kuruluyor (commit `98d93c8` "WS baglanti tek kaynak + ws->http sema + ?token= sorgu").

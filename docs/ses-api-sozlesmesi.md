@@ -1,6 +1,6 @@
 # SES API SÖZLEŞMESİ v1 (15.09.2026) — uygulama <-> Mac ses hattı
 
-Yerel: http://192.168.140.20:8174 · Dış (sonra eklenecek): https://hermes.example.com/voice-api
+Yerel: http://your-server:8174 · Dış (sonra eklenecek): https://hermes.example.com/voice-api
 Kimlik: başlık `X-Hermes-Session-Token: <uygulama tokeni>` — yanlış/eksikse 403 (fail-closed).
 GET /health -> {"ok":true,"stt":"acik|kapali","engines":{"kahya":"...","chatterbox":"...","kadin":"..."}}
 POST /transcribe — multipart form, alan `audio` (ogg/opus önerilir, <=60sn) -> {"text":"...","lang":"tr"}
