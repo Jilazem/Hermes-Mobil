@@ -156,6 +156,13 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                     .setOnClickListener { loading = true; invalidate(); refresh() }
                     .build()
             )
+            addItem(
+                Row.Builder()
+                    .setTitle("Hermes ekranı (onaysız)")
+                    .addText("Telefon yansıtması yok · panel doğrudan araç ekranında")
+                    .setOnClickListener { screenManager.push(HermesPanelScreen(carContext)) }
+                    .build()
+            )
             if (sessionLines.isEmpty()) {
                 addItem(Row.Builder().setTitle("Etkin oturum yok").build())
             } else {

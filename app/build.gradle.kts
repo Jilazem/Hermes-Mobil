@@ -14,8 +14,8 @@ android {
         applicationId = "com.hermes.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.5"
+        versionCode = 14
+        versionName = "6.5.1"
         vectorDrawables { useSupportLibrary = true }
 
         // ABI seçimi aşağıdaki `splits.abi` bloğunda (arm64 telefon, x86_64 emülatör);
