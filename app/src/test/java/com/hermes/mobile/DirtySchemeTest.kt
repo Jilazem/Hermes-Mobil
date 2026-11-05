@@ -27,8 +27,9 @@ class DirtySchemeTest {
     fun `kirli httphttps temizlenir - son yazilan sema esas`() {
         // Alan "http://" doluydu, kullanıcı "https://…" yazdı: httphttps://…
         assertEquals("https://tun.example", norm("httphttps://tun.example"))
-        // Ters karışımda sondaki 'http' esas alınır:
-        assertEquals("http://tun.example", norm("httpshttp://tun.example"))
+        // Ters karışımda sondaki 'http' esas alınır; ardından B2 TLS kapısı
+        // dış host'u https'e yükseltir (cleartext yalnız özel ağda).
+        assertEquals("https://tun.example", norm("httpshttp://tun.example"))
     }
 
     @Test
@@ -41,9 +42,13 @@ class DirtySchemeTest {
 
     @Test
     fun `temiz sema aynen kalir - buyuk harf HTTPS downgrade olmaz`() {
-        assertEquals("http://a:1", norm("http://a:1"))
+        // B2: dış host'a http:// verilirse https://'e yükseltilir (özel ağ kapısı).
+        assertEquals("https://a:1", norm("http://a:1"))
         assertEquals("https://a:1", norm("https://a:1"))
+        // Büyük harfli şema korunur (kapı yalnız küçük 'http://' önekini yükseltir).
         assertEquals("HTTPS://Tunnel.Example", norm("HTTPS://Tunnel.Example"))
+        // Özel ağda http aynen kalır.
+        assertEquals("http://10.0.2.2:9199", norm("http://10.0.2.2:9199"))
     }
 
     @Test

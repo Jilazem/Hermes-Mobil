@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<automotiveApp>
-    <!-- Messaging works through Android Auto's own read/reply UI.
-         The separate Car App Library experience needs trusted distribution. -->
-    <uses name="notification" />
-    <uses name="template" />
+<automotiveApp xmlns:tools="http://schemas.android.com/tools">
+    <!-- Mola projection entry. A notification declaration creates Android Auto's
+         separate empty-message inbox instead of launching the parked Hermes UI. -->
+    <uses name="service" tools:ignore="InvalidUsesTagAttribute" />
+    <uses name="projection" tools:ignore="InvalidUsesTagAttribute" />
 </automotiveApp>

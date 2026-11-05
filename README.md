@@ -1,250 +1,126 @@
 # Hermes Mobile
 
-A native Android client for a self-hosted AI agent.
+**Your Hermes workspace, in your pocket.**
 
-The agent, its tools, its memory and its schedule stay on hardware you own. The
-phone is the surface: chat, sessions, server administration, and a two-way link
-to the device itself. There is no hosted account, no cloud relay and no
-telemetry — point the app at your own server or it does nothing.
+An Android companion for a self-hosted [Hermes Agent](https://github.com/NousResearch/hermes-agent). Continue desktop conversations, open your agents, follow delegated work, preview documents, talk to your assistant and run small phone automations from one app.
 
-Türkçe sürüm: [README.tr.md](README.tr.md)
+**7.6.1 preview · Kotlin / Jetpack Compose · Android 8.0+**
 
----
+[Features](#features) · [Get started](#get-started) · [Build](#build-from-source) · [Credits](CREDITS.md) · [English introduction](docs/ANNOUNCEMENT.en.md) · [Türkçe](README.tr.md)
 
-## What this is
+> This is an independent community client, not an official Nous Research mobile release. Agent features require a compatible Hermes server. Models, tool access, provider accounts and their costs belong to the server you configure.
 
-Hermes Mobile is a Kotlin / Jetpack Compose application that talks to a running
-Hermes agent over its WebSocket and HTTP endpoints. It is a client, not a
-backend: it does not include, host or provision an agent server, and keeping
-that server reachable and secured is the operator's job.
+## What's new
 
-- Native UI throughout; no WebView.
-- Server profiles, tokens and keys are stored in `EncryptedSharedPreferences`
-  backed by the Android Keystore.
-- Live-voice API keys stay on the server; the phone only holds the session
-  token.
-- When something cannot work, the app reports the error instead of quietly
-  switching to a different endpoint or model.
-
----
-
-## Preview
-
-![Hermes Mobile — hero](docs/promo/v2/promo-hero-1080x1920.png)
-
-![Hermes Mobile — feature set](docs/promo/v2/promo-features-1200x630.png)
-
-![Hermes Mobile — Android Auto](docs/promo/v2/promo-android-auto-1080x1920.png)
-
-Promo clip: [docs/promo/hermes-mobile-promo-v2.mp4](docs/promo/hermes-mobile-promo-v2.mp4)
-— 1080×1920, H.264, silent, 28 s.
-
----
+- **Desktop agents, mobile conversations.** Bots → Hermes lists real Dashboard profiles and resumes their existing sessions instead of creating mobile copies.
+- **A usable conversation archive.** Open the first page, then load more. Counters show loaded/total records; pinned rows are deduplicated without skipping pages.
+- **Richer chat.** Selectable text, usable links, HTML document previews, audio controls and server-hosted media complement Markdown and code blocks.
+- **A subagent task pipeline.** Read supplied statuses, models, tool/token counters, completion summaries and file information in the current conversation.
+- **Clear macro outcomes.** Manual runs show a result dialog; permission failures, cooldowns and other preconditions appear in execution history.
+- **Less repeated noise.** Dismissed historical crash notices stay dismissed; a new crash can still be reported.
 
 ## Features
 
-### Chat
+### Your conversations, across devices
 
-Streaming replies over the agent's WebSocket protocol, with thinking blocks,
-tool-call cards and approval prompts for dangerous commands. Images and files
-can be attached; text or media can be shared into a new chat from other apps.
-Messages composed while offline are queued and sent when the connection
-returns.
+Streaming replies include reasoning sections, tool activity, approval cards and attachments. Share text/files into Hermes from other Android apps. Search cached sessions, pin, follow, rename or locally archive them. Profile-specific lists include archived conversations and preserve the owning profile when resuming.
 
-![](docs/shots/01-chat-empty.png)
+Read-position tracking uses content anchors to reopen at the first unread section, or near the latest exchange when caught up. Broader long-history, multi-chat and process-restart acceptance testing remains open.
 
-### Sessions
+### Agents with personality
 
-Session list with a local cache, archive, pin, rename and follow. A session
-started elsewhere — Telegram, a cron job, the CLI — appears here while it runs,
-and a message can be injected into its current turn without discarding the work
-already done. Multi-select merge moves several sessions into one.
+**Bots → Hermes** opens canonical server profiles and their conversations. **Agents / Tasks** retains custom companions, personalities, templates, local team grouping and task controls. Long-press and drop companions together to create a local team. The small companion faces are original Hermes UI work.
 
-![](docs/shots/03-sessions.png)
+Team grouping does not merge agents' memory or silently expand their permissions. The optional custom-bot adapter uses the same Dashboard address/token through `/mobile-api/`; it must be deployed on your server. Mika/Phongent compatibility includes selected source adaptations and outbound protocol clients, not their complete phone runtimes.
 
-### Models
+### Follow delegated work
 
-A model picker that validates the choice against the server's live
-`/v1/models` endpoint. Local LAN endpoints and remote providers are listed side
-by side. The selection is a lock, not a preference: if the chosen endpoint is
-down, the app shows an error rather than silently falling back.
+The collapsible task pipeline reads session-scoped `subagent.*` events and `subagent.list`. It refreshes while the conversation is visible, displays only supplied measurements and distinguishes an absent live record from a confirmed completion. This view does not automatically launch, interrupt or authorize child agents.
 
-![](docs/shots/02-model-picker.png)
+### Media and documents
 
-### Scheduled jobs (cron)
+| Content | Experience |
+|---|---|
+| Markdown and code | Headings, lists, code blocks, copying and text selection |
+| Links | Open HTTP/HTTPS links, including links inside HTML previews |
+| Images | Remote images and bounded inline PNG/JPEG/WebP/GIF content |
+| Audio / video | Explicit playback controls; codec support depends on Android |
+| Server files | Authenticated download within the server's access rules |
+| HTML | Preview generated code or downloaded HTML documents without running scripts |
 
-List, pause, resume, reschedule and run scheduled agent jobs, with schedule,
-last run and next run for each.
+HTML previews disable JavaScript, network loading, local-file access and native bridges. External pages open through the link handler. Authenticated media downloads do not follow redirects, cap HTML at 2 MB and other files at 64 MB, and use a bounded temporary cache. The Dashboard token is not passed to the external browser or media decoder.
 
-![](docs/shots/07-cron.png)
+<img src="docs/promo/v2/promo-features-1200x630.png" width="720" alt="Hermes Mobile interface overview from the earlier public preview">
 
-### Skills and MCP servers
+*Earlier public interface artwork. The text documents the current 7.6.1 features; it is not a new device-test screenshot.*
 
-Installed skills and configured MCP tool servers are visible from the phone and
-can be enabled or disabled there, alongside webhooks, pairing and raw
-configuration.
+### Small automations, clear results
 
-![](docs/shots/08-skills.png)
+Native macros support manual, charging, unplugging, headset and unlock triggers. Supported actions include notifications, vibration, media volume and the flashlight. Permission checks, cooldowns, execution history and a visible foreground monitor make outcomes understandable.
 
-![](docs/shots/09-mcp.png)
+Add a recipe → **Try manually → Run** → review the result. To use device events, enable both the rule and **Automatic rules**. Grant only the permissions the action needs. Imported rules start paused; unsupported actions and conditions are reported rather than silently approximated.
 
-### Files and terminal
+Public template copies replace embedded webhook capability URLs with inert placeholders. Configure your own endpoints when reviewing a template.
 
-A file browser over the agent's workspace and a terminal that runs commands on
-the server, using the same session token the app already holds.
+The bundled [MacroDroid collection](third_party/macrodroid/UPSTREAM.md) is a template collection, not the MacroDroid application. [OpenTasker reuse](third_party/opentasker/UPSTREAM.md) covers its cooldown reservation component, not its full automation engine.
 
-![](docs/shots/11-files.png)
+### Voice and permissioned phone assistance
 
-![](docs/shots/14-terminal.png)
+Voice input/output, optional wake-word support, assistant entry points and live voice/video depend on the configured services and models. Offline speech resources are downloaded separately. EMA needs a valid model configuration; system speech can be used when appropriate. Nefes weights are not bundled.
 
-### Diagnostics
+The outbound phone bridge exposes supported screen, navigation, app, text and notification tools under Android permissions, accessibility authorization and existing approval controls. It does not provide unrestricted access to every app or hidden access to encrypted message databases.
 
-Failures in a mobile agent client tend to be silent: a socket closes and the UI
-keeps saying "Thinking", a schema changes and a list comes back empty, and
-`adb logcat` only helps while the phone is on a cable. The app keeps its own
-log — crashes, WebSocket close codes, HTTP status plus which address was tried,
-JSON decode failures, session re-attach and the offline queue. Secrets are
-redacted as entries are written, so the log is safe to copy and send.
+Shizuku API support is optional for specific elevated operations. The Shizuku manager/server is not embedded, and Android's startup authorization requirements still apply. Ordinary chat and native macros do not require it. A separate call-recorder interoperability path is optional; universal or Bluetooth call recording is not promised.
 
-![](docs/shots/10-diagnostics.png)
+### Android Auto and Mola
 
-### Android Auto
+Separate messaging, Car App Library, legacy compatibility and parked-screen paths are retained. The Mola guide covers setup and saved vehicle preferences. Depending on the host, parked surfaces include the Hermes panel, a small companion game, a YouTube web entry and consent-based mirroring.
 
-Two paths, kept separate on purpose:
+Discovery and playback depend on the phone, installation path, head unit and host policy. A messaging entry does not prove parked-screen support. Mirroring needs MediaProjection consent; parked mirroring does not add phone-audio transport. Driving restrictions are retained. See the [Mola guide](docs/v7/mola.md) and [SDK provenance](third_party/mola/UPSTREAM.md).
 
-- **Screen mirroring (with consent).** The phone's own screen is projected onto
-  the car display through `MediaProjection`, so Android asks for confirmation
-  before projection starts. This is the fallback path and always requires that
-  consent.
-- **Hermes panel (no consent).** The car app library hands the app a `Screen`
-  with a `SurfaceCallback`; when the car surface arrives, the app creates a
-  virtual display on it and renders Hermes' own interface through a
-  `Presentation`. No `MediaProjection` is involved, so no confirmation dialog:
-  the car surface itself is the display.
+### Your server tools, from a phone
 
-Voice runs on the phone and reaches the car over Bluetooth, because the Car App
-Library cannot own the microphone. The app is sideloaded, so Android Auto needs
-"Unknown sources" enabled in Auto's developer settings.
+Existing administration surfaces cover status, diagnostics, models, cron jobs, skills, MCP servers, workspace files, terminal access and approvals. Available operations depend on the server's API and authorization policy. Settings group conversation, appearance, voice, connection, phone control, vehicles, privacy and backups.
 
----
+Export selected conversations and reopen them as a local archive. Exports and recordings are sensitive data: choose a destination yourself and protect the files. A conversation archive is not a complete server backup.
 
-## Promo video
+## Get started
 
-A short vertical clip assembled from the screenshots in this repository:
+1. Run a compatible Hermes Dashboard/gateway on hardware you control.
+2. Build the app below or use a trusted APK. Check each asset's actual version on [Releases](https://github.com/Jilazem/Hermes-Mobil/releases): a source update does not mean a matching APK has been published there.
+3. Add a reachable Dashboard URL, for example `https://hermes.example.com`, and its session token.
+4. Open a conversation or **Bots → Hermes**. Configure optional voice, bot-adapter and phone-bridge services as needed.
+5. Test macros manually before enabling events; complete Android's consent flow before device control or screen sharing.
 
-[docs/promo/hermes-mobile-promo-v2.mp4](docs/promo/hermes-mobile-promo-v2.mp4) —
-1080×1920, H.264, silent, 28 s. Still images: `docs/promo/v2/`.
+Use HTTPS for remote access and protect the gateway. Do not expose unauthenticated phone-control endpoints or commit tokens, recordings, chat exports or private configuration.
 
----
+Server setup: [Dashboard adapter](backend/DASHBOARD-INTEGRATION.md). External protocols: [Mika](docs/integration/mika.md), [Phongent](docs/integration/phongent.md). Normal Hermes phone assistance uses Hermes's own bridge.
 
-## Install (APK)
+## Build from source
 
-There is no store release. Sideload the APK:
-
-1. Download the APK from the releases page, or build it yourself (below).
-2. On the phone, allow installation from the source you used (browser or file
-   manager).
-3. Open the app, add a server profile and enter the session token.
-
-If a `.sha256` file is published with the APK, verify the download before
-installing.
-
-### Build from source
-
-Requires JDK 17 and Android SDK Platform 35.
+Use **JDK 21**, Android SDK Platform 35 / Build Tools 35.0.0 and the included Gradle 8.9 wrapper. Minimum SDK is 26; some car and permission features need newer Android versions.
 
 ```bash
-export ANDROID_HOME="$HOME/Library/Android/sdk"   # or your SDK location
-export ANDROID_SDK_ROOT="$ANDROID_HOME"
-./gradlew testDebugUnitTest
-./gradlew assembleDebug
+# Set JAVA_HOME and your Android SDK location for your machine.
+./gradlew --no-daemon --max-workers=2 testDebugUnitTest assembleDebug lintDebug
 ```
 
-Output: `app/build/outputs/apk/debug/app-debug.apk`
+On Windows use `gradlew.bat`. Keep machine-specific paths, `local.properties` and signing keys outside Git. Existing speech AARs belong to the base repository. **The Mola compatibility SDK is deliberately not distributed in this update.** A full build requires your own authorized local copy at `app/libs/mola-aauto.aar`; see [local build dependencies](docs/BUILDING.md) and [third-party terms](THIRD_PARTY.md).
 
-The live-voice relay is a single Python service (`relay/`) run on the machine
-hosting the agent; it reads the provider key and the session token from the
-environment, and neither is ever sent to the phone.
+Debug outputs are ABI-specific: `app/build/outputs/apk/debug/app-arm64-v8a-debug.apk` and `app-x86_64-debug.apk`. The default debug package is `com.hermes.mobile.v3`, with the `-preview` version suffix. Updating an installed APK requires the same signing certificate; a new local debug key cannot replace the maintainer's preview key.
 
----
+The optional bot adapter pins its transport dependency in `backend/requirements-dashboard.txt`. Install it in a separate environment, not into a running agent's production runtime.
 
-## Connect a server
+## Verification and limits
 
-The app stores server profiles in `EncryptedSharedPreferences`. Plain HTTP is
-accepted for private LAN addresses and rejected for public hosts.
+The delivered 7.6.1 implementation passed **1,573 Android unit tests on Windows and 1,573 on macOS**. Lint reported **0 errors, 74 warnings and 7 informational findings**. Publication adds documentation/license material and a portable JDK configuration; these counts do not prove every device, provider or deployment.
 
-- **Home network:** enter the server's LAN address, for example
-  `http://your-server:9150`, plus its session token.
-- **From outside:** put the agent behind a reverse proxy that terminates real
-  TLS on a hostname you control and use `https://hermes.example.com`. The
-  live-voice relay can be mounted as a path on the same origin
-  (`/live-relay/*`) so no extra port has to be forwarded.
-- **Tailscale:** put both machines on the same tailnet; nothing is exposed
-  publicly.
+Physical-phone checks covered updating with the existing certificate, the retained disabled dual-app clone, canonical profile/session opening, HTML download/preview, opening its link in Chrome, an audio-file preview and manual notification macro execution. The automatic macro monitor was observed running. See [release validation](docs/releases/v7.6.1.md).
 
-If the app cannot reach the server, check in this order: the server is awake
-and the agent is running; `/api/status` answers from another device on the same
-route; the proxy or tunnel is up and the certificate is valid; the URL scheme,
-port and token are correct. Dashboard → Diagnostics records which addresses
-were tried and why each failed.
+Separate acceptance remains for real charging events, reboot recovery, a real head unit, a populated live subagent task, broader unread-position/restart behavior and a physical image/video matrix. The current macro screen starts its monitor when enabled; unattended reboot recovery is not guaranteed. Audio audibility was not independently confirmed. Call recording and CSC modification were deferred.
 
----
+## Credits, privacy and contribution
 
-## Architecture
+First-party code is covered by [MIT](LICENSE). Adapted source, templates, dependencies, models and SDK binaries retain their own terms; the root license does not relicense them. Read [Credits](CREDITS.md), [Third-party inventory](THIRD_PARTY.md), [Privacy](PRIVACY.md), [Security](SECURITY.md) and [Contributing](CONTRIBUTING.md).
 
-```
-Phone (this app)                         Your server
-┌─────────────────────────┐  WS/HTTPS   ┌──────────────────────────────┐
-│ Compose UI              │◄───────────►│ Hermes agent (tools, memory, │
-│ ChatViewModel           │  /api/ws    │ cron, Telegram, CLI)         │
-│ Session store / cache   │             │ gateway :9150                │
-│ VoiceApiClient          │──HTTP──────►│ /api/* endpoints             │
-└──────────┬──────────────┘             │ live-voice relay :9170       │
-           │                             │ phone_bridge :9180 + MCP     │
-   local LLM (LAN)                       └──────────────────────────────┘
-   /v1/chat/completions
-```
-
-- One long-lived WebSocket carries the event stream, thinking blocks, tool
-  cards and approval requests. A dropped socket re-attaches to the same agent
-  session.
-- The live-voice relay is a small Python service on the server; it holds the
-  provider key and verifies the same session token the app already has.
-- The phone bridge reverses the direction: the phone opens an **outbound**
-  WebSocket to the server, and the agent reaches the phone through an MCP tool
-  server. NAT, CGNAT and mobile data stop mattering — no port forwarding, no
-  VPN, no USB. It is off by default and read-only when first enabled; nothing
-  irreversible is exposed (dialling opens the dialer, SMS stays a draft).
-
-The server build the app was tested against is pinned in
-[UPSTREAM_TESTED.md](UPSTREAM_TESTED.md), together with the tolerant-decoding
-rules used for panels whose JSON shapes have changed over time.
-
----
-
-## Compatibility
-
-The upstream agent does not guarantee API stability, so a different server
-version can break individual panels while the rest keeps working. Include your
-server version when reporting a bug; the app shows it under Dashboard → Status.
-
----
-
-## Privacy
-
-Personal identifiers, internal hostnames, tokens and private addresses are
-stripped before anything is published here. The screenshots in this repository
-were taken with the app's demo mode enabled, which masks server-supplied text
-(session titles, job names, skills, hostnames, file paths). See
-[PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE). Third-party components and their notices are
-listed in [CREDITS.md](CREDITS.md) and
-`app/src/main/assets/THIRD-PARTY-NOTICES.txt`.
-
-Not affiliated with Google or Anthropic. Android, Jetpack and Google Play are
-trademarks of Google LLC.
+This community project is not affiliated with or endorsed by Nous Research, Google, xAI, OpenAI, MacroDroid, Mika or Phongent. Names and trademarks belong to their respective owners.

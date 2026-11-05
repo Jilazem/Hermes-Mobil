@@ -412,3 +412,20 @@ object SwipeDeleteLogic {
             Decision(Phase.Armed, Target.Stuck)
     }
 }
+
+/**
+ * J2 (patron): çekmece "Tümü" listesi.
+ *
+ * Bitmiş bildirim kaynaklı oturumlar (cron / sistem bakımı / bekçi) burada
+ * gösterilmez — onların yeri Bildirimler sekmesi ve duvardaki "Zamanlanmış"
+ * çipidir. Devam eden (RUNNING) cron işi ise "iş"tir, listede kalır.
+ * Arşiv sekmesi (tab == 2) kullanıcının bilinçli görünümüdür, filtrelenmez.
+ */
+fun visibleDrawerRows(
+    rows: List<DrawerRow>,
+    tab: Int,
+    sourceOf: (DrawerRow) -> String?,
+): List<DrawerRow> {
+    if (tab == 2) return rows
+    return rows.filter { isLiveRow(it) || !isNoticeSource(sourceOf(it)) }
+}

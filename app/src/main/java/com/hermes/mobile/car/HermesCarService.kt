@@ -28,9 +28,9 @@ import kotlinx.coroutines.withContext
 class HermesCarService : CarAppService() {
 
     override fun createHostValidator(): HostValidator =
-        // Yan yüklenen geliştirme sürümü: tüm host'lara izin ver. Yayınlanacak
-        // olsaydı ALLOW_ALL yerine imza doğrulaması gerekirdi.
-        HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
+        HostValidator.Builder(this)
+            .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
+            .build()
 
     override fun onCreateSession(): Session = object : Session() {
         // Always render a supported template; screen projection needs a separate phone consent.
@@ -59,6 +59,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     private var statusLine = ""
     private var systemLine = ""
     private var sessionLines: List<HermesSession> = emptyList()
+    private var sessionProfileId: String? = null
 
     init {
         // P5: Screen onDestroy override etmez; DefaultLifecycleObserver ile
@@ -103,6 +104,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                     statusLine = status
                     systemLine = system
                     sessionLines = sessions
+                    sessionProfileId = profile.id
                     error = null
                 }.onFailure {
                     error = "Sunucuya ulaşılamadı. Telefonun ağını ve Hermes sunucu profilini kontrol et."
@@ -127,6 +129,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                 .setTitle("Hermes")
                 .setHeaderAction(Action.APP_ICON)
                 .setLoading(true)
+                .setActionStrip(molaActions())
                 .build()
         }
 
@@ -134,6 +137,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             return MessageTemplate.Builder(message)
                 .setTitle("Hermes")
                 .setHeaderAction(Action.APP_ICON)
+                .setActionStrip(molaActions())
                 .addAction(Action.Builder().setTitle("Konuş").setOnClickListener { startCarVoice() }.build())
                 .addAction(
                     Action.Builder()
@@ -145,6 +149,9 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         }
 
         val list = ItemList.Builder().apply {
+            addItem(Row.Builder().setTitle("Telefonu Kullan · Mola")
+                .addText("Ekran paylaşımı ve telefon kontrolü")
+                .setOnClickListener { screenManager.push(MirrorScreen(carContext)) }.build())
             addItem(Row.Builder().setTitle("Hermes Asistan")
                 .addText("Araç mikrofonuyla Hermes’e sor")
                 .setOnClickListener { startCarVoice() }.build())
@@ -158,7 +165,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             )
             addItem(
                 Row.Builder()
-                    .setTitle("Hermes ekranı (onaysız)")
+                    .setTitle("Hermes sohbet paneli")
                     .addText("Telefon yansıtması yok · panel doğrudan araç ekranında")
                     .setOnClickListener { screenManager.push(HermesPanelScreen(carContext)) }
                     .build()
@@ -178,7 +185,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                             )
                             .setOnClickListener {
                                 screenManager.push(
-                                    CarMessagesScreen(carContext, session.id, session.serverTitle ?: session.title)
+                                    CarMessagesScreen(carContext, session.id, session.serverTitle ?: session.title, sessionProfileId)
                                 )
                             }
                             .build()
@@ -205,4 +212,11 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     private fun startCarVoice() { voice.toggle() }
+
+    // The local panel must remain reachable when the server is offline or unconfigured.
+    private fun molaActions() = androidx.car.app.model.ActionStrip.Builder()
+        .addAction(Action.Builder().setTitle("Telefonu kullan").setOnClickListener {
+            screenManager.push(MirrorScreen(carContext))
+        }.build())
+        .build()
 }

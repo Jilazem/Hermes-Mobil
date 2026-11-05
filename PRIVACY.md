@@ -1,4 +1,4 @@
-# Privacy / Gizlilik — personal preview, not a public release
+# Privacy — preview source distribution
 
 Hermes Mobil connects to servers selected by the user. Messages, prompts, selected attachments and any explicitly enabled phone context are sent to those servers and their configured model providers. Their retention and processing policies also apply. There is no claim that all processing stays on the phone.
 
@@ -11,3 +11,5 @@ Profile credentials use Android Keystore-backed encrypted preferences. Device di
 Revoke permissions in Android Settings, disable remote control features and remove server credentials when no longer required. Removing app data does not delete messages, attachments, logs or model-provider copies already stored on remote servers. Ask the operator of each selected server/provider for retention, deletion and access requests.
 
 This document describes the preview's capabilities; it is not a completed Play Store policy submission or a guarantee of public-distribution readiness. Public release requires an identified operator/contact, a reviewed in-app disclosure and a verified signed package.
+
+HTML document previews disable scripts, network loading and local-file access. Downloaded media uses temporary app storage. External links leave the application and the destination website has its own privacy policy. The new publication screenshot contains a controlled test document; raw phone captures, private conversations, deployment configuration and signing keys are not part of this update.

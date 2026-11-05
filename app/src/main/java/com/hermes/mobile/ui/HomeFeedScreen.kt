@@ -162,7 +162,7 @@ fun HomeFeedScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             HomeFilter.entries.forEach { f ->
-                val n = if (f == HomeFilter.All) 0 else homeFilterCount(rows, f, sourceOf)
+                val n = homeFilterCount(rows, f, sourceOf)
                 val label = (if (en) f.labelEn else f.labelTr) + if (n > 0) " $n" else ""
                 FilterPill(label, selected = filter == f) { filter = f }
             }
@@ -216,11 +216,16 @@ fun HomeFeedScreen(
                             )
                             else -> EmptyState(
                                 icon = EmptyStateIcons.NoSessions,
-                                message = S.t2(
+                                message = if (filter == HomeFilter.All) S.t2(
+                                    "Şu an devam eden iş yok. Bildirimler ayrı sekmede; geçmiş konular Sohbetler'de.",
+                                    "No work in progress right now. Notifications live in their own tab; past topics are under Chats.",
+                                ) else S.t2(
                                     "Burada henüz konu yok. Aşağıdan yeni bir konu başlat.",
                                     "No topics here yet. Start one below.",
                                 ),
                                 modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                actionLabel = if (filter == HomeFilter.All) S.t2("Sohbetler", "Chats") else null,
+                                onAction = if (filter == HomeFilter.All) ({ filter = HomeFilter.Chats }) else null,
                             )
                         }
                     }
@@ -255,7 +260,10 @@ private fun ConnectionLine(
     val (label, color) = when (connection) {
         ConnectionState.Open -> S.t2("Bağlı", "Connected") to HermesColors.Online
         ConnectionState.Connecting -> S.t2("Bağlanıyor…", "Connecting…") to HermesColors.Busy
-        is ConnectionState.Error -> S.t2("Bağlantı yok", "Offline") to HermesColors.Danger
+        // B3 (v6.3): "Yeniden bağlanıyor (3. deneme, 4 sn)" — deneme ve gecikme
+        // kullanıcıya görünür; eski hâli "Bekliyor" diyordu.
+        is ConnectionState.Reconnecting -> com.hermes.mobile.data.WsBackoff.describe(connection.attempt) to HermesColors.Busy
+        is ConnectionState.Error -> S.t2("Bağlantı kurulamadı", "Connection failed") to HermesColors.Danger
         else -> S.t2("Bekliyor", "Idle") to HermesColors.TextFaint
     }
     Row(

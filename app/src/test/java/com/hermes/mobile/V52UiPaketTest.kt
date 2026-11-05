@@ -118,7 +118,7 @@ class V52UiPaketTest {
         assertEquals(MediaKind.IMAGE, mediaKindOf("https://x/a.PNG"))
         assertEquals(MediaKind.IMAGE, mediaKindOf("https://x/a.webp?v=2"))
         assertEquals(MediaKind.VIDEO, mediaKindOf("https://x/a.mp4#t=1"))
-        assertEquals(MediaKind.NONE, mediaKindOf("https://x/a.html"))
+        assertEquals(MediaKind.HTML, mediaKindOf("https://x/a.html"))
         assertEquals(MediaKind.NONE, mediaKindOf(null))
     }
 

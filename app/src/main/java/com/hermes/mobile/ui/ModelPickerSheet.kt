@@ -21,10 +21,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
@@ -55,6 +57,7 @@ import com.hermes.mobile.data.thinkSupported
 import com.hermes.mobile.ui.theme.HermesColors
 import com.hermes.mobile.ui.theme.MonoTextStyle
 import com.hermes.mobile.data.DemoMask
+import com.hermes.mobile.data.isCurrentModelChoice
 
 /** Seçicide bir satırın taşıdığı her şey — tek yerde toplanınca sıralama kolaylaşıyor. */
 private data class ModelRow(
@@ -115,10 +118,15 @@ fun ModelPickerSheet(
      */
     onSelect: (provider: String, model: String, persist: Boolean, think: String?) -> Unit,
     onDismiss: () -> Unit,
+    currentProvider: String? = null,
+    error: String? = null,
+    selecting: Boolean = false,
+    onRefresh: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var query by remember { mutableStateOf("") }
     var persist by remember { mutableStateOf(false) }
+    var pendingGlobal by remember { mutableStateOf<ModelRow?>(null) }
 
     /**
      * Seçilen satırın düşünce kademesi: eldeki seçim bu modelde geçerliyse
@@ -126,6 +134,28 @@ fun ModelPickerSheet(
      * reddettiğinde sessiz bozulma demek — burada düşürülür.
      */
     fun thinkFor(model: String): String? = currentThink?.takeIf { thinkSupported(model, it) }
+
+    fun choose(row: ModelRow) {
+        if (selecting) return
+        if (persist) pendingGlobal = row
+        else onSelect(row.provider, row.model, false, thinkFor(row.model))
+    }
+
+    pendingGlobal?.let { row ->
+        AlertDialog(
+            onDismissRequest = { pendingGlobal = null },
+            title = { Text(S.t2("Sunucu varsayılanını değiştir?", "Change server default?")) },
+            text = { Text(S.t2(
+                "${row.provider} / ${row.model}\n\nBu seçim sunucunun config.yaml dosyasına yazılır ve diğer Hermes istemcilerini de etkiler.",
+                "${row.provider} / ${row.model}\n\nThis writes the server's config.yaml and affects other Hermes clients too.",
+            )) },
+            confirmButton = { TextButton(onClick = {
+                pendingGlobal = null
+                onSelect(row.provider, row.model, true, thinkFor(row.model))
+            }) { Text(S.t2("Sunucu varsayılanını değiştir", "Change server default")) } },
+            dismissButton = { TextButton(onClick = { pendingGlobal = null }) { Text(S.t2("Vazgeç", "Cancel")) } },
+        )
+    }
 
     val q = query.trim().lowercase()
 
@@ -191,7 +221,7 @@ fun ModelPickerSheet(
     val frequentLabel = S.t2("Sık kullanılan", "Frequently used")
     val recommendedLabel = S.t2("Önerilen", "Recommended")
     val recentLabel = S.t2("Son kullanılan", "Recent")
-    val recommendedHint = S.t2("bu sunucuda ölçüldü", "measured on this server")
+    val recommendedHint = S.t2("kaydedilmiş öneriler", "saved suggestions")
     // Üç boyut ayrı ayrı anahtar: sabitleme bir modeli "önerilen"den alıp
     // "sabitlenen"e taşıdığında toplam değişmiyor ama liste yeniden diziliyor.
     LaunchedEffect(pinned.size, recents.size, frequent.size, recommended.size) {
@@ -204,15 +234,24 @@ fun ModelPickerSheet(
         containerColor = HermesColors.Background,
     ) {
         Column(Modifier.padding(horizontal = 16.dp).heightIn(max = 640.dp)) {
-            Text(
-                S.t2("Model seç", "Pick a model"),
-                color = HermesColors.TextPrimary,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    S.t2("Model seç", "Pick a model"),
+                    color = HermesColors.TextPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onRefresh, enabled = !loading && !selecting) {
+                    Text(S.t2("Yenile", "Refresh"))
+                }
+            }
             Spacer(Modifier.height(4.dp))
             Text(
-                currentModel?.let { S.t2("Şu an: $it", "Now: $it") } ?: "Sunucudan okunuyor…",
+                currentModel?.let {
+                    val identity = listOfNotNull(currentProvider, it).joinToString(" / ")
+                    S.t2("Seçili: $identity", "Selected: $identity")
+                } ?: S.t2("Sunucudan okunuyor…", "Reading from server…"),
                 style = MonoTextStyle,
                 color = HermesColors.TextMuted,
             )
@@ -223,11 +262,11 @@ fun ModelPickerSheet(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable { persist = !persist }
+                    .clickable(enabled = !selecting) { persist = !persist }
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = persist, onCheckedChange = { persist = it })
+                Checkbox(checked = persist, onCheckedChange = { persist = it }, enabled = !selecting)
                 Spacer(Modifier.width(4.dp))
                 Column {
                     Text(
@@ -236,8 +275,8 @@ fun ModelPickerSheet(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        if (persist) S.t2("Hermes’in diğer istemcilerini de etkiler", "Also affects other Hermes clients")
-                        else S.t2("Telefondaki seçimin otomatik kaydedilir", "Your phone remembers this choice"),
+                        if (persist) S.t2("Diğer istemcileri etkiler; ayrıca onay istenir", "Affects other clients; requires another confirmation")
+                        else S.t2("Yalnız bu sohbet; sunucu varsayılanı korunur", "This conversation only; keeps the server default"),
                         color = HermesColors.TextFaint,
                         style = MaterialTheme.typography.labelSmall,
                     )
@@ -287,7 +326,7 @@ fun ModelPickerSheet(
                                     if (selected) HermesColors.Midground else HermesColors.Border,
                                     RoundedCornerShape(14.dp),
                                 )
-                                .clickable { onThinkChosen(level) }
+                                .clickable(enabled = !selecting) { onThinkChosen(level) }
                                 .padding(horizontal = 11.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -331,6 +370,20 @@ fun ModelPickerSheet(
             if (loading) {
                 Text(S.t2("Yükleniyor…", "Loading…"), color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
             }
+            if (selecting) {
+                Text(S.t2("Seçim sunucudan doğrulanıyor…", "Confirming selection with the server…"),
+                    color = HermesColors.Midground, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (error != null) {
+                Text(error, color = if (providers.isEmpty()) HermesColors.Danger else HermesColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = onRefresh, enabled = !loading && !selecting) {
+                    Text(S.t2("Yeniden dene", "Try again"))
+                }
+            }
+            if (!loading && !selecting && allRows.none(::matches) && error == null) {
+                Text(S.t2("Eşleşen model yok. Aramayı değiştirin veya listeyi yenileyin.", "No matching models. Change your search or refresh the list."),
+                    color = HermesColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
+            }
 
             LazyColumn(
                 state = listState,
@@ -364,10 +417,11 @@ fun ModelPickerSheet(
                         items(rows, key = { "$id-${it.key}" }) { row ->
                             ModelRowView(
                                 row = row,
-                                selected = row.model == currentModel,
+                                selected = isCurrentModelChoice(row.provider, row.model, currentProvider, currentModel),
                                 pinned = row.key in pinnedModels,
                                 prominent = true,
-                                onSelect = { onSelect(row.provider, row.model, persist, thinkFor(row.model)) },
+                                onSelect = { choose(row) },
+                                selecting = selecting,
                                 onTogglePin = { onTogglePin(row.key) },
                                 onToggleHidden = { onToggleHidden(row.key) },
                             )
@@ -435,10 +489,11 @@ fun ModelPickerSheet(
                     items(rows, key = { "all-${it.key}" }) { row ->
                         ModelRowView(
                                 row = row,
-                                selected = row.model == currentModel,
+                                selected = isCurrentModelChoice(row.provider, row.model, currentProvider, currentModel),
                                 pinned = row.key in pinnedModels,
                                 prominent = false,
-                                onSelect = { onSelect(row.provider, row.model, persist, thinkFor(row.model)) },
+                                onSelect = { choose(row) },
+                                selecting = selecting,
                                 onTogglePin = { onTogglePin(row.key) },
                             onToggleHidden = { onToggleHidden(row.key) },
                         )
@@ -466,6 +521,7 @@ private fun ModelRowView(
     onSelect: () -> Unit,
     onTogglePin: () -> Unit,
     onToggleHidden: () -> Unit,
+    selecting: Boolean = false,
 ) {
     val bg = when {
         selected -> HermesColors.Surface
@@ -478,7 +534,7 @@ private fun ModelRowView(
             .padding(bottom = if (prominent) 6.dp else 0.dp)
             .background(bg, MaterialTheme.shapes.medium)
             .combinedClickable(
-                enabled = row.usable,
+                enabled = row.usable && !selecting,
                 onClick = onSelect,
                 onLongClick = onToggleHidden,
             )
@@ -501,8 +557,11 @@ private fun ModelRowView(
                 },
                 fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                 fontWeight = if (prominent) FontWeight.Medium else FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                DemoMask.model("${row.provider} / ${row.model}"),
+                style = MonoTextStyle,
+                color = HermesColors.TextMuted,
             )
             val note = when {
                 row.hidden -> "gizlendi — uzun bas, geri getir"

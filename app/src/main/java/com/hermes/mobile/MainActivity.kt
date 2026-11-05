@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.foundation.layout.WindowInsets
@@ -44,6 +45,7 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.hermes.mobile.ui.NotificationsScreen
 import com.hermes.mobile.ui.FollowingScreen
+import com.hermes.mobile.ui.ModulesTab
 import com.hermes.mobile.data.ActivityInbox
 import com.hermes.mobile.data.ActivityNotice
 import com.hermes.mobile.data.noticesForProfile
@@ -94,6 +96,7 @@ import com.hermes.mobile.ui.HomeFeedScreen
 import com.hermes.mobile.ui.SessionDrawerContent
 import com.hermes.mobile.ui.drawerListItems
 import com.hermes.mobile.ui.drawerRows
+import com.hermes.mobile.ui.visibleDrawerRows
 import com.hermes.mobile.ui.lastSessionToRestore
 import com.hermes.mobile.ui.SettingsScreen
 import com.hermes.mobile.data.CrashGuard
@@ -116,6 +119,24 @@ import com.hermes.mobile.ui.S
 import com.hermes.mobile.ui.serviceLang
 
 class MainActivity : ComponentActivity() {
+    private var carLaunchRedirect = false
+
+    /** CAR_LAUNCHER is a UI route, never a message inbox or a phone-command request. */
+    @Suppress("DEPRECATION")
+    private fun openCarEntry(incoming: Intent?, finishRouter: Boolean): Boolean {
+        if (incoming?.hasCategory("android.intent.category.CAR_LAUNCHER") != true) return false
+        com.hermes.mobile.car.MolaCarMode.select(this,true)
+        val displayId = runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= 30) display?.displayId else windowManager.defaultDisplay.displayId
+        }.getOrNull()
+        val target=Intent(this,com.hermes.mobile.car.ParkedMolaActivity::class.java)
+            .putExtra("hermes_car_entry",true)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        if (displayId!=null) startActivity(target,android.app.ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle())
+        else startActivity(target)
+        if (finishRouter) { carLaunchRedirect = true; finish() }
+        return true
+    }
 
     companion object {
         /** Jarvis panelinden "Sohbette aç": asistan oturumunun kimliği. */
@@ -462,12 +483,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (openCarEntry(intent,false)) return
         handleShareIntent(intent)
         handleActionIntent(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (openCarEntry(intent,true)) return
+        com.hermes.mobile.car.MolaCarMode.select(this,true)
         enableEdgeToEdge()
         handleShareIntent(intent)
         handleActionIntent(intent)
@@ -660,6 +684,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        if (carLaunchRedirect) return
         com.hermes.mobile.data.Notifier.appVisible = true
         // Shizuku her yeniden başlatmada elle açılıyor; öne gelince durumu
         // tazelemek gerekiyor, yoksa "çalışmıyor" yazılı kalıyor.
@@ -668,16 +693,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        if (carLaunchRedirect) return
         com.hermes.mobile.data.Notifier.appVisible = false
     }
 
     override fun onDestroy() {
-        chatViewModel.shizuku.detach()
+        if (!carLaunchRedirect) chatViewModel.shizuku.detach()
         super.onDestroy()
     }
 
     override fun onResume() {
         super.onResume()
+        if (carLaunchRedirect) return
         viewModel.refreshAll()
         // Arka plandayken kaçırılmış yanıt varsa tamamla.
         chatViewModel.syncPending()
@@ -703,6 +730,7 @@ private enum class Tab(val icon: ImageVector) {
     Panel(Icons.Default.GridView),
     Settings(Icons.Default.Tune),
     Bots(Icons.Default.GridView),
+    Modules(Icons.Default.Extension),
 }
 
 /** Etiketler dile göre çözülüyor, o yüzden enum sabiti olamaz. */
@@ -713,6 +741,7 @@ private fun Tab.label(): String = when (this) {
     Tab.Following -> S.t2("Takip", "Following")
     Tab.Panel -> S.tabPanel
     Tab.Bots -> S.t2("Botlar", "Bots")
+    Tab.Modules -> S.t2("Modüller", "Modules")
     Tab.Settings -> S.tabSettings
 }
 
@@ -799,7 +828,7 @@ private fun HermesApp(
     // Tur-16: çekmece satırları — karar mantığı SessionDrawerLogic'te (testli).
     // Tur22 madde-4: 3. sekme (tab==2) = arşiv görünümü — showArchived sekmeden
     // gelir (drawerArchived state'i KULLANILMIYORDU, ölüydü: grep 0 set yeri).
-    val drawerRowList = remember(
+    val drawerAllRows = remember(
         state.sessions, live.sessions, state.flags, state.cronNames, drawerTab, chat.sessionId,
     ) {
         drawerRows(
@@ -811,6 +840,13 @@ private fun HermesApp(
             showArchived = drawerTab == 2,
             currentSessionId = chat.sessionId,
         )
+    }
+    // J2 (patron): cron/sistem bakım çıktıları "Tümü" listesini kirletmesin —
+    // bitmiş bildirim kaynaklı oturumlar yalnız Bildirimler sekmesinde görünür.
+    val drawerRowList = remember(drawerAllRows, drawerTab, restById) {
+        visibleDrawerRows(drawerAllRows, drawerTab) { row ->
+            restById[row.dbId]?.source ?: restById[row.liveId]?.source
+        }
     }
     val drawerItemList = remember(drawerRowList, drawerQuery) {
         drawerListItems(drawerRowList, query = drawerQuery, liveOnly = false, grouping = true)
@@ -839,6 +875,7 @@ private fun HermesApp(
             Tab.Following -> "Takip"
             Tab.Panel -> "Pano"
             Tab.Bots -> "Botlar"
+            Tab.Modules -> "Modüller"
             Tab.Settings -> "Ayarlar"
         }
     }
@@ -981,6 +1018,8 @@ private fun HermesApp(
     var profileSheet by remember { mutableStateOf(false) }
     /** Ayarlar→Sunucular / boş-sohbet CTA: ConnectScreen tam ekranı. */
     var serversScreen by rememberSaveable { mutableStateOf(false) }
+    var molaPreview by rememberSaveable { mutableStateOf(false) }
+    var molaGuide by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val chatVisible = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) &&
@@ -1009,6 +1048,8 @@ private fun HermesApp(
     val camera by voiceViewModel.cameraState.collectAsStateWithLifecycle()
     val providers by chatViewModel.modelProviders.collectAsStateWithLifecycle()
     val modelsLoading by chatViewModel.modelsLoading.collectAsStateWithLifecycle()
+    val modelsError by chatViewModel.modelsError.collectAsStateWithLifecycle()
+    val modelSelecting by chatViewModel.modelSelecting.collectAsStateWithLifecycle()
     val savedPrompts by viewModel.savedPrompts.collectAsStateWithLifecycle()
 
     // Oturum detayı açıkken donanım geri tuşu listeye döner.
@@ -1075,7 +1116,7 @@ private fun HermesApp(
             if (detail == null && !voice.driving && !cameraFullScreen && !serversScreen && !shareTargetVisible && !WindowInsets.isImeVisible) {
                 NavigationBar(containerColor = HermesColors.Surface) {
                     // Ana gezinme: sohbet akışı, bildirim kutusu ve takip edilen oturumlar.
-                    listOf(Tab.Chat, Tab.Notifications, Tab.Following, Tab.Bots).forEach { entry ->
+                    listOf(Tab.Chat, Tab.Notifications, Tab.Following, Tab.Modules, Tab.Bots).forEach { entry ->
                         NavigationBarItem(
                             selected = tab == entry,
                             onClick = {
@@ -1269,7 +1310,17 @@ private fun HermesApp(
                 // inset sorgularından düşer → composer tam klavye üstüne oturur.
                 .consumeWindowInsets(innerPadding)
         ) {
-            if (serversScreen) {
+            if (molaGuide) {
+                com.hermes.mobile.ui.MolaGuideScreen(
+                    onBack = { molaGuide = false },
+                    onPreview = { molaGuide = false; molaPreview = true },
+                    onOpenSettings = { molaGuide = false; tab = Tab.Settings },
+                )
+            } else if (molaPreview) {
+                com.hermes.mobile.ui.HermesPanelPreviewScreen(onBack = { molaPreview = false },
+                    sessionId = chat.storedSessionId ?: chat.sessionId,
+                    onOpenGuide = { molaPreview = false; molaGuide = true })
+            } else if (serversScreen) {
                 // İlk kurulum yolu: sunucu + token tek ekrandan (2026-09-14
                 // emülatör denetimi bulgu-1). Profil seçilince kapatılır.
                 ConnectScreen(
@@ -1364,6 +1415,7 @@ private fun HermesApp(
                         // Tur-16: sol ray KALDIRILDI — oturum değişimi soldan
                         // açılan çekmeceden (ModalNavigationDrawer, FR-007).
                         chatSavedState.SaveableStateProvider("${state.active?.id}:${chat.sessionId ?: "draft"}") {
+                        com.hermes.mobile.ui.ConversationMediaScope(state.active) {
                         ChatScreen(
                         sharedText = sharedText,
                         onSharedTextConsumed = chatViewModel::consumeSharedText,
@@ -1460,8 +1512,9 @@ private fun HermesApp(
                             chatViewModel.refreshReasoning()
                         },
                         onReasoningLevel = { lvl ->
-                            viewModel.settingsStore.update { st -> st.copy(reasoningLevel = lvl) }
-                            chatViewModel.setReasoningEffort(lvl)
+                            chatViewModel.setReasoningEffort(lvl) { accepted ->
+                                if (accepted) viewModel.settingsStore.update { st -> st.copy(reasoningLevel = lvl) }
+                            }
                         },
                         reasoningLevel = reasoningStatus.effort ?: settings.reasoningLevel,
                         showLiveThinking = settings.showLiveThinking,
@@ -1469,6 +1522,9 @@ private fun HermesApp(
                             viewModel.settingsStore.update { st -> st.copy(showLiveThinking = on) }
                         },
                         activeProfileName = activeHermesProfile,
+                        conversationNamespace = "${state.active?.id.orEmpty()}|${sessionProfile ?: selectedProfile ?: activeHermesProfile}",
+                        readingEnabled = drawerState.isClosed && !modelSheet,
+                        onRefreshSubagents = chatViewModel::refreshSubagents,
                         onOpenFile = onOpenFile,
                         savedPrompts = savedPrompts,
                         onSavePrompt = viewModel::kaydetPrompt,
@@ -1507,6 +1563,7 @@ private fun HermesApp(
                         // Tur-19 FR-003: eşzamanlılık istatistik şeridi (composer üstü).
                         statusStrip = null,
                         )
+                        }
                         }
                     }
                     Tab.Notifications -> NotificationsScreen(
@@ -1576,9 +1633,26 @@ private fun HermesApp(
                             )
                         },
                     )
-                    Tab.Bots -> com.hermes.mobile.ui.BotFrameworkScreen()
+                    Tab.Modules -> ModulesTab(
+                        rows = followingRowList,
+                        onOpenRow = { row ->
+                            chatViewModel.continueSession(row.liveId.ifBlank { row.dbId }, row.dbId.ifBlank { row.liveId }, row.title)
+                            tab = Tab.Chat; showHome = false
+                        },
+                        onToggleFollow = { row -> viewModel.toggleFollow(row.dbId.ifBlank { row.liveId }) },
+                        onOpenFollowingTab = { tab = Tab.Following },
+                        onOpenPanelTab = { tab = Tab.Panel },
+                    )
+                    Tab.Bots -> com.hermes.mobile.ui.BotFrameworkScreen(onOpenSettings = { tab = Tab.Settings }, onOpenMola = { molaGuide = true }, profile = state.active,
+                        hermesProfiles = hermesProfiles, onRefreshHermes = viewModel::loadProfiles,
+                        onOpenHermes = { agent, session ->
+                            if (session == null) { chatViewModel.selectedProfileValue = agent; chatViewModel.newSession() }
+                            else chatViewModel.continueSession(session.id, session.id, session.serverTitle ?: session.displayName ?: agent, agentProfile = agent)
+                            tab = Tab.Chat; showHome = false
+                        })
                     Tab.Settings -> SettingsScreen(
                         onOpenPanel = { tab = Tab.Panel },
+                        onOpenMola = { molaGuide = true },
                         shizukuState = shizukuState,
                         onRequestShizuku = chatViewModel.shizuku::requestPermission,
                         onApprovalAnswer = { sessionId, key, approve, reason ->
@@ -1744,7 +1818,11 @@ private fun HermesApp(
             ModelPickerSheet(
                 providers = providers,
                 currentModel = chat.currentModel,
+                currentProvider = chat.currentProvider,
                 loading = modelsLoading,
+                error = modelsError,
+                selecting = modelSelecting,
+                onRefresh = { chatViewModel.loadModels(force = true) },
                 brokenModels = settings.brokenModels,
                 hiddenModels = settings.hiddenModels,
                 pinnedModels = settings.pinnedModels,
@@ -1779,24 +1857,24 @@ private fun HermesApp(
                 recentModels = settings.recentModels,
                 currentThink = reasoningStatus.effort ?: settings.reasoningLevel,
                 onThinkChosen = { level ->
-                    viewModel.settingsStore.update { st -> st.copy(reasoningLevel = level) }
-                    chatViewModel.setReasoningEffort(level)
+                    chatViewModel.setReasoningEffort(level) { accepted ->
+                        if (accepted) viewModel.settingsStore.update { st -> st.copy(reasoningLevel = level) }
+                    }
                 },
                 onSelect = { provider, model, persist, think ->
-                    chatViewModel.selectModel(provider, model, persist, think)
-                    // Sıklık sayacı: "sık kullanılan" bölümü buradan besleniyor.
-                    viewModel.settingsStore.update { st ->
-                        val key = "$provider/$model"
-                        st.copy(
-                            modelUsage = st.modelUsage + (key to (st.modelUsage[key] ?: 0) + 1),
-                            // V5-2: sıra listesi — son seçim başa, en fazla 5.
-                            recentModels = (listOf(key) + st.recentModels.filterNot { it == key }).take(5),
-                            // V5-2: düşünme kademesi de hatırlansın (oturum
-                            // bazlı kayıt ChatViewModel'de; bu yalnız son değer).
-                            reasoningLevel = think ?: st.reasoningLevel,
-                        )
+                    chatViewModel.selectModel(provider, model, persist, think) { accepted ->
+                        if (accepted) {
+                            viewModel.settingsStore.update { st ->
+                                val key = "$provider/$model"
+                                st.copy(
+                                    modelUsage = st.modelUsage + (key to (st.modelUsage[key] ?: 0) + 1),
+                                    recentModels = (listOf(key) + st.recentModels.filterNot { it == key }).take(5),
+                                    reasoningLevel = think ?: st.reasoningLevel,
+                                )
+                            }
+                            modelSheet = false
+                        }
                     }
-                    modelSheet = false
                 },
                 onDismiss = { modelSheet = false },
             )
@@ -1823,7 +1901,7 @@ private fun CrashRecoveryBanner() {
             .fillMaxWidth()
             .background(HermesColors.Danger.copy(alpha = 0.92f))
             .clickable {
-                CrashGuard.lastCrash = null
+                CrashGuard.dismissRecovered()
                 visible = false
             }
             .padding(horizontal = 14.dp, vertical = 10.dp),

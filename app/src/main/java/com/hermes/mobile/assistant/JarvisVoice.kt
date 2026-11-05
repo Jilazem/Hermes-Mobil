@@ -51,8 +51,13 @@ interface JarvisVoice {
     companion object {
         /** Ayardaki motora göre ses; yerel/sunucu kurulamazsa telefon TTS'e düşer. */
         fun create(context: Context): JarvisVoice {
-            com.hermes.mobile.data.EmaConfig.from(context)?.let { return EmaVoice(context, it.client()) }
             val s = SettingsStore(context).settings.value
+            // "EMA / Sistem" seçimi: Sistem seçildiyse EMA hattı hiç kurulmaz.
+            val emaConfig = com.hermes.mobile.data.EmaConfig.from(context)
+            val route = com.hermes.mobile.data.EmaSpeechChoice.route(s.emaPlayback, emaConfig != null)
+            if (route == com.hermes.mobile.data.EmaSpeechChoice.Route.EMA && emaConfig != null) {
+                return EmaVoice(context, emaConfig.client())
+            }
             return when (s.assistantVoiceEngine) {
                 "yerel" -> {
                     val engine = LocalTtsEngine(context)

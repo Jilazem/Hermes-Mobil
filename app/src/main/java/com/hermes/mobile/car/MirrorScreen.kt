@@ -27,6 +27,7 @@ import com.hermes.mobile.data.FullControl
 import com.hermes.mobile.data.HermesAccessibilityService
 import com.hermes.mobile.data.ScreenMirror
 import com.hermes.mobile.data.SettingsStore
+import com.hermes.mobile.data.PhoneBotLogic
 
 /**
  * "Hermes Ekran" — telefon ekranını Android Auto'ya yansıtır, dokunuşu geri taşır.
@@ -142,6 +143,11 @@ class MirrorScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycl
     }
 
     private fun control(): HermesAccessibilityService? {
+        if (paused) return null
+        PhoneBotLogic.commandBlockReason(settings.current(), FullControl.TAP)?.let { reason ->
+            CarToast.makeText(carContext, "Telefon kontrolü kapalı: $reason", CarToast.LENGTH_SHORT).show()
+            return null
+        }
         val svc = HermesAccessibilityService.instanceOrNull()
         if (svc == null) {
             CarToast.makeText(carContext, "Dokunmak için telefonda Tam kontrol'ü aç", CarToast.LENGTH_SHORT).show()
@@ -219,8 +225,8 @@ class MirrorScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycl
                     )
                 }
             }.build())
-            .addAction(Action.Builder().setTitle("Durum").setOnClickListener {
-                screenManager.push(HermesCarScreen(carContext))
+            .addAction(Action.Builder().setTitle("Uygulamalar").setOnClickListener {
+                screenManager.push(PhoneAppsScreen(carContext))
             }.build())
             .build()
         return NavigationTemplate.Builder()

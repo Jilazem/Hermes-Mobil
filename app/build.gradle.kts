@@ -14,9 +14,11 @@ android {
         applicationId = "com.hermes.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "6.5.1"
+        versionCode = 30
+        versionName = "7.6.1"
         vectorDrawables { useSupportLibrary = true }
+        // Proof screens can only be launched externally in an explicit local test build.
+        manifestPlaceholders["hermesProofExported"] = providers.gradleProperty("hermesProofScreens").getOrElse("false")
 
         // ABI seçimi aşağıdaki `splits.abi` bloğunda (arm64 telefon, x86_64 emülatör);
         // sherpa-onnx AAR'ı yalnız bu ikisi için paketlenir.
@@ -28,7 +30,7 @@ android {
             // kimliği (V3) ve ayrı ad — üzerine yazmaz, yanına ayrı uygulama
             // olarak kurulur (ayarları ve verisi de ayrıdır).
             applicationIdSuffix = providers.gradleProperty("hermesDebugSuffix").getOrElse(".v3")
-            versionNameSuffix = "-ema-preview"
+            versionNameSuffix = "-preview"
             isMinifyEnabled = false
             // Artemis LAN kapısı (iş #1020): debug'da mevcut davranış — düz
             // http + kimliksiz LAN erişimi serbest.
@@ -108,6 +110,8 @@ dependencies {
     implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.car.app:app-projected:1.7.0")
+    // User-selected Mola reference's legacy projection SDK; provenance under third_party/mola.
+    implementation(files("libs/mola-aauto.aar"))
     // car.app, guava'yı yalnız çalışma zamanına koyup derlemede boş
     // listenablefuture saplamasını dayatıyor; CameraX'in ListenableFuture'ı
     // derlemede bulabilmesi için guava'yı açıkça istiyoruz.

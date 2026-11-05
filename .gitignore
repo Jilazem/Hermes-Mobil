@@ -22,3 +22,22 @@ captures/
 
 # Python onbellek (denetim betikleri)
 __pycache__/
+
+# Local audit and generated evidence scratch
+05-GEICICI/
+denetim/
+kanit/
+docs/shots/*.tmp
+
+# Private exports and task/session archives
+outputs/
+*.hkp
+*.jsonl
+*.jsonl.gz
+*.db
+*.sqlite
+.env.*
+!.env.example
+
+# Local compatibility SDK: not distributed with this update
+app/libs/mola-aauto.aar

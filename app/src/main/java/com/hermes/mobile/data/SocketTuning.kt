@@ -30,6 +30,18 @@ object SocketTuning {
     /** Aynı zamanda pong bütçesi (OkHttp: pong pingInterval içinde gelmeli). */
     const val GATEWAY_PING_SECONDS = 15L
 
+    /**
+     * WS çağrı zaman aşımı (ms) — tek yerden okunur: [GatewayWsClient.request]
+     * varsayılanı bunu kullanır.
+     */
+    const val GATEWAY_WS_CALL_TIMEOUT_MS = 30_000L
+
+    /**
+     * Ping'e yanıt (pong) bekleme süresi (ms) — tek kaynak:
+     * [KeepalivePolicy.PONG_TIMEOUT_MS] bu değeri okur.
+     */
+    const val GATEWAY_PONG_TIMEOUT_MS = 8_000L
+
     const val BRIDGE_CONNECT_SECONDS = 12L
     const val BRIDGE_PING_SECONDS = 20L
 

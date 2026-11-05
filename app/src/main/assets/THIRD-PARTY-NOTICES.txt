@@ -1,7 +1,20 @@
+Hermes Mobile 7.6.1 — attribution update
+
+Current reuse: Mika and Phongent (Apache-2.0 with NOTICE), OpenTasker
+cooldown source (MIT), BespredeL MacroDroid templates (MIT). Mola
+reference GPL-3.0 text and separate SDK provenance are retained.
+Speech dependencies include sherpa-onnx (Apache-2.0), ONNX Runtime
+(MIT), and separately licensed eSpeak NG (GPL-3.0). See assets/licenses/
+and CREDITS.md / THIRD_PARTY.md in the source repository.
+First-party MIT terms do not replace the component licenses.
+
+Below is the preserved historical inspection with its original date,
+version and unresolved entries; it is not a new complete audit.
+
 ==============================================================================
 HERMES MOBIL v5 — ÜÇÜNCÜ TARAF BİLDİRİMLERİ (THIRD-PARTY NOTICES)
 ==============================================================================
-Uygulama  : Hermes Mobil (com.hermes.mobile) — sürüm adı "1.5", versionCode 8
+Uygulama  : Hermes Mobil (com.hermes.mobile) — sürüm adı "6.4.0", versionCode 12
            (hata ayıklama türevi: sürüm adı soneki "-ema-preview")
 Oluşturma : 2026-10-21
 Kapsam    : :app:releaseRuntimeClasspath — APK'ya giren derleme zamanı sınıf yolu.

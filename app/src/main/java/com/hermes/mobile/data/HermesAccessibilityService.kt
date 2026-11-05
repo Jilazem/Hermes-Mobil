@@ -488,8 +488,8 @@ class HermesAccessibilityService : AccessibilityService() {
 
     /** `type` — odaklı/düzenlenebilir alana metin. */
     fun typeText(args: JsonObject): FullControl.Outcome {
-        val text = args.str("text")
-        if (text.isNullOrEmpty()) return FullControl.fail("Yazılacak metin verilmedi.")
+        val text = FullControl.inputText(args)
+        if (text == null) return FullControl.fail("Yazılacak metin verilmedi.")
         val snap = snapshot() ?: return FullControl.fail("Ekran okunamadı.")
         val target = FullControl.editableTarget(snap)
             ?: return FullControl.fail(
@@ -799,7 +799,10 @@ class HermesAccessibilityService : AccessibilityService() {
      * ana iş parçacığında geliyor; [dispatch]'in latch beklemesi orada jest
      * sonucunu (yine ana iş parçacığına gelen) kilitlerdi.
      */
+    private val mirrorSettings by lazy { SettingsStore(this) }
+
     fun mirrorTap(x: Int, y: Int, long: Boolean = false): Boolean = runCatching {
+        if (PhoneBotLogic.commandBlockReason(mirrorSettings.current(), FullControl.TAP) != null) return false
         val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
         val stroke = GestureDescription.StrokeDescription(path, 0, if (long) 700L else 60L)
         dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
@@ -807,6 +810,8 @@ class HermesAccessibilityService : AccessibilityService() {
 
     /** Yansıtmadan kaydırma: [x1,y1,x2,y2], beklemez. */
     fun mirrorSwipe(p: IntArray, durationMs: Long = 250): Boolean = runCatching {
+        if (PhoneBotLogic.commandBlockReason(mirrorSettings.current(), FullControl.SWIPE) != null) return false
+        if (p.size != 4) return false
         val path = Path().apply {
             moveTo(p[0].toFloat(), p[1].toFloat())
             lineTo(p[2].toFloat(), p[3].toFloat())

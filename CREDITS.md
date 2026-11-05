@@ -1,121 +1,65 @@
-# CREDITS — fikir kaynakları
+# Credits and acknowledgements
 
-Bu depodaki bazı tasarım desenleri dış projelerden **esinlenilmiştir**. Kod
-kopyalanmamıştır; her yeniden uygulama bu deponun kendi mimarisine (saf çekirdek
-+ Android katmanı + birim test) göre yazılmıştır.
+Maintained by [Jilazem](https://github.com/Jilazem) and the Hermes Mobile contributors. Thank you to the upstream authors, library maintainers and testers.
 
-## ShawnPana/phone-harness (MIT)
+This page distinguishes adapted source, bundled templates, dependencies, external software and design inspiration. Earlier credits described independent design work; **that blanket “no copied code” statement does not cover the v7 adaptations below**.
 
-- **Repo:** https://github.com/ShawnPana/phone-harness
-- **Lisans:** MIT License (https://github.com/ShawnPana/phone-harness/blob/main/LICENSE)
-- **Esinlenilen desenler (K2 paketi):**
-  - `wait_for_text` / `wait_for_app` / `wait_stable` → `screen.wait` aracı
-    (deadline'lı bekle-doğrula; `FullControl.parseWait/waitSatisfied`).
-  - `scroll_until` / `scroll_collect` → `screen.scroll_step` aracı
-    (momentum'suz içerik kaydırma + bitiş algılama; "`scroll` says what you
-    want to SEE" yön semantiği).
-  - `phone-harness doctor` → Ayarlar'daki **Doctor** kartı (birleşik izin
-    zinciri taraması + "şimdi yap" aksiyonu).
-  - `cloud ls` (tek liste, satır başına durum) → **Canlı envanter** kartı.
-  - "görev bitince haber ver" → Artemis görevi tamamlanınca `phone_notify`
-    bildirimi.
-- **Kullanım (fikir, kod kopyalanmadı) — K1 paketi:** telefon-ajan yüzeyi
-  kalıpları —
-  - `tap` başarısızlık mesajında ekranda **görünen** etiketleri listeleme
-    ("raises with what IS visible"),
-  - ekran görüntüsündeki PNG pikseli → ekran noktası dönüşümünün araç
-    tanımında yazılması (`screen_bounds`),
-  - 2FA/şifre ekranında kontrolü kullanıcıya devretme (`cloud open` →
-    `phone_handoff`), son dokunuşun kullanıcıda kalması,
-  - hata sınıfı → tek "kullanıcı adımı" eşlemesi (doctor dili),
-  - süre dolan oturumda **sessiz fallback yasağı** — kullanıcı hangi oturuma
-    düştüğünü görünür bildirimle görsün (B4, CEO kararı).
-- **Not:** phone-harness doctor içeriği upstream `main@68d883f` (PR #138) ile
-  gelir; yerel pinli kurulumda (0.3.2) yoktur. Buradaki Doctor alan listesi
-  CZİP `8pa3sv` bulgusu ve GAP raporu kapsamından alınmıştır.
-- **Uygulayan:** cd-android — K1 kartı t_35ec8257 (dal
-  `cd-android/k1-phoneharness-t35ec8257`, commit d8c0470) ve K2 kartı
-  t_384678f7 (dal `feat/ema-unified-20261007`, commit 3dd7a9e), 16-17.10.2026.
-  Kod kopyalanmadan, fikir olarak uygulanmıştır; kopyalanan bir blok yoktur.
+## Hermes ecosystem
 
-## K18B-G3 — Merkezi onay kutusu + sesli onay
+[Nous Research / Hermes Agent](https://github.com/NousResearch/hermes-agent) provides the MIT-licensed self-hosted agent ecosystem this client connects to. Hermes Mobile is an independent companion, not an official Nous Research mobile distribution.
 
-### milind-soni/OpenMausBot (Apache-2.0) — "MausBot"
+## Adapted code and bundled templates
 
-- **Repo:** https://github.com/milind-soni/OpenMausBot
-- **Site:** https://mausbot.com
-- **Yazar:** milind-soni (ve katkıda bulunanlar)
-- **Lisans:** Apache License 2.0
-  (https://github.com/milind-soni/OpenMausBot/blob/main/LICENSE)
-- **Esinlenilen desenler (fikir):**
-  - "Waiting on your yes" — merkezi ONAY KUTUSU: riskli eylemler tek listede
-    bekler, kullanıcı onayla/reddet ile geçirir,
-  - sesli onay girişi ("approve / deny" konuşmayla),
-  - "approval coverage garanti değildir" uyarısı: hangi eylem sınıflarının
-    onaysız devam ettiği AÇIKÇA yazılır (bizdeki karşılığı: "Bazı eylemler
-    durmaz" kartı — salt-okunur araçlar onaysız devam eder).
-- **Uygulama:** K18B-G3 (kart t_0f6f8132) — `data/ApprovalCenter.kt`
-  (ApprovalCenter/ApprovalGuard/ApprovalVoice), `ui/ApprovalsScreen.kt`.
-- **Not:** kod kopyalanmadı; Apache-2.0 fikir düzeyinde serbesttir. Karar
-  mekanizması bizim `/approve` / `/deny` (gateway `slash.exec`) hattımızdır.
+| Project / authors | Pinned revision | Contribution and retained terms |
+|---|---|---|
+| [Mika](https://github.com/wangzan101/Mika), wangzan101 and contributors | `ebb0e44750d80aabb6b642c69908825d6b1a8107` | Endpoint address validation and task-state vocabulary; Apache-2.0. [LICENSE, NOTICE and adaptation record](third_party/mika/UPSTREAM.md). |
+| [Phongent](https://github.com/mylea1/phongent), mylea1; based on Mika by wangzan101 | `0b57e35d4e4c8460fdd87fcd33f751f764e7423d` | ControllerQueue adapted as DurableControllerQueue, plus outbound LAN protocol compatibility. Apache-2.0; original Mika copyright/NOTICE retained. [Source record](third_party/phongent/UPSTREAM.md). |
+| [OpenTasker](https://github.com/SysAdminDoc/OpenTasker), SysAdminDoc | `a3b4fda4942eb61e9c81290d0ff390ad1f2160b8` | CooldownReservations reused for atomic reservation and persisted cooldown restoration. MIT, Copyright 2026 SysAdminDoc. [Reuse record](third_party/opentasker/UPSTREAM.md). |
+| [MacroDroid collection](https://github.com/BespredeL/MacroDroid), Aleksandr Kireev / BespredeL | `46bd349236f20879d2a68fa9cd57ad0c8a98de7c` | Eleven `.macro` templates for paused import/review; four webhook capability URLs in three templates are replaced with inert placeholders for publication. MIT, Copyright 2009 Aleksandr Kireev. [Source record](third_party/macrodroid/UPSTREAM.md). |
 
-### Chevey339/kelivo (AGPL-3.0) — "Kelivo"
+Mika/Phongent's full agents, sandbox/root filesystems and upstream avatar/animation assets are not bundled. OpenTasker's complete automation engine is not bundled. The MacroDroid collection is not the proprietary MacroDroid app. Companion faces and local team presentation are original Hermes UI work; no Grok/GPT character artwork is included.
 
-- **Repo:** https://github.com/Chevey339/kelivo
-- **Yazar:** Chevey339
-- **Lisans:** GNU AGPL-3.0
-  (https://github.com/Chevey339/kelivo/blob/master/LICENSE)
-- **Esinlenilen desenler (YALNIZ FİKİR):** MCP **araç-bazlı onay**
-  (per-tool approval) — onayın araç/argüman düzeyinde gösterilmesi fikri;
-  kartta "Araç:" ve "Argümanlar:" satırları bu fikrin karşılığıdır.
-- **Uygulama:** K18B-G3 (kart t_0f6f8132) — onay kartı alanları.
-- **Not:** AGPL-3.0 nedeniyle bu depodan kod KOPYALANMAMIŞTIR; yalnız tasarım
-  fikri alınmıştır. Türev kod AGPL yükümlülüğü doğurmaz.
+## Mola / Android Auto compatibility
 
-### milind-soni/OpenMausBot "MausBot" (Apache-2.0) — roster deseni (K18B-G1/B)
+Reference: [moris545454/araba-](https://github.com/moris545454/araba-), pinned to `3f45ad3557a25822c2a3a9f152f32ef82f57e005`. Its repository GPL-3.0 text is retained in [third_party/mola/LICENSE](third_party/mola/LICENSE).
 
-- **Repo:** https://github.com/milind-soni/OpenMausBot
-- **Site:** https://mausbot.com
-- **Yazar:** milind-soni (ve katkıda bulunanlar)
-- **Lisans:** Apache License 2.0
-  (https://github.com/milind-soni/OpenMausBot/blob/main/LICENSE)
-- **Esinlenilen desenler (fikir) — K18B-G1/B:**
-  - **Roster:** kalıcı bot kartı — ad, kişilik, model; her bot bir kimlik,
-    geçici seçim değil,
-  - **pin / duplicate:** kart sabitleme ve çoğaltma ("(kopya)" adlandırma),
-  - "ajanslar kişiler gibi" — bot listesi insan listesi UX'iyle yönetilir,
-  - **"Pick a brain per bot" (K18B-B):** sohbette hangi bot/profil+model'in
-    konuştuğu her mesaj grubunda ad+emoji+model afişi olarak görünür.
-- **Uygulama:** K18B-G1 (kart t_b5ebf51f) — `data/BotRoster.kt`
-  (BotCard/BotRosterLogic), `data/BotRosterStore.kt`, `ui/BotRosterScreen.kt`;
-  K18B-B (kart t_8de5cfe3) — `ui/BotBadge.kt` (sohbet rozeti).
-- **Not:** kod kopyalanmadı; Apache-2.0 fikir düzeyinde serbesttir. Pin/duplicate
-  kuralları kendi saf mantığımız (`BotRosterLogic`) olarak yazıldı ve birim
-  testleriyle kilitlendi.
+The delivered local preview used the unmodified `fermata/lib/auto/aauto.aar` as `app/libs/mola-aauto.aar`, SHA-256 `99337c3b591ac9670c12b508da38886aedba61dd494f39f5f166f02580ec584b`. That local build input is deliberately not published with this source update. It retains its upstream Google SDK package names. This records origin: a repository-wide GPL text must not be mistaken for a separate Google redistribution grant for a separately authored SDK binary. Consult the [provenance record](third_party/mola/UPSTREAM.md) when evaluating distribution.
 
-### cedar-panda/Holt "Holt" (AGPL-3.0) — karakter-bazlı yapı (K18B-G1)
+Hermes's parked view, host caller gate and consent handling are original implementations. Fermata player/UI source and Xposed binaries were not imported. Reference compatibility is not Google endorsement or real-car acceptance.
 
-- **Repo:** https://github.com/cedar-panda/Holt
-- **Yazar:** cedar-panda
-- **Lisans:** GNU AGPL-3.0 (repo lisans alanı; K18B raporu §1 satır 7 doğruladı)
-- **Esinlenilen desenler (YALNIZ FİKİR):** karakter-bazlı bot imalatı — her
-  karakterin kendi sohbet/hafıza/özet ayarı; kartta "kişilik" alanının
-  kullanıcının girdisi olarak saklanması bu fikrin karşılığıdır.
-- **Uygulama:** K18B-G1 (kart t_b5ebf51f) — `BotCard.personality` alanı +
-  `ui/BotRosterScreen.kt` editör formu.
-- **Not:** AGPL-3.0 nedeniyle bu depodan kod KOPYALANMAMIŞTIR; yalnız tasarım
-  fikri alınmıştır. Türev kod AGPL yükümlülüğü doğurmaz.
+## Runtime and voice components
 
-### Weltenwanderer1/ai-buddy "AI-Buddy" (MIT) — evrilen persona (K18B-G1)
+| Component | Role / attribution |
+|---|---|
+| Android, AndroidX, Jetpack Compose, Material, CameraX, Car App Library | Android UI/lifecycle, camera and car APIs; each resolved artifact retains its own notices. |
+| [Kotlin](https://github.com/JetBrains/kotlin), kotlinx libraries | Runtime, coroutines and JSON serialization; Apache-2.0 projects. |
+| [OkHttp](https://github.com/square/okhttp), Okio | HTTP/WebSocket transport; Apache-2.0 projects. |
+| [Shizuku](https://github.com/RikkaApps/Shizuku), RikkaApps | API/provider 13.1.5, Apache-2.0. The manager/server is not embedded. |
+| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) contributors | Speech runtime AAR 1.13.8. [Upstream Apache-2.0 license](third_party/sherpa-onnx/LICENSE); separately bundled components keep their own terms. |
+| [eSpeak NG](https://github.com/espeak-ng/espeak-ng) contributors | Present in the speech AAR. [GPL-3.0 text](third_party/espeak-ng/COPYING); not relicensed by sherpa-onnx's Apache license or this project's MIT license. |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime), Microsoft contributors | Native runtime and Java bridge, MIT. [EMA/ORT record](app/libs/EMA-ORT-NOTICE.md); bridge license retained in its AAR. |
+| [EMA Lightning](https://github.com/canberk7/ema-lightning) | Optional speech pipeline integration; source/model attribution recorded in [EMA/ORT notes](app/libs/EMA-ORT-NOTICE.md) and model downloads. |
+| [openWakeWord](https://github.com/dscripka/openWakeWord), David Scripka and contributors | Optional wake-word pipeline. Code and pretrained weights can have different licenses; inspect the selected model's terms. |
+| [three.js](https://github.com/mrdoob/three.js) authors | r147 in the existing arena assets; [MIT notice](app/src/main/assets/arena/LICENSE-three.txt). |
+| [websocket-client](https://github.com/websocket-client/websocket-client) contributors | Optional Dashboard adapter transport, pinned to 1.9.0; Apache-2.0 project. |
+| JUnit and Robolectric | Test infrastructure; upstream terms apply to the test dependencies. |
 
-- **Repo:** https://github.com/Weltenwanderer1/ai-buddy
-- **Yazar:** Weltenwanderer1
-- **Lisans:** MIT License (K18B raporu §1 satır 3: lisans MIT doğrulandı)
-- **Esinlenilen desenler (YALNIZ FİKİR):** persona + öz-alan ("self-image")
-  yapılandırılabilirliği — persona'nın kullanıcı girdisi olduğu ve cihazda
-  kaldığı ilkesi (bot kişiliği ayrı bir alan olarak saklanır, varsayılan
-  değildir).
-- **Uygulama:** K18B-G1 (kart t_b5ebf51f) — `BotCard.personality` (kullanıcı
-  girdisi, `bot-roster.json` içinde cihazda kalır; sunucuya ayrı alan olarak
-  gönderilmez).
-- **Not:** kod kopyalanmadı; MIT fikir düzeyinde serbesttir.
+Downloaded Piper voices, EMA resources and other weights are not relicensed by an app or inference-engine license. Nefes weights are not included. Separately installed ShizuCallRecorder is an optional interoperability target, not embedded source.
+
+## Independent design inspiration
+
+The following acknowledgements are retained from the earlier implementation records; they describe inspiration rather than copied source:
+
+- [ShawnPana/phone-harness](https://github.com/ShawnPana/phone-harness): bounded screen waits/scrolling, permission diagnostics, explicit handoff and visible failures.
+- [milind-soni/OpenMausBot](https://github.com/milind-soni/OpenMausBot): centralized approval inbox and configurable bot UX.
+- [Chevey339/kelivo](https://github.com/Chevey339/kelivo): per-tool approval presentation.
+- [cedar-panda/Holt](https://github.com/cedar-panda/Holt): character-oriented bot configuration.
+- [Weltenwanderer1/ai-buddy](https://github.com/Weltenwanderer1/ai-buddy): user-configured persona/self-image concepts.
+
+## License scope
+
+[LICENSE](LICENSE) covers first-party Hermes Mobile code. Upstream copyright, LICENSE and NOTICE texts remain under `third_party/` and `app/src/main/assets/licenses/`. The larger [historical dependency inventory](app/src/main/assets/THIRD-PARTY-NOTICES.txt) is retained; it is not a new attestation for every current transitive artifact. [THIRD_PARTY.md](THIRD_PARTY.md) indexes the additions.
+
+Credits do not replace source-distribution, model or SDK obligations. Do not describe a combined binary containing these components as exclusively MIT-licensed. All trademarks belong to their respective owners; no affiliation or endorsement is implied.
+
+Publication adaptation: nineteen private IPv4 address occurrences in IntruderCam, Remote_Filemanager and Wake_PC were replaced with the documentation address `192.0.2.1`. Configure your own network targets before use. Remote file-management templates are source examples, are imported paused, and are not executed by publication.

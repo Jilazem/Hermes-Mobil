@@ -30,14 +30,18 @@ class SessionCache(context: Context) {
     fun save(profileId: String, sessions: List<HermesSession>) {
         if (sessions.isEmpty()) return
         runCatching {
-            val payload = CachedSessions(System.currentTimeMillis(), sessions.take(MAX))
-            file(profileId).writeText(json.encodeToString(CachedSessions.serializer(), payload))
+            val payload = CachedSessions(System.currentTimeMillis(), sessions)
+            val bytes=json.encodeToString(CachedSessions.serializer(), payload).toByteArray(Charsets.UTF_8)
+            require(bytes.size<=MAX_BYTES)
+            val atomic=android.util.AtomicFile(file(profileId));val stream=atomic.startWrite()
+            try {stream.write(bytes);atomic.finishWrite(stream)}
+            catch(error:Throwable) {atomic.failWrite(stream);throw error}
         }
     }
 
     fun load(profileId: String): CachedSessions? = runCatching {
         val f = file(profileId)
-        if (!f.exists()) return@runCatching null
+        if (!f.exists() || f.length()>MAX_BYTES) return@runCatching null
         json.decodeFromString(CachedSessions.serializer(), f.readText())
     }.getOrNull()
 
@@ -46,8 +50,7 @@ class SessionCache(context: Context) {
     }
 
     private companion object {
-        /** Telefonda daha fazlası kaydırılarak bile okunmuyor. */
-        const val MAX = 100
+        const val MAX_BYTES = 32L*1024*1024
     }
 }
 

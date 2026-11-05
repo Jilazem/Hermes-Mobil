@@ -17,6 +17,8 @@ import android.text.InputType
 import android.view.View
 import android.view.WindowManager
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
@@ -66,7 +68,7 @@ class HermesVoiceInteractionService : VoiceInteractionService() {
         /** Paneli açar (yalnız Hermes varsayılan asistansa). */
         fun show(): Boolean {
             val s = instance ?: return false
-            return runCatching { s.showSession(Bundle(), 0) }.isSuccess
+            return runCatching { s.showSession(Bundle(), VoiceInteractionSession.SHOW_WITH_ASSIST) }.isSuccess
         }
 
         fun isActive(context: Context): Boolean = runCatching {
@@ -98,6 +100,7 @@ class HermesAssistSession(context: Context) :
     private lateinit var engine: JarvisEngine
     private val card = Rect()
     private var root: View? = null
+    private var screenReady by mutableStateOf(false)
 
     override fun onCreate() {
         super.onCreate()
@@ -134,6 +137,7 @@ class HermesAssistSession(context: Context) :
                         onNewTopic = engine::newTopic,
                         onOpenChat = ::openChat,
                         onAsk = engine::ask,
+                        onScreenAction = if (screenReady) engine::askWithScreen else null,
                         onCardBounds = { l, t, r, b ->
                             card.set(l, t, r, b)
                             root?.requestLayout()
@@ -146,6 +150,7 @@ class HermesAssistSession(context: Context) :
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
+        clearScreen()
         registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
         engine.start()
@@ -153,6 +158,8 @@ class HermesAssistSession(context: Context) :
 
     override fun onHide() {
         engine.stop()
+        clearScreen()
+        card.setEmpty()
         registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         super.onHide()
@@ -192,30 +199,17 @@ class HermesAssistSession(context: Context) :
         takeScreen(structure, content)
     }
 
-    private fun takeScreen(structure: AssistStructure?, @Suppress("UNUSED_PARAMETER") content: AssistContent?) {
-        structure ?: return
-        val sb = StringBuilder()
-        for (i in 0 until structure.windowNodeCount) {
-            collect(structure.getWindowNodeAt(i).rootViewNode, sb)
-            if (sb.length > JarvisLogic.MAX_SCREEN_CHARS) break
-        }
-        engine.screenText = sb.toString()
-        engine.screenApp = structure.activityComponent?.packageName.orEmpty()
+    private fun clearScreen() {
+        screenReady = false
+        engine.screenText = ""
+        engine.screenApp = ""
     }
 
-    private fun collect(node: AssistStructure.ViewNode?, sb: StringBuilder) {
-        node ?: return
-        if (sb.length > JarvisLogic.MAX_SCREEN_CHARS) return
-        val password = (node.inputType and InputType.TYPE_MASK_VARIATION).let {
-            it == InputType.TYPE_TEXT_VARIATION_PASSWORD || it == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-                it == InputType.TYPE_NUMBER_VARIATION_PASSWORD || it == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-        }
-        if (!password) {
-            (node.text ?: node.contentDescription)?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                sb.append(it).append('\n')
-            }
-        }
-        for (i in 0 until node.childCount) collect(node.getChildAt(i), sb)
+    private fun takeScreen(structure: AssistStructure?, content: AssistContent?) {
+        clearScreen()
+        engine.screenText = AssistContextReader.read(structure, content)
+        engine.screenApp = structure?.activityComponent?.packageName.orEmpty()
+        screenReady = engine.screenText.isNotBlank()
     }
 
     /** Asistan sohbetini uygulamada aç (onay/uzun yanıt için). */

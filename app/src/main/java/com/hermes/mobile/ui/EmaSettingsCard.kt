@@ -9,7 +9,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.hermes.mobile.data.*
 import com.hermes.mobile.ui.theme.HermesColors
+import com.hermes.mobile.assistant.AndroidTtsVoice
 import com.hermes.mobile.assistant.EmaVoice
+import com.hermes.mobile.assistant.JarvisVoice
 import kotlinx.coroutines.*
 
 /** The model lives in private app storage and survives ordinary APK updates. */
@@ -26,7 +28,10 @@ fun EmaSettingsCard(settings:AppSettings,onUpdate:((AppSettings)->AppSettings)->
     }
     var task by remember { mutableStateOf<Job?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    var voice by remember { mutableStateOf<EmaVoice?>(null) }
+    var details by remember { mutableStateOf<String?>(null) }
+    var showDetails by remember { mutableStateOf(false) }
+    var stage by remember { mutableStateOf("EMA modeli") }
+    var voice by remember { mutableStateOf<JarvisVoice?>(null) }
     var advanced by remember { mutableStateOf(false) }
     DisposableEffect(Unit) { onDispose { voice?.release() } }
     // EMA modeli yok ama yedek ses hazır: kullanıcı bunu kalıcı satırda görür.
@@ -39,16 +44,25 @@ fun EmaSettingsCard(settings:AppSettings,onUpdate:((AppSettings)->AppSettings)->
             FilterChip(selected=settings.emaMode=="offline",onClick={ onUpdate { it.copy(emaMode="offline") } },label={Text("Telefonda · çevrimdışı")})
             FilterChip(selected=settings.emaMode!="offline",onClick={ onUpdate { it.copy(emaMode="server") } },label={Text("Hermes sunucusunda")})
         }
+        // İş #1021 K2: "EMA / Sistem" ses seçimi — EMA susarsa telefon TTS'i (tr-TR).
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp), verticalArrangement=Arrangement.spacedBy(4.dp)) {
+            FilterChip(selected=EmaSpeechChoice.route(settings.emaPlayback,true)==EmaSpeechChoice.Route.EMA,
+                onClick={ onUpdate { it.copy(emaPlayback=EmaSpeechChoice.EMA) } },label={Text("Ses: EMA")})
+            FilterChip(selected=EmaSpeechChoice.route(settings.emaPlayback,true)==EmaSpeechChoice.Route.SYSTEM,
+                onClick={ onUpdate { it.copy(emaPlayback=EmaSpeechChoice.SYSTEM) } },label={Text("Ses: Sistem (telefon)")})
+        }
         Text(if(downloaded) "Model indirildi · 35 MB" else "EMA modeli · 35 MB",color=HermesColors.TextSecondary)
         if(fallbackActive) Text("EMA çevrimdışı modeli yok — yedek ses etkin",color=HermesColors.Busy)
-        if(task?.isActive==true) {
+        if(task != null) {
+            Text(stage, color=HermesColors.TextSecondary)
             LinearProgressIndicator(progress={ (bytes.toFloat()/total.coerceAtLeast(1L)).coerceIn(0f,1f) },modifier=Modifier.fillMaxWidth())
             Text("%${(bytes*100/total.coerceAtLeast(1L)).coerceIn(0,100)} · ${bytes/1_000_000} / ${total/1_000_000} MB",color=HermesColors.TextMuted)
             OutlinedButton(onClick={ task?.cancel(); message="İndirme durdu. Devam ettiğinde kaldığı yerden sürer." }) { Text("İndirmeyi durdur") }
         } else {
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 if(!downloaded) Button(onClick={
-                    message=null
+                    message=null; details=null; bytes=EmaModelStore.bytesOnDisk(context)
+                    total=EmaModelStore.totalBytes; stage="EMA modeli indiriliyor"
                     task=scope.launch {
                         try {
                             EmaModelStore.download(context) { progress -> bytes=progress }
@@ -57,12 +71,20 @@ fun EmaSettingsCard(settings:AppSettings,onUpdate:((AppSettings)->AppSettings)->
                             onUpdate { it.copy(emaMode="offline") }; message="EMA hazır. Artık ses telefonunda üretiliyor."
                         } catch(e:CancellationException) { throw e }
                         catch(e:Exception) {
+                            // OkHttp cancellation can surface as IOException. Do not start a
+                            // fallback download after the user has stopped this operation.
+                            currentCoroutineContext().ensureActive()
                             // Sessiz kalma yok: EMA kaynakları tükendi → yedek (Piper tr) sesi indir.
-                            message="EMA modeli indirilemedi: ${e.message ?: "bilinmeyen hata"} · Yedek ses (Piper tr) indiriliyor…"
+                            details=e.message
+                            message="EMA kaynağına ulaşılamadı. Türkçe yedek ses hazırlanıyor."
+                            stage="Türkçe yedek ses · Piper"
                             bytes=0L; total=LocalTtsLogic.TOTAL_BYTES
                             try {
                                 LocalTtsDownloader(context) { done,_ -> bytes=done }.ensureModel()
-                                val loaded=withContext(Dispatchers.IO) { LocalTtsEngine(context).ensureLoaded() }
+                                val loaded=withContext(Dispatchers.IO) {
+                                    val probe = LocalTtsEngine(context)
+                                    try { probe.ensureLoaded() } finally { probe.release() }
+                                }
                                 fallbackReady=LocalTtsLogic.filesPresent(LocalTtsLogic.modelDir(context.filesDir))
                                 if(loaded && fallbackReady) {
                                     onUpdate { it.copy(emaMode="offline") }
@@ -70,29 +92,45 @@ fun EmaSettingsCard(settings:AppSettings,onUpdate:((AppSettings)->AppSettings)->
                                 } else message="EMA çevrimdışı modeli yok — yedek ses indi ama motor açılamadı. Tanılama ekranına bak."
                             } catch(e2:CancellationException) { throw e2 }
                             catch(e2:Exception) {
-                                message="EMA modeli indirilemedi: ${e.message ?: "?"} · Yedek ses de indirilemedi: ${e2.message ?: "?"}"
+                                details=listOfNotNull(details,e2.message).joinToString("\n")
+                                message="Ses dosyaları indirilemedi. Bağlantını kontrol edip yeniden dene."
                             }
-                        }
+                        } finally { task=null }
                     }
                 }) { Text(if(bytes>0) "İndirmeye devam et" else "EMA modelini indir") }
-                else {
+                if(downloaded || fallbackReady) {
                     Button(onClick={
                         voice?.release()
-                        voice=EmaVoice(context,EmaOfflineSpeech(context)).also { v ->
-                            v.onDone={ message="Çevrimdışı ses denemesi tamamlandı." }
-                            v.onError={ message=it }
-                            v.say("Merhaba dünya. Ben Hermes. Bu sesi telefonunda, internet olmadan üretiyorum."); v.finish()
-                        }
-                    }) { Text("Sesi dene") }
+                        val v: JarvisVoice = if(EmaSpeechChoice.route(settings.emaPlayback,true)==EmaSpeechChoice.Route.SYSTEM)
+                            AndroidTtsVoice(context,settings.assistantTtsPackage,settings.assistantVoiceName,
+                                settings.assistantSpeechRate,settings.assistantPitch)
+                        else EmaVoice(context,EmaOfflineSpeech(context))
+                        voice=v
+                        v.onDone={ message="Ses denemesi tamamlandı." }
+                        v.onError={ message=it }
+                        v.say("Merhaba dünya. Ben Hermes. Bu sesi telefonunda, internet olmadan üretiyorum."); v.finish()
+                    }) { Text(if(downloaded) "Sesi dene" else "Yedek sesi dene") }
                     OutlinedButton(onClick={ voice?.release(); voice=null }) { Text("Durdur") }
                 }
             }
             if(downloaded) TextButton(onClick={
                 voice?.release(); voice=null
-                task=scope.launch { EmaOfflineEngine.delete(context); downloaded=false; bytes=0; message="EMA modeli kaldırıldı." }
+                stage="EMA modeli kaldırılıyor"
+                task=scope.launch {
+                    try {
+                        EmaOfflineEngine.delete(context)
+                        downloaded=false; bytes=0; details=null; message="EMA modeli kaldırıldı."
+                    } catch(e:CancellationException) { throw e }
+                    catch(e:Exception) { message="Model kaldırılamadı. Yeniden dene."; details=e.message }
+                    finally { task=null }
+                }
             }) { Text("Modeli telefondan kaldır") }
         }
         message?.let { Text(it,color=HermesColors.TextSecondary,style=MaterialTheme.typography.bodySmall) }
+        details?.let { info ->
+            TextButton(onClick={ showDetails=!showDetails }) { Text(if(showDetails) "Ayrıntıları gizle" else "Teknik ayrıntılar") }
+            if(showDetails) Text(info,color=HermesColors.TextMuted,style=MaterialTheme.typography.bodySmall)
+        }
         if(settings.emaMode!="offline") {
             Text("Ev ve dış bağlantı adresleri kayıtlı Hermes profilinden seçilir. EMA anahtarını yalnızca bir kez gir.",color=HermesColors.TextSecondary,style=MaterialTheme.typography.bodySmall)
             OutlinedTextField(value=settings.emaToken,onValueChange={ v->onUpdate { it.copy(emaToken=v.trim()) } },

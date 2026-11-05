@@ -253,6 +253,13 @@ fun SessionDrawerContent(
                 selected = tab == 2,
                 modifier = Modifier.weight(1f),
             ) { onTab(2) }
+            // Tur-1021: dördüncü sekme — takip listesi çekmecede de görünür
+            // (tam ekran Takip ile aynı SessionListPane, compact).
+            DrawerTab(
+                S.t2("Takip", "Following"),
+                selected = tab == 3,
+                modifier = Modifier.weight(1f),
+            ) { onTab(3) }
         }
 
         Spacer(Modifier.height(10.dp))
@@ -425,8 +432,20 @@ fun SessionDrawerContent(
         }
 
         // tab 0 = Tümü, tab 2 = arşiv (aynı liste, farklı showArchived —
-        // satırları MainActivity türetiyor); tab 1 = canlı.
-        if (tab != 1) {
+        // satırları MainActivity türetiyor); tab 1 = canlı; tab 3 = takip.
+        // Takip listesi tam ekranla AYNI bileşenden gelir (SessionListCore) —
+        // ikinci bir liste kodu tutarsız kalmasın.
+        if (tab == 3) {
+            SessionListPane(
+                rows = rows,
+                query = query,
+                onOpen = { row -> onPick(row); onDismissDrawer() },
+                onToggleFollow = onToggleFollow,
+                compact = true,
+                followedOnly = true,
+                modifier = Modifier.weight(1f),
+            )
+        } else if (tab != 1) {
             // Tur-19 FR-001: "Tümü" = genel akış (varsayılan, grup başlıksız,
             // tam kronolojik). "Gruplar" = tur-16 zaman gruplu görünümü — tek
             // dokunuşla geri gelir; arama her ikisinde de geçerli (FR-004).

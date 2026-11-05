@@ -131,6 +131,41 @@ fun hermesTypography(fontScale: Float): Typography {
     )
 }
 
+/** Roomier mobile text, without changing the stored/custom theme scale. */
+private fun mobileBetaTypography(fontScale: Float): Typography {
+    fun style(size: Float, line: Float, weight: FontWeight = FontWeight.Normal) = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = weight,
+        fontSize = (size * fontScale).sp,
+        lineHeight = (line * fontScale).sp,
+    )
+    return Typography(
+        displayLarge = style(40f, 48f),
+        displayMedium = style(34f, 42f),
+        displaySmall = style(28f, 36f),
+        headlineLarge = style(28f, 36f, FontWeight.Medium),
+        headlineMedium = style(26f, 34f, FontWeight.Medium),
+        headlineSmall = style(24f, 32f, FontWeight.Medium),
+        titleLarge = style(22f, 30f, FontWeight.Medium),
+        titleMedium = style(17f, 24f, FontWeight.Medium),
+        titleSmall = style(15f, 22f, FontWeight.Medium),
+        bodyLarge = style(16f, 24f),
+        bodyMedium = style(15f, 22f),
+        bodySmall = style(12f, 18f),
+        labelLarge = style(14f, 20f, FontWeight.Medium),
+        labelMedium = style(12f, 18f, FontWeight.Medium),
+        labelSmall = style(11f, 16f),
+    )
+}
+
+private val MobileBetaShapes = Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+)
+
 /**
  * Tur18 FR-003 — 4 adım köşe yarıçapı ölçeği (TASARIM-RAPORU.md §3.4, B4).
  *
@@ -166,13 +201,15 @@ fun HermesTheme(
     content: @Composable () -> Unit,
 ) {
     val colors = palette.toColors()
+    // A custom/server palette reusing this id retains its original geometry.
+    val useMobileBetaStyle = palette == BUILTIN_THEMES.first { it.id == MOBILE_BETA_THEME_ID }
 
     // Tur-17 B1 (TASARIM-RAPORU.md §4-B1): tek darkColorScheme kırıldı —
     // palet isLight işareti ya da arka plan luminansına göre dallanır.
     // nous (açık) seçiliyken Material3 bileşenleri (DropdownMenu, TextField,
     // dialog, ripple) artık koyu default'larla çizilmez.
     val isLight = palette.lightTheme()
-    val scheme = if (isLight) lightColorScheme(
+    val baseScheme = if (isLight) lightColorScheme(
         primary = colors.midground,
         onPrimary = colors.onAccent,
         secondary = colors.borderStrong,
@@ -205,8 +242,27 @@ fun HermesTheme(
         onError = colors.background,
     )
 
+    val scheme = if (useMobileBetaStyle) baseScheme.copy(
+        primaryContainer = colors.surface,
+        onPrimaryContainer = colors.textPrimary,
+        secondary = colors.textSecondary,
+        onSecondary = colors.background,
+        secondaryContainer = colors.surfaceDim,
+        onSecondaryContainer = colors.textPrimary,
+        tertiary = colors.midground,
+        onTertiary = colors.onAccent,
+        tertiaryContainer = colors.surface,
+        onTertiaryContainer = colors.textPrimary,
+        surfaceContainerLowest = colors.background,
+        surfaceContainerLow = colors.surfaceDim,
+        surfaceContainer = colors.surface,
+        surfaceContainerHigh = colors.surface,
+        surfaceContainerHighest = colors.border,
+        surfaceTint = Color.Transparent,
+    ) else baseScheme
+
     // Tur18 FR-001: 3 rollük yarımda kalmış ölçek yerine 6 adımlık tam ölçek.
-    val typography = hermesTypography(fontScale)
+    val typography = if (useMobileBetaStyle) mobileBetaTypography(fontScale) else hermesTypography(fontScale)
 
     // Tur22 madde-6: cihaz animasyon ölçeği (Ayarlar → Animasyon = 0) tek
     // noktadan okunup CompositionLocal ile tüm ağaca verilir; Motion.kt'deki
@@ -230,11 +286,12 @@ fun HermesTheme(
     CompositionLocalProvider(
         LocalHermesColors provides colors,
         LocalFontScale provides fontScale,
+        androidx.compose.material3.LocalContentColor provides colors.textPrimary,
     ) {
         MaterialTheme(
             colorScheme = scheme,
             typography = typography,
-            shapes = HermesShapes,
+            shapes = if (useMobileBetaStyle) MobileBetaShapes else HermesShapes,
             content = content,
         )
     }

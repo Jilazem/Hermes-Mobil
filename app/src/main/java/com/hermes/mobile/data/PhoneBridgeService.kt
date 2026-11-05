@@ -61,6 +61,7 @@ import java.util.concurrent.TimeUnit
 class PhoneBridgeService : Service() {
 
     private var socket: WebSocket? = null
+    @Volatile private var connectedProfile: ServerProfile? = null
     /** Bağlı canlı soketin kim olduğu. Ölü/zombi soketlerin yeniden bağlanma
      *  savaşını önlemek için her kapanışta bu alanla karşılaştırılıyor. */
     private var live = false
@@ -68,6 +69,7 @@ class PhoneBridgeService : Service() {
     private var attempt = 0
     /** Devralma sinyali görüldü: kullanıcı istemeden yeniden bağlanılmaz. */
     private var takenOver = false
+    private var foregroundReady = false
     private val handler = Handler(Looper.getMainLooper())
     private var pending: Runnable? = null
 
@@ -108,7 +110,16 @@ class PhoneBridgeService : Service() {
         tools = PhoneTools(this, ShizukuBridge())
         fullTools = FullControlTools(this)
         state = BridgeState.OFF
-        startForeground(NOTIF_ID, buildNotification())
+        try {
+            startForeground(NOTIF_ID, buildNotification())
+            foregroundReady = true
+        } catch (error: RuntimeException) {
+            // Android can reject a background restart after the dataSync budget is exhausted.
+            // Stop rather than crash or try another service type to evade that budget.
+            closedByUser = true
+            DiagLog.w("bridge", "foreground start rejected: ${error.javaClass.simpleName}")
+            stopSelf()
+        }
     }
 
     /**
@@ -144,8 +155,9 @@ class PhoneBridgeService : Service() {
         } else {
             open
         }
-        val readOnly = settings.settings.value.agentReadOnly
-        val full = settings.settings.value.fullControl
+        val currentSettings = settings.current()
+        val readOnly = currentSettings.agentReadOnly
+        val full = currentSettings.fullControl
         val (title, text) = when (state) {
             BridgeState.TAKEN_OVER -> com.hermes.mobile.ui.tr(
                 "Köprü devralındı",
@@ -202,6 +214,7 @@ class PhoneBridgeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!foregroundReady) { stopSelf(); return START_NOT_STICKY }
         if (intent?.action == ACTION_STOP) {
             closedByUser = true
             live = false
@@ -231,7 +244,17 @@ class PhoneBridgeService : Service() {
         //
         // DEVRAIMA kuralı (tur-7): devralındıysa burada da bağlanılmaz — yoksa
         // MainActivity'nin her start()'ı kilitli durumu delerdi.
-        if (!live && socket == null && !takenOver) connect()
+        if (connectedProfile != null && !BridgePolicy.sameProfile(connectedProfile, profiles.active())) {
+            cancelPending()
+            val previous = socket
+            socket = null
+            live = false
+            takenOver = false
+            attempt = 0
+            connectedProfile = null
+            previous?.cancel()
+            connect()
+        } else if (!live && socket == null && !takenOver) connect()
         // Süreç öldürülürse yeniden başlasın: kanalın açık kalması bu
         // özelliğin tamamı.
         return START_STICKY
@@ -259,6 +282,7 @@ class PhoneBridgeService : Service() {
         DiagLog.i("bridge", "connecting to ${DiagLog.redact(url)}")
         setState(BridgeState.CONNECTING)
         live = false
+        connectedProfile = p
         socket = http.newWebSocket(bridgeRequest(url, p.token), Listener())
     }
 
@@ -282,16 +306,7 @@ class PhoneBridgeService : Service() {
      * bir aracı duyurmak, modelin onu denemesine ve "yapamıyorum" demek
      * zorunda kalmasına yol açardı.
      */
-    private fun advertised(): List<String> {
-        val s = settings.settings.value
-        if (!s.agentMayUsePhone) return emptyList()
-        val read = PhoneTools.READ_TOOL_NAMES.toList()
-        val base = if (s.agentReadOnly) read else (read + PhoneTools.AGENT_WRITE_TOOLS).distinct()
-        // V3: sohbet yanıtı ayrı rızaya bağlı; Artemis yalnız tam kontrol + adres varken.
-        val reply = if (s.agentMayReply && !s.agentReadOnly) listOf("phone_reply") else emptyList()
-        val artemis = if (s.fullControl && s.artemisUrl.isNotBlank()) listOf("phone_task") else emptyList()
-        return (base + reply + artemis + FullControl.advertise(s.agentMayUsePhone, s.fullControl)).distinct()
-    }
+    private fun advertised(s: AppSettings = settings.current()): List<String> = PhoneBotLogic.advertisedTools(s)
 
     private inner class Listener : WebSocketListener() {
 
@@ -329,6 +344,9 @@ class PhoneBridgeService : Service() {
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            if (webSocket !== socket) return
+            // Reject old Dashboard commands immediately, even before the next service start.
+            if (!BridgePolicy.sameProfile(connectedProfile, profiles.active())) return
             // Devralma bildirimi bir "çağrı" değil: id alanı yok, yanıtlanmaz.
             // Önce bu kontrol edilmeli, yoksa aşağıdaki id ayrıştırmasında
             // sessizce düşer ve istemci haberi hiç almaz.
@@ -342,28 +360,17 @@ class PhoneBridgeService : Service() {
             val tool = frame["tool"]?.jsonPrimitive?.content.orEmpty()
             val args = frame["args"] as? JsonObject ?: JsonObject(emptyMap())
 
-            val allowed = advertised()
-            val s = settings.settings.value
+            val s = settings.current()
+            val allowed = advertised(s)
+            val isWrite = PhoneBotLogic.isWriteTool(tool)
             if (tool !in allowed) {
                 // Reddi sebebiyle birlikte söylüyoruz: ajan "yapamadım" deyip
                 // geçmek yerine kullanıcıya neyi açması gerektiğini söyleyebilsin.
                 // Tam kontrol araçlarında sebep (kanal kapalı / tam kontrol
                 // kapalı / salt-okunur) FullControl'de tek yerde hesaplanıyor.
-                val why = if (FullControl.isFullControlTool(tool)) {
-                    FullControl.guardReason(
-                        mayUsePhone = s.agentMayUsePhone,
-                        readOnly = s.agentReadOnly,
-                        fullControl = s.fullControl,
-                        tool = tool,
-                    ) ?: "tool not enabled"
-                } else {
-                    when {
-                        !s.agentMayUsePhone -> FullControl.WHY_AGENT_OFF
-                        s.agentReadOnly -> FullControl.WHY_READ_ONLY
-                        else -> "tool not enabled"
-                    }
-                }
+                val why = PhoneBotLogic.commandBlockReason(s, tool) ?: "tool not enabled"
                 DiagLog.w("bridge", "denied $tool ($why)")
+                if (isWrite) PhoneAuditLog.record(this@PhoneBridgeService, tool, false, why)
                 reply(webSocket, id, false, "denied: $why")
                 return
             }
@@ -372,7 +379,8 @@ class PhoneBridgeService : Service() {
             if (tool == "phone_task") {
                 // Artemis dakikalar sürebilir: ayrı iş parçacığında bekle, bitince yanıtla.
                 jobScope.launch {
-                    val out = runArtemisTask(s, args)
+                    val out = runArtemisTask(args)
+                    PhoneAuditLog.record(this@PhoneBridgeService, tool, out.first, out.second)
                     reply(webSocket, id, out.first, out.second)
                 }
                 return
@@ -383,16 +391,19 @@ class PhoneBridgeService : Service() {
                 DiagLog.i("a11y", "eylem $tool")
                 val out = fullTools.execute(tool, args)
                 DiagLog.i("a11y", "$tool → ${if (out.ok) "tamam" else "hata"}")
+                if (isWrite) PhoneAuditLog.record(this@PhoneBridgeService, tool, out.ok, out.text)
                 reply(webSocket, id, out.ok, out.text)
                 return
             }
-            val result = runCatching { tools.execute(tool, args) }
+            val result = runCatching { tools.executeOutcome(tool, args) }
                 .getOrElse { e ->
                     DiagLog.e("bridge", "$tool failed", e)
+                    if (isWrite) PhoneAuditLog.record(this@PhoneBridgeService, tool, false, e.message.orEmpty())
                     reply(webSocket, id, false, e.message ?: "failed")
                     return
                 }
-            reply(webSocket, id, true, result)
+            if (isWrite) PhoneAuditLog.record(this@PhoneBridgeService, tool, result.ok, result.text)
+            reply(webSocket, id, result.ok, result.text)
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -477,36 +488,79 @@ class PhoneBridgeService : Service() {
         }
 
     /** phone_task: Artemis'e görev ver, en çok ~4 dk bekle. (ok, metin) döner. */
-    private suspend fun runArtemisTask(s: AppSettings, args: JsonObject): Pair<Boolean, String> {
+    private suspend fun runArtemisTask(args: JsonObject): Pair<Boolean, String> {
         val goal = (args["goal"] as? JsonPrimitive)?.content?.trim().orEmpty()
         if (goal.isEmpty()) return false to "goal is empty"
-        val profile = (args["profile"] as? JsonPrimitive)?.content?.takeIf { it == "pro" || it == "flash" }
-            ?: s.artemisProfile
-        return runCatching {
-            val client = ArtemisClient(s.artemisUrl, s.artemisToken)
-            val devices = runCatching { client.devices() }.getOrDefault(emptyList())
-            val serial = ArtemisLogic.pickDevice(devices, s.artemisDevice, null)
+        val s = settings.current()
+        PhoneBotLogic.commandBlockReason(s, "phone_task")?.let { return false to "denied: $it" }
+        var submittedId: String? = null
+        var client: ArtemisClient? = null
+        return try {
+            val activeClient = ArtemisClient(s.artemisUrl, s.artemisToken).also { client = it }
+            val client = activeClient
+            val devices = try { client.devices() }
+                catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (_: Exception) { emptyList() }
+            // Device discovery may suspend for seconds. Recheck immediately before sending a write.
+            val fresh = settings.current()
+            PhoneBotLogic.commandBlockReason(fresh, "phone_task")?.let { return false to "denied: $it" }
+            if (fresh.artemisUrl != s.artemisUrl || fresh.artemisToken != s.artemisToken ||
+                fresh.artemisDevice != s.artemisDevice) {
+                return false to "Artemis ayarları değişti; görev gönderilmedi."
+            }
+            val profile = (args["profile"] as? JsonPrimitive)?.content?.takeIf { it == "pro" || it == "flash" }
+                ?: fresh.artemisProfile
+            val serial = ArtemisLogic.pickDevice(devices, fresh.artemisDevice, null)
             val id = client.submit(goal, profile, serial)
+            submittedId = id
             // K2 — görev defteri: Canlı envanter buradan okur.
             ArtemisTaskTracker.submitted(id, goal, System.currentTimeMillis())
             val deadline = System.currentTimeMillis() + 240_000L
-            var task = client.task(id)
-            while (!task.done && System.currentTimeMillis() < deadline) {
-                kotlinx.coroutines.delay(2_000)
-                task = client.task(id)
+            while (System.currentTimeMillis() < deadline) {
+                val stop = emergencyStopArtemis(client, id)
+                if (stop != PhoneBotLogic.ArtemisEmergencyStop.NotRequested) {
+                    if (stop == PhoneBotLogic.ArtemisEmergencyStop.Unconfirmed) watchArtemisTask(client, id, goal)
+                    return false to artemisStopMessage(stop)
+                }
+                val task = client.task(id)
                 ArtemisTaskTracker.progressed(id, task.status)
+                if (task.done) {
+                    ArtemisTaskTracker.finished(id, task.status, System.currentTimeMillis())
+                    return task.succeeded to ArtemisLogic.resultText(task, en = false)
+                }
+                kotlinx.coroutines.delay(2_000)
             }
-            if (!task.done) {
-                // K2 — "still running" artık sessizce unutulmuyor: arka planda
-                // izlemeye devam, bitince phone_notify bildirimi.
-                watchArtemisTask(client, id, goal)
-                true to "Artemis task $id still running (status ${task.status}); ask again later."
-            } else {
-                ArtemisTaskTracker.finished(id, task.status, System.currentTimeMillis())
-                task.succeeded to ArtemisLogic.resultText(task, en = false)
-            }
-        }.getOrElse { false to "Artemis unreachable (${s.artemisUrl}): ${it.message}" }
+            watchArtemisTask(client, id, goal)
+            true to "Artemis task $id still running; ask again later."
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            val id = submittedId
+            val submittedClient = client
+            if (id != null && submittedClient != null) {
+                // A failed read is not evidence that a submitted remote task stopped.
+                watchArtemisTask(submittedClient, id, goal)
+                false to "Artemis görevi gönderildi; güncel durum alınamadı. Arka planda izleniyor."
+            } else false to "Artemis görevi gönderilemedi veya kabulü doğrulanamadı."
+        }
     }
+
+    private suspend fun emergencyStopArtemis(client: ArtemisClient, id: String): PhoneBotLogic.ArtemisEmergencyStop {
+        val outcome = PhoneBotLogic.stopArtemisForEmergency(settings::current, id, client::stop)
+        when (outcome) {
+            PhoneBotLogic.ArtemisEmergencyStop.Confirmed -> {
+                ArtemisTaskTracker.finished(id, "cancelled", System.currentTimeMillis())
+                PhoneAuditLog.record(this, "phone_task", true, "Acil durdur: Artemis durdurmayı doğruladı")
+            }
+            PhoneBotLogic.ArtemisEmergencyStop.Unconfirmed -> ArtemisTaskTracker.progressed(id, "stop_unconfirmed")
+            PhoneBotLogic.ArtemisEmergencyStop.NotRequested -> Unit
+        }
+        return outcome
+    }
+
+    private fun artemisStopMessage(outcome: PhoneBotLogic.ArtemisEmergencyStop): String =
+        if (outcome == PhoneBotLogic.ArtemisEmergencyStop.Confirmed) "Artemis görevin durdurulduğunu doğruladı."
+        else "Artemis durdurmayı doğrulamadı; görev sürüyor olabilir. Durdurma yeniden denenecek."
 
     /**
      * K2 — "still running" dönen Artemis görevini arka planda izler.
@@ -520,15 +574,35 @@ class PhoneBridgeService : Service() {
     private fun watchArtemisTask(client: ArtemisClient, id: String, goal: String) {
         jobScope.launch {
             val deadline = System.currentTimeMillis() + ARTEMIS_WATCH_MAX_MS
-            var last = runCatching { client.task(id) }.getOrNull()
-            while (last != null && !last.done && System.currentTimeMillis() < deadline) {
-                kotlinx.coroutines.delay(ARTEMIS_WATCH_POLL_MS)
+            var last: ArtemisLogic.Task? = null
+            var stopFailureReported = false
+            while (System.currentTimeMillis() < deadline) {
+                when (val stop = emergencyStopArtemis(client, id)) {
+                    PhoneBotLogic.ArtemisEmergencyStop.Confirmed -> {
+                        Notifier.agentMessage(this@PhoneBridgeService,
+                            com.hermes.mobile.ui.tr("Artemis durduruldu", "Artemis stopped"),
+                            artemisStopMessage(stop))
+                        return@launch
+                    }
+                    PhoneBotLogic.ArtemisEmergencyStop.Unconfirmed -> if (!stopFailureReported) {
+                        stopFailureReported = true
+                        DiagLog.w("artemis", "Acil durdurma doğrulanmadı; görev ve durdurma isteği izleniyor")
+                        Notifier.agentMessage(this@PhoneBridgeService,
+                            com.hermes.mobile.ui.tr("Durdurma doğrulanamadı", "Stop unconfirmed"),
+                            artemisStopMessage(stop))
+                    }
+                    PhoneBotLogic.ArtemisEmergencyStop.NotRequested -> Unit
+                }
                 // Ağ hatasında son bilinen durum korunur.
-                val next = runCatching { client.task(id) }.getOrNull()
+                val next = try { client.task(id) }
+                    catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                    catch (_: Exception) { null }
                 if (next != null) {
                     last = next
                     ArtemisTaskTracker.progressed(id, next.status)
+                    if (next.done) break
                 }
+                kotlinx.coroutines.delay(ARTEMIS_WATCH_POLL_MS)
             }
             val done = last?.takeIf { it.done }
             if (done != null) {
@@ -591,11 +665,28 @@ class PhoneBridgeService : Service() {
         handler.postDelayed(r, delayMs)
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        closedByUser = true
+        foregroundReady = false
+        live = false
+        cancelPending()
+        val previous = socket
+        socket = null
+        previous?.cancel()
+        state = BridgeState.OFF
+        DiagLog.w("bridge", "Android foreground time budget exhausted; stopped until user returns")
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     override fun onDestroy() {
         closedByUser = true
         cancelPending()
         socket?.close(1000, "service destroyed")
         socket = null
+        live = false
+        foregroundReady = false
+        state = BridgeState.OFF
         jobScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }
@@ -641,7 +732,7 @@ class PhoneBridgeService : Service() {
                 .build()
 
         fun start(context: Context) {
-            val s = SettingsStore(context).settings.value
+            val s = SettingsStore(context).current()
             if (!s.agentMayUsePhone) return
             runCatching {
                 androidx.core.content.ContextCompat.startForegroundService(
@@ -665,7 +756,7 @@ class PhoneBridgeService : Service() {
          * bu ise kullanıcının açık isteğini taşır.
          */
         fun reconnect(context: Context) {
-            val s = SettingsStore(context).settings.value
+            val s = SettingsStore(context).current()
             if (!s.agentMayUsePhone) return
             runCatching {
                 androidx.core.content.ContextCompat.startForegroundService(

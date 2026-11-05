@@ -111,7 +111,7 @@ data class ServerProfile(
                 it = scheme + "://" + it.substring(idx + 3)
             }
             if (it.isNotEmpty() && !it.contains("://")) it = "http://$it"
-            stripQueryAndFragment(it)
+            forceTlsOutsideLan(stripQueryAndFragment(it))
         }
 
     val isHttps: Boolean get() = normalizedUrl.startsWith("https://", ignoreCase = true)
@@ -128,12 +128,7 @@ data class ServerProfile(
             val base = activeUrl ?: normalizedUrl
             val uri = runCatching { java.net.URI(base) }.getOrNull() ?: return ""
             val host = uri.host ?: return ""
-            return if (isPrivateHost(host)) {
-                "ws://$host:$PHONE_BRIDGE_LAN_PORT/phone"
-            } else {
-                val port = uri.port.takeIf { it > 0 }?.let { ":$it" }.orEmpty()
-                "wss://$host$port/phone-bridge/phone"
-            }
+            return base.trimEnd('/').toWs() + "/phone-bridge/phone"
         }
 
     /** Röle adresi — açık verilmemişse etkin host'tan türetilir. */
@@ -162,6 +157,21 @@ data class ServerProfile(
 
     /** ws:// veya wss:// karşılığı. */
     val wsBase: String get() = (activeUrl ?: normalizedUrl).toWs()
+
+    /**
+     * B3 (v6.3): adresin tek saf normalizasyonu ([EndpointNormalizer]).
+     * Şema yükseltmesi, port varsayılanı, sondaki "/" ve `/api/ws` tekrarı
+     * burada karara bağlanır — soket ve ekran aynı sonucu okur.
+     */
+    val endpoint: Endpoint?
+        get() = EndpointNormalizer.normalize(activeUrl ?: normalizedUrl)
+
+    /** Soket adresi: `wss://host/api/ws` (yol zaten `/api/ws` ile bitiyorsa tekrar eklenmez). */
+    val apiWsUrl: String
+        get() = endpoint?.apiWsUrl ?: "$wsBase${EndpointNormalizer.API_WS_PATH}"
+
+    /** Profil gerçekten örnek mi? "Örnek profil" uyarısı yalnız böyleyse gösterilir. */
+    val isSample: Boolean get() = note.startsWith("Örnek profil")
 
     companion object {
         /**
@@ -198,6 +208,25 @@ internal fun stripQueryAndFragment(url: String): String {
  * Tek kaynak: [ServerProfile] ve [SparkEndpoints] aynı kuralı kullanmalı,
  * yoksa biri "LAN" derken diğeri "dış" der ve Spark yanlış porta gider.
  */
+/**
+ * M1c: özel ağ DIŞINDA cleartext yasak.
+ *
+ * Android ağ güvenliği yapılandırması CIDR ifade edemez (`<domain>` yalnız tam
+ * host eşler, `192.168.0.0/16` yazılamaz). Bu yüzden cleartext izni
+ * yapılandırmada genel açılır ve gerçek kapı BURASI olur: RFC1918 / localhost /
+ * .local dışındaki bir host'a `http://` verilirse `https://`'e yükseltilir.
+ * Sonuç: ev sunucusu düz HTTP ile çalışırken dış adres asla düz metin gitmez.
+ * `ws://` de aynı kurala tabidir (`toWs()` bu adresten türetilir).
+ */
+internal fun forceTlsOutsideLan(url: String): String {
+    if (!url.startsWith("http://", ignoreCase = true)) return url
+    val rest = url.substring("http://".length)
+    val authority = rest.substringBefore('/').substringBefore('?').substringBefore('#')
+    val host = authority.substringAfter('@').substringBefore(':')
+    if (host.isBlank() || isPrivateHost(host)) return url
+    return "https://" + rest
+}
+
 internal fun isPrivateHost(host: String): Boolean {
     if (host.equals("localhost", true) || host.endsWith(".local", true)) return true
     val o = host.split(".").mapNotNull { it.toIntOrNull() }

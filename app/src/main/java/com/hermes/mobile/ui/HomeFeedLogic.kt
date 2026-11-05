@@ -10,10 +10,16 @@ package com.hermes.mobile.ui
  * çıktısıdır — aynı başlık/önizleme/durum kuralları (ham id sızmaz).
  */
 
-/** Duvarın üstündeki süzgeç çipleri. */
+/**
+ * Duvarın üstündeki süzgeç çipleri.
+ *
+ * J2 (patron): varsayılan liste artık "Tüm İşlemler" — **yalnız devam eden
+ * işleri** (çalışan oturumlar + kullanıcının sabitledikleri) gösterir; cron /
+ * sistem bakım bildirimleri buraya karışmaz, ayrı "Bildirimler" sekmesindedir.
+ * Eski "Canlı" çipi bu kuralla aynı kümeyi verdiği için kaldırıldı.
+ */
 enum class HomeFilter(val labelTr: String, val labelEn: String) {
-    All("Tümü", "All"),
-    Live("Canlı", "Live"),
+    All("Tüm İşlemler", "All operations"),
     Pinned("Sabit", "Pinned"),
     Chats("Sohbetler", "Chats"),
     Scheduled("Zamanlanmış", "Scheduled"),
@@ -28,10 +34,26 @@ fun isScheduledSource(source: String?): Boolean =
     source?.trim()?.equals("cron", ignoreCase = true) == true
 
 /**
+ * Bildirim kaynaklı oturumlar (cron / sistem bakımı / bekçi görevleri).
+ * Bunlar "iş" değil "bildirim"dir: Bildirimler sekmesinde ve "Zamanlanmış"
+ * çipinde görünür, "Tüm İşlemler" ile "Sohbetler" listesini kirletmez.
+ */
+private val NOTICE_SOURCES = setOf("cron", "system", "maintenance", "watchdog", "heartbeat")
+
+fun isNoticeSource(source: String?): Boolean {
+    val s = source?.trim()?.lowercase() ?: return false
+    return s in NOTICE_SOURCES
+}
+
+/**
  * Duvar listesi: süzgeç + arama, sonra sıralama.
  *
  * Sıra: sabitlenmiş → canlı (çalışan) → en yeni. Canlı olanın üstte olması
  * bilinçli: duvarın asıl işi "şu an ne oluyor"u göstermek.
+ *
+ * "Tüm İşlemler" (J2): yalnız **devam eden** işler — çalışan satırlar ve
+ * kullanıcının sabitledikleri. Biten sohbetler "Sohbetler", cron/sistem
+ * bildirimleri "Zamanlanmış" + Bildirimler sekmesindedir.
  */
 fun homeFeed(
     rows: List<DrawerRow>,
@@ -45,10 +67,9 @@ fun homeFeed(
         .filter { !it.archived }
         .filter { row ->
             when (filter) {
-                HomeFilter.All -> true
-                HomeFilter.Live -> isLiveRow(row)
+                HomeFilter.All -> isLiveRow(row) || row.pinned
                 HomeFilter.Pinned -> row.pinned
-                HomeFilter.Chats -> !isScheduledSource(sourceOf(row))
+                HomeFilter.Chats -> !isNoticeSource(sourceOf(row))
                 HomeFilter.Scheduled -> isScheduledSource(sourceOf(row))
             }
         }

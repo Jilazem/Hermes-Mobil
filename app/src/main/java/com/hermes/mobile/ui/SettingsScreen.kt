@@ -88,9 +88,8 @@ import kotlinx.coroutines.launch
 /**
  * Ayarlar — görünüm, canlı ses, sohbet, gizlilik, bağlantı, bildirim, geliştirici.
  *
- * Tek bir kaydırılabilir liste; bölümler başlıklarla ayrılıyor. Alt ekranlara
- * bölmek yerine tek sayfada tutuldu çünkü ayar sayısı bir telefonda gezinmeyi
- * zorlaştıracak kadar çok değil ve arama yapmak yerine kaydırmak daha hızlı.
+ * Her hedef tek gruptadır. Ses üretimi, canlı konuşma ve asistan davranışı ayrı
+ * ekranlarda; Mola bağlantısı ve izinleri tek rehberde yönetilir.
  */
 @Composable
 fun SettingsScreen(
@@ -127,6 +126,7 @@ fun SettingsScreen(
     /** Ayarlar→Sunucular: kayıtlı sunucu/token ekranını tam ekran açar. */
     onOpenServers: () -> Unit = {},
     onOpenPanel: () -> Unit = {},
+    onOpenMola: () -> Unit = {},
     /**
      * Ayarlar→Profiller (KALAN-4): Hermes ajan profili seçimi.
      *
@@ -189,16 +189,20 @@ fun SettingsScreen(
 ) {
     var themeEditor by remember { mutableStateOf<HermesPalette?>(null) }
     var importOpen by remember { mutableStateOf(false) }
+    var chatBackups by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
 
     // Açık kategori; null ise kategori listesi gösteriliyor.
-    var open by remember { mutableStateOf<SettingsCategory?>(null) }
+    var open by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
     var showAdvanced by remember { mutableStateOf(false) }
     BackHandler(enabled = open != null) { open = null }
 
+    val settingsList = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(open) { settingsList.scrollToItem(0) }
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 16.dp),
         // FR-004 bosluk ritmi: kartlar arasi 8dp (tur18, eski 6dp).
         verticalArrangement = Arrangement.spacedBy(8.dp),
+        state = settingsList,
     ) {
         item {
             Row(
@@ -226,71 +230,43 @@ fun SettingsScreen(
         }
 
         if (open == null) {
-            item(key = "server-panel") {
-                androidx.compose.material3.ListItem(
-                    headlineContent = { Text(S.t2("Sunucu yönetimi", "Server management")) },
-                    supportingContent = { Text(S.t2("Pano, görevler ve terminal", "Dashboard, tasks and terminal")) },
-                    modifier = Modifier.clickable(onClick = onOpenPanel),
-                    colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = HermesColors.SurfaceDim),
-                )
-            }
-            // KALAN-4: "Profiller" — profil seçimi Ayarlar'dan da erişilebilir.
-            // Satırın kendisi bir kategori DEĞİL: sohbetin ⋯ menüsüyle aynı
-            // ProfileSheet'i açar (tek seçim yolu, iki giriş).
-            item(key = "profiles") {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
-                        .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
-                        .clickable { onOpenProfiles() }
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(S.t2("Profiller", "Profiles"), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            S.t2(
-                                "Ajan kişiliği ve araç seti — şu an: ${activeHermesProfile.ifBlank { "—" }}",
-                                "Agent persona and toolset — now: ${activeHermesProfile.ifBlank { "—" }}",
-                            ),
-                            color = HermesColors.TextMuted,
-                            style = MaterialTheme.typography.labelSmall,
+            SettingsGroups.destinations.forEach { (group, categories) ->
+                item(key = "group-${group.name}") { Header(when(group) {
+                    SettingsGroup.Everyday -> S.t2("Günlük kullanım", "Everyday")
+                    SettingsGroup.Assistant -> S.t2("Ses ve asistan", "Voice and assistant")
+                    SettingsGroup.Connections -> S.t2("Bağlantılar ve cihazlar", "Connections and devices")
+                    SettingsGroup.Privacy -> S.t2("Gizlilik ve veriler", "Privacy and data")
+                    SettingsGroup.Advanced -> S.t2("Gelişmiş", "Advanced")
+                }) }
+                if (group != SettingsGroup.Advanced || showAdvanced) {
+                    items(categories, key = { it.name }) { cat ->
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(catLabel(cat)) },
+                            supportingContent = { Text(catHint(cat)) },
+                            trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, null) },
+                            modifier = Modifier.clickable { open = cat },
+                            colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = HermesColors.SurfaceDim),
                         )
                     }
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = HermesColors.TextMuted,
-                        modifier = Modifier.size(16.dp),
+                }
+                if (group == SettingsGroup.Connections) item(key = "mola-panel") {
+                    androidx.compose.material3.ListItem(
+                        headlineContent = { Text(S.t2("Mola · araçlarım", "Mola · my cars")) },
+                        supportingContent = { Text(S.t2("Android Auto, kayıtlı araçlar ve park ekranı", "Android Auto, saved cars and parked screen")) },
+                        trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, null) },
+                        modifier = Modifier.clickable(onClick = onOpenMola),
+                        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = HermesColors.SurfaceDim),
                     )
                 }
             }
-            items(SettingsCategory.entries.filter { showAdvanced || it !in listOf(SettingsCategory.General, SettingsCategory.Privacy, SettingsCategory.Developer) }, key = { it.name }) { cat ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
-                        .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium)
-                        .clickable { open = cat }
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(catLabel(cat), color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyLarge)
-                        Text(catHint(cat), color = HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
             item { TextButton(onClick = { showAdvanced = !showAdvanced }) {
-                Text(S.t2(if (showAdvanced) "Gelişmiş ayarları gizle" else "Gelişmiş ayarlar", if (showAdvanced) "Hide advanced settings" else "Advanced settings"))
+                Text(S.t2(if (showAdvanced) "Geliştirici ayarlarını gizle" else "Geliştirici ayarlarını göster", if (showAdvanced) "Hide developer settings" else "Show developer settings"))
             } }
             item { Spacer(Modifier.height(24.dp)) }
         }
 
         // ── Görünüm ──────────────────────────────────────────────────
         if (open == SettingsCategory.Appearance) {
-    item { Header(S.t2("Görünüm", "Appearance")) }
 
             item {
                 ThemeRow(
@@ -332,8 +308,7 @@ fun SettingsScreen(
             // ── Canlı ses ────────────────────────────────────────────────
         }
 
-        if (open == SettingsCategory.Voice) {
-            item { EmaSettingsCard(settings, onUpdate) }
+        if (open == SettingsCategory.Live) {
     item { Header(S.t2("Canlı ses ve görüntü", "Live voice and vision")) }
 
             item {
@@ -478,7 +453,11 @@ fun SettingsScreen(
 
             // ── Sesli mesaj (tur-11) ──────────────────────────────────────
             // Kayıt (bas-konuş) + sesli okuma: uç `voice_api` (8174 / dış /voice-api).
-            item { Header(S.t2("Sesli mesaj (uygulama içi)", "Voice messages (in-app)")) }
+        }
+        if (open == SettingsCategory.Voice) {
+            item { Header(S.t2("Ses motoru ve indirme", "Speech engine and downloads")) }
+            item { EmaSettingsCard(settings, onUpdate) }
+            item { Header(S.t2("Sohbet mesajlarını seslendirme", "Reading chat messages")) }
 
             item {
                 ChoiceRow(
@@ -604,10 +583,13 @@ fun SettingsScreen(
             }
 
             // ── Sohbet ───────────────────────────────────────────────────
+            if (!settings.emaEnabled) item {
+                Header(S.t2("Telefon asistanının sesi", "Phone assistant voice"))
+                VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload)
+            }
         }
 
         if (open == SettingsCategory.Chat) {
-    item { Header(S.t2("Sohbet", "Chat")) }
             item {
                 SwitchRow(S.t2("Markdown biçimle", "Render markdown"), S.t2("Kapatırsan ham metin gösterilir", "Turn off to see raw text"), settings.renderMarkdown) { v ->
                     onUpdate { it.copy(renderMarkdown = v) }
@@ -636,7 +618,6 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.General) {
-    item { Header(S.t2("Genel", "General")) }
             item {
                 // Arayüz dili: cihaz dilini geçersiz kılmak isteyenler için.
                 Row(
@@ -695,6 +676,13 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Server) {
+            item {
+                HermesCard(Modifier.fillMaxWidth().clickable(onClick = onOpenPanel)) {
+                    Text(S.t2("Sunucu panosunu aç", "Open server dashboard"), color = HermesColors.TextPrimary)
+                    Text(S.t2("Görevler, terminal ve sunucu durumu", "Tasks, terminal and server status"), color = HermesColors.TextMuted)
+                }
+            }
+
             // Sunucu/token girişi — ilk kurulum yolu. ConnectScreen'e gerçek
             // bağlantı (ölü kod değildi ama UI'dan erişilemiyordu; 2026-09-14
             // emülatör denetiminde kanıtlandı).
@@ -725,6 +713,9 @@ fun SettingsScreen(
                     }
                 }
             }
+            item { ConnectionTestCard(activeProfile) }
+            // M1c: HTTP ping'in ötesi — gerçek WS oturumu (fresh + resume).
+            item { WsSessionTestCard(activeProfile) }
             item { Header(S.t2("Spark izleme", "Spark monitoring")) }
             item {
                 SwitchRow(
@@ -750,7 +741,6 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Phone) {
-    item { Header(S.t2("Telefon denetimi", "Phone control")) }
             item {
                 SwitchRow(
                     S.t2("Sesli asistan telefonu kullanabilsin",
@@ -807,7 +797,7 @@ fun SettingsScreen(
             }
 
             item { ArtemisCard(settings, onUpdate) }
-            item { AutoMirrorCard(settings, onUpdate) }
+
 
             // Tam kontrol her zaman görünür (önceden "Ajan telefonu
             // kullanabilsin" kapalıyken gizliydi → "tam kontrol yok").
@@ -872,9 +862,15 @@ fun SettingsScreen(
 
             // V3: Google yerine Hermes. Asistan hareketi ekranı kaplamayan
             // Jarvis panelini açar; kurulum + deneme tek kartta.
+            item {
+                HermesCard(Modifier.fillMaxWidth().clickable(onClick = onOpenProfiles)) {
+                    Text(S.t2("Ajan profili", "Agent profile"), color = HermesColors.TextPrimary)
+                    Text(activeHermesProfile.ifBlank { S.t2("Kişilik ve araç seti seç", "Choose persona and tools") }, color = HermesColors.TextMuted)
+                }
+            }
             item { JarvisSetupCard(role = assistantRole, onMakeDefault = onMakeDefaultAssistant) }
             item { JarvisBehaviorCard(settings, onUpdate) }
-            if (!settings.emaEnabled) item { VoiceStudioCard(settings, onUpdate, localTtsState, onLocalTtsDownload) }
+
             item { WakeWordCard(settings, onUpdate) }
 
             item { Header(S.t2("Uygulama içi asistan kipi", "In-app assistant mode")) }
@@ -895,7 +891,6 @@ fun SettingsScreen(
         }
 
         if (open == SettingsCategory.Privacy) {
-    item { Header(S.t2("Gizlilik", "Privacy")) }
             item {
                 SwitchRow(
                     S.t2("Biyometrik kilit", "Biometric lock"),
@@ -979,18 +974,18 @@ fun SettingsScreen(
             }
         }
 
-        // ── K22: YEDEKLE / GERİ YÜKLE — SAF ile tek JSON (tokensız) ──
         if (open == SettingsCategory.Yedekleme) {
             item {
-                YedeklemePanel(
-                    onTopla = onYedekTopla,
-                    onUygula = onYedekUygula,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.FilterChip(selected=!chatBackups,onClick={chatBackups=false},label={Text(S.t2("Uygulama ayarları", "App settings"))})
+                    androidx.compose.material3.FilterChip(selected=chatBackups,onClick={chatBackups=true},label={Text(S.t2("Seçili sohbetler", "Selected chats"))})
+                }
             }
+            if (chatBackups) item { ConversationBackupPanel(activeProfile) }
+            else item { YedeklemePanel(onTopla=onYedekTopla,onUygula=onYedekUygula) }
         }
 
         if (open == SettingsCategory.Developer) {
-    item { Header(S.t2("Geliştirici", "Developer")) }
             item {
                 SwitchRow(S.t2("Ham WS olaylarını göster", "Show raw WS events"), null, settings.showRawEvents) { v ->
                     onUpdate { it.copy(showRawEvents = v) }
@@ -1571,12 +1566,218 @@ private fun ImportThemeDialog(onDismiss: () -> Unit, onImport: (String) -> Strin
 
 
 /** Ayar kategorileri — panonun bölüm listesiyle aynı desen. */
-enum class SettingsCategory { Appearance, Voice, Chat, General, Phone, Assistant, Server, Privacy, OnayMerkezi, Botlarim, Yedekleme, Developer }
+enum class SettingsCategory { Appearance, Voice, Live, Chat, General, Phone, Assistant, Server, Privacy, OnayMerkezi, Botlarim, Yedekleme, Developer }
+
+/**
+ * J1: "Bağlantıyı test et".
+ *
+ * J1 regresyonunda kullanıcı "sunucuya bağlanamıyorum" diyordu ama hangi
+ * katmanın (token / adres / ağ / sunucu) bozuk olduğu görünmüyordu. Bu kart
+ * gerçek bir HTTP çağrısı yapar ve sonucu tek satırda yazar:
+ *   HTTP 200 · 43 ms · Bağlantı sağlam · model: glm-5.3
+ *   HTTP 401 · 12 ms · Token reddedildi…
+ *   TIMEOUT · 8000 ms · Sunucu zamanında yanıt vermedi…
+ */
+@Composable
+private fun ConnectionTestCard(profile: com.hermes.mobile.data.ServerProfile?) {
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<com.hermes.mobile.data.ConnectionTest?>(null) }
+    HermesCard(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                S.t2("Bağlantıyı test et", "Test connection"),
+                color = HermesColors.TextPrimary,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                S.t2(
+                    "Sunucuya gerçek bir HTTP çağrısı yapar: token, adres ve ağ ayrımını gösterir",
+                    "Makes a real HTTP call: separates token, address and network problems",
+                ),
+                color = HermesColors.TextMuted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        if (profile == null || busy) return@OutlinedButton
+                        busy = true
+                        result = null
+                        scope.launch {
+                            // Ağ çağrısı IO'da; UI askıda kalmaz.
+                            result = com.hermes.mobile.data.HermesClient(profile).testConnection()
+                            busy = false
+                        }
+                    },
+                    enabled = profile != null && !busy,
+                ) {
+                    if (busy) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(S.t2("Test et", "Test"))
+                }
+                val r = result
+                if (r != null) {
+                    Text(
+                        r.line(),
+                        color = if (r.ok) HermesColors.Online else HermesColors.Danger,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+            if (profile == null) {
+                Text(
+                    S.t2("Önce bir sunucu ekleyin (adres + token).", "Add a server first (address + token)."),
+                    color = HermesColors.TextFaint,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * M1c: "WS oturum testi".
+ *
+ * Sohbetin kullandığı yolun aynısını dener — HTTP ping'i değil:
+ *   1) `/api/ws?token=…&fresh=1` ile soket açılır (`gateway.ready` beklenir)
+ *   2) `session.create` → GERÇEK gateway oturumu (runtime + stored kimlik)
+ *   3) soket kapatılır, `/api/ws?token=…&resume=<stored>` ile yeniden açılır
+ *   4) `session.resume` → aynı oturuma dönüş
+ *
+ * `/api/ws` fresh/resume sorgu parametrelerini yok sayar (canlı denetim
+ * 22.10.2026); gerçek bağ RPC ile kurulur. Kart bunu tek tek yazar, böylece
+ * "fresh=1 yeter" yanılgısı ekranda da görünmez.
+ *
+ * İptal: koşan iş `cancel()` + `close()` ile durur; yarım soket bırakılmaz.
+ */
+@Composable
+private fun WsSessionTestCard(profile: com.hermes.mobile.data.ServerProfile?) {
+    val scope = rememberCoroutineScope()
+    var job by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var lines by remember { mutableStateOf<List<String>>(emptyList()) }
+    val busy = job?.isActive == true
+    HermesCard(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                S.t2("WS oturum testi", "WebSocket session test"),
+                color = HermesColors.TextPrimary,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                S.t2(
+                    "Yeni sohbet (?fresh=1) ve devam (?resume=id) yolunu gerçek gateway oturumuyla dener",
+                    "Tests the new-chat (?fresh=1) and resume (?resume=id) paths against a real gateway session",
+                ),
+                color = HermesColors.TextMuted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        val p = profile ?: return@OutlinedButton
+                        if (busy) return@OutlinedButton
+                        lines = emptyList()
+                        job = scope.launch {
+                            val gw = com.hermes.mobile.data.GatewayWsClient(p)
+                            val out = mutableListOf<String>()
+                            fun push(s: String) { out += s; lines = out.toList() }
+                            try {
+                                val t0 = System.currentTimeMillis()
+                                push("1) ?fresh=1 ile soket açılıyor…")
+                                gw.connect(fresh = true)
+                                if (!gw.awaitOpen()) {
+                                    val err = (gw.connection.value as? com.hermes.mobile.data.ConnectionState.Error)?.reason
+                                    push("✗ soket açılmadı: ${err ?: "zaman aşımı"}")
+                                    return@launch
+                                }
+                                push("✓ soket hazır (${System.currentTimeMillis() - t0} ms)")
+                                val binding = gw.createSessionBinding(title = "M1c testi")
+                                push("✓ session.create → runtime ${binding.runtimeId.take(10)}… · stored ${binding.storedId.take(10)}…")
+                                gw.close()
+                                val t1 = System.currentTimeMillis()
+                                push("2) ?resume=${binding.storedId.take(10)}… ile yeniden açılıyor")
+                                gw.connect(resumeId = binding.storedId)
+                                if (!gw.awaitOpen()) {
+                                    val err = (gw.connection.value as? com.hermes.mobile.data.ConnectionState.Error)?.reason
+                                    push("✗ resume soketi açılmadı: ${err ?: "zaman aşımı"}")
+                                    return@launch
+                                }
+                                val resumed = gw.resumeSession(binding.storedId)
+                                push("✓ session.resume → ${resumed.take(10)}… (${System.currentTimeMillis() - t1} ms)")
+                                push("Sonuç: yeni sohbet + devam yolu ÇALIŞIYOR")
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                push("■ iptal edildi")
+                                throw e
+                            } catch (e: Exception) {
+                                push("✗ ${e.message ?: e::class.simpleName}")
+                            } finally {
+                                runCatching { gw.close() }
+                            }
+                        }
+                    },
+                    enabled = profile != null && !busy,
+                ) {
+                    if (busy) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(S.t2("WS testi", "WS test"))
+                }
+                if (busy) {
+                    TextButton(onClick = { job?.cancel() }) {
+                        Text(S.t2("İptal", "Cancel"), color = HermesColors.Danger)
+                    }
+                }
+            }
+            if (lines.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    lines.forEach { line ->
+                        Text(
+                            line,
+                            color = when {
+                                line.startsWith("✗") -> HermesColors.Danger
+                                line.startsWith("✓") -> HermesColors.Online
+                                line.startsWith("■") -> HermesColors.TextMuted
+                                else -> HermesColors.TextFaint
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+            if (profile == null) {
+                Text(
+                    S.t2("Önce bir sunucu ekleyin (adres + token).", "Add a server first (address + token)."),
+                    color = HermesColors.TextFaint,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun catLabel(c: SettingsCategory): String = when (c) {
-    SettingsCategory.Appearance -> S.t2(S.t2("Görünüm", "Appearance"), "Appearance")
-    SettingsCategory.Voice -> S.t2("Ses · EMA ve mikrofon", "Voice · EMA & microphone")
+    SettingsCategory.Appearance -> S.t2("Görünüm", "Appearance")
+    SettingsCategory.Voice -> S.t2("Sesler ve ses motorları", "Voices and speech engines")
+    SettingsCategory.Live -> S.t2("Canlı konuşma", "Live conversation")
     SettingsCategory.Chat -> S.t2("Sohbet", "Chat")
     SettingsCategory.General -> S.t2("Genel", "General")
     SettingsCategory.Phone -> S.t2("Telefon denetimi", "Phone control")
@@ -1589,17 +1790,18 @@ private fun catLabel(c: SettingsCategory): String = when (c) {
     SettingsCategory.Botlarim -> S.t2("Botlarım", "My bots")
     // K22: kişisel veri yedeği — export/import (tokensız).
     SettingsCategory.Yedekleme -> S.t2("Yedekle / Geri Yükle", "Backup / Restore")
-    SettingsCategory.Developer -> S.t2(S.t2("Geliştirici", "Developer"), "Developer")
+    SettingsCategory.Developer -> S.t2("Geliştirici", "Developer")
 }
 
 @Composable
 private fun catHint(c: SettingsCategory): String = when (c) {
     SettingsCategory.Appearance -> S.t2("Tema, yazı boyutu", "Theme, text size")
-    SettingsCategory.Voice -> S.t2("Model, ses, kişilik, dil", "Model, voice, persona, language")
+    SettingsCategory.Voice -> S.t2("EMA, telefon sesi, indirmeler ve seslendirme", "EMA, phone voices, downloads and speech")
+    SettingsCategory.Live -> S.t2("Konuşma modeli, kişilik ve yerel bağlantı", "Conversation model, persona and local connection")
     SettingsCategory.Chat -> S.t2("Düşünme, araçlar, geçmiş", "Thinking, tools, history")
     SettingsCategory.General -> S.t2("Arayüz dili, çıkış onayı", "Interface language, exit confirmation")
     SettingsCategory.Phone -> S.t2("Sesli asistanın telefonu kullanması", "Letting voice use the phone")
-    SettingsCategory.Assistant -> S.t2("Google yerine Hermes, ses stüdyosu, Hey Jarvis", "Hermes instead of Google, voice studio, Hey Jarvis")
+    SettingsCategory.Assistant -> S.t2("Ajan profili, varsayılan asistan ve uyandırma", "Agent profile, default assistant and wake word")
     SettingsCategory.Server -> S.t2("Ev ve dış erişim, kayıtlı sunucular", "Home and remote access, saved servers")
     SettingsCategory.Privacy -> S.t2("Kilit, token, bildirimler", "Lock, token, notifications")
     SettingsCategory.OnayMerkezi -> S.t2("Senin onayın bekleniyor", "Waiting on your yes")
@@ -2243,8 +2445,8 @@ private fun ArtemisCard(
                     .clickable {
                         probe = "…"
                         scope.launch {
-                            val c = com.hermes.mobile.data.ArtemisClient(settings.artemisUrl, settings.artemisToken)
                             probe = runCatching {
+                                val c = com.hermes.mobile.data.ArtemisClient(settings.artemisUrl, settings.artemisToken)
                                 val list = c.devices()
                                 if (list.isEmpty()) tr("Artemis ayakta, ama bağlı telefon yok (adb connect gerekli)",
                                     "Artemis is up, but no phone attached (adb connect needed)")
@@ -2284,76 +2486,6 @@ private fun ArtemisCard(
  * Android Auto ekran yansıtma: telefonun ekranı araç ekranında, araçtaki
  * dokunuş telefona (Tam kontrol ile). İzin her yeniden başlatmada bir kez istenir.
  */
-@Composable
-private fun AutoMirrorCard(
-    settings: AppSettings,
-    onUpdate: ((AppSettings) -> AppSettings) -> Unit,
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val status by com.hermes.mobile.data.ScreenMirror.status.collectAsState()
-    // Araç hız izni (sürerken durdurma koruması için) → ardından ekran paylaşımı.
-    val carSpeed = "com.google.android.gms.permission.CAR_SPEED"
-    val speedPermission = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-    ) { com.hermes.mobile.data.MirrorProjectionService.start(context) }
-    HermesCard(Modifier.fillMaxWidth()) {
-        Text(
-            S.t2("Android Auto'ya ekran yansıtma", "Mirror screen to Android Auto"),
-            color = HermesColors.TextPrimary,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(
-            S.t2(
-                "Araçta Hermes'i aç: telefon ekranı araç ekranında görünür, dokunuşlar telefona geçer " +
-                    "(dokunma için Tam kontrol açık olmalı). İzin ekranında \"Tüm ekran\"ı seç.",
-                "Open Hermes in the car: the phone screen shows on the car display and touches are passed " +
-                    "back (needs Full control). Choose \"Entire screen\" when asked.",
-            ),
-            color = HermesColors.TextMuted,
-            style = MaterialTheme.typography.labelSmall,
-        )
-        Spacer(Modifier.height(8.dp))
-        val (label, color) = when (status) {
-            com.hermes.mobile.data.ScreenMirror.Status.Mirroring -> S.t2("araca yansıtılıyor", "mirroring") to HermesColors.Online
-            com.hermes.mobile.data.ScreenMirror.Status.Ready -> S.t2("hazır — araçta Hermes'i aç", "ready — open Hermes in the car") to HermesColors.Online
-            com.hermes.mobile.data.ScreenMirror.Status.NoPermission -> S.t2("izin yok", "no permission") to HermesColors.TextMuted
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = color, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
-            val on = status != com.hermes.mobile.data.ScreenMirror.Status.NoPermission
-            Text(
-                if (on) S.t2("Durdur", "Stop") else S.t2("İzin ver ve başlat", "Allow & start"),
-                color = HermesColors.Midground,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier
-                    .background(HermesColors.SurfaceDim, MaterialTheme.shapes.medium)
-                    .clickable {
-                        if (on) {
-                            com.hermes.mobile.data.MirrorProjectionService.stop(context)
-                        } else if (androidx.core.content.ContextCompat.checkSelfPermission(context, carSpeed) !=
-                            android.content.pm.PackageManager.PERMISSION_GRANTED
-                        ) {
-                            speedPermission.launch(carSpeed)
-                        } else {
-                            com.hermes.mobile.data.MirrorProjectionService.start(context)
-                        }
-                    }
-                    .padding(horizontal = 11.dp, vertical = 8.dp),
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        SwitchRow(
-            S.t2("Sürerken yansıtmayı durdur", "Pause mirroring while driving"),
-            S.t2(
-                "Araç ~5 km/sa'yı geçince görüntü kesilir, durunca geri gelir. Güvenlik için açık tut.",
-                "The image stops above ~5 km/h and returns when parked. Keep on for safety.",
-            ),
-            settings.mirrorPauseWhileDriving,
-        ) { v -> onUpdate { it.copy(mirrorPauseWhileDriving = v) } }
-    }
-}
-
-
 // ── V3 Jarvis ayarları ─────────────────────────────────────────────────
 
 /**
@@ -2606,7 +2738,7 @@ private fun VoiceStudioCard(
                 Text(LocalTtsLogic.statusLine(localTtsState, ::tr), color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(6.dp))
                 if (localTtsState.phase != LocalTtsLogic.Phase.Ready) {
-                    SmallButton(S.t2("Modeli indir (63 MB)", "Download model (63 MB)")) { onLocalTtsDownload() }
+                    Text(S.t2("Yerel modeli bu sayfanın indirme kartından yönet.", "Manage the local model in the download card on this page."), color = HermesColors.TextMuted)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         S.t2("İndirilmemişken telefon sesiyle okunur.", "Until downloaded the phone voice is used."),

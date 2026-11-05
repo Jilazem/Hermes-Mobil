@@ -29,25 +29,49 @@ class HomeFeedLogicTest {
         archived = archived, current = false, liveSession = null,
     )
 
-    private val sources = mapOf("c" to "cron", "a" to "telegram", "b" to "cli")
+    private val sources = mapOf("c" to "cron", "a" to "telegram", "b" to "cli", "s" to "system")
     private val sourceOf: (DrawerRow) -> String? = { sources[it.dbId] }
 
     @Test
     fun `siralama sabit sonra calisan sonra en yeni`() {
-        val rows = listOf(row("a", 100.0), row("b", 300.0), row("c", 200.0, working = true), row("d", 50.0, pinned = true))
-        assertEquals(listOf("d", "c", "b", "a"), homeFeed(rows, HomeFilter.All, "", sourceOf).map { it.key })
+        val rows = listOf(row("a", 100.0), row("b", 300.0), row("e", 200.0, working = true), row("d", 50.0, pinned = true))
+        assertEquals(listOf("d", "e", "b", "a"), homeFeed(rows, HomeFilter.Chats, "", sourceOf).map { it.key })
+    }
+
+    @Test
+    fun `tum islemler yalniz devam eden isler`() {
+        // J2: varsayılan liste = çalışan işler + kullanıcının sabitledikleri.
+        val rows = listOf(row("a", 1.0, dot = "green"), row("b", 2.0, pinned = true), row("c", 3.0))
+        assertEquals(listOf("b", "a"), homeFeed(rows, HomeFilter.All, "", sourceOf).map { it.key })
+        // Hiç çalışan iş yoksa liste boş (boş durum metni "Sohbetler"e yönlendirir).
+        assertEquals(emptyList<String>(), homeFeed(listOf(row("c", 3.0)), HomeFilter.All, "", sourceOf).map { it.key })
     }
 
     @Test
     fun `arsivlenen duvarda gorunmez`() {
         val rows = listOf(row("a", 1.0), row("b", 2.0, archived = true))
-        assertEquals(listOf("a"), homeFeed(rows, HomeFilter.All, "", sourceOf).map { it.key })
+        assertEquals(listOf("a"), homeFeed(rows, HomeFilter.Chats, "", sourceOf).map { it.key })
     }
 
     @Test
-    fun `suzgecler canli sabit zamanlanmis sohbet`() {
+    fun `bildirim kaynaklari is ve sohbet listesine karismaz`() {
+        // cron + system = bildirim kaynağı: yalnız "Zamanlanmış"ta (ve Bildirimler sekmesinde).
+        val rows = listOf(row("a", 1.0, dot = "green"), row("c", 3.0), row("s", 4.0))
+        assertEquals(listOf("a"), homeFeed(rows, HomeFilter.Chats, "", sourceOf).map { it.key })
+        assertEquals(listOf("c"), homeFeed(rows, HomeFilter.Scheduled, "", sourceOf).map { it.key })
+        assertEquals(emptyList<String>(), homeFeed(rows, HomeFilter.All, "", sourceOf).map { it.key }.filter { it == "c" || it == "s" })
+    }
+
+    @Test
+    fun `calisan cron isi devam eden is olarak gorunur`() {
+        // Çalışan bir zamanlanmış görev "iş"tir; bitmiş çıktısı bildirimdir.
+        val rows = listOf(row("c", 3.0, working = true))
+        assertEquals(listOf("c"), homeFeed(rows, HomeFilter.All, "", sourceOf).map { it.key })
+    }
+
+    @Test
+    fun `suzgecler sabit zamanlanmis sohbet`() {
         val rows = listOf(row("a", 1.0, dot = "green"), row("b", 2.0, pinned = true, dot = "grey"), row("c", 3.0))
-        assertEquals(listOf("a"), homeFeed(rows, HomeFilter.Live, "", sourceOf).map { it.key })
         assertEquals(listOf("b"), homeFeed(rows, HomeFilter.Pinned, "", sourceOf).map { it.key })
         assertEquals(listOf("c"), homeFeed(rows, HomeFilter.Scheduled, "", sourceOf).map { it.key })
         assertEquals(setOf("a", "b"), homeFeed(rows, HomeFilter.Chats, "", sourceOf).map { it.key }.toSet())
@@ -56,8 +80,8 @@ class HomeFeedLogicTest {
     @Test
     fun `arama baslik ve onizlemede`() {
         val rows = listOf(row("a", 1.0, title = "Fatura hesabı"), row("b", 2.0))
-        assertEquals(listOf("a"), homeFeed(rows, HomeFilter.All, "fatura", sourceOf).map { it.key })
-        assertEquals(listOf("b"), homeFeed(rows, HomeFilter.All, "önizleme b", sourceOf).map { it.key })
+        assertEquals(listOf("a"), homeFeed(rows, HomeFilter.Chats, "fatura", sourceOf).map { it.key })
+        assertEquals(listOf("b"), homeFeed(rows, HomeFilter.Chats, "önizleme b", sourceOf).map { it.key })
     }
 
     @Test

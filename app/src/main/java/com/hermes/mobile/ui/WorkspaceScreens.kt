@@ -153,52 +153,25 @@ fun NotificationsScreen(
     }
 }
 
-/** Takip edilen arşivler dahil; gizlenenler mapper tarafından zaten elenir. */
-fun followedRows(rows: List<DrawerRow>, query: String = ""): List<DrawerRow> {
-    val q = query.trim()
-    return rows.filter { it.followed && (q.isBlank() || it.title.contains(q, true) || it.preview.contains(q, true)) }
-        .sortedWith(compareByDescending<DrawerRow> { it.working }.thenByDescending { it.epochSeconds })
-}
-
 @Composable
 fun FollowingScreen(rows: List<DrawerRow>, loading: Boolean, error: String?, onOpen: (DrawerRow) -> Unit, onUnfollow: (DrawerRow) -> Unit, onBrowse: () -> Unit, onRefresh: () -> Unit, onSettings: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    val visible = followedRows(rows, query)
     Column(Modifier.fillMaxSize()) {
         WorkspaceHeader(S.t2("Takip", "Following"), S.t2("Seçtiğin oturumlar, tek yerde", "Your selected sessions, in one place"), onSettings) {
             IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, S.t2("Yenile", "Refresh"), tint = HermesColors.TextMuted) }
         }
         OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text(S.t2("Takip ettiklerinde ara", "Search followed sessions")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp), leadingIcon = { Icon(Icons.Default.Search, null) })
-        error?.let { Text(it, color = HermesColors.Danger, modifier = Modifier.padding(18.dp), style = MaterialTheme.typography.bodySmall) }
-        if (loading && visible.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth().padding(18.dp))
-        if (visible.isEmpty() && !loading) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Column(Modifier.padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.StarOutline, null, tint = HermesColors.TextFaint, modifier = Modifier.size(40.dp))
-                    Text(S.t2(if (query.isBlank()) "Henüz takip ettiğin oturum yok" else "Eşleşen oturum yok", if (query.isBlank()) "No followed sessions yet" else "No matching sessions"), color = HermesColors.TextPrimary, modifier = Modifier.padding(top = 12.dp))
-                    Text(S.t2("Oturuma uzun basıp “Takip et” seç.", "Long press a session and choose Follow."), color = HermesColors.TextMuted)
-                    TextButton(onClick = onBrowse) { Text(S.t2("Oturumları aç", "Browse sessions")) }
-                }
-            }
-        } else LazyColumn(contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(visible, key = { it.key }) { row ->
-                Row(Modifier.fillMaxWidth().background(HermesColors.Surface, MaterialTheme.shapes.large).clickable { onOpen(row) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(row.title, color = HermesColors.TextPrimary, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(when {
-                            row.liveSession?.isWaiting == true -> S.t2("Yanıt bekliyor", "Awaiting input")
-                            row.liveSession?.isStarting == true -> S.t2("Başlıyor", "Starting")
-                            row.working -> S.t2("Çalışıyor", "Working")
-                            row.liveSession != null -> S.t2("Boşta", "Idle")
-                            row.dot == "green" || row.dot == "yellow" -> S.t2("Açık", "Open")
-                            else -> S.t2("Geçmiş oturum", "Past session")
-                        }, color = if (row.working) HermesColors.Online else HermesColors.TextMuted, style = MaterialTheme.typography.labelSmall)
-                        if (row.preview.isNotBlank()) Text(row.preview, color = HermesColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        if (row.archived) Text(S.t2("Arşivde", "Archived"), color = HermesColors.TextFaint, style = MaterialTheme.typography.labelSmall)
-                    }
-                    IconButton(onClick = { onUnfollow(row) }) { Icon(Icons.Default.Star, S.t2("Takibi bırak", "Unfollow"), tint = HermesColors.Midground) }
-                }
-            }
-        }
+        SessionListPane(
+            rows = rows,
+            query = query,
+            onOpen = onOpen,
+            onToggleFollow = onUnfollow,
+            loading = loading,
+            error = error,
+            compact = false,
+            followedOnly = true,
+            onBrowse = onBrowse,
+            modifier = Modifier.weight(1f),
+        )
     }
 }

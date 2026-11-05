@@ -3,6 +3,7 @@ package com.hermes.mobile.data
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
@@ -46,24 +48,88 @@ import java.util.concurrent.atomic.AtomicLong
  * ettiği yol) ve ayrıca `Authorization` başlığında gönderilir (iş #1021).
  * Gated modda tek kullanımlık ticket gerekir (Faz 5).
  */
-class GatewayWsClient(private val profile: ServerProfile) {
+class GatewayWsClient(
+    private val profile: ServerProfile,
+    /** gateway.ready bekleme bütçesi; birim testte kısaltılır. */
+    private val readyTimeoutMs: Long = GatewayReady.TIMEOUT_MS,
+    /** v6.4 test dikişi: üretimde NULL → IO kapsamı. */
+    private val scopeOverride: CoroutineScope? = null,
+    /**
+     * v6.4 test dikişi: üretimde NULL — gerçek OkHttp kullanılır. Birim
+     * testleri sahte `WebSocketListener` takarak iptal edilmiş eski soketlerin
+     * **gecikmeli** `onFailure`'ını senkron taklit eder (bkz. GatewayReconnectTest).
+     */
+    private val webSocketFactory: ((Request, WebSocketListener) -> WebSocket)? = null,
+) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    /**
+     * v6.4 madde C: backoff (1→2→4→8→15 sn) yalnız bu süre kadar KARARLI
+     * açık kalan soketten sonra sıfırlanır. `onOpen`'da sıfırlamak backoff'u
+     * hiç devreye sokmuyordu (teşhis madde 4).
+     */
+    private val stableOpenResetMs = 30_000L
     // Tur-2 K3(a): SupervisorJob kardeşleri korusa da launch içinde yakalanmayan
     // hata buradan sessizce düşerdi (telefon 'sik sik kapaniyor' izsiz). Handler
     // izi DiagLog'a bırakır — scope ölmese de ne olduğunu görüyoruz.
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
+    /** v6.4: test dikişi ile değiştirilebilir; üretimde boş bırakılır. */
+    private val scope = scopeOverride
+        ?: CoroutineScope(SupervisorJob() + Dispatchers.IO + CrashGuard.handler)
     private val nextId = AtomicLong(0)
     private val pending = mutableMapOf<String, CompletableDeferred<JsonElement?>>()
     private val pendingLock = Any()
     private val sessionBindings = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val executionGenerations = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Only server-issued generations may fence Stop; never guess or advance a rejected fence. */
+    private fun rememberExecutionGeneration(value: JsonObject?, fallbackSessionId: String? = null) {
+        val fields = value ?: return
+        val generation = (fields["execution_generation"] as? JsonPrimitive)?.content?.toLongOrNull()
+            ?.takeIf { it >= 0 } ?: return
+        val ref = fields["ref"] as? JsonObject
+        val sid = (fields["session_id"] as? JsonPrimitive)?.content
+            ?: (ref?.get("session_id") as? JsonPrimitive)?.content
+            ?: fallbackSessionId
+        if (sid.isNullOrBlank()) return
+        // A delayed resume/submit reply must not overwrite a newer generation already received in an event.
+        executionGenerations.merge(sid, generation) { previous, incoming -> maxOf(previous, incoming) }
+    }
 
     fun storedSessionId(runtimeId: String): String = sessionBindings[runtimeId] ?: runtimeId
 
     private fun bindSession(result: JsonElement?, requestedId: String): String {
         val binding = SessionBinding.parse(result, requestedId)
         sessionBindings[binding.runtimeId] = binding.storedId
+        // M1c: bağlandıktan sonra bu soket artık bu oturumun — yeniden bağlanma
+        // `fresh=1` istememeli, aynı oturumu `resume=<stored>` ile istemeli.
+        freshWanted.set(false)
+        resumeWanted = binding.storedId.takeIf { it.isNotBlank() }
         return binding.runtimeId
+    }
+
+    /**
+     * M1c: yeni sohbet için GERÇEK gateway oturumu. `session.create` çağrılır;
+     * runtime (canlı) ve stored (veritabanı) kimlikler birlikte döner.
+     * [closeOnDisconnect] true → soket kapanınca sunucu oturumu kapatır (test
+     * düğmesi bunu kullanır, böylece geride boş oturum birikmez).
+     */
+    suspend fun createSessionBinding(
+        profile: String? = null,
+        title: String? = null,
+        closeOnDisconnect: Boolean = false,
+    ): SessionBinding {
+        val params = buildJsonObject {
+            profile?.takeIf { it.isNotBlank() }?.let { put("profile", JsonPrimitive(it)) }
+            title?.takeIf { it.isNotBlank() }?.let { put("title", JsonPrimitive(it)) }
+            if (closeOnDisconnect) put("close_on_disconnect", JsonPrimitive(true))
+        }
+        val result = request("session.create", params)
+        val binding = SessionBinding.parse(result, "")
+        sessionBindings[binding.runtimeId] = binding.storedId
+        freshWanted.set(false)
+        resumeWanted = binding.storedId.takeIf { it.isNotBlank() }
+        return binding
     }
 
     suspend fun attachSession(runtimeId: String, storedId: String = storedSessionId(runtimeId), agentProfile: String? = null): String {
@@ -87,7 +153,64 @@ class GatewayWsClient(private val profile: ServerProfile) {
     private var socket: WebSocket? = null
     private var closedByUser = false
     private val openLock = Any()
+
+    /**
+     * v6.4 (WS kendini iptal döngüsü onarımı): soket nesili. Her yeni
+     * açılışta artar; eski neslin callback'leri — özellikle iptal edilmiş
+     * soketin GECİKMELİ `onFailure`'ı — yok sayılır. Böylece eski soketin
+     * hatası yeni soketi kapatıp kendini besleyen ~1 sn'lik döngüyü kuramaz.
+     */
+    private var socketGeneration = 0
+
+    /** v6.4 madde D: tek yeniden bağlanma işi — çift plan döngüyü besler. */
+    private var reconnectJob: Job? = null
+
+    /** v6.4 madde C: 30 sn kararlı açık kalma eşiği işi. */
+    private var stabilityJob: Job? = null
+
+    /** v6.4 test gözlemi: kaç kez yeniden bağlanma planlandı. */
+    @Volatile internal var reconnectScheduleCount = 0
+
+    /** v6.4 test gözlemi: güncel deneme sayısı (onOpen sıfırlamamalı). */
+    internal val reconnectAttempts: Int get() = reconnectAttempt
+
+    /** v6.4 tanılama: son açılıştan bu yana geçen süre (lifetimeMs hesabı). */
+    private val openedAtMs = java.util.concurrent.atomic.AtomicLong(0L)
     private var reconnectAttempt = 0
+
+    /**
+     * B3 (v6.3): uygulama düzeyi keepalive — 25 sn'de bir `ping` RPC'si.
+     * **2 ardışık** yanıtsız ping soketi ölü sayar (tek kayıp toleranslı).
+     * Taşıma düzeyinde OkHttp `pingInterval` (15 sn) ayrıca yedek: pong
+     * gelmezse bağlantıyı kendisi düşürür.
+     */
+    private val keepalive = KeepalivePolicy()
+    private var keepaliveJob: Job? = null
+
+    /**
+     * M1c — YENİ sohbet / DEVAM niyeti (`/api/ws?token=…&fresh=1`, `…&resume=<id>`).
+     *
+     * Canlı denetim (22.10.2026, yerel dashboard :9120): `/api/ws` bu iki sorgu
+     * parametresini YOK SAYAR; `fresh`/`resume` yalnız `/api/pty` rotasında
+     * anlamlıdır (hermes_cli/web_routers/chat_ws.py). Bu yüzden parametreler yine
+     * de gönderilir (ileri sürüm/vekil için zararsız) ama GERÇEK oturum RPC ile
+     * kurulur: `session.create` → runtime + stored kimlik, `session.resume` →
+     * saklı kimliğe dönüş. "fresh=1 tek başına oturum açar" iddiası YOK; katman
+     * ayrımı docs/G1-GATEWAY-MOBIL-API.md'de yazılı.
+     */
+    private val freshWanted = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile private var resumeWanted: String? = null
+
+    /**
+     * İş #1021 KÖK NEDEN 3: el sıkışmanın 101 dönmesi bağlantının HAZIR olduğu
+     * anlamına gelmez. Gateway ilk çerçeve olarak `gateway.ready` olayı yazar
+     * (tui_gateway/ws.py). Bu olay gelmeden `Open` demek, hazır olmayan sokete
+     * `prompt.submit` göndermek — kullanıcı "Sunucu bağlı değil"/sessiz düşüş
+     * görüyordu. Bu yüzden `Open` yalnız ready olayından sonra ilan edilir;
+     * gelmezse somut hata ekrana yazılır (sessiz kalma yasak).
+     */
+    private val readySeen = java.util.concurrent.atomic.AtomicBoolean(false)
+    private var readyTimer: Job? = null
 
     /** Son BAŞARILI açılışın zamanı — sarsıntı (flap) tespiti için. */
     private var lastOpenAt = 0L
@@ -112,11 +235,37 @@ class GatewayWsClient(private val profile: ServerProfile) {
     )
     val events: SharedFlow<GatewayEvent> = _events.asSharedFlow()
 
-    fun connect() {
-        if (_connection.value == ConnectionState.Open || _connection.value == ConnectionState.Connecting) return
+    /**
+     * M1c: [fresh] → YENİ gateway oturumu niyeti (`?fresh=1`), [resumeId] →
+     * saklı kimliğe dönüş (`?resume=<id>`). Açık/bağlanmakta olan soket varsa ve
+     * ikisi de boşsa eski davranış korunur (hiçbir şey yapılmaz); niyet varsa
+     * soket bilerek yeniden açılır — bayat bağlantıya yeni oturum yazılmasın.
+     */
+    fun connect(fresh: Boolean = false, resumeId: String? = null) {
+        freshWanted.set(fresh)
+        resumeWanted = resumeId?.takeIf { it.isNotBlank() }
+        if (!fresh && resumeWanted == null &&
+            (_connection.value == ConnectionState.Open || _connection.value == ConnectionState.Connecting)
+        ) return
         closedByUser = false
+        // v6.4 madde E: deneme sayacını yalnız gerçekten YENİ açılış sıfırlar.
+        // Çağrı başına sıfırlamak backoff'u (1→2→4→8→15) hiç devreye
+        // sokmuyordu (teşhis madde 5).
+        if (fresh) reconnectAttempt = 0
         openSocket()
     }
+
+    /**
+     * M1c: soketin `Open` (gateway.ready) ya da `Error` olmasını bekler.
+     * Test düğmesi ve "yeni sohbet" akışı bu kapıdan geçer; süre aşımı `false`.
+     */
+    suspend fun awaitOpen(timeoutMs: Long = 15_000): Boolean =
+        withTimeoutOrNull(timeoutMs) {
+            val state = connection.first {
+                it is ConnectionState.Open || it is ConnectionState.Error || it is ConnectionState.Closed
+            }
+            state is ConnectionState.Open
+        } ?: false
 
     /**
      * `/api/ws` açılış isteği.
@@ -134,16 +283,24 @@ class GatewayWsClient(private val profile: ServerProfile) {
      * sorguyu bırakacak sunucu sürümleri için korunur.
      */
     fun openRequest(): Request {
-        // OkHttp `HttpUrl` yalnız http/https şemalarını kabul eder; `wsBase`
-        // ws/wss üretir. Dönüştürmeden `toHttpUrlOrNull()` null döner ve her
-        // bağlantı "geçersiz ws adresi" ile düşerdi (iş #1021 ikinci kök neden).
-        val httpBase = profile.wsBase
+        // B3 (v6.3): adres kararı TEK yerde — ServerProfile.apiWsUrl
+        // (EndpointNormalizer). OkHttp `HttpUrl` yalnız http/https kabul eder;
+        // ws/wss → http/https çevrilir. `/api/ws` yolu burada EKLENMEZ, çünkü
+        // normalizer zaten ekliyor (çift `/api/ws/api/ws` 404'ü kapandı).
+        val httpUrl = profile.apiWsUrl
             .replaceFirst("wss://", "https://", ignoreCase = true)
             .replaceFirst("ws://", "http://", ignoreCase = true)
-        val base = "$httpBase/api/ws".toHttpUrlOrNull()
-            ?: throw IllegalArgumentException("geçersiz ws adresi: ${profile.wsBase}")
+        val base = httpUrl.toHttpUrlOrNull()
+            ?: throw IllegalArgumentException("geçersiz ws adresi: ${profile.apiWsUrl}")
         val url = base.newBuilder()
             .addQueryParameter("token", profile.token)
+            .apply {
+                // M1c: yeni sohbet / devam niyeti. `/api/ws` bunları yok sayar
+                // (gerçek bağ RPC'de) ama `/api/pty` ve ileri sürümler okur;
+                // göndermek zararsız ve niyeti kayda geçirir.
+                if (freshWanted.get()) addQueryParameter("fresh", "1")
+                resumeWanted?.let { addQueryParameter("resume", it) }
+            }
             .build()
         return Request.Builder()
             .url(url)
@@ -153,8 +310,22 @@ class GatewayWsClient(private val profile: ServerProfile) {
 
     private fun openSocket() {
         synchronized(openLock) {
+            // v6.4: eski soketi geçersiz kıl — GECİKMELİ callback'leri (iptal
+            // edilen soketin onFailure'ı) bu nesle ait OLAMAZ. Nesil artışı
+            // iptalden ÖNCE: böylece iptal tetikli onFailure da stale kalır.
+            val oldGen = socketGeneration
+            socketGeneration++
+            val gen = socketGeneration
+            executionGenerations.clear()
+            // v6.4 madde D: bekleyen tek yeniden bağlanma işi yenisini
+            // beklemesin; çift plan döngüyü besliyordu.
+            reconnectJob?.cancel()
+            reconnectJob = null
+            stabilityJob?.cancel()
+            stabilityJob = null
             // P5: aynı anda iki açılış (connect + reconnect) eski soketi sızdırmasın;
             // eskisini iptal et, yenisini aç.
+            if (socket != null) wsDiag("WS gen=$oldGen eski soket iptal ediliyor (lifetimeMs=${System.currentTimeMillis() - openedAtMs.get()})")
             socket?.cancel()
             _connection.value = ConnectionState.Connecting
             // Bozuk adres (kullanıcı 'httphttp://…' gibi girerse) eskiden
@@ -171,12 +342,28 @@ class GatewayWsClient(private val profile: ServerProfile) {
                 )
                 return
             }
-            socket = http.newWebSocket(request, Listener())
+            val listener = Listener(gen)
+            socket = webSocketFactory?.invoke(request, listener)
+                ?: http.newWebSocket(request, listener)
+            wsDiag("WS gen=$gen açılıyor (attempt=$reconnectAttempt)")
         }
     }
 
     fun close() {
         closedByUser = true
+        readySeen.set(false)
+        readyTimer?.cancel()
+        readyTimer = null
+        stopKeepalive()
+        // v6.4: kullanıcının kapanışı — tüm nesil callback'leri pasif kalır,
+        // bekleyen yeniden bağlanma/stabilite işleri iptal edilir.
+        socketGeneration++
+        executionGenerations.clear()
+        reconnectJob?.cancel()
+        reconnectJob = null
+        stabilityJob?.cancel()
+        stabilityJob = null
+        wsDiag("WS gen=${socketGeneration - 1} kullanıcı kapattı (lifetimeMs=${System.currentTimeMillis() - openedAtMs.get()})")
         socket?.cancel()
         socket = null
         _connection.value = ConnectionState.Closed
@@ -190,9 +377,10 @@ class GatewayWsClient(private val profile: ServerProfile) {
     suspend fun request(
         method: String,
         params: JsonObject = JsonObject(emptyMap()),
-        timeoutMs: Long = 30_000,
+        timeoutMs: Long = SocketTuning.GATEWAY_WS_CALL_TIMEOUT_MS,
     ): JsonElement? {
         val sock = socket ?: throw IllegalStateException("gateway bağlı değil")
+        val requestSocketGeneration = socketGeneration
         val id = "a${nextId.incrementAndGet()}"
         val deferred = CompletableDeferred<JsonElement?>()
         synchronized(pendingLock) { pending[id] = deferred }
@@ -209,11 +397,15 @@ class GatewayWsClient(private val profile: ServerProfile) {
             throw IllegalStateException("çerçeve gönderilemedi: $method")
         }
 
-        return withTimeoutOrNull(timeoutMs) { deferred.await() }
+        val result = withTimeoutOrNull(timeoutMs) { deferred.await() }
             ?: run {
                 synchronized(pendingLock) { pending.remove(id) }
                 throw IllegalStateException("$method — ${timeoutMs / 1000}s içinde yanıt yok")
             }
+        if (requestSocketGeneration == socketGeneration) {
+            rememberExecutionGeneration(result as? JsonObject, (params["session_id"] as? JsonPrimitive)?.content)
+        }
+        return result
     }
 
     /**
@@ -382,9 +574,16 @@ class GatewayWsClient(private val profile: ServerProfile) {
 
     /** Süren üretimi keser (ChatGPT'deki "durdur" düğmesinin karşılığı). */
     suspend fun interrupt(sessionId: String) {
+        // Canonical authority requires the exact observed turn. Legacy gateways expose no generation
+        // and retain the original payload. A stale_generation refusal is surfaced, never retried
+        // against a newer turn which the user did not ask to stop.
+        val generation = executionGenerations[sessionId]
         request(
             "session.interrupt",
-            buildJsonObject { put("session_id", JsonPrimitive(sessionId)) },
+            buildJsonObject {
+                put("session_id", JsonPrimitive(sessionId))
+                if (generation != null) put("execution_generation", JsonPrimitive(generation))
+            },
             timeoutMs = 10_000,
         )
     }
@@ -439,6 +638,10 @@ class GatewayWsClient(private val profile: ServerProfile) {
      * kapanana kadar DB'ye düşmeyebilir (361 mesajlık canlı oturum REST'te 0
      * dönüyordu). Bu RPC önce DB'yi dener, yoksa bellekteki geçmişi verir.
      */
+    suspend fun subagentList(sessionId: String): JsonObject? = request(
+        "subagent.list", buildJsonObject { put("session_id", JsonPrimitive(sessionId)) }, timeoutMs = 8_000,
+    ) as? JsonObject
+
     suspend fun sessionHistory(sessionId: String): List<SessionMessage> {
         val result = request(
             "session.history",
@@ -529,6 +732,16 @@ class GatewayWsClient(private val profile: ServerProfile) {
         if (frame["method"]?.jsonPrimitive?.contentOrNullSafe() == "event") {
             val params = frame["params"]?.jsonObject ?: return
             val type = params["type"]?.jsonPrimitive?.contentOrNullSafe() ?: return
+            rememberExecutionGeneration(params)
+            if (GatewayReady.isReady(type)) {
+                // Bilgi karesi: yalnız "ready gördüm" işaretlenir. Bağlantı
+                // 101'de zaten Open; burada durumu geri almıyoruz.
+                readyTimer?.cancel()
+                readyTimer = null
+                readySeen.set(true)
+                DiagLog.i("ws", "gateway.ready alındı (bilgi karesi)")
+                return
+            }
             // ÖNEMLİ: `scope.launch { emit }` kullanma — her çerçeve ayrı bir
             // coroutine'e giderdi ve `message.delta` parçaları sırasını kaybederdi
             // (metin karışık çıkar). `tryEmit` OkHttp'nin tek okuma iş parçacığında
@@ -544,40 +757,159 @@ class GatewayWsClient(private val profile: ServerProfile) {
     }
 
     /**
-     * Kesintide geri çekilmeyle yeniden bağlanır ([SocketTuning]).
+     * B3 (v6.3) keepalive döngüsü: 25 sn'de bir `ping` RPC'si.
      *
-     * Tur-10 (F2): yakın zamanda bağlıydıysak (≤60 sn) tavan 5 sn'ye iner —
-     * ağ sarsıntısından sonra kullanıcı "Düşünüyor" ekranında beklemesin.
-     * Gecikmeye ±%25 jitter eklenir ki köprü ve röle ile aynı saniyede
-     * yeniden bağlanıp sunucuyu dalgalandırmasın.
+     * Yanıt gelmezse (8 sn bütçe) kayıp sayılır; **2 ardışık** kayıpta soket
+     * kapatılır ve yeniden bağlanma başlar. JSON-RPC hata karesi de "yanıt"tır:
+     * eski sunucu `ping` metodunu tanımasa bile çerçeve döndüğü için bağlantı
+     * canlı sayılır (yanlış kopma üretmez).
      */
-    private fun scheduleReconnect() {
-        if (closedByUser) return
-        reconnectAttempt++
-        val sinceOpen = if (lastOpenAt > 0) System.currentTimeMillis() - lastOpenAt else null
-        val backoffMs = SocketTuning.gatewayReconnectMs(
-            attempt = reconnectAttempt,
-            msSinceLastOpen = sinceOpen,
-            unit = kotlin.random.Random.nextDouble(),
-        )
-        DiagLog.d("ws", "reconnect #$reconnectAttempt in ${backoffMs}ms")
-        scope.launch {
-            delay(backoffMs)
-            if (!closedByUser) openSocket()
+    private fun startKeepalive() {
+        stopKeepalive()
+        keepalive.reset()
+        keepaliveJob = scope.launch {
+            while (keepaliveJob?.isActive == true) {
+                delay(keepalive.intervalMillis)
+                if (_connection.value !is ConnectionState.Open) continue
+                val answered = try {
+                    request("ping", timeoutMs = KeepalivePolicy.PONG_TIMEOUT_MS)
+                    true
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Zaman aşımı dışındaki her sonuç çerçeve aldığımızı gösterir.
+                    !(e is IllegalStateException && e.message?.contains("yanıt yok") == true)
+                }
+                if (answered) {
+                    keepalive.onAnswered()
+                } else if (keepalive.onMissed()) {
+                    DiagLog.w(
+                        "ws",
+                        "keepalive: ${keepalive.consecutiveMisses} ardışık ping yanıtsız → soket kapatılıyor",
+                    )
+                    // v6.4 madde G: güncel soketi geçersiz kıl (nesil artışı
+                    // iptalden ÖNCE) + TEK scheduleReconnect. Eski kod yalnız
+                    // cancel ediyordu; iptal tetikli onFailure da ayrıca
+                    // scheduleReconnect çağırıyordu → çift plan döngüsü.
+                    val oldGen = socketGeneration
+                    socketGeneration++
+                    stabilityJob?.cancel()
+                    stabilityJob = null
+                    if (socket != null) wsDiag("WS gen=$oldGen keepalive kaybı → yeniden bağlanma")
+                    socket?.cancel()
+                    socket = null
+                    scheduleReconnect()
+                    break
+                }
+            }
         }
     }
 
-    private inner class Listener : WebSocketListener() {
+    private fun stopKeepalive() {
+        keepaliveJob?.cancel()
+        keepaliveJob = null
+    }
+
+    /**
+     * v6.4 tanılama (madde H): her aç/kapa logcat'e de yazılır — kanıt için
+     * `adb logcat -s HermesWs` yeterlidir. DiagLog'a da gider.
+     */
+    private fun wsDiag(msg: String) {
+        DiagLog.d("ws", msg)
+        runCatching { android.util.Log.d("HermesWs", msg) }
+    }
+
+    /**
+     * B3 (v6.3): kesintide yeniden bağlanma — 1 → 2 → 4 → 8 → 15 sn, tavan 15 sn,
+     * deneme sayısı sınırsız. Kullanıcıya "Yeniden bağlanıyor (n. deneme, 4 sn)"
+     * durumu yayınlanır. (Eski ±%25 jitter kaldırıldı: istenen dizi kesin.)
+     *
+     * v6.4 madde D: TEK iş — aktifken yenisini açmaz. Eski kod her onFailure'da
+     * yeni bir `scope.launch` açıyordu; çift plan → çift açılış → çift iptal →
+     * yeni onFailure… kendini besleyen döngü (teşhis madde 3).
+     */
+    private fun scheduleReconnect() {
+        if (closedByUser) return
+        if (reconnectJob?.isActive == true) {
+            wsDiag("WS reconnect zaten planlı → ikinci plan yok (attempt=$reconnectAttempt)")
+            return
+        }
+        // v6.4: yalnız GÜNCEL nesilden planla. Job tetiklendiğinde nesil
+        // değiştiyse (araya başka bir açılış girdiyse) açılış iptal edilir.
+        val gen = socketGeneration
+        reconnectAttempt++
+        val backoffMs = WsBackoff.delayMs(reconnectAttempt)
+        _connection.value = ConnectionState.Reconnecting(reconnectAttempt, backoffMs)
+        wsDiag("WS reconnect #$reconnectAttempt in ${backoffMs}ms (gen=$gen)")
+        reconnectScheduleCount++
+        reconnectJob = scope.launch {
+            delay(backoffMs)
+            if (closedByUser) return@launch
+            if (gen != socketGeneration) {
+                wsDiag("WS reconnect iptal edildi (gen=$gen güncel=$socketGeneration)")
+                return@launch
+            }
+            openSocket()
+        }
+    }
+
+    /**
+     * v6.4: her dinleyici kendi SOKET NESLİNİ taşır (`gen`). İptal edilmiş bir
+     * soketin gecikmeli `onFailure`/`onClosed` callback'i güncel nesle ait
+     * olmadığı için YOK SAYILIR — döngünün beslendiği yer tam burasıydı.
+     */
+    private inner class Listener(private val gen: Int) : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            // v6.4 madde A: eski neslin geç açılışı yeni durumu bozmasın.
+            if (gen != socketGeneration) {
+                wsDiag("WS gen=$gen eski open yok sayıldı (güncel=$socketGeneration)")
+                webSocket.cancel()
+                return
+            }
             val wasReconnect = reconnectAttempt > 0
-            reconnectAttempt = 0
+            // v6.4 madde C: burada reconnectAttempt SIFIRLANMAZ — sıfırlamak
+            // backoff'u (1→2→4→8→15) hiç devreye sokmuyordu (teşhis madde 4).
+            // Sıfırlama yalnız 30 sn kararlı açık kaldıktan sonra (stabilityJob).
+            openedAtMs.set(System.currentTimeMillis())
             lastOpenAt = System.currentTimeMillis()
+            readySeen.set(false)
+            startKeepalive()
+            // J1 KÖK NEDEN: 101 = taşıma hazır. `gateway.ready` yalnız bir BİLGİ
+            // karesidir (skin/heartbeat). Dashboard /api/status taraması event
+            // loop'u 14-16 sn GIL'e kilitleyebiliyor (bkz. web_server_gateway.py
+            // _TOPOLOGY_CACHE notu) ve eski sunucular bu olayı hiç göndermiyor.
+            // Bu yüzden 12 sn'lik katı kapı regresyondu: soket açıkken uygulama
+            // Error'a düşüyor, sohbet/pano hiç açılmıyordu. Artık Open hemen.
             _connection.value = ConnectionState.Open
-            DiagLog.i("ws", if (wasReconnect) "reconnected" else "connected")
+            wsDiag("WS gen=$gen open attempt=$reconnectAttempt")
+            DiagLog.i("ws", "ws el sıkışması 101 · bağlantı açık (gateway.ready bilgi karesi)")
             if (wasReconnect) onReconnected?.invoke()
+            readyTimer?.cancel()
+            readyTimer = scope.launch {
+                delay(readyTimeoutMs)
+                if (gen != socketGeneration) return@launch
+                if (!readySeen.get()) {
+                    val msg = GatewayReady.missedMessage(readyTimeoutMs)
+                    // Error DEĞİL: yalnız teşhis kaydı; bağlantı açık kalır.
+                    DiagLog.w("ws", msg)
+                    ConnectionJournal.record("ws", "ready yok: $msg", msg)
+                }
+            }
+            // v6.4 madde C: 30 sn kararlı açık kalırsa deneme sayacını sıfırla —
+            // backoff yalnız burada sıfırlanır.
+            stabilityJob?.cancel()
+            stabilityJob = scope.launch {
+                delay(stableOpenResetMs)
+                if (gen == socketGeneration && _connection.value == ConnectionState.Open) {
+                    reconnectAttempt = 0
+                    wsDiag("WS gen=$gen ${stableOpenResetMs / 1000} sn kararlı → backoff sıfırlandı")
+                }
+            }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            // v6.4 madde A: eski neslin kareleri yok sayılır.
+            if (gen != socketGeneration) return
             // Normalde bir kare = bir JSON nesnesi (dashboard da böyle ayrıştırıyor).
             // Satırlara bölmek, çok satırlı JSON'u parçalayıp veri düşürürdü; bu yüzden
             // önce bütünü dene, yalnız başarısız olursa satır-ayrılmış akışa düş.
@@ -591,35 +923,81 @@ class GatewayWsClient(private val profile: ServerProfile) {
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            if (gen != socketGeneration) return
             webSocket.close(1000, null)
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            // v6.4 madde F: eski neslin gecikmeli kapanışı ne durum yazar ne
+            // reconnect planlar — döngünün diğer besleme kolu.
+            if (gen != socketGeneration) {
+                wsDiag("WS gen=$gen eski close yok sayıldı (güncel=$socketGeneration)")
+                return
+            }
+            wsDiag("WS gen=$gen close code=$code lifetimeMs=${System.currentTimeMillis() - openedAtMs.get()}")
+            readySeen.set(false)
+            readyTimer?.cancel()
+            readyTimer = null
             _connection.value = ConnectionState.Closed
             // Kapanış kodu tek teşhis ipucu: 1000 düzgün kapanış, 1006 ağ
             // kayboldu, 1011 sunucu hatası. Bekleyen çağrı sayısı da önemli —
             // sıfır değilse kullanıcı "Düşünüyor"da takılı kalıyor demektir.
             DiagLog.w("ws", "closed code=$code reason=${reason.ifBlank { "-" }}")
             journal("closed code=$code reason=${reason.ifBlank { "-" }}")
-            failAllPending("bağlantı kapandı ($code)")
-            scheduleReconnect()
+            // B3 İSTENEN-5: kapanış kodunun Türkçesi kullanıcıya görünür
+            // ("Ağ koptu (1006)" gibi); ham kod yalnız teşhis kaydında kalır.
+            failAllPending(WsCloseCodes.describe(code))
+            if (WsCloseCodes.isFatalForRetry(code)) {
+                // 4401/1008: aynı token'la yeniden denemek boşuna — kullanıcı
+                // Ayarlar'dan tokenı düzeltmeli (bkz. WsCloseCodes.isFatalForRetry).
+                _connection.value = ConnectionState.Error(WsCloseCodes.describe(code))
+            } else {
+                _connection.value = ConnectionState.Closed
+                scheduleReconnect()
+            }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            // v6.4 madde F + teşhis madde 2: İPTAL EDİLMİŞ soketin GECİKMELİ
+            // onFailure'ı buraya düşüyordu ve reconnect tetikliyordu. Artık
+            // nesil uyuşmuyorsa ne durum yazar ne reconnect planlar.
+            if (gen != socketGeneration) {
+                wsDiag("WS gen=$gen eski failure yok sayıldı (${t.javaClass.simpleName}, güncel=$socketGeneration)")
+                return
+            }
+            wsDiag("WS gen=$gen failure lifetimeMs=${System.currentTimeMillis() - openedAtMs.get()} t=${t.javaClass.simpleName}")
             // FR-002: HTTP yükseltme hatası (ör. 502) "bağlantı hatası" diye
             // yutulmaz — gateway'e ulaşılıyor ama gateway/proxy hata veriyor;
             // kullanıcı ve DiagLog gerçeği (HTTP kodunu) görür.
             val reason = when (response?.code) {
                 401, 403 -> "Token reddedildi (${response.code})"
-                null -> t.message ?: "bağlantı hatası"
+                null -> ConnectionErrors.describe(t).let { base ->
+                    // B3 İSTENEN-4: zaman aşımında hedef adres şema+port ile görünür.
+                    if (ConnectionErrors.code(t) == "TIMEOUT") {
+                        "$base — hedef: ${profile.endpoint?.displayWs() ?: profile.wsBase}"
+                    } else {
+                        base
+                    }
+                }
                 else -> "Sunucu WS el sıkışmasını reddetti (HTTP ${response.code}) — " +
                     (t.message?.take(120) ?: "gateway geçici olarak meşgul olabilir")
             }
+            readySeen.set(false)
+            readyTimer?.cancel()
+            readyTimer = null
             _connection.value = ConnectionState.Error(reason)
-            DiagLog.e("ws", "failed http=${response?.code ?: "-"}", t)
+            DiagLog.e("ws", "failed http=${response?.code ?: "-"} kod=${ConnectionErrors.code(t)}", t)
             journal(reason, response?.code)
             failAllPending(reason)
-            scheduleReconnect()
+            if (response?.code == 401 || response?.code == 403) {
+                // Kimlik reddi (yanlış token): aynı bilgiyle yeniden denemek
+                // boşuna — 4401/1008 kapanış kodlarıyla aynı sınıf (bkz.
+                // WsCloseCodes.isFatalForRetry). Durum Error olarak kalır,
+                // kullanıcı Ayarlar'dan tokenı düzeltir.
+                DiagLog.w("ws", "kimlik reddi http=${response.code}; otomatik yeniden deneme yok")
+            } else {
+                scheduleReconnect()
+            }
         }
 
         /**
@@ -638,6 +1016,37 @@ class GatewayWsClient(private val profile: ServerProfile) {
 /** Bir JsonPrimitive'in içeriğini güvenle okur (JSON null → Kotlin null). */
 private fun JsonPrimitive.contentOrNullSafe(): String? =
     if (this is kotlinx.serialization.json.JsonNull) null else content
+
+/**
+ * gateway.ready el sıkışması sözleşmesi (saf mantık — birim test edilir).
+ *
+ * Sunucu (`tui_gateway/ws.py`) WS kabulünden hemen sonra tek bir olay yazar:
+ *   {"jsonrpc":"2.0","method":"event",
+ *    "params":{"type":"gateway.ready","payload":{"skin":…,"heartbeat":true,…}}}
+ * Bu olay gelmeden bağlantı "hazır" değildir; istek göndermek sessiz düşüş
+ * üretir. [GatewayWsClient] bu yüzden `Open`'ı yalnız bu olaydan sonra ilan eder.
+ */
+object GatewayReady {
+    /** Normalde ilk karede gelir; 12 sn cömert bir üst sınır. */
+    const val TIMEOUT_MS = 12_000L
+    const val EVENT_TYPE = "gateway.ready"
+
+    fun isReady(type: String?): Boolean = type == EVENT_TYPE
+
+    /**
+     * J1: bu olay gelmese de bağlantı AÇIK kalır — mesaj artık hata değil,
+     * teşhis uyarısıdır (eski sunucu ya da ağır yükte geciken dashboard).
+     */
+    fun missedMessage(timeoutMs: Long = TIMEOUT_MS): String {
+        val sn = (timeoutMs / 1000).coerceAtLeast(1)
+        return com.hermes.mobile.ui.tr(
+            "Bağlantı açık; ${sn} sn içinde gateway.ready bilgi karesi gelmedi " +
+                "(eski Hermes sürümü olabilir) — sohbet çalışmaya devam eder.",
+            "Connection is open; the gateway.ready info frame did not arrive within ${sn}s " +
+                "(possibly an older Hermes build) — chat keeps working.",
+        )
+    }
+}
 
 data class GatewayEvent(
     val type: String,
@@ -664,5 +1073,12 @@ sealed interface ConnectionState {
     data object Connecting : ConnectionState
     data object Open : ConnectionState
     data object Closed : ConnectionState
+
+    /**
+     * B3 (v6.3) — yeniden bağlanma bekleniyor. [attempt] 1'den başlar,
+     * [backoffMs] bu denemeden önceki beklemedir (bkz. [WsBackoff]).
+     */
+    data class Reconnecting(val attempt: Int, val backoffMs: Long) : ConnectionState
+
     data class Error(val reason: String) : ConnectionState
 }

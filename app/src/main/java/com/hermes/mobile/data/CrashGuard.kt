@@ -40,6 +40,15 @@ object CrashGuard {
     /** Çökme kurtarma izi — bir sonraki açılışta banner göstermek için. */
     fun markRecovered(summary: String) { lastCrash = summary }
 
+    private var acknowledgementFile: java.io.File? = null
+    private var recoveredFingerprint: String? = null
+
+    fun dismissRecovered() {
+        val fingerprint = recoveredFingerprint
+        if (fingerprint != null) runCatching { acknowledgementFile?.writeText(fingerprint) }
+        lastCrash = null
+    }
+
     /**
      * Bir önceki sürecin son CRASH satırını diag.log'dan bulur ve
      * [lastCrash] yapar — çökme süreci öldürdüğü için bellekte hiçbir şey
@@ -47,17 +56,25 @@ object CrashGuard {
      * (Satır biçimi DiagLog.Entry.line(): "… C [crash] mesaj".)
      */
     fun recoverFromDiagLog(filesDir: java.io.File) {
+        acknowledgementFile = java.io.File(filesDir, "crash-acknowledged.sha256")
+        recoveredFingerprint = null
         runCatching {
             val f = java.io.File(filesDir, "diag.log")
             if (!f.exists()) return
             var found: String? = null
             f.forEachLine { line ->
                 if (line.contains(" C [crash]")) {
-                    found = line.substringAfter("]").trim()
-                        .lineSequence().firstOrNull()?.take(200)
+                    found = line
                 }
             }
-            found?.let { markRecovered("Onceki açilis bir cokmeyle kapandi: $it") }
+            found?.let { line ->
+                val fingerprint = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(line.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+                recoveredFingerprint = fingerprint
+                if (acknowledgementFile?.takeIf { it.exists() }?.readText() != fingerprint) {
+                    markRecovered("Onceki açilis bir cokmeyle kapandi: ${line.substringAfter("]").trim().take(200)}")
+                }
+            }
         }
     }
 

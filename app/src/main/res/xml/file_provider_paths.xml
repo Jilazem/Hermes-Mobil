@@ -3,4 +3,5 @@
      üzerinden harici görüntüleyicilere okuma izniyle paylaşılır. -->
 <paths>
     <cache-path name="server_files" path="server-files/" />
+    <files-path name="recording_archive" path="recording-archive/" />
 </paths>
