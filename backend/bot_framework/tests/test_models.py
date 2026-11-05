@@ -21,6 +21,7 @@ class BotValidationTests(unittest.TestCase):
             emoji="🧪",
             tools=["web_search"],
             model="local",
+            provider="node-local-models",
             think_mode="low",
             welcome_message="Merhaba",
             profile="cd-coder",
@@ -68,6 +69,20 @@ class BotValidationTests(unittest.TestCase):
         with self.assertRaises(BotValidationError) as ctx:
             Bot.create(name="Bot", persona="x", think_mode="ultra")
         self.assertEqual(ctx.exception.code, "think_mode_invalid")
+
+    def test_provider_requires_model(self):
+        with self.assertRaises(BotValidationError) as ctx:
+            Bot.create(name="Bot", persona="x", provider="node-local-models")
+        self.assertEqual(ctx.exception.code, "model_required")
+
+    def test_provider_must_be_a_safe_slug(self):
+        with self.assertRaises(BotValidationError) as ctx:
+            Bot.create(name="Bot", persona="x", model="m", provider="https://remote.local")
+        self.assertEqual(ctx.exception.code, "provider_invalid")
+
+    def test_legacy_bot_without_provider_stays_valid(self):
+        bot = Bot.from_dict({"name": "Eski", "persona": "x", "model": "m"})
+        self.assertEqual("", bot.provider)
 
     def test_tool_catalog_nonempty(self):
         self.assertGreaterEqual(len(TOOL_CATALOG), 5)

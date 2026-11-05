@@ -109,6 +109,11 @@ class DashboardEngine(ChatEngine):
         try:
             params = {'session_id': binding['stored'], 'omit_messages': True} if binding else {'title': 'Mobil · ' + bot.name}
             if bot.profile: params['profile'] = bot.profile
+            # Use per-bot model/provider on creation only. Never change the
+            # global config or override a conversation being resumed.
+            if not binding and bot.model:
+                params['model'] = bot.model
+                if bot.provider: params['provider'] = bot.provider
             result = rpc.call('session.resume' if binding else 'session.create', params)
             runtime = result.get('session_id') or result.get('id')
             stored = result.get('session_key') or result.get('stored_session_id') or result.get('resumed') or (binding['stored'] if binding else runtime)

@@ -69,6 +69,10 @@ class BotApiClient(base: String, private val token: String, private val dashboar
             })
         }
     }
+    /** Read-only inventory from the configured Dashboard; it never changes its default. */
+    suspend fun availableModelProviders(): List<JsonObject> =
+        dashboard?.request("GET", "/mobile-api/models")?.rows("providers").orEmpty()
+
     companion object {
         fun fromDashboard(profile: ServerProfile): BotApiClient = BotApiClient(
             profile.activeUrl ?: profile.normalizedUrl, profile.token, DashboardWorkspaceTransport(profile))
@@ -103,13 +107,15 @@ fun botAssistantMessageKeys(sessions: List<JsonObject>): Set<String> = buildSet 
 fun JsonObject.text(key: String): String = (get(key) as? JsonPrimitive)?.contentOrNull.orEmpty()
 fun JsonObject.rows(key: String): List<JsonObject> = (get(key) as? JsonArray)?.mapNotNull { it as? JsonObject }.orEmpty()
 fun botVisibleMessages(session: JsonObject): List<JsonObject> = session.rows("messages").filter { it.text("role") != "system" }
-fun botDefinition(name: String, emoji: String, persona: String, model: String, think: String, welcome: String, tools: Set<String>): JsonObject {
+fun botDefinition(name: String, emoji: String, persona: String, model: String, think: String, welcome: String, tools: Set<String>, provider: String = ""): JsonObject {
     require(name.isNotBlank() && name.codePointCount(0, name.length) <= 48) { "Ad 1–48 karakter olmalı" }
     require(persona.isNotBlank() && persona.codePointCount(0, persona.length) <= 8000) { "Persona 1–8000 karakter olmalı" }
     require(emoji.codePointCount(0, emoji.length) <= 8 && model.codePointCount(0, model.length) <= 120 && welcome.codePointCount(0, welcome.length) <= 500 && tools.size <= 12) { "Alan sınırı aşıldı" }
     require(think in setOf("off", "low", "medium", "high"))
+    require(provider.length <= 80 && (provider.isBlank() || provider.matches(Regex("[A-Za-z0-9][A-Za-z0-9_.:-]*")))) { "Model sağlayıcısı geçersiz" }
+    require(provider.isBlank() || model.isNotBlank()) { "Önce botun modelini seçin" }
     return buildJsonObject {
-        put("name", name); put("emoji", emoji); put("persona", persona); put("model", model)
+        put("name", name); put("emoji", emoji); put("persona", persona); put("model", model); put("provider", provider)
         put("think_mode", think); put("welcome_message", welcome); put("tools", JsonArray(tools.map(::JsonPrimitive)))
     }
 }

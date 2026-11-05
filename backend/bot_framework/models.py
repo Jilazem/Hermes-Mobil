@@ -12,6 +12,7 @@ modu + karşılama mesajı.
 """
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -25,6 +26,7 @@ MAX_PERSONA = 8000
 MAX_WELCOME = 500
 MAX_TOOLS = 12
 MAX_MODEL = 120
+MAX_PROVIDER = 80
 MAX_PROFILE = 64
 
 THINK_MODES = ("off", "low", "medium", "high")
@@ -64,6 +66,7 @@ ALLOWED_FIELDS = {
     "persona",
     "tools",
     "model",
+    "provider",
     "think_mode",
     "welcome_message",
     "profile",
@@ -114,6 +117,7 @@ class Bot:
     persona: str = ""
     tools: List[str] = field(default_factory=list)
     model: str = ""
+    provider: str = ""
     think_mode: str = "off"
     welcome_message: str = ""
     profile: str = ""
@@ -156,6 +160,14 @@ class Bot:
             raise BotValidationError(
                 "model_too_long", "Model adı en çok %d karakter olabilir" % MAX_MODEL
             )
+        if len(self.provider) > MAX_PROVIDER or (self.provider and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]*", self.provider)):
+            raise BotValidationError(
+                "provider_invalid", "Model sağlayıcısı geçersiz veya en çok %d karakter olmalı" % MAX_PROVIDER
+            )
+        if self.provider and not self.model.strip():
+            raise BotValidationError(
+                "model_required", "Sağlayıcı seçildiyse bot modeli de seçilmeli"
+            )
         if self.think_mode not in THINK_MODES:
             raise BotValidationError(
                 "think_mode_invalid", "think_mode şunlardan biri olmalı: %s" % ", ".join(THINK_MODES)
@@ -181,6 +193,7 @@ class Bot:
         think_mode: str = "off",
         welcome_message: str = "",
         profile: str = "",
+        provider: str = "",
         now: Optional[int] = None,
     ) -> "Bot":
         """Yeni bot üretir ve doğrular; geçersizse BotValidationError."""
@@ -192,6 +205,7 @@ class Bot:
             persona=persona,
             tools=list(tools or []),
             model=model.strip(),
+            provider=provider.strip(),
             think_mode=think_mode,
             welcome_message=welcome_message,
             profile=profile.strip(),
@@ -227,6 +241,7 @@ class Bot:
             persona=_as_text(data.get("persona"), "persona"),
             tools=list(tools),
             model=_as_text(data.get("model"), "model"),
+            provider=_as_text(data.get("provider"), "provider"),
             think_mode=_as_text(data.get("think_mode"), "think_mode") or "off",
             welcome_message=_as_text(data.get("welcome_message"), "welcome_message"),
             profile=_as_text(data.get("profile"), "profile"),
@@ -252,6 +267,7 @@ class Bot:
             "persona": self.persona,
             "tools": list(self.tools),
             "model": self.model,
+            "provider": self.provider,
             "think_mode": self.think_mode,
             "welcome_message": self.welcome_message,
             "profile": self.profile,
