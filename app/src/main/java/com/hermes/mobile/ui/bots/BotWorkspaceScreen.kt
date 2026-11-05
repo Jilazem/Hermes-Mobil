@@ -63,6 +63,7 @@ private fun BotWorkspaceContent(profile: ServerProfile?, onOpenSettings: () -> U
     val endpoint = profile?.let { it.activeUrl ?: it.normalizedUrl }.orEmpty()
     val token = profile?.token.orEmpty()
     var api by remember { mutableStateOf<BotApiClient?>(null) }
+    var modelProviders by remember { mutableStateOf(emptyList<JsonObject>()) }
     var bots by remember { mutableStateOf(emptyList<JsonObject>()) }
     var templates by remember { mutableStateOf(emptyList<JsonObject>()) }
     var catalog by remember { mutableStateOf(emptyList<JsonObject>()) }
@@ -119,7 +120,9 @@ private fun BotWorkspaceContent(profile: ServerProfile?, onOpenSettings: () -> U
         catch (e: CancellationException) { throw e } catch (_: Exception) { emptyList() }
         val nextTemplates = optional("/api/templates", "templates")
         val nextCatalog = optional("/api/tools", "tools")
-        api = candidate; bots = result.rows("bots"); templates = nextTemplates; catalog = nextCatalog
+        val nextModels = try { candidate.availableModelProviders() }
+            catch (e: CancellationException) { throw e } catch (_: Exception) { emptyList() }
+        api = candidate; bots = result.rows("bots"); templates = nextTemplates; catalog = nextCatalog; modelProviders = nextModels
         connectSheet = false
     }
     suspend fun openChat(bot: JsonObject) {
@@ -178,7 +181,7 @@ private fun BotWorkspaceContent(profile: ServerProfile?, onOpenSettings: () -> U
                 tab == 3 -> HermesProfileBots(profile, hermesProfiles, onRefreshHermes, onOpenHermes)
                 editing != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(if (editing!!.text("id").isBlank()) S.t2("Yeni ajan", "New agent") else S.t2("Ajanı düzenle", "Edit agent"), style = MaterialTheme.typography.titleLarge)
-                    BotDefinitionEditor(requireNotNull(editing), catalog, busy, error, onCancel = { editing = null }, onSave = { definition -> act {
+                    BotDefinitionEditor(requireNotNull(editing), catalog, busy, error, onCancel = { editing = null }, availableProviders = modelProviders, onSave = { definition -> act {
                         val id = editing?.text("id").orEmpty()
                         requireNotNull(api).request(if (id.isEmpty()) "POST" else "PATCH", "/api/bots" + if (id.isEmpty()) "" else "/${botApiSegment(id)}", definition)
                         editing = null; refresh()
@@ -326,7 +329,8 @@ private fun BotWorkspaceContent(profile: ServerProfile?, onOpenSettings: () -> U
         ModalBottomSheet(onDismissRequest = { detail = null }) { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("${bot.text("emoji")} ${bot.text("name")}", style = MaterialTheme.typography.titleLarge)
             MarkdownText(bot.text("persona"))
-            Text(bot.text("model").ifBlank { S.t2("Oturumun modeli", "Session model") }, style = MaterialTheme.typography.bodySmall)
+            Text(listOf(bot.text("provider"), bot.text("model")).filter(String::isNotBlank).joinToString(" / ")
+                .ifBlank { S.t2("Oturumun modeli", "Session model") }, style = MaterialTheme.typography.bodySmall)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { (bot["tools"] as? JsonArray)?.forEach { Text(it.jsonPrimitive.content, style = MaterialTheme.typography.labelSmall, modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small).padding(7.dp)) } }
             OutlinedTextField(groupName, { groupName = it.take(40) }, Modifier.fillMaxWidth(), label = { Text(S.t2("Grup", "Group")) }, supportingText = { Text(S.t2("Bu telefondaki çalışma düzenin", "Your local workspace organization")) })
             TextButton(onClick = { val next = groups.toMutableMap(); if (groupName.isBlank()) next.remove(bot.text("id")) else next[bot.text("id")] = groupName.trim()
