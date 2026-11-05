@@ -277,11 +277,14 @@ internal fun LegacyBotFrameworkScreen(onOpenSettings: () -> Unit = {}) {
 }
 
 @Composable
-internal fun BotDefinitionEditor(bot: JsonObject, catalog: List<JsonObject>, busy: Boolean, serverError: String, onCancel: () -> Unit, onSave: (JsonObject) -> Unit) {
+internal fun BotDefinitionEditor(bot: JsonObject, catalog: List<JsonObject>, busy: Boolean, serverError: String, onCancel: () -> Unit, onSave: (JsonObject) -> Unit, availableProviders: List<JsonObject> = emptyList()) {
     var name by remember(bot) { mutableStateOf(bot.text("name")) }
     var emoji by remember(bot) { mutableStateOf(bot.text("emoji").ifBlank { "🤖" }) }
     var persona by remember(bot) { mutableStateOf(bot.text("persona")) }
     var model by remember(bot) { mutableStateOf(bot.text("model")) }
+    var provider by remember(bot) { mutableStateOf(bot.text("provider")) }
+    var showModelList by remember(bot) { mutableStateOf(false) }
+    var modelSearch by remember(bot) { mutableStateOf("") }
     var think by remember(bot) { mutableStateOf(bot.text("think_mode").ifBlank { "off" }) }
     var welcome by remember(bot) { mutableStateOf(bot.text("welcome_message")) }
     var tools by remember(bot) { mutableStateOf((bot["tools"] as? JsonArray)?.map { it.jsonPrimitive.content }?.toSet().orEmpty()) }
@@ -296,12 +299,42 @@ internal fun BotDefinitionEditor(bot: JsonObject, catalog: List<JsonObject>, bus
             tools = if (checked) tools + tool.text("key") else tools - tool.text("key")
         }); Text(tool.text("label"))
     } }
-    OutlinedTextField(model, { model = it }, label = { Text(S.t2("Model · boş = oturum modeli · en çok 120", "Model · blank = session model · up to 120")) }, enabled = !busy)
+    Text(S.t2("Botun yapay zekâ modeli · yalnız yeni sohbetlerde geçerli", "Bot model · applies to new conversations only"))
+    if (availableProviders.isNotEmpty()) {
+        TextButton(enabled = !busy, onClick = { showModelList = !showModelList }) {
+            Text(S.t2("Sunucudaki modellerden seç", "Choose from server models") + if (showModelList) " ▴" else " ▾")
+        }
+        if (showModelList) {
+            OutlinedTextField(modelSearch, { modelSearch = it }, singleLine = true,
+                label = { Text(S.t2("Model veya sağlayıcı ara", "Search models or providers")) }, enabled = !busy)
+            val choices = availableProviders.flatMap { row ->
+                val slug = row.text("slug")
+                (row["models"] as? JsonArray)?.mapNotNull { item ->
+                    (item as? JsonPrimitive)?.contentOrNull?.let { slug to it }
+                }.orEmpty()
+            }.filter { (slug, name) ->
+                modelSearch.isBlank() || slug.contains(modelSearch, ignoreCase = true) ||
+                    name.contains(modelSearch, ignoreCase = true)
+            }.take(30)
+            Column(Modifier.heightIn(max = 228.dp).verticalScroll(rememberScrollState())) {
+                choices.forEach { (slug, name) ->
+                    TextButton(enabled = !busy, onClick = { provider = slug; model = name; showModelList = false }) {
+                        Text("$slug / $name")
+                    }
+                }
+                if (choices.isEmpty()) Text(S.t2("Eşleşen model bulunamadı", "No matching model"))
+            }
+        }
+    }
+    OutlinedTextField(provider, { provider = it }, singleLine = true,
+        label = { Text(S.t2("Sağlayıcı · boş = profil sağlayıcısı", "Provider · blank = profile provider")) }, enabled = !busy)
+    OutlinedTextField(model, { model = it }, singleLine = true,
+        label = { Text(S.t2("Model · boş = oturum varsayılanı", "Model · blank = session default")) }, enabled = !busy)
     Row { listOf("off", "low", "medium", "high").forEach { mode -> FilterChip(selected = think == mode, enabled = !busy, onClick = { think = mode }, label = { Text(mode) }) } }
     OutlinedTextField(welcome, { welcome = it }, label = { Text(S.t2("Karşılama · en çok 500", "Welcome · up to 500")) }, enabled = !busy)
     Row {
         Button(enabled = !busy, onClick = {
-            try { onSave(botDefinition(name, emoji, persona, model, think, welcome, tools)) }
+            try { onSave(botDefinition(name, emoji, persona, model, think, welcome, tools, provider.trim())) }
             catch (e: IllegalArgumentException) { validation = e.message.orEmpty() }
         }) { Text(S.t2("Kaydet", "Save")) }
         TextButton(enabled = !busy, onClick = onCancel) { Text(S.t2("Vazgeç", "Cancel")) }
