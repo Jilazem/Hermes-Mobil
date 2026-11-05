@@ -46,6 +46,31 @@ class DashboardHubTest(unittest.TestCase):
         self.assertEqual('stored-1', FakeRPC.calls[2][1]['session_id'])
         self.assertEqual(5, len(self.store.get_session(sid)['messages']))
 
+    def test_each_bot_sets_its_model_only_when_creating_session(self):
+        bot = self.store.save_bot(Bot(
+            name='Mobil Değerleme', persona='Kanıt göster.',
+            model='deepseek-ai/DeepSeek-V4.1-Flash', provider='node-local-models',
+            profile='cd-bilirkisi'))
+        engine = DashboardEngine(self.store, self.token, 'ws://unused', FakeRPC)
+        sid = engine.open_session(bot)['id']
+        engine.send(sid, 'ilk'); engine.send(sid, 'ikinci')
+        first = FakeRPC.calls[0]
+        self.assertEqual('session.create', first[0])
+        self.assertEqual('deepseek-ai/DeepSeek-V4.1-Flash', first[1]['model'])
+        self.assertEqual('node-local-models', first[1]['provider'])
+        self.assertEqual('cd-bilirkisi', first[1]['profile'])
+        second_session = FakeRPC.calls[2]
+        self.assertEqual('session.resume', second_session[0])
+        self.assertNotIn('model', second_session[1])
+        self.assertNotIn('provider', second_session[1])
+
+    def test_bot_without_model_keeps_server_default(self):
+        bot = self.store.save_bot(Bot(name='Varsayılan', persona='Açık ve kısa yaz.'))
+        engine = DashboardEngine(self.store, self.token, 'ws://unused', FakeRPC)
+        engine.send(engine.open_session(bot)['id'], 'merhaba')
+        self.assertNotIn('model', FakeRPC.calls[0][1])
+        self.assertNotIn('provider', FakeRPC.calls[0][1])
+
     def test_uncertain_submission_is_never_replayed(self):
         bot = self.store.save_bot(Bot(name='Kontrol', persona='Açık ve kısa yaz.'))
         engine = DashboardEngine(self.store, self.token, 'ws://unused', FakeRPC)
