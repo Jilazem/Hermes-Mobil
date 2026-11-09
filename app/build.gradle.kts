@@ -14,8 +14,8 @@ android {
         applicationId = "com.hermes.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 35
-        versionName = "7.8.0"
+        versionCode = 36
+        versionName = "7.8.1"
         vectorDrawables { useSupportLibrary = true }
         // Proof screens can only be launched externally in an explicit local test build.
         manifestPlaceholders["hermesProofExported"] = providers.gradleProperty("hermesProofScreens").getOrElse("false")

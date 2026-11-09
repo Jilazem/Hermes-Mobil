@@ -53,21 +53,46 @@ data class ServerProfile(
      * anahtarı kullanır; dolu olması anahtarın telefonda durması demektir.
      */
     val geminiApiKey: String = "",
+    /**
+     * Açık Dashboard URL yapılandırması (v7.8.1). Boşsa taban adresin host'u + 9120 kullanılır.
+     * Şema (http/https) asla zorla düşürülmez.
+     */
+    val dashboardUrl: String = "",
+    /**
+     * Açık Webapp URL yapılandırması (v7.8.1). Boşsa taban adresin portu ya da 9150 kullanılır.
+     */
+    val webappUrlConfig: String = "",
 ) {
     val webDashboardUrl: String
         get() {
+            val explicit = dashboardUrl.trim().trimEnd('/')
+            if (explicit.isNotBlank()) {
+                return if (explicit.endsWith("/#/")) explicit
+                else if (explicit.endsWith("/#")) "$explicit/"
+                else if (explicit.endsWith("/")) "$explicit#/"
+                else "$explicit/#/"
+            }
             val base = activeUrl ?: normalizedUrl
             val uri = runCatching { java.net.URI(base) }.getOrNull()
+            val scheme = if (isHttps) "https" else (uri?.scheme?.takeIf { it.isNotBlank() } ?: "http")
             val host = uri?.host?.takeIf(String::isNotBlank) ?: "192.168.1.101"
-            return "http://$host:9120/#/"
+            return "$scheme://$host:9120/#/"
         }
 
     val webappUrl: String
         get() {
+            val explicit = webappUrlConfig.trim().trimEnd('/')
+            if (explicit.isNotBlank()) {
+                return if (explicit.endsWith("/#/")) explicit
+                else if (explicit.endsWith("/#")) "$explicit/"
+                else if (explicit.endsWith("/")) "$explicit#/"
+                else "$explicit/#/"
+            }
             val base = activeUrl ?: normalizedUrl
             val uri = runCatching { java.net.URI(base) }.getOrNull()
+            val scheme = if (isHttps) "https" else (uri?.scheme?.takeIf { it.isNotBlank() } ?: "http")
             val host = uri?.host?.takeIf(String::isNotBlank) ?: "192.168.1.101"
-            return "http://$host:9150/#/"
+            return "$scheme://$host:9150/#/"
         }
 
     val effectiveRelayUrl: String

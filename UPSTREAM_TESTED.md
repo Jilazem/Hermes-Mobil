@@ -1,18 +1,33 @@
 # Tested server version
 
-The app is developed and tested against this Hermes server build:
+The app is developed and tested against this Hermes server build (Hermes Mobil v7.8.1 / versionCode 36):
 
 ```text
-version         0.19.1
-release_date    2026.7.30
-config_version  33
-commit          844411da864d799bbed4f98423f821435975fad0
+version         0.23.0
+release_date    2026.9.24
+config_version  35
+commit          a08f2418cd82760986c43c8db97c85afd85bd18b
+ports           9120 (Dashboard / Caddy reverse proxy), 9150 (Webapp & Gateway API/WS)
 ```
 
 The upstream agent does not guarantee API stability yet. A newer or older
 server can break individual panels while the rest of the app keeps working.
 **Include your server version when reporting a bug** — `/api/status` returns
 it, and the app shows it under Dashboard → Status.
+
+## Port Architecture (v7.8.0 / v7.8.1)
+
+- **Port 9120:** Hermes Dashboard UI (Caddy reverse proxy; WebSocket upgrade via Caddy).
+- **Port 9150:** Hermes Webapp & Gateway (`/api/status`, `/api/auth/ws-ticket`, `/api/ws`, `/api/sessions`).
+- Dynamic scheme preservation: HTTPS/WSS are never downgraded to HTTP/WS; custom dashboard and webapp URLs are supported in `ServerProfile`.
+
+## WebSocket & Event Deduplication (v7.8.1 P0)
+
+Gateway events are bound to authoritative server IDs:
+- `turn_id`: Prompt turn streams (`message.start`, `message.delta`, `message.complete`) prevent turn re-creation across reconnects.
+- `offset`: Dropped re-sent chunks already applied in streamed segments.
+- `tool_id`: Tool call and tool result events bind to the exact same card (`tool_${sessionId}_${toolId}`), eliminating duplicate working/completed cards.
+- `run_id` / `subagent_id`: Stable tracking for task starts, finishes, and subagent progress.
 
 ## Why this file exists
 

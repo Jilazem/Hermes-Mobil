@@ -29,7 +29,14 @@ class HomeFeedLogicTest {
         archived = archived, current = false, liveSession = null,
     )
 
-    private val sources = mapOf("c" to "cron", "a" to "telegram", "b" to "cli", "s" to "system")
+    private val sources = mapOf(
+        "c" to "cron",
+        "a" to "telegram",
+        "b" to "cli",
+        "s" to "system",
+        "d" to "user",
+        "e" to "user",
+    )
     private val sourceOf: (DrawerRow) -> String? = { sources[it.dbId] }
 
     @Test
@@ -40,10 +47,11 @@ class HomeFeedLogicTest {
 
     @Test
     fun `tum islemler yalniz devam eden isler`() {
-        // J2: varsayılan liste = çalışan işler + kullanıcının sabitledikleri.
+        // v7.8.1: Varsayılan "Tümü" listesi kullanıcının açtığı tüm konuları ve sabitlenenleri gösterir;
+        // cron / sistem bildirimleri ana akışa sızmaz.
         val rows = listOf(row("a", 1.0, dot = "green"), row("b", 2.0, pinned = true), row("c", 3.0))
         assertEquals(listOf("b", "a"), homeFeed(rows, HomeFilter.All, "", sourceOf).map { it.key })
-        // Hiç çalışan iş yoksa liste boş (boş durum metni "Sohbetler"e yönlendirir).
+        // Cron görevi tek başınayken ana akışta görünmez (Zamanlanmış sekmesindedir).
         assertEquals(emptyList<String>(), homeFeed(listOf(row("c", 3.0)), HomeFilter.All, "", sourceOf).map { it.key })
     }
 
@@ -63,10 +71,13 @@ class HomeFeedLogicTest {
     }
 
     @Test
-    fun `calisan cron isi devam eden is olarak gorunur`() {
-        // Çalışan bir zamanlanmış görev "iş"tir; bitmiş çıktısı bildirimdir.
+    fun `calisan cron isi zamanlanmis sekmesinde ve sistem acikken gorunur`() {
+        // v7.8.1: Çalışan bir zamanlanmış görev "Zamanlanmış" sekmesinde ve showSystemAndSubagents açıkken görünür;
+        // ana akışa izinsiz sızmaz.
         val rows = listOf(row("c", 3.0, working = true))
-        assertEquals(listOf("c"), homeFeed(rows, HomeFilter.All, "", sourceOf).map { it.key })
+        assertEquals(listOf("c"), homeFeed(rows, HomeFilter.Scheduled, "", sourceOf).map { it.key })
+        assertEquals(listOf("c"), homeFeed(rows, HomeFilter.All, "", sourceOf, showSystemAndSubagents = true).map { it.key })
+        assertEquals(emptyList<String>(), homeFeed(rows, HomeFilter.All, "", sourceOf, showSystemAndSubagents = false).map { it.key })
     }
 
     @Test

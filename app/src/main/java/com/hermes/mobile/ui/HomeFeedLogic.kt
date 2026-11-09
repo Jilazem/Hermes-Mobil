@@ -30,6 +30,8 @@ enum class SessionOrigin {
 
 /**
  * Bir oturum satırının kaynak ve ebeveynlik kanıtlarına göre kökenini belirler.
+ * v7.8.1 P0 düzeltmesi: Kaynağı bilinmeyen kayıtlar başlıktan kullanıcı konusu
+ * olarak tahmin edilmez; UNKNOWN olarak sınıflandırılır.
  */
 fun classifySessionOrigin(
     row: DrawerRow,
@@ -53,31 +55,22 @@ fun classifySessionOrigin(
     }
 
     if (s in setOf("user", "chat", "direct", "manual", "gui", "web", "android", "mobile", "telegram", "cli")) {
-        return if (!row.jev.isNullOrBlank() || row.title.contains("Görevi") || (s != null && s != "user" && s != "chat" && s != "direct")) {
+        return if (!row.jev.isNullOrBlank() || row.title.contains("Görevi")) {
             SessionOrigin.USER_INITIATED_BOT_TASK
         } else {
             SessionOrigin.USER_CREATED
         }
     }
 
-    if (s == null || s.isEmpty()) {
-        return if (!SmartSessionTitle.isGeneric(row.title)) {
-            SessionOrigin.USER_CREATED
-        } else {
-            SessionOrigin.UNKNOWN
-        }
-    }
-
+    // P0: Bilinmeyen kaynaklar (s == null veya tanımsız), başlıktan tahmin YÜRÜTÜLMEZ.
     return SessionOrigin.UNKNOWN
 }
 
 /**
  * Duvarın üstündeki süzgeç çipleri.
  *
- * J2 (patron): varsayılan liste artık "Tüm İşlemler" — **yalnız devam eden
- * işleri** (çalışan oturumlar + kullanıcının sabitledikleri) gösterir; cron /
- * sistem bakım bildirimleri buraya karışmaz, ayrı "Bildirimler" sekmesindedir.
- * Eski "Canlı" çipi bu kuralla aynı kümeyi verdiği için kaldırıldı.
+ * v7.8.1: "Tümü" çipi kullanıcının başlattığı ve takip ettiği hem çalışan
+ * hem de tamamlanan tüm ana konuları gösterir; tamamlanan konular gizlenmez.
  */
 enum class HomeFilter(val labelTr: String, val labelEn: String) {
     All("Tümü", "All"),
@@ -116,9 +109,13 @@ fun isNoticeSource(source: String?): Boolean {
  * Sıra: sabitlenmiş → canlı (çalışan) → en yeni. Canlı olanın üstte olması
  * bilinçli: duvarın asıl işi "şu an ne oluyor"u göstermek.
  *
- * v7.7.1: `showSystemAndSubagents` kapalıyken ana akışta yalnız kullanıcının
- * başlattığı konular yer alır; alt ajanlar ebeveyn konuların içinde ağaç olarak
- * toplanır, sistem testleri/sağlık kontrolleri bağımsız konu oluşturmaz.
+ * v7.8.1 P0 düzeltmeleri:
+ * 1. Alt ajanlar (!row.parentId.isNullOrBlank() veya SubagentTreeStore dahil)
+ *    asla bağımsız en üst düzey konu kartı olamaz.
+ * 2. Görünürlük kararı (kullanıcı konusu / pinned / followed), çalışan/tamamlandı
+ *    süzgecinden ÖNCE verilir; çalışan sistem testleri (isLiveRow) bu kapıyı aşamaz.
+ * 3. HomeFilter.All tamamlanmış kullanıcı sohbetlerini gizlemez.
+ * 4. Kaynağı belirsiz kayıtlar ana ekrana sızmaz; showSystemAndSubagents ile erişilebilir.
  */
 fun homeFeed(
     rows: List<DrawerRow>,
@@ -132,32 +129,42 @@ fun homeFeed(
         .asSequence()
         .filter { !it.archived }
         .filter { row ->
-            // Alt ajanlar hiçbir zaman en üst düzey bağımsız konu kartı olamaz (ebeveynin altında yaşarlar)
-            if (row.isChild) return@filter false
+            // 1. Alt ajanlar hiçbir zaman en üst düzey bağımsız konu kartı olamaz (ebeveynin altında yaşarlar)
+            val isSubagent = row.isChild ||
+                !row.parentId.isNullOrBlank() ||
+                com.hermes.mobile.data.SubagentTreeStore.parentOf(row.dbId) != null ||
+                com.hermes.mobile.data.SubagentTreeStore.parentOf(row.liveId) != null
+            if (isSubagent) return@filter false
 
             val origin = classifySessionOrigin(row, sourceOf(row))
 
-            // Kullanıcı ayarı kapalıyken sistem ve alt ajanlar ana akıştan filtrelenir
+            // 2. Görünürlük Kapısı (Çalışıyor/Tamamlandı filtrelerinden ÖNCE verilir):
+            // Ana akışta varsayılan olarak (!showSystemAndSubagents):
+            // YALNIZCA kullanıcının açtığı konular (origin.isUserTopic),
+            // kullanıcının sabitlediği (row.pinned) veya açıkça takip ettiği (row.followed) görevler gösterilir.
+            // (Zamanlanmış filtresinde SCHEDULED_AUTOMATION da geçer).
+            // DİKKAT: isLiveRow(row) bu kapıyı AŞAMAZ; çalışan sistem testleri ana akışa sızamaz!
             if (!showSystemAndSubagents) {
                 val isAllowed = row.pinned ||
                     row.followed ||
-                    isLiveRow(row) ||
                     origin.isUserTopic ||
                     (filter == HomeFilter.Scheduled && origin == SessionOrigin.SCHEDULED_AUTOMATION)
 
-                if (!isAllowed && filter != HomeFilter.Scheduled) {
+                if (!isAllowed) {
                     return@filter false
                 }
             }
 
+            // 3. Durum / Kategori Süzgeci:
             when (filter) {
-                HomeFilter.All -> isLiveRow(row) || row.pinned || showSystemAndSubagents
+                // v7.8.1: Tamamlanmış kullanıcı konuları "Tümü"nde kaybolmaz!
+                HomeFilter.All -> true
                 HomeFilter.Working -> isLiveRow(row)
                 HomeFilter.Completed -> !isLiveRow(row) && !row.archived
                 HomeFilter.Errors -> row.dot == "red"
-                HomeFilter.MyBots -> origin == SessionOrigin.USER_INITIATED_BOT_TASK || !isNoticeSource(sourceOf(row))
+                HomeFilter.MyBots -> origin == SessionOrigin.USER_INITIATED_BOT_TASK || (origin.isUserTopic && !isNoticeSource(sourceOf(row)))
                 HomeFilter.Pinned -> row.pinned
-                HomeFilter.Chats -> origin == SessionOrigin.USER_CREATED || !isNoticeSource(sourceOf(row))
+                HomeFilter.Chats -> origin == SessionOrigin.USER_CREATED
                 HomeFilter.Scheduled -> isScheduledSource(sourceOf(row)) || origin == SessionOrigin.SCHEDULED_AUTOMATION
             }
         }

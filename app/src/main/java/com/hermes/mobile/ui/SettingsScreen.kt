@@ -275,7 +275,7 @@ fun SettingsScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Hermes Mobil v7.8.0 (35) · Webapp Mimarisi & Canlı Bot Ekosistemi",
+                        text = "Hermes Mobil v7.8.1 (36) · Kararlılık & Tekilleştirme",
                         style = MaterialTheme.typography.bodySmall,
                         color = HermesColors.TextFaint,
                     )

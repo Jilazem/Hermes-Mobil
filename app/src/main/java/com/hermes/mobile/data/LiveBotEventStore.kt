@@ -62,7 +62,7 @@ object LiveBotEventStore {
 
     private val eventIndex = ConcurrentHashMap<String, Int>()
     private val activeStreams = ConcurrentHashMap<String, String>() // sessionId -> eventId
-    private val seq = AtomicLong(1)
+    private val activeTools = ConcurrentHashMap<String, String>() // sessionId:toolName -> eventId
     private const val MAX_EVENTS = 1000
 
     @Synchronized
@@ -70,10 +70,11 @@ object LiveBotEventStore {
         _events.value = emptyList()
         eventIndex.clear()
         activeStreams.clear()
+        activeTools.clear()
     }
 
     @Synchronized
-    fun appendOrUpdate(event: LiveBotEvent) {
+    fun appendOrUpdate(event: LiveBotEvent, offset: Int? = null) {
         val currentList = _events.value.toMutableList()
         val existingIdx = eventIndex[event.id]
 
@@ -81,12 +82,32 @@ object LiveBotEventStore {
             // Var olan olayı güncelle (delta ekleme, durum değişikliği vb.)
             val prev = currentList[existingIdx]
             val updatedContent = if (event.isStreaming && prev.isStreaming) {
-                if (event.content.startsWith(prev.content)) event.content else prev.content + event.content
+                if (offset != null) {
+                    if (offset < prev.content.length) {
+                        if (offset + event.content.length <= prev.content.length) {
+                            prev.content // Tekrarlanan delta — ikinci kez biriktirme
+                        } else {
+                            prev.content + event.content.substring(prev.content.length - offset)
+                        }
+                    } else {
+                        prev.content + event.content
+                    }
+                } else if (event.content.startsWith(prev.content)) {
+                    event.content
+                } else if (prev.content.endsWith(event.content)) {
+                    prev.content // Yeniden bağlantıda tekrarlanan kuyruk parçası
+                } else {
+                    prev.content + event.content
+                }
             } else {
                 event.content.ifBlank { prev.content }
             }
+
+            val updatedTerminalOutput = event.terminalOutput ?: prev.terminalOutput
+
             currentList[existingIdx] = event.copy(
                 content = updatedContent,
+                terminalOutput = updatedTerminalOutput,
                 timestamp = prev.timestamp, // İlk başlama anını koru
             )
             _events.value = currentList
@@ -126,13 +147,37 @@ object LiveBotEventStore {
         val payload = gw.payload ?: JsonObject(emptyMap())
 
         when (gw.type) {
+            "message.start" -> {
+                val turnId = (payload["turn_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                val eventId = if (!turnId.isNullOrBlank()) "msg_${sid}_turn_$turnId" else "msg_${sid}_turn_live"
+                activeStreams[sid] = eventId
+
+                appendOrUpdate(
+                    LiveBotEvent(
+                        id = eventId,
+                        sessionId = sid,
+                        botName = extractBotName(payload, "Hermes"),
+                        mood = BotMascotMood.WORKING,
+                        type = BotEventType.BOT_MESSAGE,
+                        title = "Mesaj üretiyor",
+                        content = gw.text.orEmpty(),
+                        isStreaming = true,
+                        status = "working",
+                    )
+                )
+            }
+
             "message.delta" -> {
                 val delta = gw.text.orEmpty()
                 if (delta.isEmpty()) return
-                val streamId = activeStreams.getOrPut(sid) { "msg_${sid}_${seq.incrementAndGet()}" }
+                val turnId = (payload["turn_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                val offset = (payload["offset"] as? JsonPrimitive)?.content?.toIntOrNull()
+                val eventId = if (!turnId.isNullOrBlank()) "msg_${sid}_turn_$turnId" else activeStreams.getOrPut(sid) { "msg_${sid}_turn_live" }
+                activeStreams[sid] = eventId
+
                 appendOrUpdate(
                     LiveBotEvent(
-                        id = streamId,
+                        id = eventId,
                         sessionId = sid,
                         botName = extractBotName(payload, "Hermes"),
                         mood = BotMascotMood.WORKING,
@@ -141,17 +186,39 @@ object LiveBotEventStore {
                         content = delta,
                         isStreaming = true,
                         status = "working",
+                    ),
+                    offset = offset,
+                )
+            }
+
+            "message.complete" -> {
+                val turnId = (payload["turn_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                val eventId = if (!turnId.isNullOrBlank()) "msg_${sid}_turn_$turnId" else (activeStreams.remove(sid) ?: "msg_${sid}_turn_live")
+                activeStreams.remove(sid)
+
+                appendOrUpdate(
+                    LiveBotEvent(
+                        id = eventId,
+                        sessionId = sid,
+                        botName = extractBotName(payload, "Hermes"),
+                        mood = BotMascotMood.SUCCESS,
+                        type = BotEventType.BOT_MESSAGE,
+                        title = "Mesaj tamamlandı",
+                        content = gw.text.orEmpty(),
+                        isStreaming = false,
+                        status = "completed",
                     )
                 )
             }
 
-            "thinking.delta" -> {
+            "thinking.delta", "reasoning.delta" -> {
                 val delta = gw.text.orEmpty()
                 if (delta.isEmpty()) return
-                val streamId = "think_${sid}_active"
+                val turnId = (payload["turn_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                val eventId = if (!turnId.isNullOrBlank()) "think_${sid}_turn_$turnId" else "think_${sid}_active"
                 appendOrUpdate(
                     LiveBotEvent(
-                        id = streamId,
+                        id = eventId,
                         sessionId = sid,
                         botName = extractBotName(payload, "Hermes"),
                         mood = BotMascotMood.THINKING,
@@ -165,9 +232,16 @@ object LiveBotEventStore {
             }
 
             "tool.call", "tool.start" -> {
-                val toolName = gw.toolName ?: payload["name"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+                val toolId = (payload["tool_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                    ?: (payload["id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                    ?: (payload["call_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                    ?: (payload["name"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                    ?: "call"
+                val toolName = gw.toolName ?: (payload["name"] as? JsonPrimitive)?.content.orEmpty()
                 val toolTr = BotLocalization.toolDisplayName(toolName)
-                val eventId = "tool_${sid}_${seq.incrementAndGet()}"
+                val eventId = "tool_${sid}_$toolId"
+                activeTools["$sid:$toolName"] = eventId
+
                 appendOrUpdate(
                     LiveBotEvent(
                         id = eventId,
@@ -184,10 +258,15 @@ object LiveBotEventStore {
                 )
             }
 
-            "tool.end", "tool.result" -> {
-                val toolName = gw.toolName ?: payload["name"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+            "tool.end", "tool.result", "tool.complete" -> {
+                val toolId = (payload["tool_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                    ?: (payload["id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                    ?: (payload["call_id"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                    ?: (payload["name"] as? JsonPrimitive)?.content?.takeUnless { it.isBlank() }
+                val toolName = gw.toolName ?: (payload["name"] as? JsonPrimitive)?.content.orEmpty()
                 val toolTr = BotLocalization.toolDisplayName(toolName)
-                val eventId = "tool_${sid}_done_${seq.incrementAndGet()}"
+                val eventId = if (!toolId.isNullOrBlank()) "tool_${sid}_$toolId" else (activeTools["$sid:$toolName"] ?: "tool_${sid}_call")
+
                 appendOrUpdate(
                     LiveBotEvent(
                         id = eventId,
@@ -202,10 +281,35 @@ object LiveBotEventStore {
                         status = "completed",
                     )
                 )
+                activeTools.remove("$sid:$toolName")
+            }
+
+            "subagent.progress", "subagent.start", "subagent.complete" -> {
+                val subId = (payload["subagent_id"] as? JsonPrimitive)?.content
+                    ?: (payload["delegation_id"] as? JsonPrimitive)?.content
+                    ?: "sub"
+                val eventId = "sub_${sid}_$subId"
+                val isDone = gw.type.endsWith("complete") || gw.type.endsWith("done")
+                appendOrUpdate(
+                    LiveBotEvent(
+                        id = eventId,
+                        sessionId = sid,
+                        botName = extractBotName(payload, "Hermes"),
+                        mood = if (isDone) BotMascotMood.SUCCESS else BotMascotMood.WORKING,
+                        type = BotEventType.SUBAGENT_PROGRESS,
+                        title = if (isDone) "Alt ajan tamamlandı" else "Alt ajan çalışıyor",
+                        content = gw.text ?: "Görev adımları işleniyor",
+                        status = if (isDone) "completed" else "working",
+                    )
+                )
             }
 
             "session.create", "task.start" -> {
-                val eventId = "start_${sid}_${seq.incrementAndGet()}"
+                val taskId = (payload["run_id"] as? JsonPrimitive)?.content
+                    ?: (payload["task_id"] as? JsonPrimitive)?.content
+                    ?: (payload["submission_id"] as? JsonPrimitive)?.content
+                    ?: "start"
+                val eventId = "task_start_${sid}_$taskId"
                 activeStreams.remove(sid)
                 appendOrUpdate(
                     LiveBotEvent(
@@ -222,7 +326,10 @@ object LiveBotEventStore {
             }
 
             "session.end", "task.done", "task.complete" -> {
-                val eventId = "end_${sid}_${seq.incrementAndGet()}"
+                val taskId = (payload["run_id"] as? JsonPrimitive)?.content
+                    ?: (payload["task_id"] as? JsonPrimitive)?.content
+                    ?: "done"
+                val eventId = "task_end_${sid}_$taskId"
                 activeStreams.remove(sid)
                 appendOrUpdate(
                     LiveBotEvent(
@@ -239,7 +346,10 @@ object LiveBotEventStore {
             }
 
             "task.error", "error" -> {
-                val eventId = "err_${sid}_${seq.incrementAndGet()}"
+                val errId = (payload["error_id"] as? JsonPrimitive)?.content
+                    ?: (payload["code"] as? JsonPrimitive)?.content
+                    ?: "err"
+                val eventId = "task_err_${sid}_$errId"
                 activeStreams.remove(sid)
                 appendOrUpdate(
                     LiveBotEvent(
@@ -256,7 +366,7 @@ object LiveBotEventStore {
             }
 
             "approval.request" -> {
-                val key = payload["key"]?.let { (it as? JsonPrimitive)?.content } ?: sid
+                val key = (payload["key"] as? JsonPrimitive)?.content ?: sid
                 val eventId = "appr_${sid}_$key"
                 appendOrUpdate(
                     LiveBotEvent(
@@ -272,22 +382,38 @@ object LiveBotEventStore {
                     )
                 )
             }
+
+            "approval.cancelled" -> {
+                val key = (payload["key"] as? JsonPrimitive)?.content ?: sid
+                val eventId = "appr_${sid}_$key"
+                appendOrUpdate(
+                    LiveBotEvent(
+                        id = eventId,
+                        sessionId = sid,
+                        botName = extractBotName(payload, "Hermes"),
+                        mood = BotMascotMood.ERROR,
+                        type = BotEventType.APPROVAL_REQUEST,
+                        title = "Onay iptal edildi",
+                        content = "İşlem iptal edildi ya da zaman aşımına uğradı.",
+                        status = "failed",
+                        approvalKey = key,
+                    )
+                )
+            }
         }
     }
 
     private fun extractBotName(payload: JsonObject, defaultName: String): String {
-        return payload["bot"]?.let { (it as? JsonPrimitive)?.content }
-            ?: payload["bot_name"]?.let { (it as? JsonPrimitive)?.content }
-            ?: payload["source"]?.let { (it as? JsonPrimitive)?.content?.replaceFirstChar(Char::uppercase) }
+        return (payload["bot"] as? JsonPrimitive)?.content
+            ?: (payload["bot_name"] as? JsonPrimitive)?.content
+            ?: (payload["source"] as? JsonPrimitive)?.content?.replaceFirstChar(Char::uppercase)
             ?: defaultName
     }
 
     /**
-     * Oturumlardan başlangıç akışını oluşturur (uygulama ilk açıldığında veya çevrimdışıyken).
+     * Oturumlardan başlangıç akışını oluşturur veya güvenli senkronizasyon sağlar.
      */
     fun seedFromSessions(sessions: List<HermesSession>, live: List<LiveSession>) {
-        if (_events.value.isNotEmpty()) return // Zaten veri varsa üzerine yazma
-
         val seedList = mutableListOf<LiveBotEvent>()
 
         // 1. Canlı çalışan oturumlar en üstte
