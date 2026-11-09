@@ -49,7 +49,7 @@ fun ThinkingBlock(
     defaultExpanded: Boolean = false,
     showFullLiveText: Boolean = false,
 ) {
-    var expanded by remember(stateKey) {
+    var expanded by remember(stateKey, live) {
         // Canlı (hâlâ akan) blok varsayılanı AÇIK: son satırları izlemek için;
         // biten blok kapanır (katlanır davranış).
         mutableStateOf(live || defaultExpanded)

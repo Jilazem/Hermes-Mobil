@@ -66,6 +66,9 @@ data class DrawerRow(
      */
     val jev: String = "",
     val followed: Boolean = false,
+    val parentId: String? = null,
+    val isChild: Boolean = false,
+    val childRows: List<DrawerRow> = emptyList(),
 )
 
 /** Çekmece satırı türleri (LazyColumn key'leri çakışmasın diye ayrı önek). */
@@ -158,7 +161,18 @@ fun drawerRows(
             val l = liveByDbId[s.id]
             l?.id?.let { used.add(it) }
             used.add(s.id)
-            val title = displayLabel(readableTitle(s, flags, cronNames))
+            val rawTitle = readableTitle(s, flags, cronNames)
+            val title = displayLabel(
+                if (SmartSessionTitle.isGeneric(rawTitle)) {
+                    SmartSessionTitle.deriveTitle(
+                        rawTitle = rawTitle,
+                        preview = s.preview,
+                        isSubagent = s.effectiveParentId != null || com.hermes.mobile.data.SubagentTreeStore.parentOf(s.id) != null,
+                        epochSeconds = s.startedAt ?: 0.0,
+                        sessionId = s.id,
+                    )
+                } else rawTitle
+            )
             val pv = meaningfulPreview(s.preview, 80)
             out.add(
                 DrawerRow(
@@ -200,8 +214,18 @@ fun drawerRows(
         if (!showArchived && (l.id in flags.archived || l.dbId in flags.archived)) return@forEach
         if (l.id.isNotBlank()) used.add(l.id)
         used.add(l.dbId)
+        val rawTitle = liveSessionTitle(l, null, flags, cronNames)
         val title = displayLabel(
-            liveSessionTitle(l, null, flags, cronNames)
+            if (SmartSessionTitle.isGeneric(rawTitle)) {
+                SmartSessionTitle.deriveTitle(
+                    rawTitle = rawTitle,
+                    preview = l.preview,
+                    isSubagent = com.hermes.mobile.data.SubagentTreeStore.parentOf(l.dbId.ifBlank { l.id }) != null,
+                    botName = null,
+                    epochSeconds = maxOf(l.lastActive, l.startedAt),
+                    sessionId = l.dbId.ifBlank { l.id },
+                )
+            } else rawTitle
         )
         val pv = meaningfulPreview(l.preview, 80)
         out.add(
@@ -229,11 +253,95 @@ fun drawerRows(
         )
     }
 
+    // Mükerrer oturumları tekilleştir (REST + Canlı çakışması veya aynı dbId/liveId)
+    val seenCanonical = mutableSetOf<String>()
+    val dedupedOut = mutableListOf<DrawerRow>()
+    for (row in out) {
+        val canonical = row.dbId.ifBlank { row.liveId }.trim()
+        if (canonical.isNotBlank()) {
+            if (!seenCanonical.add(canonical)) continue
+        }
+        dedupedOut.add(row)
+    }
+
     // Sıra: grup tertibi, grup içinde en yeni önce (sabitlenmiş: giriş sırası).
-    return out.sortedWith(
+    val sorted = dedupedOut.sortedWith(
         compareByDescending<DrawerRow> { it.pinned }
             .thenByDescending { it.epochSeconds },
     )
+    if (sorted.isEmpty()) return emptyList()
+
+    // Çatal ağaç gruplaması (9120 web konsolu uyumlu):
+    // Alt ajan / çocuk oturumlar ana oturumun altında ağaç dalı olarak toplanır.
+    val bindings = com.hermes.mobile.data.SubagentTreeStore.allBindings()
+    val sessionParentMap = sessions.mapNotNull { s ->
+        s.effectiveParentId?.let { s.id to it }
+    }.toMap()
+
+    val parentToChildren = mutableMapOf<String, MutableList<DrawerRow>>()
+    val childKeys = mutableSetOf<String>()
+
+    sorted.forEach { row ->
+        val parent = row.parentId
+            ?: bindings[row.dbId]
+            ?: bindings[row.liveId]
+            ?: sessionParentMap[row.dbId]
+
+        if (!parent.isNullOrBlank() && parent != row.dbId && parent != row.liveId) {
+            val parentRow = sorted.firstOrNull { it.dbId == parent || it.liveId == parent || it.key == parent }
+            if (parentRow != null) {
+                childKeys.add(row.key)
+                val cleanChildTitle = if (SmartSessionTitle.isGeneric(row.title)) {
+                    SmartSessionTitle.deriveTitle(
+                        rawTitle = row.title,
+                        preview = row.preview,
+                        isSubagent = true,
+                        subagentTarget = parentRow.title,
+                        epochSeconds = row.epochSeconds,
+                        sessionId = row.dbId.ifBlank { row.liveId },
+                    )
+                } else {
+                    row.title
+                }
+                val childRow = row.copy(
+                    title = cleanChildTitle,
+                    parentId = parent,
+                    isChild = true,
+                )
+                parentToChildren.getOrPut(parentRow.key) { mutableListOf() }.add(childRow)
+            } else if (row.title.lowercase() in setOf("sohbet", "chat", "?", "", "yeni sohbet")) {
+                // Ebeveyni listede olmayan çocuk oturum: "sohbet" yerine belirgin alt görev adı
+                parentToChildren.getOrPut(row.key) { mutableListOf() } // no-op marker
+            }
+        }
+    }
+
+    if (childKeys.isEmpty()) {
+        return sorted.map { row ->
+            if ((bindings.containsKey(row.dbId) || bindings.containsKey(row.liveId) || sessionParentMap.containsKey(row.dbId))
+                && row.title.lowercase() in setOf("sohbet", "chat", "?", "", "yeni sohbet")) {
+                row.copy(title = SmartSessionTitle.deriveTitle(row.title, row.preview, isSubagent = true, epochSeconds = row.epochSeconds, sessionId = row.dbId.ifBlank { row.liveId }), isChild = true)
+            } else {
+                row
+            }
+        }
+    }
+
+    return sorted.mapNotNull { row ->
+        if (row.key in childKeys) {
+            null // Ana oturumun altında dal olarak yer alır
+        } else {
+            val children = parentToChildren[row.key]
+            if (!children.isNullOrEmpty()) {
+                row.copy(childRows = children)
+            } else if ((bindings.containsKey(row.dbId) || bindings.containsKey(row.liveId) || sessionParentMap.containsKey(row.dbId))
+                && row.title.lowercase() in setOf("sohbet", "chat", "?", "", "yeni sohbet")) {
+                row.copy(title = SmartSessionTitle.deriveTitle(row.title, row.preview, isSubagent = true, epochSeconds = row.epochSeconds, sessionId = row.dbId.ifBlank { row.liveId }), isChild = true)
+            } else {
+                row
+            }
+        }
+    }
 }
 
 /**
@@ -411,4 +519,21 @@ object SwipeDeleteLogic {
             // Armed + ARM..DELETE arası: takılı kaldığı yerde kalır.
             Decision(Phase.Armed, Target.Stuck)
     }
+}
+
+/**
+ * J2 (patron): çekmece "Tümü" listesi.
+ *
+ * Bitmiş bildirim kaynaklı oturumlar (cron / sistem bakımı / bekçi) burada
+ * gösterilmez — onların yeri Bildirimler sekmesi ve duvardaki "Zamanlanmış"
+ * çipidir. Devam eden (RUNNING) cron işi ise "iş"tir, listede kalır.
+ * Arşiv sekmesi (tab == 2) kullanıcının bilinçli görünümüdür, filtrelenmez.
+ */
+fun visibleDrawerRows(
+    rows: List<DrawerRow>,
+    tab: Int,
+    sourceOf: (DrawerRow) -> String?,
+): List<DrawerRow> {
+    if (tab == 2) return rows
+    return rows.filter { isLiveRow(it) || !isNoticeSource(sourceOf(it)) }
 }

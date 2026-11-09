@@ -194,6 +194,9 @@ private fun ProfileRow(
         live != null -> when (live) {
             ConnectionState.Open -> HermesColors.Online to S.t2("bağlı (canlı WS)", "connected (live WS)")
             ConnectionState.Connecting -> HermesColors.Busy to S.t2("bağlanıyor…", "connecting…")
+            // B3 (v6.3): kopuş sonrası yeniden bağlanma durumu.
+            is ConnectionState.Reconnecting -> HermesColors.Busy to
+                S.t2("yeniden bağlanıyor (${live.attempt}. deneme)", "reconnecting (attempt ${live.attempt})")
             is ConnectionState.Error -> HermesColors.Offline to
                 S.t2("bağlantı kurulamadı: ${live.reason}", "not connected: ${live.reason}")
             ConnectionState.Closed -> HermesColors.Offline to S.t2("bağlantı kapandı", "connection closed")
@@ -301,9 +304,22 @@ fun ProfileEditorDialog(
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(S.t2("Adres", "Address")) },
-                    placeholder = { Text("http://192.168.140.20:9150") },
+                    placeholder = { Text("http://192.168.1.101:9120") },
                     singleLine = true,
                 )
+                // B3 (v6.3): "Örnek profil" uyarısı yalnız profil gerçekten
+                // örnekse ve adres hâlâ örnek adresken görünsün — kullanıcı
+                // kendi adresini girdiğinde örnek adres/uyarı gösterilmez.
+                if (initial.isSample && url.trim() == initial.baseUrl) {
+                    Text(
+                        S.t2(
+                            "Örnek profil — kendi sunucu adresinizle değiştirin.",
+                            "Sample profile — replace it with your own server address.",
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = HermesColors.TextFaint,
+                    )
+                }
                 OutlinedTextField(
                     value = token,
                     onValueChange = { token = it },
@@ -326,7 +342,7 @@ fun ProfileEditorDialog(
                     value = remote,
                     onValueChange = { remote = it },
                     label = { Text(S.t2("Uzak adres (ev dışı)", "Remote address (off-network)")) },
-                    placeholder = { Text("https://hermes.example.com") },
+                    placeholder = { Text("https://hermes.winterfell07.keenetic.pro") },
                     singleLine = true,
                 )
                 Text(

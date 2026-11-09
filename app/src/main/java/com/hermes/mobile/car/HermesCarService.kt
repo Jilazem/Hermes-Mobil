@@ -6,7 +6,6 @@ import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.Session
 import androidx.car.app.model.Action
-import androidx.car.app.model.CarColor
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.MessageTemplate
@@ -17,6 +16,7 @@ import com.hermes.mobile.data.CrashGuard
 import com.hermes.mobile.data.HermesClient
 import com.hermes.mobile.data.HermesSession
 import com.hermes.mobile.data.ServerProfileStore
+import com.hermes.mobile.data.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,13 +28,19 @@ import kotlinx.coroutines.withContext
 class HermesCarService : CarAppService() {
 
     override fun createHostValidator(): HostValidator =
-        // Yan yüklenen geliştirme sürümü: tüm host'lara izin ver. Yayınlanacak
-        // olsaydı ALLOW_ALL yerine imza doğrulaması gerekirdi.
-        HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
+        HostValidator.Builder(this)
+            .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
+            .build()
 
     override fun onCreateSession(): Session = object : Session() {
-        // Always render a supported template; screen projection needs a separate phone consent.
-        override fun onCreateScreen(intent: Intent): Screen = HermesCarScreen(carContext)
+        override fun onCreateScreen(intent: Intent): Screen {
+            val fullScreenDriving = runCatching { SettingsStore(carContext).current().molaFullScreenDriving }.getOrDefault(true)
+            return if (fullScreenDriving) {
+                HermesPanelScreen(carContext, fullScreenDriving = true)
+            } else {
+                HermesCarScreen(carContext)
+            }
+        }
     }
 }
 
@@ -59,10 +65,9 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     private var statusLine = ""
     private var systemLine = ""
     private var sessionLines: List<HermesSession> = emptyList()
+    private var sessionProfileId: String? = null
 
     init {
-        // P5: Screen onDestroy override etmez; DefaultLifecycleObserver ile
-        // ekran yığından çıkarken scope iptal edilir.
         lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
             override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) {
                 voice.release()
@@ -72,8 +77,10 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         refresh()
     }
 
+    private fun isFullScreenDriving(): Boolean =
+        runCatching { SettingsStore(carContext).current().molaFullScreenDriving }.getOrDefault(true)
+
     private fun refresh() {
-        // P5: store.active() disk I/O yapabilir; ana thread'de değil scope'ta oku.
         scope.launch {
             val profile = runCatching { store.active() }.getOrNull()
             if (profile == null || profile.token.isBlank()) {
@@ -103,6 +110,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                     statusLine = status
                     systemLine = system
                     sessionLines = sessions
+                    sessionProfileId = profile.id
                     error = null
                 }.onFailure {
                     error = "Sunucuya ulaşılamadı. Telefonun ağını ve Hermes sunucu profilini kontrol et."
@@ -114,6 +122,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     override fun onGetTemplate(): Template {
+        val fullScreenDriving = isFullScreenDriving()
         voiceLine?.let { line ->
             return MessageTemplate.Builder(line).setTitle("Hermes · EMA").setHeaderAction(Action.APP_ICON)
                 .addAction(Action.Builder().setTitle(if (voice.busy) "İptal" else "Konuş")
@@ -127,6 +136,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                 .setTitle("Hermes")
                 .setHeaderAction(Action.APP_ICON)
                 .setLoading(true)
+                .setActionStrip(molaActions(fullScreenDriving))
                 .build()
         }
 
@@ -134,6 +144,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
             return MessageTemplate.Builder(message)
                 .setTitle("Hermes")
                 .setHeaderAction(Action.APP_ICON)
+                .setActionStrip(molaActions(fullScreenDriving))
                 .addAction(Action.Builder().setTitle("Konuş").setOnClickListener { startCarVoice() }.build())
                 .addAction(
                     Action.Builder()
@@ -145,6 +156,21 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         }
 
         val list = ItemList.Builder().apply {
+            if (!fullScreenDriving) {
+                addItem(Row.Builder().setTitle("Telefonu Kullan · Mola")
+                    .addText("Ekran paylaşımı ve telefon kontrolü")
+                    .setOnClickListener { screenManager.push(MirrorScreen(carContext)) }.build())
+            }
+            addItem(
+                Row.Builder()
+                    .setTitle(if (fullScreenDriving) "Mola Tam Ekran · Sürüş Kipi" else "Hermes sohbet paneli")
+                    .addText(
+                        if (fullScreenDriving) "Tam ekran Mola paneli · YouTube ve telefon gizli · sürüşte kesintisiz"
+                        else "Telefon yansıtması yok · panel doğrudan araç ekranında"
+                    )
+                    .setOnClickListener { screenManager.push(HermesPanelScreen(carContext, fullScreenDriving = fullScreenDriving)) }
+                    .build()
+            )
             addItem(Row.Builder().setTitle("Hermes Asistan")
                 .addText("Araç mikrofonuyla Hermes’e sor")
                 .setOnClickListener { startCarVoice() }.build())
@@ -154,13 +180,6 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                     .addText(statusLine)
                     .addText(systemLine)
                     .setOnClickListener { loading = true; invalidate(); refresh() }
-                    .build()
-            )
-            addItem(
-                Row.Builder()
-                    .setTitle("Hermes ekranı (onaysız)")
-                    .addText("Telefon yansıtması yok · panel doğrudan araç ekranında")
-                    .setOnClickListener { screenManager.push(HermesPanelScreen(carContext)) }
                     .build()
             )
             if (sessionLines.isEmpty()) {
@@ -178,7 +197,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
                             )
                             .setOnClickListener {
                                 screenManager.push(
-                                    CarMessagesScreen(carContext, session.id, session.serverTitle ?: session.title)
+                                    CarMessagesScreen(carContext, session.id, session.serverTitle ?: session.title, sessionProfileId)
                                 )
                             }
                             .build()
@@ -188,7 +207,7 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
         }.build()
 
         return ListTemplate.Builder()
-            .setTitle("Hermes")
+            .setTitle(if (fullScreenDriving) "Hermes · Mola Sürüş" else "Hermes")
             .setSingleList(list)
             .setHeaderAction(Action.APP_ICON)
             .setActionStrip(
@@ -205,4 +224,16 @@ class HermesCarScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     private fun startCarVoice() { voice.toggle() }
+
+    private fun molaActions(fullScreenDriving: Boolean) = androidx.car.app.model.ActionStrip.Builder().apply {
+        if (fullScreenDriving) {
+            addAction(Action.Builder().setTitle("Mola Tam Ekran").setOnClickListener {
+                screenManager.push(HermesPanelScreen(carContext, fullScreenDriving = true))
+            }.build())
+        } else {
+            addAction(Action.Builder().setTitle("Telefonu kullan").setOnClickListener {
+                screenManager.push(MirrorScreen(carContext))
+            }.build())
+        }
+    }.build()
 }

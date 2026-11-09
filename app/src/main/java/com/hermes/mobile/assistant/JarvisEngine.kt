@@ -144,6 +144,13 @@ class JarvisEngine(
         handle(t)
     }
 
+    /** Explicit screen chip: use this capture once without enabling automatic screen sharing. */
+    fun askWithScreen(text: String) {
+        if (text.isBlank() || screenText.isBlank()) return
+        interruptAll()
+        handle(text.trim(), useScreen = true)
+    }
+
     /**
      * Sesli slash komutu — çıktıyı okur, sonra dinlemeye döner.
      * Sunucu çıktısı boşsa (iş cihazda yapılmış olabilir) sessiz geçilmez:
@@ -292,7 +299,7 @@ class JarvisEngine(
 
     // ── Karar ─────────────────────────────────────────────────────────
 
-    private fun handle(text: String) {
+    private fun handle(text: String, useScreen: Boolean = false) {
         ownMicrophone()
         if (!grabFocus()) { fail("Ses odağı alınamadı — yeniden dene"); return }
         val turnToken = ++generation
@@ -325,7 +332,11 @@ class JarvisEngine(
         // Telefon komutu: sunucuya gitmeden, anında.
         PhoneIntent.parse(heard)?.let { act ->
             turn = scope.launch {
-                val out = withContext(Dispatchers.IO) { runCatching { tools.execute(act.tool, act.toJson()) }.getOrElse { it.message ?: "Hata" } }
+                val out = withContext(Dispatchers.IO) {
+                    try { kotlinx.coroutines.runInterruptible { tools.execute(act.tool, act.toJson()) } }
+                    catch (cancelled: CancellationException) { throw cancelled }
+                    catch (error: Exception) { error.message ?: "Hata" }
+                }
                 val spoken = if (PhoneTools.isReadTool(act.tool)) out.take(700) else out.take(200)
                 _state.update { it.copy(answer = out) }
                 speakOnce(spoken) {
@@ -335,7 +346,7 @@ class JarvisEngine(
             return
         }
 
-        val question = if (settings.assistantScreenContext && JarvisLogic.needsScreen(text) && screenText.isNotBlank())
+        val question = if ((settings.assistantScreenContext || useScreen) && JarvisLogic.needsScreen(text) && screenText.isNotBlank())
             JarvisLogic.withScreen(text, screenText, screenApp) else text
 
         val splitter = JarvisLogic.SentenceSplitter()

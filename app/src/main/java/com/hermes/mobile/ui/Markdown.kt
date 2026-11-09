@@ -1,12 +1,18 @@
 package com.hermes.mobile.ui
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.mutableFloatStateOf
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -19,6 +25,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.PlayArrow
@@ -42,7 +50,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
@@ -58,6 +69,10 @@ import androidx.compose.ui.window.Dialog
 import com.hermes.mobile.data.MediaKind
 import com.hermes.mobile.data.mediaKindOf
 import com.hermes.mobile.data.safeExternalUrl
+import com.hermes.mobile.data.isServerMediaPath
+import com.hermes.mobile.data.serverMediaUrl
+import com.hermes.mobile.data.conversationMediaKind
+import com.hermes.mobile.data.isInlineConversationImage
 import com.hermes.mobile.ui.theme.HermesColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -100,7 +115,8 @@ fun MarkdownText(
      * V5-2: bağlantıya dokunma. Tıklanabilir bağlantılar bu geri çağrıyı
      * GÜVENLİ URL ile çağırır; açma onayı çağıranda ([ChatScreen]).
      */
-    onOpenLink: (String) -> Unit = {},
+    onOpenLink: (String) -> Unit = rememberExternalLinkOpener(),
+    selectable: Boolean = true,
 ) {
     val blocks = remember(markdown) { parseMarkdown(markdown) }
     // Telegram: ardışık maddeler BİTİŞİK, bloklar arası boş satır. Tek sabit
@@ -111,6 +127,7 @@ fun MarkdownText(
     // Satır aralığı ~1.45 (FR: 1.4-1.5); satırsonu yüksekliği govde fontuna bağli.
     val bodyLine = fontSize * 1.45f
 
+    MarkdownSelection(enabled = selectable && !streaming) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(9.dp)) {
         groups.forEachIndexed { groupIndex, group ->
             // TUR-29A: imleç YALNIZ son grupta çizilir; tamamlanan grupların
@@ -125,13 +142,19 @@ fun MarkdownText(
                 }
 
                 is MdGroup.Solo -> when (val block = group.block) {
-                    is MdBlock.Code -> CodeBlock(block, cursorSuffix = streamCursorSuffix(lastGroup, true))
+                    is MdBlock.Code -> Column {
+                        if (!streaming && block.language.lowercase() in setOf("html", "htm"))
+                            HtmlDocumentPreview(block.code, onOpenLink)
+                        CodeBlock(block, cursorSuffix = streamCursorSuffix(lastGroup, true))
+                    }
 
                     // V5-2: medya blokları — bağlantı onayı olmadan görüntülenir
                     // (sunucu URL'si değil, http/https görsel/Video); dokunma
                     // tam ekran açar, javascript: vb. [safeExternalUrl]'de ölür.
-                    is MdBlock.Image -> MarkdownImage(block.alt, block.url)
-                    is MdBlock.Video -> MarkdownVideo(block.url, block.label)
+                    is MdBlock.Image -> ConversationMediaBlock(block.url, MediaKind.IMAGE, block.alt, onOpenLink)
+                    is MdBlock.Video -> ConversationMediaBlock(block.url, MediaKind.VIDEO, block.label, onOpenLink)
+                    is MdBlock.Audio -> ConversationMediaBlock(block.url, MediaKind.AUDIO, block.label, onOpenLink)
+                    is MdBlock.Html -> ConversationMediaBlock(block.url, MediaKind.HTML, block.label, onOpenLink)
 
                     // FR-001: hiyerarşi KALINLIKLA, boyutla değil — başlık gövdeyle
                     // aynı punto, yalnız daha ağır (SemiBold). Eski 19/17/15.sp
@@ -193,6 +216,12 @@ fun MarkdownText(
             }
         }
     }
+    }
+}
+
+@Composable
+private fun MarkdownSelection(enabled: Boolean, content: @Composable () -> Unit) {
+    if (enabled) SelectionContainer(content = content) else content()
 }
 
 /**
@@ -253,86 +282,125 @@ private fun MdBlock.textForItem(): String = when (this) {
 @Composable
 private fun CodeBlock(
     block: MdBlock.Code,
-    // TUR-29A: akış imleci yalnız çizimde; kopyalanan içerik (block.code) ham kalır.
     cursorSuffix: String = "",
 ) {
     val clipboard = LocalClipboardManager.current
     val scroll = rememberScrollState()
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(block.code.hashCode()) {
+        mutableStateOf(false)
+    }
+    val lineCount = remember(block.code) { block.code.lineSequence().count().coerceAtLeast(1) }
+    val firstNonBlank = remember(block.code) {
+        block.code.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.take(60).orEmpty()
+    }
+    val hasErrorHint = remember(block.code) {
+        val lower = block.code.lowercase()
+        "traceback" in lower || "exception" in lower || "error:" in lower || "failed" in lower || "hata" in lower
+    }
+    val langLabel = block.language.lowercase().ifBlank { "terminal" }
 
     Column(
         Modifier
             .fillMaxWidth()
-            // Tur18 FR-009 (tur17 finding #5 kapanisi): kod blogu dolgusu artik
-            // Midground (=aksan) degil — ntr Skeleton yuzey tonu. Sol 3dp cizgi
-            // Midground kalir (vurgu gorevi), dolguyu aksana cevirmek B2 ihlaliydi.
             .background(HermesColors.Skeleton, MaterialTheme.shapes.medium)
             .border(1.dp, HermesColors.Border, MaterialTheme.shapes.medium),
     ) {
-        // Sol dikey vurgu çizgisi + içerik.
-        Row(Modifier.fillMaxWidth()) {
-            Spacer(
-                Modifier
-                    .width(3.dp)
-                    .height(IntrinsicSize.Min)
-                    // FR-009 (L202, tur17 finding #5): kod blogu VURGU CIZGISI
-                    // artik Midground (=aksan) degil — ntr BorderStrong. Kod
-                    // blogu vurgu degil icerik tasiyan ntr yuzeydir; aksani
-                    // vurgu butonuna birakiriz (B2 kurali).
-                    .background(HermesColors.BorderStrong),
-            )
-            Column(Modifier.weight(1f)) {
-                // Üstte yalnız dil etiketi (satır sayısı YOK — sade).
-                if (block.language.isNotBlank()) {
-                    Text(
-                        block.language.lowercase(),
-                        color = HermesColors.TextFaint,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(start = 10.dp, top = 6.dp, end = 10.dp),
-                    )
-                }
-                Text(
-                    // TUR-29A: akış sırasında da renklendirilir; kopyalanan
-                    // içerik hâlâ ham block.code (imleçsiz).
-                    rememberCodeHighlight(block.code, cursorSuffix),
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = HermesColors.TextSecondary,
-                    modifier = Modifier
-                        .horizontalScroll(scroll)
-                        .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 10.dp),
-                )
-            }
-        }
-        // Altta ayraç + ortalanmış BÜYÜK HARF "KODU KOPYALA" (ikon + metin).
-        Spacer(
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(HermesColors.Border),
-        )
+        // Tıklanabilir başlık satırı — terminal ve kod çıktıları varsayılan KAPALI gelir, tıklayınca açılır
         Row(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
-                .clickable { clipboard.setText(AnnotatedString(block.code)) }
-                .padding(vertical = 9.dp),
-            horizontalArrangement = Arrangement.Center,
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(
-                Icons.Default.ContentCopy,
-                contentDescription = null,
-                tint = HermesColors.Midground,
-                modifier = Modifier.width(15.dp),
-            )
-            Spacer(Modifier.width(6.dp))
             Text(
-                S.t2("KODU KOPYALA", "COPY CODE"),
+                if (expanded) "▾" else "▸",
+                color = HermesColors.Midground,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                "$langLabel · $lineCount satır",
+                color = HermesColors.TextPrimary,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (!expanded && firstNonBlank.isNotBlank()) {
+                Text(
+                    firstNonBlank,
+                    color = HermesColors.TextMuted,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            if (hasErrorHint && !expanded) {
+                Text(
+                    "⚠ Hata",
+                    color = HermesColors.Danger,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Text(
+                if (expanded) S.t2("Gizle", "Hide") else S.t2("Göster", "Show"),
                 color = HermesColors.Midground,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.5.sp,
             )
+        }
+
+        if (expanded) {
+            Spacer(Modifier.fillMaxWidth().height(1.dp).background(HermesColors.Border))
+            Row(Modifier.fillMaxWidth()) {
+                Spacer(
+                    Modifier
+                        .width(3.dp)
+                        .height(IntrinsicSize.Min)
+                        .background(HermesColors.BorderStrong),
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        rememberCodeHighlight(block.code, cursorSuffix),
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = HermesColors.TextSecondary,
+                        modifier = Modifier
+                            .horizontalScroll(scroll)
+                            .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.fillMaxWidth().height(1.dp).background(HermesColors.Border))
+            DisableSelection {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
+                        .clickable { clipboard.setText(AnnotatedString(block.code)) }
+                        .padding(vertical = 9.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.ContentCopy,
+                        contentDescription = null,
+                        tint = HermesColors.Midground,
+                        modifier = Modifier.width(15.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        S.t2("KODU KOPYALA", "COPY CODE"),
+                        color = HermesColors.Midground,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.5.sp,
+                    )
+                }
+            }
         }
     }
 }
@@ -341,6 +409,38 @@ private fun CodeBlock(
 
 /** Bağlantı etiketi — [LinkedText] dokunuşta bu etiketi arar. */
 internal const val LINK_TAG = "URL"
+
+/** Every Markdown surface, including bot threads, opens links by default. */
+@Composable
+internal fun rememberExternalLinkOpener(): (String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        { raw ->
+            safeExternalUrl(raw)?.let { url ->
+                runCatching {
+                    context.startActivity(android.content.Intent(
+                        android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url),
+                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                }.onFailure {
+                    android.widget.Toast.makeText(context, "Bağlantıyı açacak uygulama bulunamadı", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+}
+
+/** Native links supply TalkBack actions and don't compete with bubble gestures. */
+internal fun interactiveLinks(text: AnnotatedString, onOpenLink: (String) -> Unit): AnnotatedString =
+    buildAnnotatedString {
+        append(text)
+        text.getStringAnnotations(LINK_TAG, 0, text.length).forEach { link ->
+            val url = safeExternalUrl(link.item) ?: return@forEach
+            if (link.start < link.end) addLink(
+                LinkAnnotation.Url(url, linkInteractionListener = LinkInteractionListener { onOpenLink(url) }),
+                link.start, link.end,
+            )
+        }
+    }
 
 /**
  * Bağlantı etiketli metin — dokunulan bağlantı [onOpenLink]'e güvenli URL ile
@@ -356,23 +456,14 @@ private fun LinkedText(
     fontWeight: FontWeight? = null,
     modifier: Modifier = Modifier,
 ) {
-    var layout by remember(text) { mutableStateOf<TextLayoutResult?>(null) }
+    val linked = remember(text, onOpenLink) { interactiveLinks(text, onOpenLink) }
     Text(
-        text,
+        linked,
         color = color,
         fontSize = fontSize,
         fontWeight = fontWeight,
         lineHeight = bodyLine,
-        modifier = modifier.pointerInput(text) {
-            detectTapGestures { pos ->
-                val lr = layout ?: return@detectTapGestures
-                val offset = lr.getOffsetForPosition(pos)
-                text.getStringAnnotations(LINK_TAG, offset, offset)
-                    .firstOrNull()
-                    ?.let { ann -> safeExternalUrl(ann.item)?.let(onOpenLink) }
-            }
-        },
-        onTextLayout = { layout = it },
+        modifier = modifier,
     )
 }
 
@@ -383,8 +474,22 @@ private fun LinkedText(
  * başarısız indirmede görsel yerine alt metin kalır, balon çökmez.
  */
 @Composable
+private fun ConversationMediaBlock(url: String, kind: MediaKind, label: String, onOpenLink: (String) -> Unit) {
+    val server = LocalConversationServer.current
+    if (isServerMediaPath(url) || (server != null && serverMediaUrl(url, server) != null)) {
+        ServerConversationMedia(url, kind, label, onOpenLink)
+    } else when(kind) {
+        MediaKind.IMAGE -> MarkdownImage(label, url)
+        MediaKind.VIDEO -> MarkdownVideo(url, label)
+        MediaKind.AUDIO -> ConversationAudio(url, label)
+        MediaKind.HTML -> androidx.compose.material3.TextButton(onClick = { onOpenLink(url) }) { Text("Web sayfasını aç · $label") }
+        else -> Unit
+    }
+}
+
+@Composable
 private fun MarkdownImage(alt: String, url: String) {
-    val safe = safeExternalUrl(url) ?: return
+    val safe = safeExternalUrl(url) ?: url.takeIf(::isInlineConversationImage) ?: return
     var bitmap by remember(safe) { mutableStateOf<ImageBitmap?>(null) }
     var failed by remember(safe) { mutableStateOf(false) }
     var fullScreen by remember { mutableStateOf(false) }
@@ -421,16 +526,44 @@ private fun MarkdownImage(alt: String, url: String) {
     }
 
     if (fullScreen && bitmap != null) {
+        var scale by remember { mutableFloatStateOf(1f) }
+        var offsetX by remember { mutableFloatStateOf(0f) }
+        var offsetY by remember { mutableFloatStateOf(0f) }
         Dialog(onDismissRequest = { fullScreen = false }) {
-            Image(
-                bitmap = bitmap!!,
-                contentDescription = alt.ifBlank { null },
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 640.dp)
-                    .clip(MaterialTheme.shapes.medium),
-            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f))
+                    .clickable { fullScreen = false },
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    bitmap = bitmap!!,
+                    contentDescription = alt.ifBlank { null },
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 680.dp)
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                scale = (scale * zoom).coerceIn(1f, 4f)
+                                if (scale > 1f) {
+                                    offsetX += pan.x
+                                    offsetY += pan.y
+                                } else {
+                                    offsetX = 0f
+                                    offsetY = 0f
+                                }
+                            }
+                        }
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offsetX,
+                            translationY = offsetY,
+                        ),
+                )
+            }
         }
     }
 }
@@ -492,6 +625,7 @@ private fun MarkdownVideo(url: String, label: String) {
 
 /** Görseli indirip örnekler; hata/null dönerse çağıran alt metni gösterir. */
 private fun downloadBitmap(url: String): android.graphics.Bitmap? {
+    if (isInlineConversationImage(url)) return decodeConversationBitmap(java.util.Base64.getDecoder().decode(url.substringAfter(',')))
     val client = okhttp3.OkHttpClient.Builder()
         .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
@@ -513,6 +647,12 @@ private fun downloadBitmap(url: String): android.graphics.Bitmap? {
         }
         if (buffer.size > limit) return null
         val bytes = buffer.readByteArray()
+        return decodeConversationBitmap(bytes)
+    }
+}
+
+private fun decodeConversationBitmap(bytes: ByteArray): android.graphics.Bitmap? {
+        if (bytes.size > 8 * 1024 * 1024) return null
         // Sınırı önce ölç, sonra uygun örnekle indirilen baytları çöz.
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
@@ -523,7 +663,6 @@ private fun downloadBitmap(url: String): android.graphics.Bitmap? {
         while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 1600) sample *= 2
         val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
         return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-    }
 }
 
 // ── Ayrıştırma ────────────────────────────────────────────────────────
@@ -554,6 +693,8 @@ sealed interface MdBlock {
 
     /** V5-2: video bloğu — tek satır video URL'si. */
     data class Video(val url: String, val label: String) : MdBlock
+    data class Audio(val url: String, val label: String) : MdBlock
+    data class Html(val url: String, val label: String) : MdBlock
 
     /** Liste maddesi mi? (bitişik çizim + gruplama kararı için). */
     val isListItem: Boolean get() = this is Bullet || this is Numbered
@@ -613,7 +754,7 @@ internal val IMAGE_BLOCK = Regex("""^!\[([^\]]*)\]\(([^)\s]+)\)$""")
 internal val BARE_URL_LINE = Regex("""^https?://\S+$""")
 
 /** V5-2: satır içi otomatik bağlantı — boşluk/parantezle biter. */
-internal val BARE_URL = Regex("""https?://[^\s<>()\[\]"']+""")
+internal val BARE_URL = Regex("""https?://[^\s<>\[\]"']+""", RegexOption.IGNORE_CASE)
 
 private fun indentOf(leading: String): Int = leading.length / 2
 
@@ -740,14 +881,14 @@ internal fun parseMarkdown(source: String): List<MdBlock> {
         // Yalnız güvenli URL bloğa girer; güvenli değilse satır düz metin kalır.
         val trimmed = line.trim()
         val imageMatch = IMAGE_BLOCK.matchEntire(trimmed)
-        if (imageMatch != null && safeExternalUrl(imageMatch.groupValues[2]) != null) {
+        if (imageMatch != null && (safeExternalUrl(imageMatch.groupValues[2]) != null || isServerMediaPath(imageMatch.groupValues[2]) || isInlineConversationImage(imageMatch.groupValues[2]))) {
             flushAll()
             blocks += MdBlock.Image(imageMatch.groupValues[1], imageMatch.groupValues[2])
             i++
             continue
         }
-        if (BARE_URL_LINE.matches(trimmed) && safeExternalUrl(trimmed) != null) {
-            when (mediaKindOf(trimmed)) {
+        if ((BARE_URL_LINE.matches(trimmed) && safeExternalUrl(trimmed) != null) || isServerMediaPath(trimmed)) {
+            when (conversationMediaKind(trimmed)) {
                 MediaKind.IMAGE -> {
                     flushAll()
                     blocks += MdBlock.Image(trimmed.substringAfterLast('/'), trimmed)
@@ -757,6 +898,13 @@ internal fun parseMarkdown(source: String): List<MdBlock> {
                 MediaKind.VIDEO -> {
                     flushAll()
                     blocks += MdBlock.Video(trimmed, trimmed.substringAfterLast('/'))
+                    i++
+                    continue
+                }
+                MediaKind.AUDIO, MediaKind.HTML -> {
+                    flushAll()
+                    val label = trimmed.substringBefore('?').substringBefore('#').substringAfterLast('/')
+                    blocks += if (conversationMediaKind(trimmed) == MediaKind.AUDIO) MdBlock.Audio(trimmed, label) else MdBlock.Html(trimmed, label)
                     i++
                     continue
                 }
@@ -888,14 +1036,12 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInline(
             source[i] == '[' -> {
                 val closeBracket = source.indexOf(']', i)
                 val openParen = if (closeBracket > 0) closeBracket + 1 else -1
-                val closeParen =
-                    if (openParen in source.indices && source[openParen] == '(')
-                        source.indexOf(')', openParen)
-                    else -1
+                val destination = markdownLinkDestination(source, openParen)
+                val closeParen = destination?.first ?: -1
                 if (closeParen < 0) { append(source[i]); i++ } else {
                     // V5-2: [metin](url) artık TIKLANABİLİR — URL, LINK_TAG
                     // etiketi olarak yazının altına gömülür (LinkedText okur).
-                    val target = source.substring(openParen + 1, closeParen)
+                    val target = destination!!.second
                     val labelStart = length
                     withStyle(
                         SpanStyle(
@@ -912,13 +1058,13 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInline(
 
             // V5-2: çıplak http(s) URL'ler de otomatik bağlantı olur; güvenli
             // değilse (javascript: vb. bu kalıba zaten girmez) düz metin kalır.
-            source.startsWith("http://", i) || source.startsWith("https://", i) -> {
+            source.startsWith("http://", i, ignoreCase = true) || source.startsWith("https://", i, ignoreCase = true) -> {
                 val match = BARE_URL.find(source, i)
                 if (match == null || match.range.first != i) {
                     append(source[i]); i++
                 } else {
                     val raw = match.value
-                    val candidate = raw.trimEnd('.', ',', ';', ':', '!', '?')
+                    val candidate = trimBareLink(raw)
                     val safe = safeExternalUrl(candidate)
                     if (safe == null) {
                         append(raw); i += raw.length

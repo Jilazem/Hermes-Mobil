@@ -1,7 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Personal LAN development only. Never merged into release. -->
+<!--
+  YALNIZ DEBUG (src/debug kaynak kümesi) — kişisel LAN geliştirmesi.
+  Bu dosya release derlemesine BİRLEŞMEZ; release'te src/main sürümü geçerlidir
+  (cleartextTrafficPermitted="false", yalnız sistem sertifikaları).
+
+  Android ağ güvenliği yapılandırması RFC1918 CIDR'i ifade EDEMEZ
+  (<domain> yalnız tam host eşler; "192.168.0.0/16" yazılamaz). Bu yüzden
+  platform düzeyinde cleartext yalnız debug'da açıktır; gerçek kapı uygulama
+  kodudur: ServerProfile.forceTlsOutsideLan() özel ağ (10/8, 127/8,
+  172.16/12, 192.168/16, localhost, *.local) DIŞINDAKİ her http:// adresini
+  https://'e yükseltir. ws:// de aynı adresten türetildiği için aynı kurala
+  tabidir. Kullanıcı CA'sına güvenilmez — yalnız sistem sertifikaları.
+-->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
-        <trust-anchors><certificates src="system" /></trust-anchors>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
     </base-config>
 </network-security-config>

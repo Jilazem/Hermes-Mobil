@@ -133,8 +133,24 @@ class PhoneTools(
         const val TASKER_PKG = "net.dinglisch.android.taskerm"
     }
 
+    /** Preserve messaging admission/delivery failures as failures in the remote bridge protocol. */
+    fun executeOutcome(name: String, args: JsonObject): FullControl.Outcome {
+        fun arg(key: String) = (args[key] as? JsonPrimitive)?.content.orEmpty()
+        return try {
+            when (name) {
+                "phone_messages" -> MessageInbox.readOutcome(context, arg("app"), arg("chat"), arg("limit").toIntOrNull() ?: 10)
+                "phone_reply" -> MessageInbox.replyOutcome(context, arg("app"), arg("chat"), arg("text"))
+                else -> FullControl.done(execute(name, args))
+            }
+        } catch (error: Exception) {
+            FullControl.fail(error.message ?: "Telefon işlemi tamamlanamadı")
+        }
+    }
+
     /** Bir aracı çalıştırır ve modele dönecek metni üretir. */
     fun execute(name: String, args: JsonObject): String {
+        if (name in SHIZUKU_TOOL_NAMES && !SettingsStore(context).current().shizukuEnabled)
+            return tr("Derin telefon denetimi kapalı. Ayarlar → Telefon denetimi bölümünden aç.", "Deep phone control is off. Enable it in Settings → Phone control.")
         fun arg(key: String): String =
             (args[key] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }.orEmpty()
 
@@ -525,10 +541,9 @@ class PhoneTools(
         val out = kotlinx.coroutines.runBlocking { bridge.exec(command) }
         return out.fold(
             onSuccess = {
-                val on = command.endsWith("enable")
                 tr(
-                    "$label ${if (on) "açıldı" else "kapatıldı"}.",
-                    "$label turned ${if (on) "on" else "off"}.",
+                    "$label komutu tamamlandı.",
+                    "$label command completed.",
                 )
             },
             onFailure = { e ->
@@ -572,7 +587,7 @@ class PhoneTools(
     }
 
     private fun openSettings(section: String): String {
-        val action = when (section.lowercase()) {
+        val action = when (section.lowercase().trim()) {
             "wifi", "wi-fi", "kablosuz" -> Settings.ACTION_WIFI_SETTINGS
             "bluetooth" -> Settings.ACTION_BLUETOOTH_SETTINGS
             "ses", "sound" -> Settings.ACTION_SOUND_SETTINGS
@@ -580,6 +595,10 @@ class PhoneTools(
             "pil", "battery" -> Settings.ACTION_BATTERY_SAVER_SETTINGS
             "konum", "location" -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
             "uygulama", "apps" -> Settings.ACTION_APPLICATION_SETTINGS
+            "erişilebilirlik", "accessibility", "a11y" -> Settings.ACTION_ACCESSIBILITY_SETTINGS
+            "depolama", "storage" -> Settings.ACTION_INTERNAL_STORAGE_SETTINGS
+            "tarih", "saat", "date" -> Settings.ACTION_DATE_SETTINGS
+            "güvenlik", "security" -> Settings.ACTION_SECURITY_SETTINGS
             else -> Settings.ACTION_SETTINGS
         }
         launch(Intent(action))

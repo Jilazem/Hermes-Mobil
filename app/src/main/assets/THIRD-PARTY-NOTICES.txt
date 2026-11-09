@@ -1,7 +1,7 @@
 ==============================================================================
 HERMES MOBIL v5 — ÜÇÜNCÜ TARAF BİLDİRİMLERİ (THIRD-PARTY NOTICES)
 ==============================================================================
-Uygulama  : Hermes Mobil (com.hermes.mobile) — sürüm adı "1.5", versionCode 8
+Uygulama  : Hermes Mobil (com.hermes.mobile) — sürüm adı "6.4.0", versionCode 12
            (hata ayıklama türevi: sürüm adı soneki "-ema-preview")
 Oluşturma : 2026-10-21
 Kapsam    : :app:releaseRuntimeClasspath — APK'ya giren derleme zamanı sınıf yolu.

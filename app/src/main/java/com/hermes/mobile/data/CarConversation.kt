@@ -67,6 +67,11 @@ object CarConversation {
 
     fun messages(): List<Msg> = synchronized(lock) { msgs.toList() }
 
+    /** One atomic read: never pair another conversation's messages with an old key check. */
+    fun messagesFor(profileId: String?, sessionId: String?): List<Msg>? = synchronized(lock) {
+        if (key != null && key == keyOf(profileId, sessionId)) msgs.toList() else null
+    }
+
     /** Konuşmayı kapatır (okundu/ekran kapatıldı). */
     fun close(profileId: String?, sessionId: String?) = synchronized(lock) {
         if (key == keyOf(profileId, sessionId)) {

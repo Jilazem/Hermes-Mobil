@@ -266,14 +266,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun seedDefaultProfileIfEmpty() {
         if (store.list().isNotEmpty()) return
-        // Örnek profil: yerel LAN adresi + dışarıda ters vekil alan adı — LAN'a
-        // ulaşılamayınca otomatik olarak dış adrese düşülür (candidates).
+        // Bu Mac: LAN Caddy :9150, dışarıda Keenetic 443 (ham :9150 WAN'da kapalı).
+        // LAN yoksa aday listesi uzak adrese düşer.
         val server = ServerProfile(
-            name = "Hermes (örnek)",
-            baseUrl = "http://192.168.140.20:9150",
-            remoteUrl = "https://hermes.example.com",
+            name = "Hermes Mac",
+            baseUrl = "http://192.168.1.101:9150",
+            remoteUrl = "https://hermes.winterfell07.keenetic.pro",
             token = "",
-            note = "Örnek profil — kendi sunucu adresinizi Ayarlar → Bağlantı'dan girin.",
+            note = "Ev ağı 9150; dışarıda Keenetic. Token Ayarlar → Bağlantı'dan girilir.",
         )
         store.upsert(server)
         store.setActiveId(server.id)
@@ -485,7 +485,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private suspend fun loadActiveDetails() {
+    private suspend fun loadActiveDetails(includeSessionHistory: Boolean = true) {
         val profile = _state.value.active ?: return
         if (profile.token.isBlank()) return
         val client = HermesClient(profile)
@@ -501,12 +501,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 val status = client.status()
                 val stats = client.systemStats()
-                val sessions = client.sessions()
-                sessionCache.save(profile.id, sessions)
+                val sessions = if(includeSessionHistory) client.sessions() else null
+                if(sessions!=null) sessionCache.save(profile.id, sessions)
                 _state.update {
                     it.copy(
-                        status = status, stats = stats, sessions = sessions,
-                        error = null, sessionsCachedAt = null,
+                        status = status, stats = stats, sessions = sessions ?: it.sessions,
+                        error = null, sessionsCachedAt = if(sessions!=null) null else it.sessionsCachedAt,
                         cronNames = cronNamesDeferred.await(),
                     )
                 }
@@ -534,12 +534,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun startPolling() {
         pollJob?.cancel()
         pollJob = viewModelScope.launch {
+            var tick=0
             while (true) {
                 delay(15_000)
                 val profile = _state.value.active ?: continue
                 if (profile.token.isBlank()) continue
                 probe(profile)
-                loadActiveDetails()
+                // Full archive metadata once a minute; manual refresh always reloads it.
+                loadActiveDetails(includeSessionHistory = tick++ % 4 == 0)
             }
         }
     }

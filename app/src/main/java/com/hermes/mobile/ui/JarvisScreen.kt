@@ -71,10 +71,11 @@ fun JarvisScreen(
         if (captions.isNotEmpty()) listState.animateScrollToItem(captions.lastIndex)
     }
 
+    Box(modifier.fillMaxSize()) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF000000)),
+            .background(HermesColors.Background),
     ) {
         // En üstte: KITT şeridi (Knight Rider tarama bandı).
         KittBar(
@@ -112,6 +113,8 @@ fun JarvisScreen(
             }
         }
     }
+    VoiceEdge(level, phase != JarvisLoopLogic.Phase.Off)
+    }
 }
 
 /** Faz → şerit altındaki kısa durum metni. */
@@ -135,17 +138,6 @@ private fun KittBar(
     langT: (String, String) -> String,
     onStop: () -> Unit,
 ) {
-    // İleri-geri tarama: 0→1→0, ~1.4 sn tur.
-    val scan by rememberInfiniteTransition(label = "kitt").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "kitt-scan",
-    )
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -154,7 +146,7 @@ private fun KittBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "KITT",
+            "HERMES",
             color = KittRed,
             fontSize = 13.sp,
             fontWeight = FontWeight.Black,
@@ -162,32 +154,6 @@ private fun KittBar(
         )
         Spacer(Modifier.width(10.dp))
 
-        // Taranan bant
-        BoxWithConstraints(
-            modifier = Modifier
-                .weight(1f)
-                .height(16.dp)
-                .background(Color(0xFF0B0B0D), RoundedCornerShape(3.dp)),
-        ) {
-            val glowW = 0.30f + 0.18f * level.coerceIn(0f, 1f)
-            val shift = maxWidth * (1f - glowW) * scan
-            Box(
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = shift)
-                    .fillMaxHeight()
-                    .width(maxWidth * glowW)
-                    .background(
-                        Brush.horizontalGradient(
-                            0f to Color.Transparent,
-                            0.5f to KittRed,
-                            1f to Color.Transparent,
-                        )
-                    ),
-            )
-        }
-
-        Spacer(Modifier.width(10.dp))
         Text(
             phaseLabel,
             color = HermesColors.TextFaint,
@@ -198,7 +164,7 @@ private fun KittBar(
         TextButton(onClick = onStop) {
             Text(
                 langT("Durdur", "Stop"),
-                color = Color(0xFFFF6B6B),
+                color = HermesColors.Focus,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -207,4 +173,4 @@ private fun KittBar(
 }
 
 /** Knight Rider kırmızısı — KITT tarama bandı rengi. */
-private val KittRed = Color(0xFFFF2A1A)
+private val KittRed: Color @Composable get() = HermesColors.Focus

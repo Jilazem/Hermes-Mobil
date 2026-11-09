@@ -41,7 +41,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ExpandLess
@@ -83,6 +85,12 @@ import androidx.compose.foundation.layout.sizeIn
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -230,6 +238,12 @@ fun ChatScreen(
     onExitAssistantMode: () -> Unit = {},
     fullChatFlow: Boolean = true,
     onFullChatFlow: (Boolean) -> Unit = {},
+    conversationNamespace: String = "local",
+    readingEnabled: Boolean = true,
+    onRefreshSubagents: () -> Unit = {},
+    onOpenChildSession: (String) -> Unit = {},
+    onBackToFeed: (() -> Unit)? = null,
+    onOpenWebDashboard: (() -> Unit)? = null,
 ) {
     // Sheet burada açılıyor: taslak `draft` bu kompozablda, "satıra dokun →
     // taslağı doldur" akışı (onUsePrompt) ancak burada çalışabilir.
@@ -237,9 +251,44 @@ fun ChatScreen(
     var reasoningSheet by remember { mutableStateOf(false) }
     // KALAN-2: ⋯ → "Müdahale" bu diyaloğu açar (yalnız ajan çalışırken).
     var interventionOpen by remember { mutableStateOf(false) }
-    // V5-2: açılacak dış bağlantı — onay penceresi açıkken dolu ([ChatItemView]
-    // içindeki tıklanabilir bağlantılar buraya gelir).
-    var pendingLink by remember { mutableStateOf<String?>(null) }
+    val textContext = LocalContext.current
+    val textToolsScope = rememberCoroutineScope()
+    val openExternalLink = rememberExternalLinkOpener()
+    val shelf = remember(textContext) { com.hermes.mobile.data.MessageShelfStore(textContext) }
+    val savedMessages by shelf.messages.collectAsStateWithLifecycle()
+    val canonicalSession = state.storedSessionId ?: state.sessionId
+    val messageScope = canonicalSession?.takeIf(String::isNotBlank)?.let { "$conversationNamespace|$it" }
+    val pinnedMessages = remember(savedMessages, messageScope) { savedMessages.filter { it.scope == messageScope } }
+    val entries = remember(state.items) { chatTextEntries(state.items) }
+    var conversationToolsOpen by remember { mutableStateOf(false) }
+    var inspectedMessage by remember { mutableStateOf<ChatTextEntry?>(null) }
+    var pendingExportPath by rememberSaveable { mutableStateOf<String?>(null) }
+    val exportDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")) { uri ->
+        val path = pendingExportPath
+        pendingExportPath = null
+        if (path != null) textToolsScope.launch {
+            val file = java.io.File(path)
+            if (file.parentFile?.canonicalPath != textContext.cacheDir.canonicalPath || !file.name.startsWith("chat-export-")) return@launch
+            try {
+                if (uri != null) {
+                    withContext(Dispatchers.IO) {
+                        requireNotNull(textContext.contentResolver.openOutputStream(uri)).use { output ->
+                            file.inputStream().use { it.copyTo(output) }
+                        }
+                    }
+                    android.widget.Toast.makeText(textContext, "Sohbet kaydedildi", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } catch (_: Exception) {
+                android.widget.Toast.makeText(textContext, "Sohbet kaydedilemedi", android.widget.Toast.LENGTH_LONG).show()
+            } finally { file.delete() }
+        }
+    }
+    fun togglePin(entry: ChatTextEntry) {
+        val scope = messageScope ?: return
+        runCatching { shelf.toggle(com.hermes.mobile.data.PinnedChatMessage(scope, entry.key, entry.role, entry.text, System.currentTimeMillis())) }
+            .onFailure { android.widget.Toast.makeText(textContext, it.message ?: "Mesaj sabitlenemedi", android.widget.Toast.LENGTH_LONG).show() }
+    }
+    LaunchedEffect(messageScope) { shelf.refresh() }
 
     var draft by rememberSaveable { mutableStateOf("") }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
@@ -258,15 +307,17 @@ fun ChatScreen(
         draft = if (draft.isBlank()) incoming else draft + "\n" + incoming
         onVoicePrefillConsumed()
     }
-    val listState = rememberLazyListState()
-    var followBottom by rememberSaveable { mutableStateOf(true) }
+    val listState = remember(messageScope, fullChatFlow) { LazyListState() }
+    var followBottom by remember(messageScope, fullChatFlow) { mutableStateOf(false) }
+    var openingHandled by remember(messageScope, fullChatFlow) { mutableStateOf(false) }
+    var seenThrough by remember(messageScope, fullChatFlow) { androidx.compose.runtime.mutableIntStateOf(-1) }
 
     // Tur-8 klavye düzeltmesi: klavye açılınca görünür alan kısalıyor;
     // LazyColumn konumu İLK görünür öğeye göre koruduğu için en alttaki
     // satırlar görünmez oluyordu ("metin yutulmuş"). Bu bayrak KULLANICI
     // NİYETİDİR: yalnız kullanıcı kaydırırken güncellenir, yerleşimin
     // kısalması niyeti bozmaz.
-    var userPinnedBottom by rememberSaveable { mutableStateOf(true) }
+    var userPinnedBottom by remember(messageScope, fullChatFlow) { mutableStateOf(false) }
     // Klavye görünür mü (imePadding ile aynı inset kaynağı).
     val imeVisible = WindowInsets.isImeVisible
 
@@ -301,7 +352,7 @@ fun ChatScreen(
     // satır sayısı hatırlanır; takip kapalıyken gelen yeni satırlar
     // okunmamış sayacıdır. Buton en altta değilken HER ZAMAN erişilebilir.
     val scrollScope = rememberCoroutineScope()
-    var seenRows by remember { mutableStateOf(0) }
+    var seenRows by remember(messageScope) { mutableStateOf(0) }
     LaunchedEffect(followBottom, rows.size) {
         if (followBottom) seenRows = rows.size
     }
@@ -313,9 +364,8 @@ fun ChatScreen(
     LaunchedEffect(listState) {
         snapshotFlow {
             val info = listState.layoutInfo
-            val total = info.totalItemsCount
-            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-            val near = total <= 1 || lastVisible >= total - 2
+            val total = if (openingHandled) info.totalItemsCount else 0
+            val near = !listState.canScrollForward
             // Tur-8: kullanıcı niyeti — kaydırma sürerken "dipte" kararı
             // güncellenir; yerleşim değişimi (klavye) niyeti bozmaz.
             Triple(total, near, listState.isScrollInProgress)
@@ -338,7 +388,7 @@ fun ChatScreen(
         snapshotFlow { listState.layoutInfo.viewportSize.height }
             .distinctUntilChanged()
             .collect {
-                if (!shouldPinToBottom(userPinnedBottom, listState.isScrollInProgress, currentRows.isEmpty())) return@collect
+                if (!openingHandled || !shouldPinToBottom(userPinnedBottom, listState.isScrollInProgress, currentRows.isEmpty())) return@collect
                 listState.scrollToItem(currentRows.lastIndex)
             }
     }
@@ -348,46 +398,62 @@ fun ChatScreen(
     // kaydırma tetiklenmiyordu. Saf imza (test: ChatScrollTest) her
     // büyüme/eklenmede değişir.
     val streamSig = remember(state.items) { streamSignature(state.items) }
-    LaunchedEffect(streamSig, fullChatFlow) {
-        if (rows.isEmpty() || !followBottom) return@LaunchedEffect
+    LaunchedEffect(messageScope, streamSig, fullChatFlow, openingHandled) {
+        if (!openingHandled || state.historyLoading || rows.isEmpty() || !followBottom) return@LaunchedEffect
         // Son BALON satırına yasla (sondaki sabit Spacer'a değil): balon üst
         // kenere oturur, ilk satırı header altında kalmaz; akışta alt satır
         // her zaman görünür.
         listState.scrollToItem(rows.lastIndex)
     }
 
-    // M8 (patron eki): oturum AÇILIŞ KONUMU — en sona otomatik atlama YOK.
-    // Son okunan mesajdan sonrasına (ilk okunmamış satıra) konumlan; konum
-    // oturum başına cihazda saklanır (mesaj ZAMAN DAMGASIYLA — satır indeksi
-    // değil; mesaj sayısı değişse de kaymaz). Okunmamış yok/kayıt yoksa
-    // davranış eski hâliyle (en altta) kalır.
+    // Opening is one transaction: restore first, then enable follow/read tracking.
+    // A streaming/live item may have no server timestamp; content anchors survive that reload.
     val scrollPosContext = LocalContext.current.applicationContext
     val scrollPosStore = remember { ChatScrollPositionStore(scrollPosContext) }
-    var openingHandled by remember { mutableStateOf(false) }
-    LaunchedEffect(state.sessionId, state.storedSessionId, state.historyLoading) {
-        if (state.historyLoading) {
-            openingHandled = false
-            return@LaunchedEffect
-        }
+    val identityCache = remember(messageScope) { ChatReadIdentityCache() }
+    val readableRows = remember(rows) { readableChatRows(rows, identityCache) }
+    var firstUnreadAt by remember(messageScope, fullChatFlow) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(messageScope, fullChatFlow, state.historyLoading, rows.isEmpty()) {
+        if (state.historyLoading) { openingHandled = false; return@LaunchedEffect }
         if (openingHandled || rows.isEmpty()) return@LaunchedEffect
+        val cursor = messageScope?.let(scrollPosStore::read)
+        val target = chatOpeningPosition(readableRows, rows.size, cursor)
+        firstUnreadAt = target.index.takeIf { target.hasUnread }
+        listState.scrollToItem(target.index)
+        seenThrough = if (target.hasUnread) target.index - 1 else -1
+        seenRows = if (target.hasUnread) target.index else rows.size
+        followBottom = !target.hasUnread
+        userPinnedBottom = !target.hasUnread
         openingHandled = true
-        val sid = state.storedSessionId ?: state.sessionId ?: return@LaunchedEffect
-        val lastRead = scrollPosStore.okunanZaman(sid) ?: return@LaunchedEffect
-        val hedef = firstUnreadRowIndex(rows.map { chatRowTs(it) }, lastRead) ?: return@LaunchedEffect
-        if (hedef > 0) {
-            listState.scrollToItem(hedef)
-            followBottom = false
-            userPinnedBottom = false
-        }
     }
 
-    // M8: okundu işareti — kullanıcı en ALTTA (takip açık) olduğunda görülen
-    // en yeni damga cihaza yazılır. Yukarıdayken (takip kapalı) İLERLETİLMEZ:
-    // "okuyup çık → tekrar aç → kaldığı yerden devam" sözleşmesi budur.
-    LaunchedEffect(followBottom, state.items) {
-        if (!followBottom) return@LaunchedEffect
-        val sid = state.storedSessionId ?: state.sessionId ?: return@LaunchedEffect
-        scrollPosStore.kaydet(sid, newestTsOf(rows.map { chatRowTs(it) }, null))
+    val readingOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val refreshSubagents by rememberUpdatedState(onRefreshSubagents)
+    LaunchedEffect(state.sessionId, readingOwner) {
+        if (state.sessionId != null) readingOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            while (true) { refreshSubagents(); kotlinx.coroutines.delay(8_000) }
+        }
+    }
+    val readingActive = readingEnabled && !promptsSheet && !reasoningSheet &&
+        !conversationToolsOpen && inspectedMessage == null
+    LaunchedEffect(messageScope, readableRows, openingHandled, state.historyLoading, readingActive, readingOwner) {
+        val scope = messageScope ?: return@LaunchedEffect
+        if (!openingHandled || state.historyLoading || !readingActive) return@LaunchedEffect
+        readingOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            androidx.compose.runtime.withFrameNanos { }
+            snapshotFlow {
+                val info = listState.layoutInfo
+                // A tall message is not read just because its first line is on screen.
+                info.visibleItemsInfo.filter { it.index < rows.size &&
+                    it.offset + it.size <= info.viewportEndOffset }.maxOfOrNull { it.index }
+            }.distinctUntilChanged().collect { visibleEnd ->
+                val last = readableRows.lastOrNull { it.index <= (visibleEnd ?: -1) && !it.streaming }
+                    ?: return@collect
+                if (last.index <= seenThrough) return@collect
+                seenThrough = last.index
+                scrollPosStore.save(scope, com.hermes.mobile.data.ChatReadCursor(last.anchor, last.timestamp))
+            }
+        }
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
@@ -407,8 +473,63 @@ fun ChatScreen(
             fullChatFlow = fullChatFlow,
             onFullChatFlow = onFullChatFlow,
             onContinueInCar = onContinueInCar,
+            onOpenTextTools = { conversationToolsOpen = true },
+            onBackToFeed = onBackToFeed,
+            onOpenWebDashboard = onOpenWebDashboard,
         )
 
+        val a11yRunning = remember(textContext) {
+            com.hermes.mobile.data.HermesAccessibilityService.isRunning()
+        }
+        if (!a11yRunning) {
+            Surface(
+                color = HermesColors.Surface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        com.hermes.mobile.data.HermesAccessibilityService.openPermissionSettings(textContext)
+                    }
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            Icons.Default.Bolt,
+                            contentDescription = null,
+                            tint = HermesColors.Midground,
+                            modifier = Modifier.requiredSize(16.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = S.t2(
+                                "Asistanın ekrana dokunabilmesi için Erişilebilirlik iznini aç",
+                                "Enable Accessibility for full assistant phone control",
+                            ),
+                            color = HermesColors.TextPrimary,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(
+                        text = S.t2("Aç ↗", "Open ↗"),
+                        color = HermesColors.Midground,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+
+        SubagentActivityPanel(state.subagents, onOpenChildSession = onOpenChildSession)
         Box(Modifier.weight(1f)) {
             // KALAN-1: geçmiş yüklenirken boş ekran yerine iskelet balonlar
             // (boş-sohbet öneri ekranı ile "henüz gelmedi" karışmasın).
@@ -457,12 +578,17 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
-                    itemsIndexed(rows, key = { _, r -> r.key }) { _, row ->
+                    itemsIndexed(rows, key = { _, r -> r.key }) { rowIndex, row ->
                         Column(
                             // Tur22 madde-1: mesaj girişi — fade + 20dp kayma
                             // (graphicsLayer, layout'a dokunmaz → topuklama yok).
                             Modifier.messageEntrance(row.key),
                         ) {
+                            if (rowIndex == firstUnreadAt) Text(
+                                S.t2("Okunmamış mesajlar", "Unread messages"),
+                                color = HermesColors.Midground, style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            )
                             val prevTs = prevTsByKey[row.key]
                             val ts = (row as? ChatRow.Single)?.item?.let { o ->
                                 when (o) {
@@ -484,7 +610,10 @@ fun ChatScreen(
                                     row.item,
                                     onApproval,
                                     onOpenFile,
-                                    onOpenLink = { pendingLink = it },
+                                    onOpenLink = openExternalLink,
+                                    onInspect = { inspectedMessage = it },
+                                    pinned = pinnedMessages.any { it.key == row.item.key },
+                                    onPin = if (messageScope == null) null else { entry -> togglePin(entry) },
                                     fullFlow = fullChatFlow,
                                     onSpeak = onSpeak,
                                     onBubbleAction = onBubbleAction,
@@ -681,44 +810,39 @@ fun ChatScreen(
         )
     }
 
-    // V5-2: dış bağlantılar ONAYLA açılır. Mesajlar model çıktısı olduğu için
-    // tek dokunuşla sistem tarayıcısına geçilmez. URL ayrıca [safeExternalUrl]
-    // (javascript:, data:, file:, vb. reddi) kapısından geçmeden buraya gelmez.
-    pendingLink?.let { url ->
-        val dialogContext = LocalContext.current
-        AlertDialog(
-            onDismissRequest = { pendingLink = null },
-            containerColor = HermesColors.Surface,
-            title = { Text(S.t2("Bağlantıyı aç", "Open link"), color = HermesColors.TextPrimary) },
-            text = {
-                Text(
-                    url,
-                    color = HermesColors.TextSecondary,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingLink = null
-                    runCatching {
-                        dialogContext.startActivity(
-                            android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse(url),
-                            )
-                        )
+    if (conversationToolsOpen) ConversationToolsSheet(
+        title = state.topic, entries = entries, pinned = pinnedMessages,
+        onInspect = { conversationToolsOpen = false; inspectedMessage = it },
+        onUnpin = { togglePin(ChatTextEntry(it.key, it.role, it.text)) },
+        onExport = {
+            val snapshot = exportChatMarkdown(state.topic, entries)
+            val filename = chatExportFilename(state.topic)
+            textToolsScope.launch {
+                var prepared: java.io.File? = null
+                try {
+                    val file = withContext(Dispatchers.IO) {
+                        java.io.File.createTempFile("chat-export-", ".md", textContext.cacheDir).also {
+                            prepared = it
+                            it.writeText(snapshot)
+                        }
                     }
-                }) {
-                    Text(S.t2("Aç", "Open"), color = HermesColors.Midground)
+                    pendingExportPath = file.absolutePath
+                    exportDocument.launch(filename)
+                } catch (error: Exception) {
+                    prepared?.delete()
+                    pendingExportPath = null
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    android.widget.Toast.makeText(textContext, "Sohbet dışa aktarılamadı", android.widget.Toast.LENGTH_LONG).show()
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingLink = null }) {
-                    Text(S.t2("İptal", "Cancel"), color = HermesColors.TextSecondary)
-                }
-            },
-        )
-    }
+            }
+        },
+        onDismiss = { conversationToolsOpen = false },
+    )
+    inspectedMessage?.let { entry -> SelectableMessageSheet(entry,
+        pinned = pinnedMessages.any { it.key == entry.key },
+        onPin = if (messageScope == null) null else { { togglePin(entry) } },
+        onDismiss = { inspectedMessage = null },
+    ) }
 }
 
 /**
@@ -769,6 +893,9 @@ private fun ChatHeader(
     fullChatFlow: Boolean = true,
     onFullChatFlow: (Boolean) -> Unit = {},
     onContinueInCar: () -> Unit = {},
+    onOpenTextTools: () -> Unit = {},
+    onBackToFeed: (() -> Unit)? = null,
+    onOpenWebDashboard: (() -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     // Tur-4 (P2 #7): model etiketi ve "bağlı" rozeti üst şeritten ÇIKTI.
@@ -778,6 +905,8 @@ private fun ChatHeader(
         is ConnectionState.Open -> null
         is ConnectionState.Error -> S.t2("Bağlantı yok", "Offline")
         is ConnectionState.Connecting -> null
+        // B3 (v6.3): kopuş sonrası yeniden bağlanma — durum göstergesi.
+        is ConnectionState.Reconnecting -> com.hermes.mobile.data.WsBackoff.describe(c.attempt)
         is ConnectionState.Closed -> S.t2("bağlantı yok", "no connection")
         ConnectionState.Idle -> S.t2("bağlantı yok", "no connection")
     }
@@ -786,9 +915,23 @@ private fun ChatHeader(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 2.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (onBackToFeed != null) {
+            IconButton(
+                onClick = onBackToFeed,
+                modifier = Modifier
+                    .testTag("btn_back_to_feed")
+                    .requiredSize(48.dp),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = S.t2("Tüm Akış", "All Feeds"),
+                    tint = HermesColors.Midground,
+                )
+            }
+        }
         // Tur-16: ☰ — oturum çekmecesi (Claude/Grok/Gemini: menü solda).
         // tur22-r1 düzeltme: 48dp KESİN kutu (requiredSize) + testTag — kanıt
         // dökümü artık tıklanabilir düğüm üzerinden deterministik çekilir.
@@ -848,6 +991,14 @@ private fun ChatHeader(
                 onDismissRequest = { menuOpen = false },
                 containerColor = HermesColors.Surface,
             ) {
+                DropdownMenuItem(
+                    text = { Text(S.t2("Web Konsolu (9120) ↗", "Web Console (9120) ↗")) },
+                    onClick = { menuOpen = false; onOpenWebDashboard?.invoke() },
+                )
+                DropdownMenuItem(
+                    text = { Text(S.t2("Ara, sabitlenenler ve dışa aktar", "Search, pins and export")) },
+                    onClick = { menuOpen = false; onOpenTextTools() },
+                )
                 DropdownMenuItem(
                     text = { Text(if (fullChatFlow) S.t2("Sade sohbet görünümü", "Compact chat view") else S.t2("Tüm akışı göster", "Show full flow")) },
                     onClick = { menuOpen = false; onFullChatFlow(!fullChatFlow) },
@@ -1267,6 +1418,9 @@ private fun ChatItemView(
     onOpenFile: (FileRef) -> Unit = {},
     /** V5-2: tıklanabilir bağlantı — onay penceresi çağırandadır. */
     onOpenLink: (String) -> Unit = {},
+    onInspect: (ChatTextEntry) -> Unit = {},
+    pinned: Boolean = false,
+    onPin: ((ChatTextEntry) -> Unit)? = null,
     onOpenProfiles: () -> Unit = {},
     activeProfileName: String = "",
     /**
@@ -1282,9 +1436,7 @@ private fun ChatItemView(
     fullFlow: Boolean = false,
 ) {
     when (item) {
-        is ChatItem.User -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            // PR 93508: kullanıcı balonunda da Kopyala erişimi — uzun basış panoya yazar.
-            val userClipboard = LocalClipboardManager.current
+        is ChatItem.User -> Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
             Box(
                 Modifier
                     .widthIn(max = 300.dp)
@@ -1292,11 +1444,14 @@ private fun ChatItemView(
                     // (§3; varsayilan surface — piksel ayni, semantik bag).
                     .background(HermesColors.BubbleUser, MaterialTheme.shapes.medium)
                     .border(1.dp, HermesColors.BorderStrong, MaterialTheme.shapes.medium)
-                    .combinedClickable(onClick = {}, onLongClick = { userClipboard.setText(AnnotatedString(item.text)) })
                     .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
-                Text(item.text, color = HermesColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                MarkdownText(item.text, color = HermesColors.TextPrimary,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize, onOpenLink = onOpenLink)
             }
+            val entry = ChatTextEntry(item.key, "user", item.text)
+            MessageTextActions(item.text, onInspect = { onInspect(entry) }, pinned = pinned,
+                onPin = onPin?.let { { it(entry) } })
         }
 
         is ChatItem.Assistant -> {
@@ -1304,13 +1459,7 @@ private fun ChatItemView(
             val clipboard = LocalClipboardManager.current
             Column(
                 Modifier
-                    .fillMaxWidth()
-                    // Uzun basma = menü (cevap verme / ayrı dal / seslendir).
-                    // Metin seçimi MarkdownText içinde kendi yolunda.
-                    .combinedClickable(
-                        onLongClick = { if (!item.streaming) menu = true },
-                        onClick = {},
-                    ),
+                    .fillMaxWidth(),
             ) {
                 Box {
                     MarkdownText(
@@ -1350,6 +1499,9 @@ private fun ChatItemView(
             // Ajan dosya ürettiyse altına indirilebilir kart koy — masaüstünde
             // tıklanabilir olan bağlantının mobil karşılığı.
             if (!item.streaming) {
+                val entry = ChatTextEntry(item.key, "assistant", item.text)
+                MessageTextActions(item.text, onInspect = { onInspect(entry) }, pinned = pinned,
+                    onPin = onPin?.let { { it(entry) } }, onMore = { menu = true })
                 FileRefRow(remember(item.text) { extractFileRefs(item.text) }, onOpenFile)
                 // Sesli okuma satırı: hoparlör ikonu + motor bilgisi.
                 val speaking = speakKey == item.key
@@ -1402,7 +1554,7 @@ private fun ChatItemView(
                 text = item.text,
                 live = item.live,
                 stateKey = item.key,
-                defaultExpanded = fullFlow,
+                defaultExpanded = false,
                 showFullLiveText = fullFlow,
             )
         }

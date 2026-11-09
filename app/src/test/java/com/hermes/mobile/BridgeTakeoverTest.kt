@@ -128,9 +128,9 @@ class BridgeTakeoverTest {
     }
 
     @Test
-    fun `ev aginda varsayilan 9180 portu kullanilir`() {
+    fun `ev aginda ayni Dashboard adresi ve portu kullanilir`() {
         val p = ServerProfile(name = "t", baseUrl = "http://192.168.140.20:9150", token = "x")
-        assertEquals("ws://192.168.140.20:9180/phone", p.effectiveBridgeUrl)
+        assertEquals("ws://192.168.140.20:9150/phone-bridge/phone", p.effectiveBridgeUrl)
     }
 
     @Test

@@ -108,7 +108,12 @@ data class HermesSession(
      * (çözümleyici: [com.hermes.mobile.data.JevBadgeLogic.parse]).
      */
     val jev: String? = null,
+    @SerialName("parent_session_id") val parentSessionId: String? = null,
+    @SerialName("parent_id") val parentId: String? = null,
 ) {
+    val effectiveParentId: String?
+        get() = parentSessionId?.takeIf { it.isNotBlank() } ?: parentId?.takeIf { it.isNotBlank() }
+
     val isActive: Boolean get() = endedAt == null
     val title: String get() = displayName?.takeIf { it.isNotBlank() } ?: id
 
@@ -119,7 +124,10 @@ data class HermesSession(
 }
 
 @Serializable
-data class SessionsResponse(val sessions: List<HermesSession> = emptyList())
+data class SessionsResponse(
+    val sessions: List<HermesSession> = emptyList(),
+    val total: Int? = null, val limit: Int? = null, val offset: Int? = null,
+)
 
 /**
  * `session.active_list` → sessions[]
@@ -252,7 +260,7 @@ data class ModelProvider(
 }
 
 @Serializable
-data class ModelOptions(val providers: List<ModelProvider> = emptyList())
+data class ModelOptions(val providers: List<ModelProvider> = emptyList(), val notice: String? = null)
 
 /** GET /api/model/info */
 @Serializable
@@ -308,6 +316,7 @@ data class ToolCall(
 @Serializable
 data class SessionMessage(
     val role: String = "",
+    @Serializable(with = MessageContentSerializer::class)
     val content: String? = null,
     @SerialName("tool_calls") private val toolCallsRaw: List<ToolCall>? = null,
     @SerialName("tool_name") val toolName: String? = null,
@@ -341,6 +350,7 @@ data class SessionMessagesResponse(
 @Serializable
 data class HistoryMessage(
     val role: String = "",
+    @Serializable(with = MessageContentSerializer::class)
     val text: String? = null,
     val name: String? = null,
     val context: String? = null,

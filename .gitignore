@@ -22,3 +22,13 @@ captures/
 
 # Python onbellek (denetim betikleri)
 __pycache__/
+
+# Local audit and generated evidence scratch
+05-GEICICI/
+denetim/
+kanit/
+docs/shots/*.tmp
+00-V8-DEVIR-20261106/yedek/
+*.tar.gz
+*.bundle
+*.zip

@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -13,18 +14,13 @@ import java.util.concurrent.TimeUnit
 /** Immutable, public, Apache-2.0 model; pins bytes and SHA-256 inside the APK.
  *
  * The pinned revision is a historical commit of the upstream repo; that commit
- * may disappear (repo renamed/removed). Therefore download() walks a source
- * chain — pinned raw URL, then branch raw URLs, then the paired Hermes gateway
- * (/api/files/download) — and accepts bytes only if SHA-256 matches the pin.
- * No source is trusted: the hash is the single acceptance gate.
+ * may disappear (repo renamed/removed). download() tries the selected Dashboard
+ * profile, then the pinned raw revision. Credentials stay in request headers
+ * and never go to GitHub. Every download must match the immutable SHA-256 pin.
  */
 object EmaModelStore {
     const val REVISION = "2d5c71c64446069c72404471d71ef451fbaff69d"
     private const val RAW = "https://raw.githubusercontent.com/Jilazem/Hermes-Mobil"
-    /** GitHub refs tried in order; all bytes still must match the pinned SHA. */
-    private val REFS = listOf(REVISION, "main", "master")
-    /** Path of the model dir inside the gateway's managed-files root. */
-    private const val SERVER_DIR = "ema-offline/v1"
 
     data class ModelFile(val name: String, val bytes: Long, val sha256: String)
 
@@ -78,7 +74,7 @@ object EmaModelStore {
         if (full.length() == m.bytes) m.bytes else part.length().coerceAtMost(m.bytes)
     }
 
-    /** Gateways derived from the paired server profiles (active first). */
+    /** Only the selected profile's trusted connection candidates share its token. */
     fun gateways(context: Context): List<Gateway> {
         val store = ServerProfileStore(context)
         val active = store.active()
@@ -87,7 +83,6 @@ object EmaModelStore {
             bases += p.activeUrl ?: p.normalizedUrl
             bases += p.candidates
         }
-        store.list().forEach { p -> bases += p.candidates }
         val token = active?.token.orEmpty().ifBlank {
             SettingsStore(context).settings.value.emaToken
         }
@@ -98,8 +93,8 @@ object EmaModelStore {
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .followSslRedirects(true)
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
 
     suspend fun delete(context: Context) = mutex.withLock {
@@ -159,27 +154,33 @@ object EmaModelStore {
         }
     }
 
-    private data class Source(val label: String, val url: String, val headers: Map<String, String>)
+    internal data class Source(val label: String, val url: String, val headers: Map<String, String>)
 
     private fun sources(name: String, gateways: List<Gateway>): List<Source> {
         val list = mutableListOf<Source>()
-        for (ref in REFS) list += Source(
-            if (ref == REVISION) "github@${ref.take(7)}" else "github@$ref",
-            "$RAW/$ref/$name",
-            emptyMap(),
-        )
         for (gw in gateways) list += Source(
-            "gateway ${gw.label()}",
-            "${gw.base}/api/files/download?path=$SERVER_DIR/$name&token=${gw.token}",
+            "gateway ${gw.label()} · EMA modeli",
+            emaUrl(gw, name),
             buildMap {
-                if (gw.token.isNotBlank()) put("X-Hermes-Session-Token", gw.token)
+                if (gw.token.isNotBlank()) {
+                    put("Authorization", "Bearer ${gw.token}")
+                    put("X-Hermes-Session-Token", gw.token)
+                }
                 put("Accept", "application/octet-stream")
             },
         )
+        list += Source("github@${REVISION.take(7)}", "$RAW/$REVISION/$name", emptyMap())
         return list
     }
 
-    private suspend fun fetch(
+    /** Authenticated mobile adapter route; the URL never includes credentials. */
+    internal fun emaUrl(gw: Gateway, name: String): String =
+        (gw.base.trimEnd('/') + "/mobile-api/ema/model/" + name).toHttpUrl().toString()
+
+    /** HTTP 416: sunucu Range'i reddetti — yerel .part geçersiz, silinip baştan indirilir. */
+    private class RangeRejected(message: String) : IOException(message)
+
+    internal suspend fun fetch(
         src: Source,
         meta: ModelFile,
         part: File,
@@ -187,6 +188,33 @@ object EmaModelStore {
         onProgress: (Long) -> Unit,
     ) {
         var offset = part.length()
+        var attempt = 0
+        while (true) {
+            try {
+                streamOnce(src, meta, part, offset, done, onProgress)
+                return
+            } catch (e: RangeRejected) {
+                // 416 → .part dosyasını sil ve sıfırdan indir (tek yeniden deneme).
+                part.delete()
+                offset = 0
+                attempt++
+                DiagLog.w("ema", "${meta.name} · ${src.label} → HTTP 416, .part silindi; baştan")
+                if (attempt >= 2) {
+                    throw IOException("HTTP 416 — kısmi dosya iki kez reddedildi; ${src.label} atlandı")
+                }
+            }
+        }
+    }
+
+    private suspend fun streamOnce(
+        src: Source,
+        meta: ModelFile,
+        part: File,
+        startOffset: Long,
+        done: Long,
+        onProgress: (Long) -> Unit,
+    ) {
+        var offset = startOffset
         val request = Request.Builder().url(src.url).apply {
             src.headers.forEach { (k, v) -> header(k, v) }
             if (offset > 0) header("Range", "bytes=$offset-")
@@ -207,7 +235,14 @@ object EmaModelStore {
                         throw IOException("HTTP 206 ama Content-Range '$range' beklenen 'bytes $offset-' değil")
                     }
                 } else {
-                    throw IOException("HTTP ${response.code}")
+                    // Nedeni EKRANA yazılacak biçimde ayır (DownloadFailure attempts).
+                    throw when (response.code) {
+                        416 -> RangeRejected("HTTP 416 — Range reddedildi (kısmi dosya geçersiz)")
+                        404, 410 -> IOException("HTTP ${response.code} — kaynak dosyayı sunmuyor (${src.label})")
+                        401 -> IOException("HTTP 401 — token reddedildi (profil token'ı geçersiz)")
+                        403 -> IOException("HTTP 403 — yetkisiz (token eksik/yanlış ya da uç kapalı)")
+                        else -> IOException("HTTP ${response.code}")
+                    }
                 }
                 val body = response.body ?: throw IOException("HTTP ${response.code} · gövde boş")
                 java.io.FileOutputStream(part, offset > 0).use { output ->

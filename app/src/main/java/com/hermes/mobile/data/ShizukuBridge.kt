@@ -26,7 +26,7 @@ import rikka.shizuku.Shizuku
  * Shizuku yoksa uygulama tamamen normal çalışır; bu katman yalnız ek araçlar
  * açar, hiçbir mevcut işlevin önkoşulu değil.
  */
-class ShizukuBridge {
+class ShizukuBridge(private val probe: (() -> State)? = null) {
 
     enum class State {
         /** Shizuku kurulu değil ya da servis çalışmıyor. */
@@ -73,6 +73,7 @@ class ShizukuBridge {
 
     fun refresh() {
         _state.value = runCatching {
+            probe?.let { return@runCatching it() }
             when {
                 !Shizuku.pingBinder() -> State.Unavailable
                 Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED -> State.Ready
@@ -86,7 +87,7 @@ class ShizukuBridge {
         runCatching { Shizuku.requestPermission(REQUEST_CODE) }
     }
 
-    val isReady: Boolean get() = _state.value == State.Ready
+    val isReady: Boolean get() { refresh(); return _state.value == State.Ready }
 
     /**
      * Kabuk komutu çalıştırır ve çıktısını döner.
@@ -113,17 +114,9 @@ class ShizukuBridge {
                 null,
             ) ?: error("newProcess null döndü")
 
-            val cls = process.javaClass
-            val out = cls.getMethod("getInputStream").invoke(process) as java.io.InputStream
-            val err = cls.getMethod("getErrorStream").invoke(process) as java.io.InputStream
-            val text = out.bufferedReader().use { it.readText() }
-            val errText = err.bufferedReader().use { it.readText() }
-            runCatching { cls.getMethod("waitFor").invoke(process) }
-            runCatching { cls.getMethod("destroy").invoke(process) }
-
-            val combined = (text + errText).trim()
-            combined.ifBlank { "tamam" }
-        }
+            val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+            ShellProcessRunner.run(process as? Process ?: error("Desteklenmeyen Shizuku işlem tipi"), cancelled = { job?.isCancelled == true })
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
     }
 
     private companion object {

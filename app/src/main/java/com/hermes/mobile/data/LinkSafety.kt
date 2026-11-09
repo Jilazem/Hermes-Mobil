@@ -37,10 +37,12 @@ fun safeExternalUrl(raw: String?): String? {
     if (scheme.isEmpty() || scheme !in ALLOWED_SCHEMES) return null
     // "http:" tek başına adres değil; bariz bozuk girdiyi de ele.
     if (!lower.startsWith("http://") && !lower.startsWith("https://")) return null
+    val parsed = runCatching { java.net.URI(url) }.getOrNull() ?: return null
+    if (parsed.rawAuthority.isNullOrBlank() || parsed.rawUserInfo != null || '\\' in url) return null
     return url
 }
 
-enum class MediaKind { NONE, IMAGE, VIDEO }
+enum class MediaKind { NONE, IMAGE, VIDEO, AUDIO, HTML }
 
 private val IMAGE_EXT = setOf("png", "jpg", "jpeg", "gif", "webp", "bmp", "heic", "heif")
 private val VIDEO_EXT = setOf("mp4", "webm", "mov", "m4v", "m3u8")
@@ -52,6 +54,8 @@ fun mediaKindOf(url: String?): MediaKind {
     return when {
         ext in IMAGE_EXT -> MediaKind.IMAGE
         ext in VIDEO_EXT -> MediaKind.VIDEO
+        ext in setOf("mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus") -> MediaKind.AUDIO
+        ext in setOf("html", "htm") -> MediaKind.HTML
         else -> MediaKind.NONE
     }
 }

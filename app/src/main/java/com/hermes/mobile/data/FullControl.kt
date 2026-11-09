@@ -21,6 +21,9 @@ import kotlinx.serialization.json.buildJsonObject
  * salt-okunur). Köprü yalnız taşıyor.
  */
 object FullControl {
+    /** Text entry preserves whitespace; an explicitly empty string clears the focused field. */
+    fun inputText(args: JsonObject): String? = (args["text"] as? JsonPrimitive)
+        ?.takeIf { it.isString }?.content
 
     // ── Araç adları ──────────────────────────────────────────────────
     const val DUMP = "screen.dump"

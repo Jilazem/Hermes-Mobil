@@ -6,20 +6,22 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <activity android:name=".ui.VoiceSpecialistProofActivity" android:exported="true" />
-        <activity android:name=".ui.CarMessagingProofActivity" android:exported="true" />
-        <activity android:name=".ui.VoiceReadinessActivity" android:exported="true" android:label="Ses Bağlantısı Kontrolü" android:theme="@style/Theme.HermesMobile" />
-        <activity android:name=".ui.CarFocusProofActivity" android:exported="true" android:label="Araç Ses Odağı Kontrolü" android:theme="@style/Theme.HermesMobile" />
-        <activity android:name=".ui.EmaOfflineSelfTestActivity" android:exported="true" android:label="EMA Çevrimdışı Öz-Testi" android:theme="@style/Theme.HermesMobile" />
-        <activity android:name=".ui.EmaSelfTestActivity" android:exported="true"
+        <activity android:name=".ui.MobileReviewActivity" android:exported="${hermesProofExported}" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.MolaPanelProofActivity" android:exported="${hermesProofExported}" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.VoiceSpecialistProofActivity" android:exported="${hermesProofExported}" />
+        <activity android:name=".ui.CarMessagingProofActivity" android:exported="${hermesProofExported}" />
+        <activity android:name=".ui.VoiceReadinessActivity" android:exported="${hermesProofExported}" android:label="Ses Bağlantısı Kontrolü" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.CarFocusProofActivity" android:exported="${hermesProofExported}" android:label="Araç Ses Odağı Kontrolü" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.EmaOfflineSelfTestActivity" android:exported="${hermesProofExported}" android:label="EMA Çevrimdışı Öz-Testi" android:theme="@style/Theme.HermesMobile" />
+        <activity android:name=".ui.EmaSelfTestActivity" android:exported="${hermesProofExported}"
             android:label="EMA Öz-Testi" android:theme="@style/Theme.HermesMobile" />
-        <activity android:name=".ui.FullControlSelfTestActivity" android:exported="true"
+        <activity android:name=".ui.FullControlSelfTestActivity" android:exported="${hermesProofExported}"
             android:label="Kontrol Öz-Testi" android:theme="@style/Theme.HermesMobile" />
-        <activity android:name=".ui.UnifiedSessionSelfTestActivity" android:exported="true"
+        <activity android:name=".ui.UnifiedSessionSelfTestActivity" android:exported="${hermesProofExported}"
             android:label="Oturum Öz-Testi" android:theme="@style/Theme.HermesMobile" />
         <activity
             android:name=".ui.MarkdownRenderDebugActivity"
-            android:exported="true"
+            android:exported="${hermesProofExported}"
             android:label="Render Kanıtı"
             android:theme="@style/Theme.HermesMobile" />
 
@@ -27,7 +29,7 @@
              Yalnız debug; token dosyadan okunur, komut satırına yazılmaz. -->
         <activity
             android:name=".ui.Tur6SeedActivity"
-            android:exported="true"
+            android:exported="${hermesProofExported}"
             android:label="Tur6 Tohum"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
@@ -38,7 +40,7 @@
              extra'sıyla geçirilir; kaynakta/kalıcı depoda durmaz. -->
         <activity
             android:name=".ui.VoiceSelfTestActivity"
-            android:exported="true"
+            android:exported="${hermesProofExported}"
             android:label="Sesli Mesaj Öz-Testi"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
@@ -48,13 +50,13 @@
              filesDir.parentFile/local-tts-kanit'e yazılır (run-as ile çekilir). -->
         <activity
             android:name=".ui.JarvisVisualTestActivity"
-            android:exported="true"
+            android:exported="${hermesProofExported}"
             android:label="Jarvis Görsel Testi"
             android:theme="@style/Theme.HermesMobile" />
 
         <activity
             android:name=".ui.LocalTtsSelfTestActivity"
-            android:exported="true"
+            android:exported="${hermesProofExported}"
             android:label="Yerel Ses Öz-Testi"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
@@ -65,7 +67,7 @@
              extra'sıyla geçirilir; kaynakta/kalıcı depoda durmaz. -->
         <activity
             android:name=".ui.AssistantSelfTestActivity"
-            android:exported="true"
+            android:exported="${hermesProofExported}"
             android:label="Asistan Öz-Testi"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />
@@ -75,7 +77,7 @@
              komutu). Yalnız adb'den explicit açılır. -->
         <activity
             android:name=".ui.JarvisLoopProofActivity"
-            android:exported="true"
+            android:exported="${hermesProofExported}"
             android:label="Jarvis Döngü Kanıtı"
             android:noHistory="true"
             android:theme="@style/Theme.HermesMobile" />

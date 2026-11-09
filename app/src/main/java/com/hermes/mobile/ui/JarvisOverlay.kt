@@ -73,10 +73,10 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /** KITT kırmızısı ve tonları. */
-private val KittRed = Color(0xFFFF1E1E)
-private val KittDeep = Color(0xFF7A0000)
-private val Glass = Color(0xF20B0F13)
-private val GlassEdge = Color(0x33FFFFFF)
+private val KittRed: Color @Composable get() = com.hermes.mobile.ui.theme.HermesColors.Focus
+private val KittDeep: Color @Composable get() = com.hermes.mobile.ui.theme.HermesColors.Midground
+private val Glass: Color @Composable get() = com.hermes.mobile.ui.theme.HermesColors.SurfaceOverlay
+private val GlassEdge: Color @Composable get() = com.hermes.mobile.ui.theme.HermesColors.Border
 
 /**
  * Jarvis paneli: üstte KITT tarayıcı çizgisi, altta konuşma kartı. Kart dışı
@@ -91,13 +91,9 @@ fun JarvisOverlay(
     onOpenChat: () -> Unit,
     onAsk: (String) -> Unit,
     onCardBounds: (Int, Int, Int, Int) -> Unit,
+    onScreenAction: ((String) -> Unit)? = null,
 ) {
     Box(Modifier.fillMaxSize()) {
-        KittScannerLine(
-            phase = state.phase,
-            level = state.level,
-            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().height(6.dp),
-        )
         JarvisCard(
             state = state,
             onMic = onMic,
@@ -105,6 +101,7 @@ fun JarvisOverlay(
             onNewTopic = onNewTopic,
             onOpenChat = onOpenChat,
             onAsk = onAsk,
+            onScreenAction = onScreenAction,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -114,6 +111,7 @@ fun JarvisOverlay(
                     onCardBounds(b.left.roundToInt(), b.top.roundToInt(), b.right.roundToInt(), b.bottom.roundToInt())
                 },
         )
+        VoiceEdge(state.level, state.phase != JarvisPhase.Idle && state.phase != JarvisPhase.Error)
     }
 }
 
@@ -126,6 +124,7 @@ fun JarvisCard(
     onOpenChat: () -> Unit,
     onAsk: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onScreenAction: ((String) -> Unit)? = null,
 ) {
     var typing by rememberSaveable { mutableStateOf(false) }
     var draft by rememberSaveable { mutableStateOf("") }
@@ -140,28 +139,13 @@ fun JarvisCard(
             .border(1.dp, edge, RoundedCornerShape(26.dp))
             .padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 10.dp),
     ) {
-        // ── KITT vizörü: siyah şerit içinde kırmızı tarayıcı ─────────────
-        Box(
-            Modifier
-                .padding(end = 8.dp)
-                .fillMaxWidth()
-                .height(16.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF050505))
-                .border(1.dp, Color(0xFF1C1C1C), RoundedCornerShape(8.dp))
-                .padding(horizontal = 6.dp, vertical = 4.dp),
-        ) {
-            KittScannerLine(state.phase, state.level, Modifier.fillMaxSize())
-        }
-        Spacer(Modifier.height(10.dp))
-        // ── Başlık: KITT ses kutusu + durum + eylemler ──────────────────
         Row(verticalAlignment = Alignment.CenterVertically) {
             KittVoiceBox(state.phase, state.level, Modifier.size(width = 46.dp, height = 34.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     statusText(state),
-                    color = if (state.phase == JarvisPhase.Error) Color(0xFFFF8A80) else Color(0xFFFFD6D6),
+                    color = if (state.phase == JarvisPhase.Error) Color(0xFFFF8A80) else com.hermes.mobile.ui.theme.HermesColors.TextPrimary,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -206,11 +190,19 @@ fun JarvisCard(
                 }
                 state.hint?.let {
                     Spacer(Modifier.height(4.dp))
-                    Text(it, color = Color(0xFFFFB4A9), style = MaterialTheme.typography.labelSmall)
+                    Text(it, color = com.hermes.mobile.ui.theme.HermesColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
 
+        onScreenAction?.let { action ->
+            Text("Ekran metni · seçtiğinde Hermes’e paylaşılır", color = com.hermes.mobile.ui.theme.HermesColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
+            Row {
+                androidx.compose.material3.TextButton(onClick = { action("Bu ekrandaki metni özetle") }) { Text("Özetle", color = KittRed) }
+                androidx.compose.material3.TextButton(onClick = { action("Bu sayfayı açıkla") }) { Text("Açıkla", color = KittRed) }
+            }
+        }
         // ── Alt sıra: yazarak sor | mikrofon ─────────────────────────────
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -317,6 +309,8 @@ fun KittScannerLine(phase: JarvisPhase, level: Float, modifier: Modifier = Modif
         label = "breath",
     )
     val lvl by animateFloatAsState(level, tween(80), label = "lvl")
+    val accent = KittRed
+    val deep = KittDeep
     Canvas(modifier) {
         val n = 36
         val gap = 2.dp.toPx()
@@ -327,13 +321,13 @@ fun KittScannerLine(phase: JarvisPhase, level: Float, modifier: Modifier = Modif
             val left = i * (segW + gap)
             // Hale (glow): biraz daha geniş ve saydam.
             drawRoundRect(
-                KittRed.copy(alpha = (a * 0.35f).coerceIn(0f, 1f)),
+                accent.copy(alpha = (a * 0.35f).coerceIn(0f, 1f)),
                 topLeft = Offset(left - 2f, 0f),
                 size = Size(segW + 4f, size.height),
                 cornerRadius = CornerRadius(3f, 3f),
             )
             drawRoundRect(
-                KittRed.copy(alpha = a.coerceIn(0.06f, 1f)),
+                accent.copy(alpha = a.coerceIn(0.06f, 1f)),
                 topLeft = Offset(left, size.height * 0.2f),
                 size = Size(segW, size.height * 0.6f),
                 cornerRadius = CornerRadius(2f, 2f),
@@ -367,6 +361,8 @@ fun KittVoiceBox(phase: JarvisPhase, level: Float, modifier: Modifier = Modifier
     val t = rememberInfiniteTransition(label = "box")
     val wobble by t.animateFloat(0f, 6.283f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "w")
     val lvl by animateFloatAsState(level, tween(70), label = "l")
+    val accent = KittRed
+    val deep = KittDeep
     Canvas(modifier) {
         val colW = size.width / 3.6f
         val barH = size.height / 9f
@@ -384,7 +380,7 @@ fun KittVoiceBox(phase: JarvisPhase, level: Float, modifier: Modifier = Modifier
                 val on = fromCenter <= lit / 2f
                 val y = (size.height - bars * barH) / 2f + b * barH
                 drawRoundRect(
-                    if (on) KittRed else KittDeep.copy(alpha = 0.35f),
+                    if (on) accent else deep.copy(alpha = 0.35f),
                     topLeft = Offset(cx - colW / 2f, y + barH * 0.18f),
                     size = Size(colW, barH * 0.64f),
                     cornerRadius = CornerRadius(2f, 2f),

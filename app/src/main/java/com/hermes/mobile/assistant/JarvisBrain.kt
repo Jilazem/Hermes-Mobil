@@ -58,8 +58,10 @@ class JarvisBrain(private val context: Context, private val scope: CoroutineScop
         com.hermes.mobile.data.PhoneIntent.parse(question)?.let { intent ->
             sink.onTool(intent.tool)
             val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                com.hermes.mobile.data.PhoneTools(context, com.hermes.mobile.data.ShizukuBridge())
-                    .execute(intent.tool, intent.toJson())
+                kotlinx.coroutines.runInterruptible {
+                    com.hermes.mobile.data.PhoneTools(context, com.hermes.mobile.data.ShizukuBridge())
+                        .execute(intent.tool, intent.toJson())
+                }
             }
             sink.onDelta(result)
             return result

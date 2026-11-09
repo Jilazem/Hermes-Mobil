@@ -1,16 +1,20 @@
 package com.hermes.mobile.data
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.hermes.mobile.assistant.WakeWordLogic
 import com.hermes.mobile.ui.theme.HermesPalette
+import com.hermes.mobile.ui.theme.MOBILE_BETA_THEME_ID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
 
 /**
  * Canlı ses için hazır kişilikler.
@@ -79,11 +83,15 @@ val LIVE_VOICES = listOf("Puck", "Charon", "Kore", "Fenrir", "Aoede", "Leda", "O
 @Serializable
 data class AppSettings(
     // ── Görünüm ──────────────────────────────────────────────────────
-    val themeId: String = "chat",
+    val themeId: String = MOBILE_BETA_THEME_ID,
     /** Sunucu skin değişince tema da değişsin mi (`skin.changed`). */
     val followServerSkin: Boolean = false,
     val fontScale: Float = 1.0f,
     val compact: Boolean = false,
+    /** Bot karakter mikro-animasyonları: "normal", "light", "off". */
+    val botAnimationMode: String = "normal",
+    /** Sistem ve alt ajan faaliyetlerini ana akışta göster: varsayılan KAPALI (v7.7.1). */
+    val showSystemAndSubagentsInFeed: Boolean = false,
 
     // ── Canlı ses ────────────────────────────────────────────────────
     /**
@@ -228,6 +236,13 @@ data class AppSettings(
     val emaUrl: String = "",
     val emaToken: String = "",
 
+    /**
+     * "EMA / Sistem" ses seçimi (iş #1021 K2): `ema` = EMA hattı (varsayılan),
+     * `sistem` = telefonun kendi TTS motoru (tr-TR). EMA hazır değilse sistem
+     * sesi zaten devreye girer; bu ayar kullanıcının açık tercihidir.
+     */
+    val emaPlayback: String = "ema",
+
     /** Son çalıştığı doğrulanan ses ucu — sonraki açılışta öne alınır. */
     val voiceLastOk: String = "",
 
@@ -314,6 +329,20 @@ data class AppSettings(
     val fullControl: Boolean = false,
 
     /**
+     * **Otomatik yazma** — patron kararı (21.10.2026): ajanın dokunma/yazma
+     * eylemleri onay diyaloğu beklemeden uygulanır. Varsayılan **açık**.
+     *
+     * Yalnız erişilebilirlik servisi bağlıyken etkilidir; servis kapalıyken
+     * otomatik mod açılamaz (`PhoneBotLogic.autoWriteBlockReason`). Her yazma
+     * eylemi yerel denetim günlüğüne yazılır (son 20 kayıt kartta görünür) ve
+     * [agentEmergencyStop] açıldığı anda tüm yazmalar durur.
+     */
+    val agentAutoWrite: Boolean = true,
+
+    /** **ACİL DURDUR** — açıkken hiçbir yazma aracı çalışmaz; okuma sürer. */
+    val agentEmergencyStop: Boolean = false,
+
+    /**
      * Google Artemis daemon adresi (sunucuda, varsayılan port 8000). Sohbette
      * "/telefon <görev>" bu adrese gider; Artemis telefonu kablosuz ADB ile
      * kullanır. Boşsa özellik kapalı.
@@ -331,8 +360,15 @@ data class AppSettings(
      * yazdığın "ali'ye … yaz" komutu bu ayardan bağımsız (yazmak zaten rıza).
      */
     val agentMayReply: Boolean = false,
-    /** Android Auto ekran yansıtma: araç hareket ederken görüntüyü kes (varsayılan AÇIK). */
-    val mirrorPauseWhileDriving: Boolean = true,
+    /**
+     * Mola tam ekran ve sürüş kipi (varsayılan AÇIK):
+     * Android Auto ve Mola ekranında YouTube, telefon yansıtma, oyun vb. diğer her şeyi
+     * gizler; Mola arayüzünü tam ekran açar ve sürüş sırasında kesintisiz çalışır.
+     * Kullanıcı isterse Mola rehberi veya Ayarlar'dan kapatabilir.
+     */
+    val molaFullScreenDriving: Boolean = true,
+    /** Android Auto ekran yansıtma: araç hareket ederken görüntüyü kes (varsayılan KAPALI — sürüşte çalışır). */
+    val mirrorPauseWhileDriving: Boolean = false,
 
     // ── Jarvis sesli asistan (V3) ──────────────────────────────────────
     /** Beyin: "hermes" (ajan — araçlar, hafıza) ya da "yerel" (LAN LLM, hızlı). */
@@ -384,7 +420,7 @@ data class AppSettings(
      */
     val lastModel: String = "",
     val modelsByServer: Map<String, String> = emptyMap(),
-    val chatExperienceVersion: Int = 0,
+    val chatExperienceVersion: Int = 2,
 
     val brokenModels: Set<String> = emptySet(),
     val showBrokenModels: Boolean = false,
@@ -455,6 +491,8 @@ data class VoicePrefs(
     val emaMode: String = "server",
     val emaUrl: String = "",
     val emaToken: String = "",
+    /** "ema" | "sistem" — ses kaynağı tercihi. */
+    val emaPlayback: String = "ema",
     /**
      * Asistan akışında yanıt otomatik okunsun mu — varsayılan AÇIK, ama
      * yalnız asistan bağlamında etkili ([AssistantModeLogic.shouldAutoRead]).
@@ -471,12 +509,29 @@ fun AppSettings.toVoicePrefs(): VoicePrefs = VoicePrefs(
     emaMode = emaMode,
     emaUrl = emaUrl,
     emaToken = emaToken,
+    emaPlayback = emaPlayback,
     assistantAutoRead = assistantAutoRead,
 )
 
 private const val PREFS = "hermes_settings"
 private const val KEY_SETTINGS = "settings"
 private const val KEY_CUSTOM_THEMES = "custom_themes"
+
+/** Missing version in an old saved document is legacy data, not the new-install default. */
+fun decodeAppSettings(raw: String): AppSettings {
+    val json = Json { ignoreUnknownKeys = true }
+    val document = json.parseToJsonElement(raw).jsonObject
+    val decoded = json.decodeFromJsonElement<AppSettings>(document)
+    return if ("chatExperienceVersion" in document) decoded else decoded.copy(chatExperienceVersion = 0)
+}
+
+/** Upgrade the old default appearance once, preserving explicit/custom/server theme choices. */
+fun migrateChatExperience(settings: AppSettings, customThemeIds: Set<String> = emptySet()): AppSettings {
+    if (settings.chatExperienceVersion >= 2) return settings
+    val theme = if (settings.themeId in setOf("chat", "hermes") && settings.themeId !in customThemeIds)
+        MOBILE_BETA_THEME_ID else settings.themeId
+    return settings.copy(chatExperienceVersion = 2, themeId = theme)
+}
 
 /**
  * Ayar deposu.
@@ -485,35 +540,64 @@ private const val KEY_CUSTOM_THEMES = "custom_themes"
  * kişisel olabilir; ayrıca profil deposuyla aynı güvenlik seviyesinde kalması
  * tutarlı oluyor.
  */
-class SettingsStore(context: Context) {
+class SettingsStore internal constructor(private val prefs: SharedPreferences) {
+
+    constructor(context: Context) : this(encryptedPreferences(context.applicationContext))
+
+    companion object {
+        private val STORE_LOCK = Any()
+        @Volatile private var sharedPreferences: SharedPreferences? = null
+
+        // EncryptedSharedPreferences listeners are wrapper-local. Share this wrapper
+        // across UI/service instances, while continuing to encrypt every saved value.
+        private fun encryptedPreferences(context: Context): SharedPreferences =
+            sharedPreferences ?: synchronized(STORE_LOCK) {
+                sharedPreferences ?: run {
+                    val key = MasterKey.Builder(context)
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+                    EncryptedSharedPreferences.create(context, PREFS, key,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
+                }.also { sharedPreferences = it }
+            }
+
+        private fun listenerFor(owner: java.lang.ref.WeakReference<SettingsStore>) =
+            object : SharedPreferences.OnSharedPreferenceChangeListener {
+                override fun onSharedPreferenceChanged(preferences: SharedPreferences, key: String?) {
+                    val store = owner.get() ?: run {
+                        preferences.unregisterOnSharedPreferenceChangeListener(this)
+                        return
+                    }
+                    synchronized(STORE_LOCK) {
+                        if (key == KEY_SETTINGS || key == null) store._settings.value = store.load()
+                        if (key == KEY_CUSTOM_THEMES || key == null) store._customThemes.value = store.loadThemes()
+                    }
+                }
+            }
+    }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    private val prefs = run {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context, PREFS, masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
-    }
-
-    private val _settings = MutableStateFlow(load())
+    private val _settings = MutableStateFlow(synchronized(STORE_LOCK) { load() })
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
-    private val _customThemes = MutableStateFlow(loadThemes())
+    private val _customThemes = MutableStateFlow(synchronized(STORE_LOCK) { loadThemes() })
     val customThemes: StateFlow<List<HermesPalette>> = _customThemes.asStateFlow()
+
+    private val preferenceListener = listenerFor(java.lang.ref.WeakReference(this))
+
+    init { prefs.registerOnSharedPreferenceChangeListener(preferenceListener) }
+
+    /** Authorization reads the latest persisted value, even before UI callbacks run. */
+    fun current(): AppSettings = synchronized(STORE_LOCK) {
+        load().also { _settings.value = it }
+    }
 
     private fun load(): AppSettings {
         val raw = prefs.getString(KEY_SETTINGS, null) ?: return AppSettings()
-        val loaded = runCatching { json.decodeFromString<AppSettings>(raw) }.getOrDefault(AppSettings())
-        if (loaded.chatExperienceVersion >= 1) return loaded
-        val migrated = loaded.copy(chatExperienceVersion = 1,
-            themeId = if (loaded.themeId == "hermes") "chat" else loaded.themeId,
-            followServerSkin = false)
-        prefs.edit().putString(KEY_SETTINGS, json.encodeToString(migrated)).apply()
+        val loaded = runCatching { decodeAppSettings(raw) }.getOrDefault(AppSettings())
+        val migrated = migrateChatExperience(loaded, loadThemes().map { it.id }.toSet())
+        if (migrated != loaded) prefs.edit().putString(KEY_SETTINGS, json.encodeToString(migrated)).apply()
         return migrated
     }
 
@@ -523,23 +607,23 @@ class SettingsStore(context: Context) {
             .getOrDefault(emptyList())
     }
 
-    fun update(transform: (AppSettings) -> AppSettings) {
-        val next = transform(_settings.value)
-        _settings.value = next
+    fun update(transform: (AppSettings) -> AppSettings) = synchronized(STORE_LOCK) {
+        val next = transform(load())
         prefs.edit().putString(KEY_SETTINGS, json.encodeToString(next)).apply()
+        _settings.value = next
     }
 
-    fun saveTheme(palette: HermesPalette) {
-        val list = _customThemes.value.filterNot { it.id == palette.id } + palette
+    fun saveTheme(palette: HermesPalette) = synchronized(STORE_LOCK) {
+        val list = loadThemes().filterNot { it.id == palette.id } + palette
         _customThemes.value = list
         prefs.edit().putString(KEY_CUSTOM_THEMES, json.encodeToString(list)).apply()
     }
 
-    fun deleteTheme(id: String) {
-        val list = _customThemes.value.filterNot { it.id == id }
+    fun deleteTheme(id: String) = synchronized(STORE_LOCK) {
+        val list = loadThemes().filterNot { it.id == id }
         _customThemes.value = list
         prefs.edit().putString(KEY_CUSTOM_THEMES, json.encodeToString(list)).apply()
-        if (_settings.value.themeId == id) update { it.copy(themeId = "hermes") }
+        if (current().themeId == id) update { it.copy(themeId = MOBILE_BETA_THEME_ID) }
     }
 
     /** JSON metninden tema içe aktarır; geçersizse hata mesajı döner. */
@@ -561,8 +645,20 @@ class SettingsStore(context: Context) {
  * kontrol kapanır — diğer iki tercih kullanıcıda kalır.
  */
 fun AppSettings.withFullControl(on: Boolean): AppSettings =
-    if (on) copy(fullControl = true, agentMayUsePhone = true, agentReadOnly = false)
+    if (on) copy(fullControl = true, agentMayUsePhone = true, agentReadOnly = false, agentAutoWrite = true)
     else copy(fullControl = false)
+
+/**
+ * Otomatik yazma anahtarı: açmak erişilebilirlik servisi bağlı değilse
+ * reddedilir (servis yoksa dokunma zaten çalışmaz, anahtar yanıltmasın).
+ * Açarken ajan kanalı ve yazma izni de birlikte açılır; ACİL DURDUR'a
+ * dokunulmaz — kullanıcı onu ayrıca kaldırmalı.
+ */
+fun AppSettings.withAutoWrite(on: Boolean, accessibilityEnabled: Boolean): AppSettings = when {
+    !on -> copy(agentAutoWrite = false)
+    !accessibilityEnabled -> this
+    else -> copy(agentAutoWrite = true, agentMayUsePhone = true, agentReadOnly = false)
+}
 
 val VoicePrefs.emaEnabled: Boolean get() = emaMode == "offline" || emaUrl.isNotBlank() || emaToken.isNotBlank()
 val AppSettings.emaEnabled: Boolean get() = emaMode == "offline" || emaUrl.isNotBlank() || emaToken.isNotBlank()

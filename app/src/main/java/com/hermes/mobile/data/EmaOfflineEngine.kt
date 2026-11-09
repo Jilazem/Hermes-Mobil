@@ -159,12 +159,12 @@ class EmaOfflineSpeech(private val context: Context): EmaSpeech {
     override suspend fun stream(text: String,onPcm:(ByteArray,Int)->Unit) {
         if (emaModelReady()) { EmaOfflineEngine.stream(app,text,onPcm); return }
         val wav = fallbackWav(text)
-        var offset = 44 // 16-bit mono PCM WAV başlığı
-        while (offset < wav.size) {
-            val end = minOf(wav.size, offset + 4096)
-            onPcm(wav.copyOfRange(offset, end), 22050)
-            offset = end
-        }
+        // Sabit 44 bayt ofseti YANLIŞ: Piper WAV'larında LIST/INFO bloğu
+        // başlığı uzatır ve metadata baytları ses diye çalınır. Gerçek
+        // 'data' gövdesi ve örnek hızı başlıktan okunur.
+        val pcm = EmaAudioLogic.pcmFromWav(wav)
+            ?: throw java.io.IOException("Yedek ses çözümlenemedi: WAV 16-bit PCM mono bekleniyordu")
+        for (chunk in EmaAudioLogic.evenChunks(pcm.bytes, 4096)) onPcm(chunk, pcm.rate)
     }
 
     override suspend fun speak(text: String): ByteArray =

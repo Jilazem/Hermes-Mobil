@@ -23,5 +23,6 @@ class HermesApp : Application() {
         // Çift emniyet (denetmen #1): paylaşım ortasında süreç ölürse consume
         // temizliği hiç çalışmaz; 1 saatini aşan staging kopyalarını süpür.
         ShareStaging.purgeStale(ShareStaging.inboxDir(cacheDir), olderThanMs = 3_600_000L)
+        com.hermes.mobile.data.MacroMonitorService.ensureRunningIfEnabled(this)
     }
 }

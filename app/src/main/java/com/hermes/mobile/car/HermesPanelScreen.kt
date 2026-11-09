@@ -17,11 +17,14 @@ import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
+import androidx.car.app.model.CarIcon
+import androidx.core.graphics.drawable.IconCompat
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -38,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -53,7 +57,8 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.hermes.mobile.data.DiagLog
-import com.hermes.mobile.data.ServerProfileStore
+import com.hermes.mobile.data.SettingsStore
+import com.hermes.mobile.ui.S
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,25 +67,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
- * "Hermes ekranı (onaysız)" — Mola tarzı tam ekran panel.
+ * Hermes'in kendi araç paneli — CarAppService yüzeyine kendi içeriğini tam ekran çizer.
  *
- * MediaProjection KULLANMAZ, izin istemez: araç host'unun verdiği serbest
- * çizim yüzeyine [DisplayManager.createVirtualDisplay] ile sanal bir ekran
- * açar, o ekranın bağlamında [Presentation] penceresi kurar ve Hermes
- * arayüzünü doğrudan oraya basar. Telefonun kendi ekranı okunmadığı için
- * ekran kaydı izni gerekmez; [MirrorScreen] consent'li yedek yol olarak kalır.
- *
- * Yaşam döngüsü: yüzey yokken / ekran dormant iken sanal ekran ve
- * Presentation bırakılır ([release]); yüzey geri gelince ya da ekran öne
- * gelince yeniden kurulur.
+ * Tam ekran sürüş kipinde (`molaFullScreenDriving = true`, varsayılan AÇIK):
+ * YouTube, telefon yansıtma, oyun ve diğer dikkat dağıtıcı öğeler gizlenir;
+ * Mola arayüzü Android Auto ekranında tam ekran açılır ve sürüş sırasında
+ * kesintisiz çalışır.
  */
-class HermesPanelScreen(carContext: CarContext) :
+class HermesPanelScreen(
+    carContext: CarContext,
+    private val selectedSessionId: String? = null,
+    private val fullScreenDriving: Boolean = runCatching { SettingsStore(carContext).current().molaFullScreenDriving }.getOrDefault(true),
+) :
     Screen(carContext),
     SurfaceCallback,
     DefaultLifecycleObserver {
@@ -90,6 +93,12 @@ class HermesPanelScreen(carContext: CarContext) :
     private var display: VirtualDisplay? = null
     private var presentation: Presentation? = null
     private var host: PanelHost? = null
+    private val actionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val actions = MolaSessionActions(carContext, actionScope) { line -> host?.showNotice(line); invalidate() }
+    private val voice = CarVoiceSession(carContext) { line, _ ->
+        host?.showNotice(line)
+        android.os.Handler(android.os.Looper.getMainLooper()).post { invalidate() }
+    }
 
     init {
         lifecycle.addObserver(this)
@@ -101,15 +110,18 @@ class HermesPanelScreen(carContext: CarContext) :
     }
 
     override fun onStart(owner: LifecycleOwner) {
-        // Dormant moddan dönüş: yüzey hâlâ elimizdeyse ekranı yeniden kur.
         container?.let { ensureShown(it) }
     }
 
     override fun onStop(owner: LifecycleOwner) {
+        actions.silence()
         release()
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
+        voice.release()
+        actions.release()
+        actionScope.cancel()
         release()
         runCatching { carContext.getCarService(AppManager::class.java).setSurfaceCallback(null) }
     }
@@ -118,13 +130,11 @@ class HermesPanelScreen(carContext: CarContext) :
 
     override fun onSurfaceAvailable(container: SurfaceContainer) {
         this.container = container
+        MolaHostObservation.update(MolaHostState.SurfaceAvailable)
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) ensureShown(container)
     }
 
     override fun onSurfaceDestroyed(container: SurfaceContainer) {
-        // N3: host yeni bir yüzey verdikten sonra eski yüzeyin "destroyed"
-        // çağrısını geç verebilir. Gelen container sakladığımızla aynı
-        // değilse (nesne ya da Surface kimliği) canlı paneli yıkma.
         val stored = this.container
         val storedSurface = stored?.surface
         val incomingSurface = container.surface
@@ -141,7 +151,6 @@ class HermesPanelScreen(carContext: CarContext) :
 
     override fun onStableAreaChanged(stableArea: Rect) = Unit
 
-    // Panel statik: araç host'u kaydırmayı yutar, dokunuşu biz işlemiyoruz.
     override fun onClick(x: Float, y: Float) = Unit
 
     override fun onScroll(distanceX: Float, distanceY: Float) = Unit
@@ -150,10 +159,6 @@ class HermesPanelScreen(carContext: CarContext) :
 
     /** Sanal ekranı kurar; aynı yüzey için ikinci kez kurmaz. */
     private fun ensureShown(c: SurfaceContainer) {
-        // N2: dormanstan dönüşte host aynı SurfaceContainer'ı geri verebilir;
-        // yüzey bu arada geçersizleşmişse createVirtualDisplay patlar ve panel
-        // bir sonraki onSurfaceAvailable'a kadar boş kalırdı. Geçersizse
-        // container'ı bırak ve yeni yüzeyi bekle.
         val surface = c.surface
         if (surface == null || !surface.isValid) {
             this.container = null
@@ -164,10 +169,6 @@ class HermesPanelScreen(carContext: CarContext) :
 
         release()
 
-        // N1: kaynakları yerelde kur. show() (ör. BadTokenException) ya da
-        // önceki bir adım istisna atarsa alanlar henüz atanmamış olacağı için
-        // release() onları göremez; bu yüzden catch yereldeki kaynakları
-        // kendisi bırakır.
         var vd: VirtualDisplay? = null
         var panel: Presentation? = null
         var panelHost: PanelHost? = null
@@ -180,12 +181,12 @@ class HermesPanelScreen(carContext: CarContext) :
                 c.height,
                 if (c.dpi > 0) c.dpi else 160,
                 surface,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
+                PanelContentLogic.DISPLAY_FLAGS,
             ) ?: error("createVirtualDisplay null döndü")
 
             val displayContext = carContext.createDisplayContext(vd.display)
             panel = Presentation(displayContext, vd.display).apply { setCancelable(false) }
-            panelHost = PanelHost(displayContext, carContext)
+            panelHost = PanelHost(displayContext, carContext, selectedSessionId, fullScreenDriving) { invalidate() }
             val view = runCatching { panelHost.start() }.getOrElse { err ->
                 DiagLog.w(TAG, "Compose panel kurulamadı, View paneline düşüldü: ${err.message}")
                 panelHost.startFallback()
@@ -193,15 +194,14 @@ class HermesPanelScreen(carContext: CarContext) :
 
             panel.setContentView(view)
 
-            // N1: alanları show() çağrısından ÖNCE ata; show() patlarsa catch
-            // alanları da sıfırlayıp yereldeki kaynakları bırakır.
             display = vd
             presentation = panel
             host = panelHost
             shownFor = c
 
             panel.show()
-            DiagLog.i(TAG, "Sanal ekran kuruldu ${c.width}x${c.height} dpi=${c.dpi}")
+            MolaHostObservation.update(MolaHostState.Rendering)
+            DiagLog.i(TAG, "Sanal ekran kuruldu ${c.width}x${c.height} dpi=${c.dpi} fullScreen=$fullScreenDriving")
         } catch (t: Throwable) {
             runCatching { panel?.dismiss() }
             runCatching { panelHost?.stop() }
@@ -210,6 +210,7 @@ class HermesPanelScreen(carContext: CarContext) :
             presentation = null
             host = null
             shownFor = null
+            MolaHostObservation.update(MolaHostState.Failed)
             DiagLog.e(TAG, "Sanal ekran kurulamadı: ${t.message}")
         }
     }
@@ -223,41 +224,68 @@ class HermesPanelScreen(carContext: CarContext) :
         runCatching { display?.release() }
         display = null
         shownFor = null
+        MolaHostObservation.update(MolaHostState.Released)
     }
 
     // ── Şablon ──────────────────────────────────────────────────────────
 
-    override fun onGetTemplate(): Template =
-        NavigationTemplate.Builder()
-            .setActionStrip(
-                ActionStrip.Builder()
-                    .addAction(
-                        Action.Builder()
-                            .setTitle("Geri")
-                            .setOnClickListener { screenManager.pop() }
-                            .build()
-                    )
+    override fun onGetTemplate(): Template {
+        val state = host?.currentState
+        fun icon(resource: Int) = CarIcon.Builder(IconCompat.createWithResource(carContext, resource)).build()
+        val strip = ActionStrip.Builder()
+        if (fullScreenDriving && screenManager.screenStack.size <= 1) {
+            strip.addAction(
+                Action.Builder()
+                    .setTitle(if (voice.busy) "Durdur" else "Konuş")
+                    .setOnClickListener { voice.toggle() }
                     .build()
             )
+            strip.addAction(
+                Action.Builder()
+                    .setTitle("Oturumlar")
+                    .setOnClickListener { screenManager.push(HermesCarScreen(carContext)) }
+                    .build()
+            )
+        } else {
+            strip.addAction(
+                Action.Builder()
+                    .setTitle("Geri")
+                    .setOnClickListener { screenManager.pop() }
+                    .build()
+            )
+            strip.addAction(
+                Action.Builder()
+                    .setTitle(if (voice.busy) "Durdur" else "Konuş")
+                    .setOnClickListener { voice.toggle() }
+                    .build()
+            )
+        }
+        if (!state?.lastAssistantMessage.isNullOrBlank()) strip.addAction(Action.Builder()
+            .setIcon(icon(android.R.drawable.ic_lock_silent_mode_off))
+            .setOnClickListener { actions.readLastAnswer(host?.currentState?.lastAssistantMessage) }.build())
+        if (!state?.activeSessionId.isNullOrBlank() && !fullScreenDriving) strip.addAction(Action.Builder()
+            .setIcon(icon(android.R.drawable.ic_media_pause))
+            .setOnClickListener { host?.currentState?.let { actions.stopSelected(it.profileId, it.activeSessionId) } }.build())
+        strip.addAction(Action.Builder().setIcon(icon(android.R.drawable.ic_popup_sync))
+            .setOnClickListener { host?.refresh() }.build())
+        return NavigationTemplate.Builder()
+            .setActionStrip(strip.build())
             .setMapActionStrip(ActionStrip.Builder().addAction(Action.PAN).build())
             .setPanModeListener { /* panel statik; harita yok, sürükleme yutulur */ }
             .build()
+    }
 
     companion object {
         private const val TAG = "car-panel"
     }
 }
 
-/**
- * Presentation içinde Compose barındıran sahip.
- *
- * Presentation penceresi bir Activity değildir; ComposeView
- * ViewTreeLifecycleOwner/SavedStateRegistryOwner/ViewModelStoreOwner bekler.
- * HermesAssistSession'daki çalışan desenin aynısı burada kuruluyor.
- */
 private class PanelHost(
     private val context: Context,
     private val carContext: CarContext,
+    selectedSessionId: String?,
+    private val fullScreenDriving: Boolean,
+    private val changed: () -> Unit,
 ) : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
 
     private val registry = LifecycleRegistry(this)
@@ -269,13 +297,31 @@ private class PanelHost(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val state = MutableStateFlow(PanelState())
+    private val source = HermesPanelDataSource(carContext, selectedSessionId)
+    val currentState: PanelState get() = state.value
+    fun showNotice(text: String) { state.value = state.value.copy(notice = text) }
+    fun refresh() { scope.launch { state.value = source.load(); changed() } }
+    private var started = false
 
-    fun start(): View {
+    private fun ensureStarted() {
+        if (started) return
+        started = true
         saved.performRestore(null)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        loadProfile()
+        scope.launch {
+            while (isActive) {
+                val loaded = source.load()
+                state.value = loaded.copy(notice = state.value.notice.takeIf { loaded.profileId == state.value.profileId })
+                changed()
+                delay(15_000)
+            }
+        }
+    }
+
+    fun start(): View {
+        ensureStarted()
         return ComposeView(context).apply {
             setViewTreeLifecycleOwner(this@PanelHost)
             setViewTreeSavedStateRegistryOwner(this@PanelHost)
@@ -283,13 +329,13 @@ private class PanelHost(
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
                 val st by state.collectAsState()
-                HermesPanel(st)
+                HermesPanel(st, fullScreenDriving = fullScreenDriving)
             }
         }
     }
 
-    /** Compose kurulamazsa: aynı bilgileri düz View ile bas. */
     fun startFallback(): View {
+        ensureStarted()
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
@@ -310,27 +356,23 @@ private class PanelHost(
                 ),
             )
         }
-        line("HERMES · araç paneli", 30f, true)
-        line("Sunucu: ${state.value.server ?: "—"}", 18f)
-        line("Adres: ${state.value.url ?: "—"}", 18f)
-        line("Onaysız tam ekran · MediaProjection yok", 14f)
-        return root
-    }
-
-    private fun loadProfile() {
+        line(if (fullScreenDriving) "HERMES · MOLA TAM EKRAN" else "HERMES · Mola", 30f, true)
+        val details = TextView(context).apply {
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18f)
+            setTextColor(PanelColors.TextSecondary.toArgbInt())
+            maxLines = 7
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        root.addView(details)
         scope.launch {
-            val profile = withContext(Dispatchers.IO) {
-                runCatching { ServerProfileStore(carContext).active() }.getOrNull()
-            }
-            state.update {
-                it.copy(
-                    server = profile?.name,
-                    url = profile?.baseUrl,
-                    hasToken = profile?.token?.isNotBlank() == true,
-                    loaded = true,
-                )
+            state.collect { st ->
+                details.text = listOf(
+                    st.server ?: "—", st.connection.name,
+                    st.activeSession ?: "—", st.notice ?: st.lastAssistantMessage ?: st.lastMessage ?: "—",
+                ).joinToString(10.toChar().toString())
             }
         }
+        return root
     }
 
     fun stop() {
@@ -342,14 +384,23 @@ private class PanelHost(
     }
 }
 
-private data class PanelState(
+data class PanelState(
     val server: String? = null,
     val url: String? = null,
     val hasToken: Boolean = false,
     val loaded: Boolean = false,
+    val activeSession: String? = null,
+    val lastMessage: String? = null,
+    val demo: Boolean = false,
+    val connection: PanelConnection = PanelConnection.Loading,
+    val messageUnavailable: Boolean = false,
+    val selectedSession: Boolean = false,
+    val profileId: String? = null,
+    val activeSessionId: String? = null,
+    val lastAssistantMessage: String? = null,
+    val notice: String? = null,
 )
 
-/** Panel renkleri — ana uygulama temasından bağımsız (Presentation'da tema yok). */
 private object PanelColors {
     val Background = Color(0xFF0B0F14)
     val TextPrimary = Color(0xFFE6EDF3)
@@ -367,9 +418,9 @@ private fun Color.toArgbInt(): Int = android.graphics.Color.argb(
     (blue * 255f).toInt(),
 )
 
-/** Panel gövdesi — sürüşte okunur: kısa satırlar, tek ekran. */
+/** Panel gövdesi — sürüşte okunur: kısa satırlar, tam ekran Mola görünümü. */
 @Composable
-private fun HermesPanel(st: PanelState) {
+fun HermesPanel(st: PanelState, fullScreenDriving: Boolean = true) {
     val clock = remember { mutableStateOf("--:--:--") }
     LaunchedEffect(Unit) {
         val fmt = SimpleDateFormat("HH:mm:ss", Locale("tr", "TR"))
@@ -379,40 +430,68 @@ private fun HermesPanel(st: PanelState) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PanelColors.Background)
-            .padding(horizontal = 32.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+    BoxWithConstraints(Modifier.fillMaxSize().background(PanelColors.Background)) {
+        val compact = maxHeight < 350.dp
+        val bodySize = if (compact) 16.sp else 21.sp
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = if (compact) 20.dp else 32.dp, vertical = if (compact) 12.dp else 22.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp),
         ) {
-            Text("HERMES", color = PanelColors.TextPrimary, fontSize = 34.sp, fontWeight = FontWeight.SemiBold)
-            Text("araç paneli", color = PanelColors.TextMuted, fontSize = 16.sp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("HERMES", color = PanelColors.TextPrimary, fontSize = if (compact) 26.sp else 34.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (fullScreenDriving) S.t2("Mola · Tam Ekran Sürüş", "Mola · Full-Screen Driving") else "Mola",
+                    color = if (fullScreenDriving) PanelColors.Online else PanelColors.TextMuted,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(clock.value, color = PanelColors.TextMuted, fontSize = if (compact) 14.sp else 18.sp)
+                if (st.demo) Text(S.t2("Görsel test", "Visual test"), color = PanelColors.Busy, fontSize = 14.sp)
+            }
+            Text(
+                listOfNotNull(
+                    st.server ?: S.t2("Sunucu profili", "Server profile"),
+                    when (st.connection) {
+                        PanelConnection.Loading -> S.t2("Bağlanıyor…", "Connecting…")
+                        PanelConnection.NoProfile -> S.t2("Telefonda sunucu profili ekleyin", "Add a server profile on your phone")
+                        PanelConnection.NoKey -> S.t2("Sunucu anahtarı eksik", "Server token is missing")
+                        PanelConnection.Connected -> S.t2("Sunucuya bağlı ✓", "Connected to server ✓")
+                        PanelConnection.Unavailable -> S.t2("Sunucuya ulaşılamıyor · yeniden denenecek", "Server unavailable · retrying")
+                    }
+                ).joinToString(" · "),
+                color = if (st.connection == PanelConnection.Connected) PanelColors.Online else PanelColors.Busy,
+                fontSize = if (compact) 14.sp else 18.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                (if (st.selectedSession) S.t2("Seçili oturum: ", "Selected session: ") else S.t2("Etkin oturum: ", "Active session: ")) +
+                    (st.activeSession ?: "—"),
+                color = PanelColors.TextSecondary,
+                fontSize = bodySize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                if (st.messageUnavailable) S.t2("Mesajlar alınamadı", "Messages unavailable")
+                else st.notice ?: st.lastAssistantMessage ?: st.lastMessage ?: S.t2("Konuş düğmesine dokunarak Hermes'e sesle sorabilirsin.", "Tap Speak to ask Hermes by voice."),
+                color = PanelColors.TextPrimary,
+                fontSize = if (compact) 15.sp else 18.sp,
+                maxLines = if (compact) 3 else 6,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!compact && !fullScreenDriving) {
+                Text(
+                    S.t2("Hermes araç paneli · telefon ekranı kaydedilmez", "Hermes car panel · phone screen is not recorded"),
+                    color = PanelColors.TextFaint,
+                    fontSize = 14.sp,
+                )
+            }
         }
-        Text(
-            if (st.loaded) "Sunucu: ${st.server ?: "profil yok"}" else "Sunucu profili okunuyor…",
-            color = PanelColors.TextSecondary,
-            fontSize = 20.sp,
-        )
-        Text(
-            st.url ?: "Adres: —",
-            color = PanelColors.TextMuted,
-            fontSize = 18.sp,
-        )
-        Text(
-            if (st.hasToken) "Anahtar: hazır" else "Anahtar: eksik — telefonda Ayarlar → Sunucu",
-            color = if (st.hasToken) PanelColors.Online else PanelColors.Busy,
-            fontSize = 18.sp,
-        )
-        Text("Saat: ${clock.value}", color = PanelColors.TextMuted, fontSize = 18.sp)
-        Text(
-            "Onaysız tam ekran · MediaProjection kullanılmıyor",
-            color = PanelColors.TextFaint,
-            fontSize = 14.sp,
-        )
     }
 }

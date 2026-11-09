@@ -253,6 +253,13 @@ fun SessionDrawerContent(
                 selected = tab == 2,
                 modifier = Modifier.weight(1f),
             ) { onTab(2) }
+            // Tur-1021: dördüncü sekme — takip listesi çekmecede de görünür
+            // (tam ekran Takip ile aynı SessionListPane, compact).
+            DrawerTab(
+                S.t2("Takip", "Following"),
+                selected = tab == 3,
+                modifier = Modifier.weight(1f),
+            ) { onTab(3) }
         }
 
         Spacer(Modifier.height(10.dp))
@@ -425,8 +432,20 @@ fun SessionDrawerContent(
         }
 
         // tab 0 = Tümü, tab 2 = arşiv (aynı liste, farklı showArchived —
-        // satırları MainActivity türetiyor); tab 1 = canlı.
-        if (tab != 1) {
+        // satırları MainActivity türetiyor); tab 1 = canlı; tab 3 = takip.
+        // Takip listesi tam ekranla AYNI bileşenden gelir (SessionListCore) —
+        // ikinci bir liste kodu tutarsız kalmasın.
+        if (tab == 3) {
+            SessionListPane(
+                rows = rows,
+                query = query,
+                onOpen = { row -> onPick(row); onDismissDrawer() },
+                onToggleFollow = onToggleFollow,
+                compact = true,
+                followedOnly = true,
+                modifier = Modifier.weight(1f),
+            )
+        } else if (tab != 1) {
             // Tur-19 FR-001: "Tümü" = genel akış (varsayılan, grup başlıksız,
             // tam kronolojik). "Gruplar" = tur-16 zaman gruplu görünümü — tek
             // dokunuşla geri gelir; arama her ikisinde de geçerli (FR-004).
@@ -469,7 +488,8 @@ fun SessionDrawerContent(
             ) {
                 if (feedRows != null) {
                     lazyItems(feedRows, key = { "feed-${it.key}" }) { row ->
-                        DrawerSessionRow(
+                        Column(Modifier.fillMaxWidth()) {
+                            DrawerSessionRow(
                             row = row,
                             onPick = {
                                 if (secimModu) secimToggle(row) else {
@@ -504,6 +524,17 @@ fun SessionDrawerContent(
                             secimModu = secimModu,
                             seciliSecim = row.dbId in secili,
                         )
+                        if (row.childRows.isNotEmpty()) {
+                            SubagentTreeBranch(
+                                parentRow = row,
+                                onPickChild = { child ->
+                                    deleteArmedKey = null
+                                    onPick(child)
+                                    onDismissDrawer()
+                                },
+                            )
+                        }
+                    }
                     }
                 } else {
                     items.forEach { entry ->
@@ -518,7 +549,8 @@ fun SessionDrawerContent(
                                 )
                             }
                             is DrawerItem.RowItem -> item(key = entry.key) {
-                                DrawerSessionRow(
+                                Column(Modifier.fillMaxWidth()) {
+                                    DrawerSessionRow(
                                     row = entry.row,
                                     onPick = {
                                         if (secimModu) secimToggle(entry.row) else {
@@ -557,6 +589,17 @@ fun SessionDrawerContent(
                                     secimModu = secimModu,
                                     seciliSecim = entry.row.dbId in secili,
                                 )
+                                if (entry.row.childRows.isNotEmpty()) {
+                                    SubagentTreeBranch(
+                                        parentRow = entry.row,
+                                        onPickChild = { child ->
+                                            deleteArmedKey = null
+                                            onPick(child)
+                                            onDismissDrawer()
+                                        },
+                                    )
+                                }
+                            }
                             }
                         }
                     }
@@ -1823,5 +1866,102 @@ private fun DrawerSheetRow(
         Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
         Text(label, color = tint, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+
+@Composable
+private fun SubagentTreeBranch(
+    parentRow: DrawerRow,
+    onPickChild: (DrawerRow) -> Unit,
+) {
+    var expanded by remember(parentRow.key) { mutableStateOf(false) }
+    val workingCount = parentRow.childRows.count { it.working }
+    val statusText = if (workingCount > 0) " · $workingCount çalışan" else ""
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 28.dp, end = 12.dp, top = 2.dp, bottom = 4.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                .background(HermesColors.Midground.copy(alpha = 0.08f))
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.CallMerge,
+                contentDescription = null,
+                tint = HermesColors.Midground,
+                modifier = Modifier.size(13.dp),
+            )
+            Text(
+                "${parentRow.childRows.size} Alt Ajan$statusText",
+                color = HermesColors.Midground,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                if (expanded) "▴ Gizle" else "▾ Göster",
+                color = HermesColors.TextFaint,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                parentRow.childRows.forEachIndexed { index, child ->
+                    val isLast = index == parentRow.childRows.lastIndex
+                    val branchPrefix = if (isLast) "└── " else "├── "
+                    val taskStatus = SmartSessionTitle.statusLabel(child.working, child.dot)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                            .clickable { onPickChild(child) }
+                            .padding(horizontal = 6.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            branchPrefix,
+                            color = HermesColors.Midground.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                        Text(
+                            child.title,
+                            color = HermesColors.TextSecondary,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            "— $taskStatus",
+                            color = if (child.working) HermesColors.Online else HermesColors.TextMuted,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                        if (child.working) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(HermesColors.Online, CircleShape),
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

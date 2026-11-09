@@ -134,11 +134,21 @@ fun String.toColorOrNull(): Color? {
 /**
  * Yerleşik temalar.
  *
- * `hermes` dashboard'ın LENS_0 paleti (varsayılan). Diğer altısı Desktop'ın
- * yerleşikleriyle aynı adları ve arka plan/metin renklerini taşıyor; ara tonlar
- * mobilde okunaklı olacak biçimde türetildi.
+ * `mobile-beta`, resmî beta'nın kamuya açık menü ekranlarındaki gece mavisi
+ * yüzeylerden esinlenir. Bağımsız istemci kimliğini korur; diğer paletler ve
+ * kullanıcı temaları yerinde kalır.
  */
+const val MOBILE_BETA_THEME_ID = "mobile-beta"
+
 val BUILTIN_THEMES: List<HermesPalette> = listOf(
+    HermesPalette(
+        id = MOBILE_BETA_THEME_ID, label = "Hermes Gece",
+        background = "#000120", surface = "#20203A", surfaceDim = "#13132B",
+        border = "#363650", borderStrong = "#51516C", accent = "#A6A1F8",
+        textPrimary = "#F5F4FD", textSecondary = "#D0CFE2",
+        textMuted = "#AAA9C3", textFaint = "#7B7A99",
+        isLight = false,
+    ),
     HermesPalette(id="chat", label="Hermes Sohbet", background="#161616", surface="#252525", surfaceDim="#1C1C1C",
         border="#343434", borderStrong="#484848", accent="#7AD4B8", textPrimary="#F1F1F1", textSecondary="#C7C7C7",
         textMuted="#A2A2A2", textFaint="#828282", isLight=false),

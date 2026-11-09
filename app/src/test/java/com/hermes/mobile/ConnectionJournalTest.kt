@@ -4,12 +4,19 @@ import com.hermes.mobile.data.ConnectionJournal
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 /**
  * Tur-10 / F2 — bağlantı olayı defteri (kopma nedenleri özeti).
  */
 class ConnectionJournalTest {
+
+    // ConnectionJournal uygulamada tekil (singleton); WS yaşam döngüsü testleri
+    // de ona yazar. "Boş defter" varsayımı yalnız @After temizliğine bağlıysa
+    // sınıf sırası değişince kirlenir — ön koşulu her testten önce kur.
+    @Before
+    fun setUp() = ConnectionJournal.clear()
 
     @After
     fun tearDown() = ConnectionJournal.clear()

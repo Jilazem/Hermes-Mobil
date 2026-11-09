@@ -104,35 +104,42 @@ object MessageInbox {
     }
 
     /** Okunmamış sohbetler (bildirimi duranlar), en yeni önce. */
-    fun read(context: Context, app: String = "", chat: String = "", limit: Int = 10): String {
-        noAccess(context)?.let { return it }
-        val items = MessageInboxLogic.filter(collect(context).orEmpty().map { it.item }, app, chat)
-        return MessageInboxLogic.format(items.take(limit), app)
+    fun read(context: Context, app: String = "", chat: String = "", limit: Int = 10): String =
+        readOutcome(context, app, chat, limit).text
+
+    fun readOutcome(context: Context, app: String = "", chat: String = "", limit: Int = 10): FullControl.Outcome {
+        noAccess(context)?.let { return FullControl.fail(it) }
+        val live = collect(context) ?: return FullControl.fail(tr("Bildirim servisi bağlı değil.", "Notification service is disconnected."))
+        val items = MessageInboxLogic.filter(live.map { it.item }, app, chat)
+        return FullControl.done(MessageInboxLogic.format(items.take(limit.coerceIn(1,50)), app))
     }
 
     /**
      * Sohbete bildirim üzerinden yanıt gönderir. Kişi belirsizse (birden çok
      * eşleşme) GÖNDERMEZ, adayları söyler — yanlış kişiye mesaj geri alınamaz.
      */
-    fun reply(context: Context, app: String, chat: String, text: String): String {
-        if (text.isBlank()) return tr("Gönderilecek metin boş.", "Message text is empty.")
-        noAccess(context)?.let { return it }
-        val live = collect(context).orEmpty()
+    fun reply(context: Context, app: String, chat: String, text: String): String =
+        replyOutcome(context, app, chat, text).text
+
+    fun replyOutcome(context: Context, app: String, chat: String, text: String): FullControl.Outcome {
+        if (text.isBlank()) return FullControl.fail(tr("Gönderilecek metin boş.", "Message text is empty."))
+        noAccess(context)?.let { return FullControl.fail(it) }
+        val live = collect(context) ?: return FullControl.fail(tr("Bildirim servisi bağlı değil.", "Notification service is disconnected."))
         return when (val m = MessageInboxLogic.pickReplyTarget(live.map { it.item }, app, chat)) {
-            is MessageInboxLogic.Pick.None -> tr(
+            is MessageInboxLogic.Pick.None -> FullControl.fail(tr(
                 "\"$chat\" için yanıtlanabilir bildirim yok (sohbet açılıp okunduysa bildirim kalkmış olabilir).",
                 "No replyable notification for \"$chat\" (it may have been read already).",
-            )
-            is MessageInboxLogic.Pick.Ambiguous -> tr(
+            ))
+            is MessageInboxLogic.Pick.Ambiguous -> FullControl.fail(tr(
                 "Birden çok sohbet eşleşti, hangisi? ", "Several chats match, which one? ",
-            ) + m.options.joinToString { "${it.app} · ${it.chat}" }
+            ) + m.options.joinToString { "${it.app} · ${it.chat}" })
             is MessageInboxLogic.Pick.One -> {
                 val action = live.first { it.item.key == m.item.key }.reply
-                    ?: return tr("Bu bildirimde yanıt eylemi yok.", "This notification has no reply action.")
+                    ?: return FullControl.fail(tr("Bu bildirimde yanıt eylemi yok.", "This notification has no reply action."))
                 send(context, action, text)
                 DiagLog.i("inbox", "yanit gonderildi -> ${m.item.app} · ${m.item.chat} (${text.length} krkt)")
-                tr("${m.item.app} · ${m.item.chat} kişisine gönderildi: \"$text\"",
-                    "Sent to ${m.item.app} · ${m.item.chat}: \"$text\"")
+                FullControl.done(tr("${m.item.app} · ${m.item.chat} kişisine gönderildi: \"$text\"",
+                    "Sent to ${m.item.app} · ${m.item.chat}: \"$text\""))
             }
         }
     }

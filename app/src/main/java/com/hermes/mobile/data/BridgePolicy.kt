@@ -20,6 +20,11 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 object BridgePolicy {
 
+    /** A channel belongs to one Dashboard identity and endpoint. */
+    fun sameProfile(connected: ServerProfile?, selected: ServerProfile?): Boolean =
+        connected != null && selected != null && connected.id == selected.id &&
+            connected.token == selected.token && connected.effectiveBridgeUrl == selected.effectiveBridgeUrl
+
     /** Uygulama özel aralığından (4000–4999) devralma kodu. */
     const val CODE_TAKEOVER = 4001
 

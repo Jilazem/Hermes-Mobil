@@ -32,8 +32,10 @@ class ServerUrlCleanTest {
     }
 
     @Test
-    fun `semasiz dis adrese http eklenir, bos kalir bos`() {
-        assertEquals("http://h.tld", profil("http://a", "h.tld/").normalizedRemote)
+    fun `semasiz dis adrese http eklenir, sonra TLS kapisi https yapar`() {
+        // B2: semasız dış host önce http:// alır, ardından forceTlsOutsideLan
+        // özel ağ dışı olduğu için https://'e yükseltir.
+        assertEquals("https://h.tld", profil("http://a", "h.tld/").normalizedRemote)
         assertEquals("", profil("http://a", "  ").normalizedRemote)
     }
 }

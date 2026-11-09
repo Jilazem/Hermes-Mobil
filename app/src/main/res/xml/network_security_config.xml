@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Release requires TLS with system trust. Personal LAN HTTP is debug-only. -->
+<!--
+  RELEASE/MAIN — TLS zorunlu, yalnız sistem güven kökleri.
+  Cleartext platform düzeyinde kapalıdır. Özel ağ (RFC1918 / localhost /
+  *.local) için düz HTTP yalnız debug kaynak kümesindeki aynı adlı dosyada
+  açılır ve orada bile uygulama kapısı ServerProfile.forceTlsOutsideLan()
+  özel ağ dışındaki adresleri https://'e yükseltir.
+-->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>

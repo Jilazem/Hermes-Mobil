@@ -2,6 +2,10 @@ package com.hermes.mobile
 
 import com.hermes.mobile.data.emaEnabled
 import com.hermes.mobile.data.modelSwitchAccepted
+import com.hermes.mobile.data.modelSwitchReply
+import com.hermes.mobile.data.modelSwitchSavedGlobally
+import com.hermes.mobile.data.ModelSwitchReply
+import com.hermes.mobile.data.reasoningSwitchAccepted
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -177,7 +181,7 @@ fun parseReasoningOutput(output: String): ReasoningStatus {
     var effort: String? = null
     var display: Boolean? = null
     for (rawLine in output.lineSequence()) {
-        val line = rawLine.trim()
+        val line = rawLine.trim().replace("**", "").replace("`", "")
         if (line.startsWith("Reasoning effort:", ignoreCase = true)) {
             effort = line.substringAfter(':').trim().takeIf { it.isNotEmpty() }
         } else if (line.startsWith("Reasoning display:", ignoreCase = true)) {
@@ -186,6 +190,17 @@ fun parseReasoningOutput(output: String): ReasoningStatus {
                 "off" -> false
                 else -> null
             }
+        } else if (line.startsWith("Effort:", ignoreCase = true) || line.startsWith("Güç:", ignoreCase = true)) {
+            effort = line.substringAfter(':').trim().substringBefore(' ').takeIf { it.isNotEmpty() }
+        } else if (line.startsWith("Display:", ignoreCase = true) || line.startsWith("Görüntüleme:", ignoreCase = true)) {
+            display = when (line.substringAfter(':').trim().substringBefore(' ').lowercase()) {
+                "on", "açık" -> true
+                "off", "kapalı" -> false
+                else -> null
+            }
+        } else {
+            Regex("(?:Reasoning effort set to|Akıl yürütme gücü)\\s+(none|minimal|low|medium|high|xhigh|max|ultra)(?:\\s|$)",
+                RegexOption.IGNORE_CASE).find(line)?.let { effort = it.groupValues[1].lowercase() }
         }
     }
     return ReasoningStatus(effort, display)
@@ -250,6 +265,7 @@ data class ChatState(
     val voicePartial: String = "",
     val handsFree: Boolean = false,
     val currentModel: String? = null,
+    val currentProvider: String? = null,
     /**
      * Açık oturumun KONUSU (tur-4). Üst şerit artık model adını değil konuyu
      * gösterir (Telegram başlığı gibi); model seçimi ⋯ ikonuna taşındı.
@@ -274,6 +290,7 @@ data class ChatState(
      */
     val assistantMode: Boolean = false,
     val steerQueued: Boolean = false,
+    val subagents: List<com.hermes.mobile.data.SubagentActivity> = emptyList(),
 )
 
 /**
@@ -558,6 +575,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private var eventJob: Job? = null
     private var stateJob: Job? = null
     private var sessionLoadJob: Job? = null
+    /** M1c: "yeni sohbet" gerçek gateway oturumunu kurarken bu iş üzerinde koşar. */
+    private var newSessionJob: Job? = null
     private var seq = 0
     private var streamingKey: String? = null
     private var thinkingKey: String? = null
@@ -748,6 +767,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
+        viewModelScope.launch {
+            gateway.collect { gw ->
+                if (gw != null) {
+                    com.hermes.mobile.data.LiveBotEventStore.attachWebSocket(gw.events, viewModelScope)
+                }
+            }
+        }
         voiceMsg.onTranscript = { text ->
             // Tur-13: asistan akışında metin doğrudan gönderilir (bas-konuş'un
             // amacı soruyu sormak). Normal sohbette karar kullanıcı ayarında.
@@ -1203,7 +1229,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { HermesClient(profile).modelInfo() }
                 .onSuccess { info ->
-                    _state.update { it.copy(currentModel = if (it.sessionId == null && preferredModel.contains("|")) preferredModel.substringAfter("|") else info.model) }
+                    if (client === gw) _state.update {
+                        if (it.sessionId != null || it.storedSessionId != null) it
+                        else if (preferredModel.contains("|")) it.copy(
+                            currentModel = preferredModel.substringAfter("|"),
+                            currentProvider = preferredModel.substringBefore("|"),
+                        ) else it.copy(currentModel = info.model, currentProvider = info.provider)
+                    }
                 }
         }
 
@@ -1237,6 +1269,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun teardown() {
+        modelsLoadJob?.cancel()
+        modelSelectionJob?.cancel()
+        reasoningChoiceJob?.cancel()
+        reasoningGeneration++
+        modelsLoadGeneration++
+        _modelProviders.value = emptyList()
+        _modelsLoading.value = false
+        _modelsError.value = null
+        _modelSelecting.value = false
         voiceRouteJob?.cancel()
         sessionLoadJob?.cancel()
         eventJob?.cancel()
@@ -1246,6 +1287,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         client = null
         _gateway.value = null
         profileId = null
+        profile = null
         streamingKey = null
         thinkingKey = null
         streamMeter.reset()
@@ -1271,16 +1313,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         if (parts.size != 2) return
         val output = gw.slashExec(sid, "/model ${parts[1]} --provider ${parts[0]}")
         check(modelSwitchAccepted(output)) { output.trim().ifBlank { "Kayıtlı model seçilemedi" } }
-        _state.update { it.copy(currentModel = parts[1]) }
+        _state.update { it.copy(currentModel = parts[1], currentProvider = parts[0]) }
     }
 
     private suspend fun ensureConversation(gw: GatewayWsClient): String {
         val current = _state.value
         val existing = current.sessionId
         val sid = if (existing != null) {
-            gw.attachSession(existing, current.storedSessionId ?: gw.storedSessionId(existing), profile?.let { specialistStore.profileFor(it.id, current.storedSessionId ?: gw.storedSessionId(existing)) })
+            gw.attachSession(existing, current.storedSessionId ?: gw.storedSessionId(existing), profile?.let { sessionAgent(it.id, current.storedSessionId ?: gw.storedSessionId(existing)) })
         } else if (current.storedSessionId != null) {
-            gw.resumeSession(current.storedSessionId, profile?.let { specialistStore.profileFor(it.id, current.storedSessionId) })
+            gw.resumeSession(current.storedSessionId, profile?.let { sessionAgent(it.id, current.storedSessionId) })
         } else {
             createSessionWithProfile(gw).also { applyPreferredModel(gw, it) }
         }
@@ -1294,6 +1336,29 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private val specialistStore by lazy { com.hermes.mobile.data.VoiceSpecialistSessions(getApplication()) }
+    private val agentBindings by lazy { com.hermes.mobile.data.SessionAgentBindings(getApplication()) }
+    private fun sessionAgent(server: String, stored: String): String? =
+        agentBindings.profile(server, stored) ?: specialistStore.profileFor(server, stored)
+    private var subagentRefreshJob: kotlinx.coroutines.Job? = null
+    private var subagentRevision = 0L
+    private var nextSubagentAttempt = 0L
+    fun refreshSubagents() {
+        if (subagentRefreshJob?.isActive == true) return
+        if (android.os.SystemClock.elapsedRealtime() < nextSubagentAttempt) return
+        val gw = client ?: return
+        val sid = _state.value.sessionId ?: return
+        if (_state.value.connection !is ConnectionState.Open) return
+        val revision = subagentRevision
+        subagentRefreshJob = viewModelScope.launch {
+            try {
+                val snapshot = gw.subagentList(sid) ?: return@launch
+                if (client === gw && _state.value.sessionId == sid && subagentRevision == revision) {
+                    _state.update { it.copy(subagents = com.hermes.mobile.data.mergeSubagentSnapshot(it.subagents, snapshot)) }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { nextSubagentAttempt = android.os.SystemClock.elapsedRealtime() + 60_000 }
+        }
+    }
 
     /** V5-2: oturum başına model/düşünme hafızası — JSON defter ([SessionChoiceStore]). */
     private val sessionChoices by lazy { com.hermes.mobile.data.SessionChoiceStore(getApplication()) }
@@ -1846,11 +1911,24 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(statusLine = tr("📱 Artemis durduruluyor…", "📱 Stopping Artemis…")) }
             return
         }
-        val gw = client ?: return
-        val sid = _state.value.sessionId ?: return
+        val gw = client
+        val sid = _state.value.sessionId
+        if (gw == null || sid == null) {
+            _state.update { it.copy(notice = tr("Durdurulamadı: sunucuya bağlı bir sohbet yok", "Could not stop: no connected conversation")) }
+            return
+        }
         voice.stopSpeaking()
         viewModelScope.launch {
-            runCatching { gw.interrupt(sid) }
+            try {
+                gw.interrupt(sid)
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                if (client === gw && _state.value.sessionId == sid) _state.update {
+                    it.copy(notice = tr("Durdurma isteği iletilemedi: ", "Could not send stop request: ") + (e.message ?: "?"))
+                }
+                return@launch
+            }
+            if (client !== gw || _state.value.sessionId != sid) return@launch
             streamingKey = null
             streamMeter.reset()
             _speed.value = null
@@ -2082,15 +2160,41 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _modelsLoading = MutableStateFlow(false)
     val modelsLoading: StateFlow<Boolean> = _modelsLoading.asStateFlow()
 
-    fun loadModels() {
-        val p = profile ?: return
-        if (_modelProviders.value.isNotEmpty()) return
-        viewModelScope.launch {
-            _modelsLoading.value = true
-            runCatching { HermesClient(p).modelOptions() }
-                .onSuccess { _modelProviders.value = it.providers }
-                .onFailure { e -> _state.update { it.copy(notice = e.message ?: "Modeller alınamadı") } }
-            _modelsLoading.value = false
+    private val _modelsError = MutableStateFlow<String?>(null)
+    val modelsError: StateFlow<String?> = _modelsError.asStateFlow()
+    private val _modelSelecting = MutableStateFlow(false)
+    val modelSelecting: StateFlow<Boolean> = _modelSelecting.asStateFlow()
+    private var modelsLoadJob: Job? = null
+    private var modelSelectionJob: Job? = null
+    private var modelsLoadGeneration = 0
+
+    /** Refresh when opening the picker; retain cached rows when the refresh fails. */
+    fun loadModels(force: Boolean = true) {
+        val p = profile
+        if (p == null) {
+            _modelsError.value = tr("Model listesi için sunucuya bağlanın", "Connect to the server to load models")
+            return
+        }
+        if (modelsLoadJob?.isActive == true || (!force && _modelProviders.value.isNotEmpty())) return
+        val generation = ++modelsLoadGeneration
+        _modelsLoading.value = true
+        _modelsError.value = null
+        modelsLoadJob = viewModelScope.launch {
+            try {
+                val options = HermesClient(p).modelOptions()
+                if (this@ChatViewModel.profile == p && generation == modelsLoadGeneration) {
+                    _modelProviders.value = options.providers
+                    _modelsError.value = options.notice
+                    if (options.providers.none { it.models.isNotEmpty() })
+                        _modelsError.value = tr("Sunucu kullanılabilir model listesi göndermedi", "The server returned no models")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                if (generation == modelsLoadGeneration) _modelsError.value =
+                    tr("Modeller alınamadı: ", "Could not load models: ") + (e.message ?: "?")
+            } finally {
+                if (generation == modelsLoadGeneration) _modelsLoading.value = false
+            }
         }
     }
 
@@ -2120,6 +2224,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             ?: activeProfile.takeIf { it.isNotBlank() }
             ?: null
         return gw.createSession(profileArg).also { id ->
+            profileArg?.let { agent -> profile?.let { agentBindings.remember(it.id, gw.storedSessionId(id), agent) } }
             _sessionProfile.value = profileArg
             onSessionChanged?.invoke(id)
             ensureCzipAuto(gw, id)
@@ -2210,7 +2315,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         set(value) {
             field = value
             if (_state.value.sessionId == null && value.contains("|"))
-                _state.update { it.copy(currentModel = value.substringAfter("|")) }
+                _state.update { it.copy(currentModel = value.substringAfter("|"), currentProvider = value.substringBefore("|")) }
         }
 
     /** Yeni oturumların açılacağı Hermes profili; boşsa varsayılan. */
@@ -2275,38 +2380,82 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
 
-    fun selectModel(provider: String, model: String, persist: Boolean = false, think: String? = null) {
-        // V5-2: seçim oturum defterine yazılır — oturum yeniden açıldığında
-        // [restoreSessionChoice] geri getirir. `think` null ise yalnız model
-        // hatırlanır; düşünme kademesine dokunulmaz (yanlış kısıtlama yok).
-        fun rememberChoice() {
-            sessionChoices.put(
-                _state.value.storedSessionId ?: _state.value.sessionId,
-                com.hermes.mobile.data.SessionChoice(provider, model, think),
-            )
-        }
-
-        if (_state.value.sessionId == null && !persist) {
-            preferredModel = "$provider|$model"
-            _state.update { it.copy(currentModel = model) }
-            if (think != null) setReasoningEffort(think)
-            onModelChosen?.invoke(provider, model)
+    fun selectModel(
+        provider: String,
+        model: String,
+        persist: Boolean = false,
+        think: String? = null,
+        onResult: (Boolean) -> Unit = {},
+    ) {
+        if (_modelSelecting.value) { onResult(false); return }
+        val gw = client
+        if (gw == null) {
+            _state.update { it.copy(notice = tr("Model değişmedi: önce sunucuya bağlanın", "Model unchanged: connect to the server first")) }
+            onResult(false)
             return
         }
-        val gw = client ?: return
-        viewModelScope.launch {
-            runCatching {
-                val sid = _state.value.sessionId ?: createSessionWithProfile(gw).also { id ->
-                    _state.update { it.copy(sessionId = id) }
+        _modelSelecting.value = true
+        reasoningGeneration++
+        _modelsError.value = null
+        modelSelectionJob = viewModelScope.launch {
+            var accepted = false
+            try {
+                require(provider.isNotBlank() && model.isNotBlank() &&
+                    !provider.startsWith("-") && !model.startsWith("-") &&
+                    provider.none { it.isWhitespace() || it == '\'' || it == '"' } &&
+                    model.none { it.isWhitespace() || it == '\'' || it == '"' }) {
+                    tr("Geçersiz sağlayıcı veya model kimliği", "Invalid provider or model id")
                 }
-                val output = gw.slashExec(sid, "/model $model --provider $provider" + if (persist) " --global" else "")
-                check(modelSwitchAccepted(output)) { output.trim().ifBlank { "Model değiştirilemedi" } }
+                newSessionJob?.join()
+                reasoningChoiceJob?.join()
+                check(client === gw && gw.awaitOpen()) { tr("Gateway bağlı değil", "Gateway is disconnected") }
+                val before = _state.value
+                val sid = if (before.sessionId == null && before.storedSessionId == null) {
+                    // Validate the pick on the real session, even before its first prompt.
+                    createSessionWithProfile(gw).also { id ->
+                        check(client === gw && _state.value.sessionId == before.sessionId &&
+                            _state.value.storedSessionId == before.storedSessionId) { "Konuşma değişti; modeli yeniden seçin" }
+                        _state.update { it.copy(sessionId = id, storedSessionId = gw.storedSessionId(id)) }
+                        onSessionChanged?.invoke(gw.storedSessionId(id))
+                    }
+                } else ensureConversation(gw)
+                val validThink = think?.takeIf { com.hermes.mobile.data.thinkSupported(model, it) }
+                val command = "/model $model --provider $provider" +
+                    (if (persist) " --global" else "") +
+                    (validThink?.let { " --reasoning $it" } ?: "")
+                val output = gw.slashExec(sid, command)
+                val reply = modelSwitchReply(output)
+                check(reply != ModelSwitchReply.Rejected) { output.trim().take(1200).ifBlank { "Model değiştirilemedi" } }
+                check(client === gw && _state.value.sessionId == sid) { "Konuşma değişti; seçimi açık sohbette kontrol edin" }
                 preferredModel = "$provider|$model"
-                _state.update { it.copy(currentModel = model) }
-                if (think != null) setReasoningEffort(think)
-                rememberChoice()
+                val message = if (reply == ModelSwitchReply.Deferred)
+                    tr("$model seçildi; bir sonraki mesajdan itibaren uygulanacak", "$model selected; applies from your next message")
+                else tr("Model seçildi: $model", "Model selected: $model")
+                _state.update { it.copy(
+                    currentModel = model,
+                    currentProvider = provider,
+                    notice = message + if (persist && !modelSwitchSavedGlobally(output))
+                        tr(". Sunucu varsayılanı kaydedilemedi; seçim yalnız bu oturumda", ". Server default was not saved; this session only") else "",
+                ) }
+                sessionChoices.put(_state.value.storedSessionId ?: sid,
+                    com.hermes.mobile.data.SessionChoice(provider, model, validThink))
+                if (validThink != null) {
+                    val status = parseReasoningOutput(output)
+                    if (status.effort != null) _reasoningStatus.value = status
+                }
                 onModelChosen?.invoke(provider, model)
-            }.onFailure { e -> _state.update { it.copy(notice = e.message ?: "Model değiştirilemedi") } }
+                accepted = true
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                if (client === gw) {
+                    val error = tr("Model seçilemedi: ", "Could not select model: ") + (e.message ?: "?")
+                    _modelsError.value = error
+                    _state.update { it.copy(notice = error) }
+                }
+            } finally {
+                _modelSelecting.value = false
+                onResult(accepted)
+            }
         }
     }
 
@@ -2318,12 +2467,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private fun restoreSessionChoice(storedId: String) {
         val saved = sessionChoices.get(storedId) ?: return
         val think = saved.think
-        if (think != null && think != reasoningStatus.value.effort) setReasoningEffort(think)
         val model = saved.model
         val provider = saved.provider
-        if (!model.isNullOrBlank() && !provider.isNullOrBlank() && model != _state.value.currentModel) {
+        if (!model.isNullOrBlank() && !provider.isNullOrBlank() &&
+            (model != _state.value.currentModel || provider != _state.value.currentProvider ||
+                (think != null && think != reasoningStatus.value.effort))) {
             selectModel(provider, model, persist = false, think = think)
-        }
+        } else if (model.isNullOrBlank() && think != null && think != reasoningStatus.value.effort) setReasoningEffort(think)
     }
 
     fun clearNotice() = _state.update { it.copy(notice = null) }
@@ -2339,14 +2489,20 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val _reasoningStatus = MutableStateFlow(ReasoningStatus(null, null))
     val reasoningStatus: StateFlow<ReasoningStatus> = _reasoningStatus.asStateFlow()
+    private var reasoningChoiceJob: Job? = null
+    private var reasoningGeneration = 0
 
     fun refreshReasoning() {
         val gw = client ?: return
+        val generation = reasoningGeneration
         viewModelScope.launch {
             runCatching {
-                val sid = _state.value.sessionId ?: gw.createSession(activeProfile)
+                newSessionJob?.join()
+                check(client === gw && gw.awaitOpen()) { "Gateway bağlı değil" }
+                val sid = ensureConversation(gw)
                 val out = gw.slashExec(sid, "/reasoning")
-                _reasoningStatus.value = parseReasoningOutput(out)
+                if (client === gw && _state.value.sessionId == sid && generation == reasoningGeneration)
+                    _reasoningStatus.value = parseReasoningOutput(out)
             }.onFailure { e ->
                 // Bağlantı düşerse paneli boşaltma — son bilineni göster;
                 // yalnız gerçek parse boşluğunda null döner.
@@ -2359,8 +2515,46 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      * Düşünce çabasını yer, panelin çipleri argümansız komutu çağıran
      * [refreshReasoning] ile okunur; buradan yalnız "yazma" yarı yolu.
      */
-    fun setReasoningEffort(level: String) {
-        runSlash("/reasoning $level")
+    fun setReasoningEffort(level: String, onResult: (Boolean) -> Unit = {}) {
+        val gw = client
+        if (gw == null) {
+            _state.update { it.copy(notice = tr("Düşünme seviyesi değişmedi: sunucuya bağlanın", "Reasoning unchanged: connect to the server")) }
+            onResult(false)
+            return
+        }
+        if (_modelSelecting.value || reasoningChoiceJob?.isActive == true) {
+            _state.update { it.copy(notice = tr("Önceki model/düşünme seçiminin sonucunu bekleyin", "Wait for the previous model/reasoning selection")) }
+            onResult(false)
+            return
+        }
+        val generation = ++reasoningGeneration
+        reasoningChoiceJob = viewModelScope.launch {
+            var accepted = false
+            try {
+                require(level in listOf("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra")) {
+                    tr("Geçersiz düşünme seviyesi", "Invalid reasoning level")
+                }
+                newSessionJob?.join()
+                check(client === gw && gw.awaitOpen()) { "Gateway bağlı değil" }
+                val sid = ensureConversation(gw)
+                val output = gw.slashExec(sid, "/reasoning $level")
+                check(reasoningSwitchAccepted(output, level)) { output.trim().take(1000).ifBlank { "Düşünme seviyesi doğrulanamadı" } }
+                check(client === gw && _state.value.sessionId == sid && generation == reasoningGeneration) {
+                    "Konuşma değişti; düşünme seviyesini açık sohbette kontrol edin"
+                }
+                _reasoningStatus.value = ReasoningStatus(level, parseReasoningOutput(output).displayOn ?: _reasoningStatus.value.displayOn)
+                val stored = _state.value.storedSessionId ?: sid
+                val old = sessionChoices.get(stored) ?: com.hermes.mobile.data.SessionChoice()
+                sessionChoices.put(stored, old.copy(think = level))
+                _state.update { it.copy(notice = tr("Düşünme seviyesi $level; sonraki mesajda etkili", "Reasoning $level; applies from your next message")) }
+                accepted = true
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                if (client === gw && generation == reasoningGeneration) _state.update {
+                    it.copy(notice = tr("Düşünme seviyesi değiştirilemedi: ", "Could not change reasoning: ") + (e.message ?: "?"))
+                }
+            } finally { onResult(accepted) }
+        }
     }
 
     /**
@@ -2616,15 +2810,79 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             ?.hostAddress
     }.getOrNull()
 
+    /**
+     * M1c: YENİ sohbet — ekranı temizler VE gerçek gateway oturumunu
+     * `?fresh=1` niyetiyle kurar (`session.create`).
+     *
+     * Eski davranış yalnız yerel durumu temizliyordu; gerçek oturum ilk mesajda
+     * açılıyor ve yeni sohbet ile önceki oturumun soket bağı karışabiliyordu.
+     * Artık yeni sohbet ANINDA kendi runtime + stored kimliğine sahip olur
+     * (`?fresh=1` parametresi `/api/ws`'te yok sayılır — bağ RPC ile kurulur;
+     * ayrıntı docs/G1-GATEWAY-MOBIL-API.md).
+     *
+     * Bağlantı yoksa ekran temiz kalır (ilk gönderim oturumu yine kurar) ama
+     * kullanıcıya sessiz kalmak yasak: hata notice olarak yazılır.
+     */
     fun newSession() {
+        modelSelectionJob?.cancel()
+        reasoningChoiceJob?.cancel()
+        reasoningGeneration++
         sessionLoadJob?.cancel()
-        _state.update { ChatState(connection = it.connection, currentModel = preferredModel.substringAfter("|", "").takeIf { m -> m.isNotBlank() }) }
+        newSessionJob?.cancel()
+        _state.update { ChatState(
+            connection = it.connection,
+            currentModel = preferredModel.substringAfter("|", "").takeIf { m -> m.isNotBlank() },
+            currentProvider = preferredModel.substringBefore("|", "").takeIf { p -> p.isNotBlank() },
+        ) }
         streamingKey = null
         thinkingKey = null
         streamMeter.reset()
         _speed.value = null
         _sessionProfile.value = null
         onSessionChanged?.invoke("")
+        val gw = client ?: return
+        if (profile == null) return
+        // Üretim sürerken soketi yeniden açmak yanıtı koparır: yeni sohbet
+        // ekranı temiz kalır, gerçek oturum ilk gönderimde kurulur.
+        if (_state.value.agentBusy) return
+        newSessionJob = viewModelScope.launch {
+            val started = System.currentTimeMillis()
+            try {
+                gw.connect(fresh = true)
+                if (!gw.awaitOpen()) {
+                    // B3 İSTENEN-4: zaman aşımında hedef adres şema+port ile görünür.
+                    val hedef = profile?.endpoint?.displayWs() ?: profile?.wsBase ?: "?"
+                    _state.update {
+                        it.copy(
+                            notice = tr(
+                                "Yeni oturum açılamadı: gateway hazır değil (zaman aşımı) — hedef: $hedef",
+                                "Could not open a new session: gateway not ready (timeout) — target: $hedef",
+                            ),
+                        )
+                    }
+                    return@launch
+                }
+                val profileArg = createSessionProfileArg(selectedProfileValue ?: ROUTER_CHIP)
+                    ?: activeProfile.takeIf { it.isNotBlank() }
+                val binding = gw.createSessionBinding(profile = profileArg)
+                profileArg?.let { agent -> profile?.let { agentBindings.remember(it.id, binding.storedId, agent) } }
+                _sessionProfile.value = profileArg
+                _state.update { it.copy(sessionId = binding.runtimeId, storedSessionId = binding.storedId) }
+                onSessionChanged?.invoke(binding.storedId)
+                DiagLog.i(
+                    "ws",
+                    "yeni oturum hazır: runtime=${binding.runtimeId} stored=${binding.storedId} " +
+                        "(${System.currentTimeMillis() - started} ms, fresh=1)",
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(notice = tr("Yeni oturum açılamadı: ", "Could not open a new session: ") + (e.message ?: "?"))
+                }
+                DiagLog.w("ws", "yeni oturum açılamadı: ${e.message}")
+            }
+        }
     }
 
     /**
@@ -2636,9 +2894,20 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
      * Telegram'dan, cron'dan ya da CLI'dan başlamış bir konuşma böylece
      * telefondan sürdürülebilir.
      */
-    fun continueSession(liveId: String, dbId: String, title: String, banner: String? = null) {
+    fun continueSession(liveId: String, dbId: String, title: String, banner: String? = null, agentProfile: String? = null) {
+        modelSelectionJob?.cancel()
+        reasoningChoiceJob?.cancel()
+        reasoningGeneration++
+        _reasoningStatus.value = ReasoningStatus(null, null)
         val p = profile ?: return
+        agentProfile?.let { agentBindings.remember(p.id, dbId.ifBlank { liveId }, it) }
         val gw = client ?: return
+        // M1c: soket kapalıysa devam eden konuşma `?resume=<stored>` niyetiyle
+        // açılır. Soket zaten açıksa İKİNCİ soket açılmaz — gerçek devam
+        // `session.resume`/`attachSession` RPC'siyle olur (tek soket ilkesi).
+        if (_state.value.connection !is ConnectionState.Open) {
+            gw.connect(resumeId = dbId.ifBlank { liveId })
+        }
         sessionLoadJob?.cancel()
         onSessionChanged?.invoke(dbId.ifBlank { liveId })
         // Tur-16: sol ray kaldırıldı — son açık oturum kalıcılığı artık
@@ -2661,11 +2930,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         // bilinmiyor (canlı oturumlarda profili öğrenmek yok), bu yüzden
         // null ("—"). Oturum düşerse sessizce yeni oturum açılır ve profil
         // seçimi yeniden serbestleşir.
-        _sessionProfile.value = specialistStore.profileFor(p.id, dbId.ifBlank { liveId })
+        _sessionProfile.value = agentProfile ?: sessionAgent(p.id, dbId.ifBlank { liveId })
         _state.update {
             ChatState(
                 connection = it.connection,
-                currentModel = it.currentModel,
+                currentModel = null,
+                currentProvider = null,
                 sessionId = liveId,
                 storedSessionId = dbId.ifBlank { liveId },
                 // Tur-4 (P3 #8): üst şerit KONUYU gösterir — model orada durmaz.
@@ -2687,7 +2957,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             // süreklilik (aynı bağlam); durmuyorsa geçmişi yine gösteririz ama
             // sonraki mesaj yeni oturum açmalı — ölü kimliğe prompt göndermek
             // sessizce başarısız olurdu.
-            val attached = runCatching { gw.attachSession(liveId, dbId.ifBlank { gw.storedSessionId(liveId) }, specialistStore.profileFor(p.id, dbId.ifBlank { gw.storedSessionId(liveId) })) }
+            val attached = runCatching { gw.attachSession(liveId, dbId.ifBlank { gw.storedSessionId(liveId) }, agentProfile ?: sessionAgent(p.id, dbId.ifBlank { gw.storedSessionId(liveId) })) }
             if (attached.exceptionOrNull() is kotlinx.coroutines.CancellationException) throw attached.exceptionOrNull()!!
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             val runtimeId = attached.getOrNull()
@@ -2703,7 +2973,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 if (runtimeId != null) runCatching { gw.sessionHistory(runtimeId) }.getOrDefault(emptyList())
                 else emptyList()
             val all = fromLive.ifEmpty {
-                runCatching { HermesClient(p).sessionMessages(dbId) }
+                runCatching { HermesClient(p).sessionMessages(dbId, agentProfile ?: sessionAgent(p.id, dbId)) }
                     .getOrDefault(emptyList())
             }
 
@@ -2790,6 +3060,14 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         payload: kotlinx.serialization.json.JsonObject? = null,
     ) {
         if (isFromInvisibleSession(sessionId)) return
+        if (auxiliaryTitleFailure(type, text)) {
+            DiagLog.w("title", "Başlık yardımcı işlemi tamamlanamadı; sohbet yanıtı korunuyor")
+            _state.update { current ->
+                if (current.topic.isNotBlank()) current else current.copy(topic =
+                    current.items.filterIsInstance<ChatItem.User>().firstOrNull()?.text?.lineSequence()?.firstOrNull()?.take(60).orEmpty())
+            }
+            return
+        }
         // V5-2 madde 6: başka oturumdan gelen TAMAMLANMIŞ mesajlar (cron,
         // Telegram, CLI konuşmaları) sohbet akışına KARIŞMAZ — bildirim
         // kutusuna tür sınıflandırmasıyla düşer. Akış parçaları (delta) zaten
@@ -2821,6 +3099,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         // etmez). Etiketi yok saymak bir sohbetin yanıtını DİĞER sohbete
         // döküyordu; etiketli olay yalnız aktif sohbetin oturumundan geçer.
         if (ChatIsolation.foreignEvent(sessionId, _state.value.sessionId)) return
+        if (type.startsWith("subagent.")) {
+            subagentRevision++
+            _state.update { it.copy(subagents = com.hermes.mobile.data.mergeSubagentActivity(it.subagents, type, payload)) }
+            return
+        }
         when (type) {
             "message.start" -> {
                 // Yeni yanıt: saat sıfırdan başlar, göstergenin donmuş hali düşer.

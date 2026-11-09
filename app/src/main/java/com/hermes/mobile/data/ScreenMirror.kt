@@ -13,6 +13,7 @@ import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -21,6 +22,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.DisplayMetrics
 import android.view.Display
+import android.view.PixelCopy
 import android.view.Surface
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,6 +53,8 @@ object ScreenMirror {
 
     private val _status = MutableStateFlow(Status.NoPermission)
     val status: StateFlow<Status> = _status.asStateFlow()
+    private val _lastFrame = MutableStateFlow<Bitmap?>(null)
+    val lastFrame: StateFlow<Bitmap?> = _lastFrame.asStateFlow()
 
     @Volatile private var projection: MediaProjection? = null
     @Volatile private var display: VirtualDisplay? = null
@@ -63,10 +67,13 @@ object ScreenMirror {
         // Android 14+: sanal ekrandan ÖNCE geri çağrı kaydı zorunlu.
         p.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
+                // A delayed callback from an old consent must not stop its replacement.
+                if (projection !== p) return
                 DiagLog.i("mirror", "ekran paylaşımı durduruldu (sistem/kullanıcı)")
                 display?.release()
                 display = null
                 projection = null
+                _lastFrame.value = null
                 _status.value = Status.NoPermission
                 // P1: sistem paylaşımı kestiğinde ön plan servisi de dursun —
                 // aksi halde kalıcı bildirim havada kalır.
@@ -83,6 +90,7 @@ object ScreenMirror {
 
     /** Araç yüzeyine bağlan. İzin yoksa false. */
     fun attach(surface: Surface, width: Int, height: Int, dpi: Int): Boolean {
+        if (!surface.isValid || width <= 0 || height <= 0 || dpi <= 0) return false
         val p = projection ?: return false
         val vd = display
         runCatching {
@@ -105,6 +113,15 @@ object ScreenMirror {
         return true
     }
 
+    /** Canlı Surface'in son başarılı karesini UI için sakla. */
+    fun captureLastFrame(surface: Surface, width: Int, height: Int) {
+        if (width <= 0 || height <= 0 || !surface.isValid) return
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        PixelCopy.request(surface, bitmap, { result ->
+            if (result == PixelCopy.SUCCESS) _lastFrame.value = bitmap else bitmap.recycle()
+        }, main)
+    }
+
     /** Araç yüzeyi gitti ya da sürüş nedeniyle duraklatıldı — izin korunur. */
     fun detach() {
         runCatching { display?.surface = null }
@@ -113,10 +130,12 @@ object ScreenMirror {
 
     /** Her şeyi bırak (Durdur düğmesi ya da yeni izin). */
     fun release() {
+        val oldProjection = projection
+        projection = null
         runCatching { display?.release() }
         display = null
-        runCatching { projection?.stop() }
-        projection = null
+        runCatching { oldProjection?.stop() }
+        _lastFrame.value = null
         _status.value = Status.NoPermission
     }
 
@@ -136,6 +155,11 @@ object ScreenMirror {
      * Library araç bağlamından telefon ekranında etkinlik başlatmaya izin
      * veriyor — MirrorMobile'ın yolu). Olmazsa bildirime düşer.
      */
+    /** A foreground phone button must not launch the car notification fallback over the consent dialog. */
+    fun requestFromPhone(context: Context): Boolean = runCatching {
+        context.startActivity(Intent(context, MirrorConsentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }.isSuccess
+
     fun requestFromCar(carContext: Context): Boolean {
         val opened = runCatching {
             carContext.startActivity(
@@ -162,11 +186,8 @@ object ScreenMirror {
                 context, android.Manifest.permission.POST_NOTIFICATIONS,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             if (!granted) {
-                context.startActivity(
-                    Intent(context, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        .putExtra("hermes_action", "mirror_consent"),
-                )
+                // Do not cover the capture consent activity that requestFromCar just opened.
+                DiagLog.w("mirror", "İzin bildirimi gösterilemedi: telefonda Hermes → Mola ekranından paylaşımı başlat")
                 return
             }
         }
@@ -213,7 +234,9 @@ class MirrorConsentActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val mpm = getSystemService(MediaProjectionManager::class.java)
-        launcher.launch(mpm.createScreenCaptureIntent())
+        launcher.launch(if (Build.VERSION.SDK_INT >= 34)
+            mpm.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
+        else mpm.createScreenCaptureIntent())
     }
 }
 

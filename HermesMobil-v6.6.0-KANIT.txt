@@ -1,0 +1,8 @@
+Hermes-Mobile v6.6 doğrulama kanıtı
+Commit: cb7d05ecc56a7762ee2cd2a6a5ebefb5494d1c3f
+Build: BUİLD SUCCESSFUL in 3m 37s
+Tests: 1376; failures=0; errors=0; skipped=0
+APK SHA-256: c8b6e802f9289e1e01f31d3a39c01b9792223f82731e7f7f22b9e704c1e8d3ed
+DEX match: +Lcom/hermes/mobile/car/HermesPanelScreenKt;
+DEX proof: HermesPanelScreen FOUND
+Clean-worktree marker: WORKTREE_CLEAN

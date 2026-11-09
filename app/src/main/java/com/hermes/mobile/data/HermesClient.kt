@@ -216,8 +216,9 @@ class HermesClient(private val profile: ServerProfile) {
 
     suspend fun systemStats(): SystemStats = json.decodeFromString(getRaw("/api/system/stats"))
 
-    suspend fun sessions(): List<HermesSession> =
-        json.decodeFromString<SessionsResponse>(getRaw("/api/sessions")).sessions
+    suspend fun sessions(): List<HermesSession> = collectSessionPages { offset ->
+        json.decodeFromString<SessionsResponse>(getRaw("/api/sessions?limit=100&offset=$offset&archived=include"))
+    }
 
     suspend fun sessionStats(): SessionStats = json.decodeFromString(getRaw("/api/sessions/stats"))
 
@@ -258,15 +259,25 @@ class HermesClient(private val profile: ServerProfile) {
     }
 
     /** Bir oturumun mesaj dökümü. Uzun oturumlarda ağır olabilir. */
-    suspend fun sessionMessages(id: String): List<SessionMessage> {
+    suspend fun sessionMessages(id: String, agentProfile: String? = null): List<SessionMessage> {
         val encoded = java.net.URLEncoder.encode(id, "UTF-8")
+        val query = agentProfile?.let { "?profile=" + java.net.URLEncoder.encode(it, "UTF-8") }.orEmpty()
         return json.decodeFromString<SessionMessagesResponse>(
-            getRaw("/api/sessions/$encoded/messages")
+            getRaw("/api/sessions/$encoded/messages$query")
         ).messages
     }
 
     suspend fun profiles(): List<HermesProfile> =
         json.decodeFromString<ProfilesResponse>(getRaw("/api/profiles")).profiles
+
+    suspend fun profileSessions(name: String): List<HermesSession> = collectSessionPages { offset ->
+        profileSessionPage(name, offset)
+    }
+
+    suspend fun profileSessionPage(name: String, offset: Int): SessionsResponse {
+        val encoded = java.net.URLEncoder.encode(name, "UTF-8")
+        return json.decodeFromString(getRaw("/api/profiles/sessions?profile=$encoded&archived=include&limit=100&offset=$offset"))
+    }
 
     suspend fun activeProfile(): ActiveProfile =
         json.decodeFromString(getRaw("/api/profiles/active"))
@@ -276,9 +287,55 @@ class HermesClient(private val profile: ServerProfile) {
         postRaw("/api/profiles/active", """{"name":"$name"}""")
     }
 
-    suspend fun modelOptions(): ModelOptions = json.decodeFromString(getRaw("/api/model/options"))
+    suspend fun modelOptions(): ModelOptions = try {
+        json.decodeFromString(getRaw("/api/model/options"))
+    } catch (e: HermesApiException) {
+        if (e.code !in listOf(404, 503)) throw e
+        // Read-only inventory bridge; never synthesize models from recommendations.
+        json.decodeFromString(getRaw("/mobile-api/models"))
+    }
 
     suspend fun modelInfo(): ModelInfo = json.decodeFromString(getRaw("/api/model/info"))
+
+    /**
+     * J1: Ayarlar > Bağlantı'daki "Bağlantıyı test et" düğmesi.
+     *
+     * Gerçek bir HTTP çağrısı yapar (`/api/model/info` — Hermes panosunun
+     * model bilgisi ucu), gecikmeyi ölçer ve başarısızlığı [ConnectionErrors]
+     * ile sınıflandırır: token mı, adres mi, DNS mi, meşgul mü? Token loglanmaz.
+     */
+    suspend fun testConnection(): ConnectionTest {
+        val t0 = System.nanoTime()
+        fun ms() = (System.nanoTime() - t0) / 1_000_000
+        return try {
+            val raw = getRaw("/api/model/info")
+            val model = runCatching {
+                val o = json.parseToJsonElement(raw).let { it as? JsonObject }
+                val el = o?.get("model") ?: o?.get("current") ?: o?.get("model_name")
+                (el as? kotlinx.serialization.json.JsonPrimitive)
+                    ?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.content
+            }.getOrNull()
+            val detay = com.hermes.mobile.ui.tr("Bağlantı sağlam", "Connection healthy") +
+                (model?.let { " · model: $it" } ?: "")
+            ConnectionTest(ok = true, httpCode = 200, latencyMs = ms(), detail = detay, technical = "HTTP 200")
+        } catch (e: HermesApiException) {
+            ConnectionTest(
+                ok = false,
+                httpCode = e.code,
+                latencyMs = ms(),
+                detail = ConnectionErrors.describe(e),
+                technical = ConnectionErrors.code(e),
+            )
+        } catch (e: IOException) {
+            ConnectionTest(
+                ok = false,
+                httpCode = null,
+                latencyMs = ms(),
+                detail = ConnectionErrors.describe(e),
+                technical = ConnectionErrors.code(e),
+            )
+        }
+    }
 
     suspend fun setModel(provider: String, model: String) {
         postRaw(
